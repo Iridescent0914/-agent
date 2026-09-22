@@ -1,0 +1,236 @@
+{
+  "schema_version": "1.0",
+  "chapter": {
+    "id": "math.g6.rational",
+    "name": "有理数"
+  },
+  "knowledge_points": [
+    {
+      "id": "math.g6.rational.add_sub",
+      "name": "有理数的加法与减法",
+      "exam_points": [
+        {
+          "id": "math.g6.rational.exam.local.1fc2bebe35",
+          "name": "倒数的定义"
+        },
+        {
+          "id": "math.g6.rational.exam.local.3ea1de489a",
+          "name": "倒数的定义与性质"
+        },
+        {
+          "id": "math.g6.rational.exam.local.17d6b1aa75",
+          "name": "倒数的定义与性质、相反数的性质"
+        },
+        {
+          "id": "math.g6.rational.exam.local.e7067b6a51",
+          "name": "利用奇点偶段求绝对值和的最小值;"
+        },
+        {
+          "id": "math.g6.rational.exam.local.7a730a388a",
+          "name": "含绝对值的不等式"
+        },
+        {
+          "id": "math.g6.rational.exam.local.bf3371ead6",
+          "name": "数轴上两点之间的距离；用数轴上的点表示有理数"
+        },
+        {
+          "id": "math.g6.rational.exam.local.a7e36d4bcb",
+          "name": "数轴上点的移动、绝对值的几何意义"
+        },
+        {
+          "id": "math.g6.rational.exam.local.bf064e2031",
+          "name": "数轴上的对称与中点问题、数轴上两点之间的距离；"
+        },
+        {
+          "id": "math.g6.rational.exam.local.fafa36caf7",
+          "name": "数轴上的点与有理数的对应关系、有理数的分类"
+        },
+        {
+          "id": "math.g6.rational.exam.local.45115cda57",
+          "name": "数轴上的点的规律移动"
+        },
+        {
+          "id": "math.g6.rational.exam.local.cc4a42351c",
+          "name": "数轴的三要素及其性质、数轴上点的移动"
+        },
+        {
+          "id": "math.g6.rational.exam.local.39ca8b5a4a",
+          "name": "有理数乘法的符号法则、有理数大小比较"
+        },
+        {
+          "id": "math.g6.rational.exam.local.a61b42d3fd",
+          "name": "有理数乘除法"
+        },
+        {
+          "id": "math.g6.rational.exam.local.63a86a7068",
+          "name": "有理数乘除法、有理数大小比较"
+        },
+        {
+          "id": "math.g6.rational.exam.local.dae9bb3283",
+          "name": "有理数加减法"
+        },
+        {
+          "id": "math.g6.rational.exam.local.baa06ae41c",
+          "name": "有理数加减法、有理数乘除法"
+        },
+        {
+          "id": "math.g6.rational.exam.local.7121129eea",
+          "name": "有理数加减法、绝对值的化简"
+        },
+        {
+          "id": "math.g6.rational.exam.local.a0b6e4a196",
+          "name": "有理数加减混合运算、找规律分组求和、分数通分运算"
+        },
+        {
+          "id": "math.g6.rational.exam.local.af5cfa271e",
+          "name": "有理数加法在实际问题中的应用（正负数的意义）、求总和"
+        },
+        {
+          "id": "math.g6.rational.exam.local.214a6c99ba",
+          "name": "有理数的乘方"
+        },
+        {
+          "id": "math.g6.rational.exam.local.787829c02a",
+          "name": "有理数的乘方、倒数与加法运算"
+        },
+        {
+          "id": "math.g6.rational.exam.local.c4a20c1200",
+          "name": "有理数的乘方运算"
+        },
+        {
+          "id": "math.g6.rational.exam.local.a5cd7fd631",
+          "name": "有理数的乘除法"
+        },
+        {
+          "id": "math.g6.rational.exam.local.2d5da76283",
+          "name": "有理数的分类"
+        },
+        {
+          "id": "math.g6.rational.exam.local.ca49ae5288",
+          "name": "有理数的加减法"
+        },
+        {
+          "id": "math.g6.rational.exam.local.8458a01f4b",
+          "name": "有理数的大小比较"
+        },
+        {
+          "id": "math.g6.rational.exam.local.7a38de07a8",
+          "name": "有理数的巧算"
+        },
+        {
+          "id": "math.g6.rational.exam.local.e962d6ad1d",
+          "name": "有理数的应用"
+        },
+        {
+          "id": "math.g6.rational.exam.local.43c912e5c8",
+          "name": "有理数的概念"
+        },
+        {
+          "id": "math.g6.rational.exam.local.a912a3f339",
+          "name": "有理数的混合运算"
+        },
+        {
+          "id": "math.g6.rational.exam.local.35c7c7ca5b",
+          "name": "有理数的混合运算;"
+        },
+        {
+          "id": "math.g6.rational.exam.local.2a51903bd0",
+          "name": "有理数的混合运算、有理数的大小比较"
+        },
+        {
+          "id": "math.g6.rational.exam.local.9f5776b088",
+          "name": "有理数的的应用"
+        },
+        {
+          "id": "math.g6.rational.exam.local.55fac4a4df",
+          "name": "有理数的规律探究"
+        },
+        {
+          "id": "math.g6.rational.exam.local.cc5a734997",
+          "name": "有理数绝对值的分类讨论"
+        },
+        {
+          "id": "math.g6.rational.exam.local.016fb14a94",
+          "name": "有理数运算有关的新定义问题"
+        },
+        {
+          "id": "math.g6.rational.exam.local.ed885e7dd2",
+          "name": "有理数运算有关的新定义问题;"
+        },
+        {
+          "id": "math.g6.rational.exam.local.4fc1b2c3d7",
+          "name": "用数轴上的点表示有理数"
+        },
+        {
+          "id": "math.g6.rational.exam.local.8d30f9816b",
+          "name": "用数轴上的点表示有理数、有理数的大小比较；"
+        },
+        {
+          "id": "math.g6.rational.exam.local.b8f57cebe7",
+          "name": "相反意义的量；相反数的性质"
+        },
+        {
+          "id": "math.g6.rational.exam.local.3bec34a9ec",
+          "name": "相反数的性质、倒数的定义与性质"
+        },
+        {
+          "id": "math.g6.rational.exam.local.f7dd5d77b1",
+          "name": "科学记数法"
+        },
+        {
+          "id": "math.g6.rational.exam.local.86b236eba2",
+          "name": "绝对值化简"
+        },
+        {
+          "id": "math.g6.rational.exam.local.c2af7c51ef",
+          "name": "绝对值的几何意义"
+        },
+        {
+          "id": "math.g6.rational.exam.local.460849f11e",
+          "name": "绝对值的几何意义、有理数加减法;"
+        },
+        {
+          "id": "math.g6.rational.exam.local.6adae52d71",
+          "name": "绝对值的化简"
+        },
+        {
+          "id": "math.g6.rational.exam.local.346d3dab49",
+          "name": "绝对值的非负性"
+        },
+        {
+          "id": "math.g6.rational.exam.local.fcb6e319bf",
+          "name": "绝对值的非负性、有理数的乘除法"
+        },
+        {
+          "id": "math.g6.rational.exam.local.abdf37931c",
+          "name": "绝对值的非负性、有理数的混合运算"
+        },
+        {
+          "id": "math.g6.rational.exam.local.031e6a86df",
+          "name": "绝对值的非负性、绝对值的几何意义、解含有绝对值的方程"
+        },
+        {
+          "id": "math.g6.rational.exam.local.80a53736ac",
+          "name": "绝对值的非负性、解含有绝对值的方程"
+        },
+        {
+          "id": "math.g6.rational.exam.local.aaee87b9a9",
+          "name": "解含有绝对值的方程、有理数加减法"
+        },
+        {
+          "id": "math.g6.rational.exam.local.8c72646615",
+          "name": "解含有绝对值的方程、有理数的大小比较"
+        },
+        {
+          "id": "math.g6.rational.exam.local.14ea3523fe",
+          "name": "（待合作者补充）"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "层级来自校本审核 DOCX 的主属 KP 与主属考点字段。",
+    "源文件未提供考点 ID 时，使用基于考点名称生成的稳定 local ID；教师确认正式编号后可迁移。",
+    "M0 仅固定首版结构，不代表全部考点已经完成教学专家审核。"
+  ]
+}

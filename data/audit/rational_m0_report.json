@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+  "total_extracted": 139,
+  "seed_candidate_count": 38,
+  "eligible_count_before_limit": 61,
+  "question_type_counts": {
+    "calculation": 24,
+    "choice": 6,
+    "fill_blank": 55,
+    "solution": 52,
+    "true_false": 1,
+    "unknown": 1
+  },
+  "seed_type_counts": {
+    "choice": 6,
+    "fill_blank": 32
+  },
+  "seed_exam_point_count": 10,
+  "seed_exam_point_counts": {
+    "倒数的定义与性质": 3,
+    "有理数乘除法": 7,
+    "有理数加减法": 8,
+    "有理数的乘方运算": 3,
+    "有理数的乘除法": 4,
+    "有理数的大小比较": 2,
+    "有理数的概念": 2,
+    "有理数的混合运算": 3,
+    "相反意义的量；相反数的性质": 2,
+    "科学记数法": 4
+  },
+  "seed_machine_ready_count": 17,
+  "seed_needs_teacher_review_count": 21,
+  "exported_asset_references": 564,
+  "asset_extension_counts": {
+    ".jpeg": 1,
+    ".png": 34,
+    ".wmf": 529
+  },
+  "issue_counts": {
+    "answer_items_need_teacher_review": 36,
+    "asset_needs_web_conversion": 529,
+    "asset_relationship_missing": 3,
+    "contains_asset": 109,
+    "missing_reference_answer": 1,
+    "multiple_subquestions": 86,
+    "question_type_mismatch": 23,
+    "source_contains_ai_draft": 4
+  },
+  "audit_status_note": "程序只验证结构；pending/needs_teacher_review 均须教师确认后才能改为 verified。"
+}
