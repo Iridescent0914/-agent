@@ -366,7 +366,7 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
     options = parse_options(question_text) if qtype == "choice" and not multiple else {}
     correct_answer = None
     match_type = None
-    grading_readiness = "needs_teacher_review"
+    grading_readiness = "raw_answer_only"
 
     if multiple and qtype in {"choice", "fill_blank"}:
         answer_items = split_answer_items(reference_answer, qtype)
@@ -386,11 +386,11 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
     elif qtype == "choice":
         correct_answer = extract_choice_answer(reference_answer)
         match_type = "choice" if correct_answer else None
-        grading_readiness = "machine_ready" if correct_answer else "needs_teacher_review"
+        grading_readiness = "machine_ready" if correct_answer else "raw_answer_only"
     elif qtype == "fill_blank":
         correct_answer = extract_fill_answer(reference_answer)
         match_type = "numeric" if correct_answer and numeric_answer(correct_answer) else "exact"
-        grading_readiness = "machine_ready" if correct_answer else "needs_teacher_review"
+        grading_readiness = "machine_ready" if correct_answer else "raw_answer_only"
 
     issues: list[str] = []
     if not question_text:
@@ -412,9 +412,9 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
     if qtype == "choice" and not multiple and len(options) < 2:
         issues.append("options_not_structured")
     if qtype in {"choice", "fill_blank"} and grading_readiness != "machine_ready":
-        issues.append("answer_items_need_teacher_review")
+        issues.append("answer_items_not_structured")
     if "【AI 草拟" in reference_answer or "【AI 草拟" in wrong_analysis:
-        issues.append("source_contains_ai_draft")
+        issues.append("source_contains_ai_draft_marker")
 
     if match_type == "choice":
         rules = {"trim_whitespace": True, "normalize_fullwidth_symbols": True, "uppercase": True}
@@ -431,20 +431,17 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
         rules = {
             "item_order_matters": True,
             "partial_credit": True,
-            "teacher_must_confirm_unparsed_items": True,
+            "unparsed_items_use_reference_answer_raw": True,
         }
     else:
         rules = {"trim_whitespace": True, "normalize_fullwidth_symbols": True}
 
-    audit_status = "pending"
-    if any(
-        issue in issues
-        for issue in ("source_contains_ai_draft", "answer_items_need_teacher_review", "question_type_mismatch")
-    ):
-        audit_status = "needs_teacher_review"
+    import_status = "parsed"
+    if any(issue in issues for issue in ("answer_items_not_structured", "question_type_mismatch")):
+        import_status = "needs_technical_cleanup"
 
     return {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
         "original_qid": metadata.get("original_qid", ""),
         "chapter": {"id": chapter_id, "name": "有理数"},
         "section": main_kp_name or None,
@@ -470,7 +467,8 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
         "assets": [],
         "source_file": source.relative_to(project_root).as_posix(),
         "source_question_number": parsed.number,
-        "audit_status": audit_status,
+        "source_review_status": "reviewed",
+        "import_status": import_status,
         "import_issues": issues,
         "is_seed_candidate": False,
     }
@@ -510,7 +508,7 @@ def select_diverse(records: list[dict], limit: int) -> list[dict]:
             key=lambda record: (
                 record["grading_readiness"] != "machine_ready",
                 record["has_image"],
-                "source_contains_ai_draft" in record["import_issues"],
+                "source_contains_ai_draft_marker" in record["import_issues"],
                 record["source_question_number"],
             )
         )
@@ -603,7 +601,7 @@ def export_assets(source: Path, output_root: Path, records: list[dict]) -> dict:
             )
             if "[ASSET:unknown]" in searchable:
                 record["import_issues"].append("asset_relationship_missing")
-                record["audit_status"] = "needs_teacher_review"
+                record["import_status"] = "needs_technical_cleanup"
             relationship_ids = sorted(set(re.findall(r"\[ASSET:(rId\d+)\]", searchable)))
             replacements: dict[str, str] = {}
             assets = []
@@ -611,13 +609,13 @@ def export_assets(source: Path, output_root: Path, records: list[dict]) -> dict:
                 relation = relationships.get(relationship_id)
                 if not relation or relation.get("TargetMode") == "External":
                     record["import_issues"].append("asset_relationship_missing")
-                    record["audit_status"] = "needs_teacher_review"
+                    record["import_status"] = "needs_technical_cleanup"
                     continue
                 target = relation.get("Target", "")
                 archive_path = posixpath.normpath(posixpath.join("word", target))
                 if not archive_path.startswith("word/") or archive_path not in archive_names:
                     record["import_issues"].append("asset_file_missing")
-                    record["audit_status"] = "needs_teacher_review"
+                    record["import_status"] = "needs_technical_cleanup"
                     continue
                 suffix = Path(target).suffix.lower() or ".bin"
                 filename = f"{record['original_qid']}_{relationship_id}{suffix}"
@@ -636,7 +634,7 @@ def export_assets(source: Path, output_root: Path, records: list[dict]) -> dict:
                 exported += 1
                 if suffix in {".emf", ".wmf"}:
                     record["import_issues"].append("asset_needs_web_conversion")
-                    record["audit_status"] = "needs_teacher_review"
+                    record["import_status"] = "needs_technical_cleanup"
 
             for key in ("question_text", "reference_answer_raw", "solution", "wrong_analysis", "correct_answer"):
                 record[key] = replace_asset_markers(record.get(key), replacements)
@@ -651,7 +649,8 @@ def export_assets(source: Path, output_root: Path, records: list[dict]) -> dict:
 def write_audit_csv(path: Path, records: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     columns = [
-        "audit_status",
+        "source_review_status",
+        "import_status",
         "include_in_seed",
         "original_qid",
         "source_question_number",
@@ -667,8 +666,8 @@ def write_audit_csv(path: Path, records: list[dict]) -> None:
         "has_image",
         "asset_paths",
         "import_issues",
-        "teacher_final_answer",
-        "teacher_comment",
+        "corrected_answer",
+        "technical_note",
     ]
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=columns)
@@ -676,7 +675,8 @@ def write_audit_csv(path: Path, records: list[dict]) -> None:
         for record in records:
             writer.writerow(
                 {
-                    "audit_status": record["audit_status"],
+                    "source_review_status": record["source_review_status"],
+                    "import_status": record["import_status"],
                     "include_in_seed": "yes" if record["is_seed_candidate"] else "no",
                     "original_qid": record["original_qid"],
                     "source_question_number": record["source_question_number"],
@@ -692,8 +692,8 @@ def write_audit_csv(path: Path, records: list[dict]) -> None:
                     "has_image": record["has_image"],
                     "asset_paths": ";".join(asset["path"] for asset in record["assets"]),
                     "import_issues": ";".join(record["import_issues"]),
-                    "teacher_final_answer": "",
-                    "teacher_comment": "",
+                    "corrected_answer": "",
+                    "technical_note": "",
                 }
             )
 
@@ -732,10 +732,10 @@ def build(source: Path, output_root: Path, project_root: Path, limit: int) -> di
         "seed_exam_point_count": len({record["main_exam_point"]["id"] for record in selected}),
         "seed_exam_point_counts": dict(sorted(Counter(record["main_exam_point"]["name"] for record in selected).items())),
         "seed_machine_ready_count": sum(record["grading_readiness"] == "machine_ready" for record in selected),
-        "seed_needs_teacher_review_count": sum(record["grading_readiness"] != "machine_ready" for record in selected),
+        "seed_raw_answer_only_count": sum(record["grading_readiness"] == "raw_answer_only" for record in selected),
         **asset_report,
         "issue_counts": dict(sorted(issue_counts.items())),
-        "audit_status_note": "程序只验证结构；pending/needs_teacher_review 均须教师确认后才能改为 verified。",
+        "source_status_note": "校本审核 DOCX 作为权威来源，题目与参考答案默认已审核；import_status 仅描述程序抽取和结构化状态。",
     }
 
     write_json(output_root / "interim" / "rational_all.json", records)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply teacher edits from the M0 audit CSV to reviewed JSON outputs."""
+"""Apply optional technical corrections from the M0 import CSV."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 
-ALLOWED_STATUS = {"pending", "verified", "needs_teacher_review", "excluded"}
+ALLOWED_STATUS = {"parsed", "needs_technical_cleanup", "excluded"}
 
 
 def load_json(path: Path):
@@ -42,40 +42,54 @@ def main() -> int:
 
     errors = []
     for row_number, row in enumerate(rows, start=2):
-        status = row["audit_status"].strip()
+        status = row["import_status"].strip()
         if status not in ALLOWED_STATUS:
-            errors.append(f"CSV 第 {row_number} 行 audit_status 无效：{status}")
-        if status == "verified" and not (row["teacher_final_answer"].strip() or row["extracted_answer"].strip()):
-            errors.append(f"CSV 第 {row_number} 行标为 verified，但没有答案")
+            errors.append(f"CSV 第 {row_number} 行 import_status 无效：{status}")
     if errors:
         print("\n".join(f"ERROR: {message}" for message in errors))
         return 1
+
+    all_source = load_json(all_path)
+    seed_source = load_json(seed_path)
+    source_by_qid = {record["original_qid"]: record for record in all_source}
+    changed_rows = [
+        row
+        for row in rows
+        if row["corrected_answer"].strip()
+        or row["technical_note"].strip()
+        or row["import_status"].strip()
+        != source_by_qid.get(row["original_qid"], {}).get("import_status")
+    ]
+    if not changed_rows:
+        print("导入检查表没有技术修正，不生成重复的 corrected JSON。")
+        return 0
 
     def apply(records: list[dict]) -> list[dict]:
         for record in records:
             row = by_qid.get(record["original_qid"])
             if not row:
                 continue
-            answer = parse_answer(row["teacher_final_answer"])
+            answer = parse_answer(row["corrected_answer"])
             if answer is not None:
                 record["correct_answer"] = answer
                 record["grading_readiness"] = "machine_ready"
-            record["audit_status"] = row["audit_status"].strip()
-            record["teacher_comment"] = row["teacher_comment"].strip() or None
+            record["import_status"] = row["import_status"].strip()
+            record["technical_note"] = row["technical_note"].strip() or None
         return records
 
-    all_records = apply(load_json(all_path))
-    seed_records = apply(load_json(seed_path))
-    all_output = data_root / "interim" / "rational_all_reviewed.json"
-    seed_output = data_root / "seed" / "rational_questions_reviewed.json"
+    all_records = apply(all_source)
+    seed_records = apply(seed_source)
+    all_output = data_root / "interim" / "rational_all_corrected.json"
+    seed_output = data_root / "seed" / "rational_questions_corrected.json"
     write_json(all_output, all_records)
     write_json(seed_output, seed_records)
 
     summary = {
         "seed_total": len(seed_records),
-        "seed_verified": sum(item["audit_status"] == "verified" for item in seed_records),
-        "seed_excluded": sum(item["audit_status"] == "excluded" for item in seed_records),
-        "seed_needs_review": sum(item["audit_status"] in {"pending", "needs_teacher_review"} for item in seed_records),
+        "source_review_status": "reviewed",
+        "seed_machine_ready": sum(item["grading_readiness"] == "machine_ready" for item in seed_records),
+        "seed_raw_answer_only": sum(item["grading_readiness"] == "raw_answer_only" for item in seed_records),
+        "seed_excluded": sum(item["import_status"] == "excluded" for item in seed_records),
         "outputs": [
             all_output.relative_to(code_root).as_posix(),
             seed_output.relative_to(code_root).as_posix(),

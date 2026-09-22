@@ -30,7 +30,7 @@
     "科学记数法": 4
   },
   "seed_machine_ready_count": 17,
-  "seed_needs_teacher_review_count": 21,
+  "seed_raw_answer_only_count": 21,
   "exported_asset_references": 564,
   "asset_extension_counts": {
     ".jpeg": 1,
@@ -38,14 +38,14 @@
     ".wmf": 529
   },
   "issue_counts": {
-    "answer_items_need_teacher_review": 36,
+    "answer_items_not_structured": 36,
     "asset_needs_web_conversion": 529,
     "asset_relationship_missing": 3,
     "contains_asset": 109,
     "missing_reference_answer": 1,
     "multiple_subquestions": 86,
     "question_type_mismatch": 23,
-    "source_contains_ai_draft": 4
+    "source_contains_ai_draft_marker": 4
   },
-  "audit_status_note": "程序只验证结构；pending/needs_teacher_review 均须教师确认后才能改为 verified。"
+  "source_status_note": "校本审核 DOCX 作为权威来源，题目与参考答案默认已审核；import_status 仅描述程序抽取和结构化状态。"
 }

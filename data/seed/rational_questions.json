@@ -1,6 +1,6 @@
 [
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.042",
     "chapter": {
       "id": "math.g6.rational",
@@ -42,12 +42,13 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 42,
-    "audit_status": "pending",
+    "source_review_status": "reviewed",
+    "import_status": "parsed",
     "import_issues": [],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.060",
     "chapter": {
       "id": "math.g6.rational",
@@ -75,9 +76,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -96,15 +97,16 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 60,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "multiple_subquestions",
-      "answer_items_need_teacher_review"
+      "answer_items_not_structured"
     ],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.128",
     "chapter": {
       "id": "math.g6.rational",
@@ -142,12 +144,13 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 128,
-    "audit_status": "pending",
+    "source_review_status": "reviewed",
+    "import_status": "parsed",
     "import_issues": [],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.085",
     "chapter": {
       "id": "math.g6.rational",
@@ -196,7 +199,8 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 85,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "asset_needs_web_conversion",
@@ -205,7 +209,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.106",
     "chapter": {
       "id": "math.g6.rational",
@@ -255,7 +259,7 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -332,7 +336,8 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 106,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
@@ -351,7 +356,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.111",
     "chapter": {
       "id": "math.g6.rational",
@@ -395,12 +400,13 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 111,
-    "audit_status": "pending",
+    "source_review_status": "reviewed",
+    "import_status": "parsed",
     "import_issues": [],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.098",
     "chapter": {
       "id": "math.g6.rational",
@@ -434,7 +440,7 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -501,7 +507,8 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 98,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
@@ -519,7 +526,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.015",
     "chapter": {
       "id": "math.g6.rational",
@@ -553,7 +560,7 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -574,7 +581,8 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 15,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "multiple_subquestions",
       "question_type_mismatch"
@@ -582,7 +590,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.029",
     "chapter": {
       "id": "math.g6.rational",
@@ -634,7 +642,7 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -701,7 +709,8 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 29,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
@@ -718,7 +727,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.002",
     "chapter": {
       "id": "math.g6.rational",
@@ -764,7 +773,7 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -785,16 +794,17 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 2,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "multiple_subquestions",
       "question_type_mismatch",
-      "source_contains_ai_draft"
+      "source_contains_ai_draft_marker"
     ],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.049",
     "chapter": {
       "id": "math.g6.rational",
@@ -832,12 +842,13 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 49,
-    "audit_status": "pending",
+    "source_review_status": "reviewed",
+    "import_status": "parsed",
     "import_issues": [],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.061",
     "chapter": {
       "id": "math.g6.rational",
@@ -865,9 +876,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -886,15 +897,16 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 61,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "multiple_subquestions",
-      "answer_items_need_teacher_review"
+      "answer_items_not_structured"
     ],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.127",
     "chapter": {
       "id": "math.g6.rational",
@@ -934,7 +946,7 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -976,7 +988,8 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 127,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
@@ -988,7 +1001,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.086",
     "chapter": {
       "id": "math.g6.rational",
@@ -1037,7 +1050,8 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 86,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "asset_needs_web_conversion",
@@ -1046,7 +1060,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.103",
     "chapter": {
       "id": "math.g6.rational",
@@ -1074,9 +1088,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -1166,11 +1180,12 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 103,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -1189,7 +1204,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.110",
     "chapter": {
       "id": "math.g6.rational",
@@ -1233,7 +1248,8 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 110,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "asset_needs_web_conversion"
@@ -1241,7 +1257,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.084",
     "chapter": {
       "id": "math.g6.rational",
@@ -1269,9 +1285,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -1290,15 +1306,16 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 84,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "multiple_subquestions",
-      "answer_items_need_teacher_review"
+      "answer_items_not_structured"
     ],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.014",
     "chapter": {
       "id": "math.g6.rational",
@@ -1326,9 +1343,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -1423,11 +1440,12 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 14,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -1446,7 +1464,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.027",
     "chapter": {
       "id": "math.g6.rational",
@@ -1474,9 +1492,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -1501,18 +1519,19 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 27,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
       "question_type_mismatch",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion"
     ],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.001",
     "chapter": {
       "id": "math.g6.rational",
@@ -1595,7 +1614,7 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1627,7 +1646,8 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 1,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
@@ -1637,7 +1657,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.050",
     "chapter": {
       "id": "math.g6.rational",
@@ -1677,7 +1697,7 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1714,7 +1734,8 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 50,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
@@ -1725,7 +1746,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.070",
     "chapter": {
       "id": "math.g6.rational",
@@ -1771,9 +1792,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -1792,15 +1813,16 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 70,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "multiple_subquestions",
-      "answer_items_need_teacher_review"
+      "answer_items_not_structured"
     ],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.130",
     "chapter": {
       "id": "math.g6.rational",
@@ -1853,7 +1875,8 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 130,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "asset_needs_web_conversion",
@@ -1862,7 +1885,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.087",
     "chapter": {
       "id": "math.g6.rational",
@@ -1910,7 +1933,8 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 87,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "asset_needs_web_conversion"
@@ -1918,7 +1942,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.104",
     "chapter": {
       "id": "math.g6.rational",
@@ -1946,9 +1970,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -2023,11 +2047,12 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 104,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -2043,7 +2068,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.109",
     "chapter": {
       "id": "math.g6.rational",
@@ -2071,9 +2096,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -2092,15 +2117,16 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 109,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "multiple_subquestions",
-      "answer_items_need_teacher_review"
+      "answer_items_not_structured"
     ],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.090",
     "chapter": {
       "id": "math.g6.rational",
@@ -2128,9 +2154,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -2210,11 +2236,12 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 90,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -2231,7 +2258,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.035",
     "chapter": {
       "id": "math.g6.rational",
@@ -2271,9 +2298,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -2292,15 +2319,16 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 35,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "multiple_subquestions",
-      "answer_items_need_teacher_review"
+      "answer_items_not_structured"
     ],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.082",
     "chapter": {
       "id": "math.g6.rational",
@@ -2328,9 +2356,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -2349,15 +2377,16 @@
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 82,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "multiple_subquestions",
-      "answer_items_need_teacher_review"
+      "answer_items_not_structured"
     ],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.129",
     "chapter": {
       "id": "math.g6.rational",
@@ -2385,9 +2414,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -2417,18 +2446,19 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 129,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.071",
     "chapter": {
       "id": "math.g6.rational",
@@ -2456,9 +2486,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -2503,11 +2533,12 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 71,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -2516,7 +2547,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.036",
     "chapter": {
       "id": "math.g6.rational",
@@ -2556,9 +2587,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -2613,11 +2644,12 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 36,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -2629,7 +2661,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.073",
     "chapter": {
       "id": "math.g6.rational",
@@ -2657,9 +2689,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -2794,11 +2826,12 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 73,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -2826,7 +2859,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.037",
     "chapter": {
       "id": "math.g6.rational",
@@ -2854,9 +2887,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -2896,11 +2929,12 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 37,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -2909,7 +2943,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.075",
     "chapter": {
       "id": "math.g6.rational",
@@ -2937,9 +2971,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -2979,11 +3013,12 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 75,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -2992,7 +3027,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.041",
     "chapter": {
       "id": "math.g6.rational",
@@ -3020,9 +3055,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -3052,18 +3087,19 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 41,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.076",
     "chapter": {
       "id": "math.g6.rational",
@@ -3091,9 +3127,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -3168,11 +3204,12 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 76,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -3188,7 +3225,7 @@
     "is_seed_candidate": true
   },
   {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.044",
     "chapter": {
       "id": "math.g6.rational",
@@ -3216,9 +3253,9 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "teacher_must_confirm_unparsed_items": true
+      "unparsed_items_use_reference_answer_raw": true
     },
-    "grading_readiness": "needs_teacher_review",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.add_sub",
       "name": "有理数的加法与减法"
@@ -3253,11 +3290,12 @@
     ],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 44,
-    "audit_status": "needs_teacher_review",
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_need_teacher_review",
+      "answer_items_not_structured",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"

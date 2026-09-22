@@ -67,7 +67,8 @@ def main() -> int:
         "main_exam_point",
         "source_file",
         "source_question_number",
-        "audit_status",
+        "source_review_status",
+        "import_status",
     }
     for index, record in enumerate(seed_records, start=1):
         missing = sorted(key for key in required if key not in record)
@@ -76,8 +77,9 @@ def main() -> int:
         require(record.get("difficulty") in {1, 2, 3, 4, 5}, f"{record.get('original_qid')} 难度无效", errors)
         require(bool(record.get("question_text")), f"{record.get('original_qid')} 缺题干", errors)
         require(bool(record.get("correct_answer")), f"{record.get('original_qid')} 缺参考答案结构", errors)
-        require(record.get("grading_readiness") in {"machine_ready", "needs_teacher_review"}, f"{record.get('original_qid')} 判分准备状态无效", errors)
-        require(record.get("audit_status") in {"pending", "needs_teacher_review", "verified", "excluded"}, f"{record.get('original_qid')} 核对状态无效", errors)
+        require(record.get("grading_readiness") in {"machine_ready", "raw_answer_only"}, f"{record.get('original_qid')} 判分准备状态无效", errors)
+        require(record.get("source_review_status") == "reviewed", f"{record.get('original_qid')} 未继承权威来源状态", errors)
+        require(record.get("import_status") in {"parsed", "needs_technical_cleanup", "excluded"}, f"{record.get('original_qid')} 导入状态无效", errors)
         require("[ASSET:unknown]" not in json.dumps(record, ensure_ascii=False), f"{record.get('original_qid')} 存在未关联资源", errors)
         source = project_root / record.get("source_file", "")
         require(source.is_file(), f"{record.get('original_qid')} 源文件不存在：{source}", errors)
@@ -108,22 +110,21 @@ def main() -> int:
     for qid in seed_qids:
         require(audit_by_qid[qid]["include_in_seed"] == "yes", f"{qid} 在核对表中未标为候选", errors)
 
-    verified = sum(item.get("audit_status") == "verified" for item in seed_records)
     summary = {
         "all_questions": len(all_records),
         "seed_questions": len(seed_records),
         "seed_types": dict(Counter(item["question_type"] for item in seed_records)),
         "seed_exam_points": len(exam_ids),
         "machine_ready": sum(item.get("grading_readiness") == "machine_ready" for item in seed_records),
-        "needs_teacher_review": sum(item.get("grading_readiness") != "machine_ready" for item in seed_records),
-        "teacher_verified": verified,
+        "raw_answer_only": sum(item.get("grading_readiness") == "raw_answer_only" for item in seed_records),
+        "source_reviewed": sum(item.get("source_review_status") == "reviewed" for item in seed_records),
         "validation_errors": len(errors),
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     if errors:
         print("\n".join(f"ERROR: {item}" for item in errors))
         return 1
-    print("M0 数据结构校验通过；数学内容仍以教师在核对表中的 verified 状态为准。")
+    print("M0 数据结构校验通过；题目与答案继承校本审核 DOCX 的权威状态。")
     return 0
 
 
