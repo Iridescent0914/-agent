@@ -1,8 +1,12 @@
 FROM node:22-alpine
 
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+RUN npm config set registry ${NPM_REGISTRY}
+
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 COPY . .
 
 EXPOSE 5173

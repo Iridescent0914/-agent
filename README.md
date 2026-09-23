@@ -58,11 +58,86 @@ docker compose exec backend python -m scripts.verify_m1
 
 Compose 启动后端时会执行 `alembic upgrade head`，但不会自动导入业务种子。种子导入使用显式命令，避免每次启动静默修改数据。
 
-如果 Docker Hub 暂时不可达，可使用下面的 D 盘本地环境方式。
+如果构建时报 `failed to fetch oauth token` 或 `auth.docker.io:443` 超时，说明故障发生在 Docker Hub 网络连接，不是项目代码。可以分别重试基础镜像下载，再重新构建：
 
-## 项目内 conda 环境启动
+```powershell
+docker pull node:22-alpine
+docker pull python:3.12-slim
+docker pull postgres:16-alpine
+docker compose build backend frontend
+```
 
-以下路径均位于当前 `code/` 目录，不创建默认 C 盘 conda 环境：
+前端容器内安装依赖默认使用 `https://registry.npmmirror.com`；如需改回 npm 官方源，可执行：
+
+```powershell
+docker compose build --build-arg NPM_REGISTRY=https://registry.npmjs.org frontend
+```
+
+如果 Docker Hub 仍不可达，可直接使用下面的 D 盘本地环境方式。
+
+## 当前电脑直接启动（推荐）
+
+当前电脑已经完成 conda 环境创建、依赖安装、数据库初始化和种子数据导入。以后运行项目时，**不需要再次执行 `conda create`、`initdb`、`createdb`、数据库迁移或种子导入**。
+
+“不创建默认 C 盘 conda 环境”的意思不是不用 conda，而是使用 `--prefix` 把 conda 环境放在本项目的 `code/.conda-env/` 中。运行时直接调用其中的 Python，不需要执行 `conda activate`。环境、包缓存和 PostgreSQL 数据都保存在 D 盘项目目录内。
+
+每次启动需要打开三个 PowerShell 窗口。
+
+### 1. 启动数据库
+
+在第一个 PowerShell 窗口运行：
+
+```powershell
+cd "D:\desktop\数学教学知识库与agent\code"
+
+if (-not (Test-Path "D:\desktop\math-agent-code")) {
+    New-Item -ItemType Junction -Path "D:\desktop\math-agent-code" -Target (Get-Location)
+}
+
+& "D:\desktop\math-agent-code\.conda-env\Library\bin\pg_ctl.exe" `
+  -D "D:\desktop\math-agent-code\.postgres-data" `
+  -l "D:\desktop\math-agent-code\.postgres-data\server.log" `
+  -o "-p 55432" start
+```
+
+`math-agent-code` 是指向当前项目的目录联接，用来避开 PostgreSQL 对中文路径的兼容问题，不会复制项目或额外保存一份数据。看到 `server started` 表示数据库已经在后台运行，这个窗口可以关闭。
+
+### 2. 启动后端
+
+在第二个 PowerShell 窗口运行：
+
+```powershell
+cd "D:\desktop\math-agent-code\backend"
+$env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
+$env:WEB_ASSET_DIR = "D:\desktop\math-agent-code\data\web\rational"
+& "D:\desktop\math-agent-code\.conda-env\python.exe" -m uvicorn app.main:app --reload --port 8000
+```
+
+启动后可访问后端接口文档：<http://localhost:8000/docs>。
+
+### 3. 启动前端
+
+在第三个 PowerShell 窗口运行：
+
+```powershell
+cd "D:\desktop\数学教学知识库与agent\code\frontend"
+npm run dev
+```
+
+启动后访问：<http://localhost:5173>。
+
+### 停止项目
+
+先在前端和后端窗口分别按 `Ctrl+C`，再运行：
+
+```powershell
+& "D:\desktop\math-agent-code\.conda-env\Library\bin\pg_ctl.exe" `
+  -D "D:\desktop\math-agent-code\.postgres-data" stop
+```
+
+## 首次创建 D 盘 conda 环境（当前电脑无需再执行）
+
+以下命令只用于在新电脑或删除 `.conda-env` 后重新安装。`--prefix "$PWD\.conda-env"` 会创建 conda 环境，但把它放在当前 D 盘项目目录，而不是 conda 默认的 C 盘环境目录：
 
 ```powershell
 cd code
