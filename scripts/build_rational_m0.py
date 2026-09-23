@@ -276,19 +276,14 @@ def simple_fill_values(segment: str) -> str | list[str] | None:
     return parts[0] if len(parts) == 1 else parts
 
 
-def split_answer_items(answer: str, question_type: str) -> list[dict]:
+def split_answer_items(answer: str, question_type: str, question_text: str = "") -> list[dict]:
     cleaned = strip_ai_marker(answer)
     circled = {char: str(index + 1) for index, char in enumerate("①②③④⑤⑥⑦⑧⑨⑩")}
-    pattern = re.compile(r"(^|\n|[。；;])\s*(?:[（(]\s*(\d+)\s*[）)]|([①②③④⑤⑥⑦⑧⑨⑩]))", re.MULTILINE)
+    pattern = re.compile(r"(?:[（(]\s*(\d+)\s*[）)]|([①②③④⑤⑥⑦⑧⑨⑩]))")
     matches = list(pattern.finditer(cleaned))
-    if len(matches) < 2:
-        return []
 
-    items = []
-    for index, match in enumerate(matches):
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(cleaned)
-        raw = cleaned[match.end():end].strip(" \n。；;")
-        item_id = match.group(2) or circled[match.group(3)]
+    def make_item(item_id: str, raw: str) -> dict:
+        raw = re.sub(r"^\s*\d+[.．、]\s*", "", raw).strip(" \n。；;")
         if question_type == "choice":
             value = extract_choice_answer(raw)
             item_match_type = "choice" if value else None
@@ -300,14 +295,32 @@ def split_answer_items(answer: str, question_type: str) -> list[dict]:
                 item_match_type = "exact"
             else:
                 item_match_type = None
-        items.append(
-            {
-                "item_id": item_id,
-                "answer": value,
-                "answer_match_type": item_match_type,
-                "reference_answer_raw": raw,
-            }
-        )
+        return {
+            "item_id": item_id,
+            "answer": value,
+            "answer_match_type": item_match_type,
+            "reference_answer_raw": raw,
+        }
+
+    if len(matches) < 2:
+        blank_total = count_blanks(question_text)
+        first_answer_line = re.split(r"[。\n]", cleaned, maxsplit=1)[0].strip()
+        flat_values = [compact_space(value) for value in re.split(r"[，,；;]", first_answer_line) if compact_space(value)]
+        if question_type == "fill_blank" and blank_total > 1 and len(flat_values) == blank_total:
+            return [make_item(f"blank_{index}", value) for index, value in enumerate(flat_values, start=1)]
+
+        question_markers = re.findall(r"[（(]\s*(\d+)\s*[）)]", question_text)
+        answer_lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+        if len(question_markers) >= 2 and len(answer_lines) == len(question_markers):
+            return [make_item(item_id, raw) for item_id, raw in zip(question_markers, answer_lines)]
+        return []
+
+    items = []
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(cleaned)
+        raw = cleaned[match.end():end].strip(" \n。；;")
+        item_id = match.group(1) or circled[match.group(2)]
+        items.append(make_item(item_id, raw))
     return items
 
 
@@ -316,6 +329,20 @@ def numeric_answer(answer: str) -> bool:
     return bool(
         re.fullmatch(r"[+-]?(?:\d+(?:\.\d+)?|\d+\s*/\s*\d+)(?:%|℃|度|米|元)?", normalized)
     )
+
+
+def deterministic_answer_structure(correct_answer: object) -> bool:
+    if correct_answer is None:
+        return False
+    if "[ASSET:" in json.dumps(correct_answer, ensure_ascii=False):
+        return False
+    if isinstance(correct_answer, dict) and correct_answer.get("kind") == "group":
+        items = correct_answer.get("items") or []
+        item_ids = [item.get("item_id") for item in items]
+        if not items or len(item_ids) != len(set(item_ids)):
+            return False
+        return all(item.get("answer") is not None and item.get("answer_match_type") for item in items)
+    return True
 
 
 def stable_exam_id(chapter_id: str, name: str) -> str:
@@ -342,6 +369,8 @@ def infer_type(source_type: str, question_text: str) -> tuple[str, bool]:
         inferred = "true_false"
     elif re.search(r"(?:^|[、：:])\s*计算\s*[：:]", prefix):
         inferred = "calculation"
+    if inferred is None and len(parse_options(question_text)) >= 2:
+        inferred = "choice"
     if inferred and inferred != declared:
         return inferred, True
     return declared, False
@@ -363,13 +392,17 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
 
     difficulty = metadata.get("difficulty_source", "").count("★") or None
     multiple = has_subquestions(question_text, reference_answer) or count_blanks(question_text) > 1
+    if qtype == "choice" and extract_choice_answer(reference_answer):
+        option_marker_count = len(re.findall(r"(?:^|\s)[A-D][.．、]", question_text))
+        if option_marker_count <= 4:
+            multiple = False
     options = parse_options(question_text) if qtype == "choice" and not multiple else {}
     correct_answer = None
     match_type = None
     grading_readiness = "raw_answer_only"
 
     if multiple and qtype in {"choice", "fill_blank"}:
-        answer_items = split_answer_items(reference_answer, qtype)
+        answer_items = split_answer_items(reference_answer, qtype, question_text)
         if not answer_items:
             answer_items = [
                 {
@@ -391,6 +424,9 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
         correct_answer = extract_fill_answer(reference_answer)
         match_type = "numeric" if correct_answer and numeric_answer(correct_answer) else "exact"
         grading_readiness = "machine_ready" if correct_answer else "raw_answer_only"
+
+    if grading_readiness == "machine_ready" and not deterministic_answer_structure(correct_answer):
+        grading_readiness = "raw_answer_only"
 
     issues: list[str] = []
     if not question_text:
@@ -474,6 +510,37 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
     }
 
 
+def apply_answer_structures(records: list[dict], structure_path: Path) -> int:
+    if not structure_path.is_file():
+        return 0
+    payload = json.loads(structure_path.read_text(encoding="utf-8-sig"))
+    overrides = payload.get("questions", {})
+    by_qid = {record["original_qid"]: record for record in records}
+    applied = 0
+    for qid, override in overrides.items():
+        if qid not in by_qid:
+            raise ValueError(f"答案结构映射引用了不存在的题目：{qid}")
+        items = override.get("items") or []
+        correct_answer = {"kind": "group", "items": items}
+        if not deterministic_answer_structure(correct_answer):
+            raise ValueError(f"答案结构映射不满足确定性判分要求：{qid}")
+        record = by_qid[qid]
+        record["correct_answer"] = correct_answer
+        record["answer_match_type"] = "group"
+        record["answer_normalization_rule"] = {
+            "item_order_matters": True,
+            "partial_credit": True,
+            "unparsed_items_use_reference_answer_raw": False,
+        }
+        record["grading_readiness"] = "machine_ready"
+        record["answer_structure_source"] = "source_derived_override"
+        record["import_issues"] = [issue for issue in record["import_issues"] if issue != "answer_items_not_structured"]
+        if "question_type_mismatch" not in record["import_issues"]:
+            record["import_status"] = "parsed"
+        applied += 1
+    return applied
+
+
 def eligible_for_seed(record: dict) -> bool:
     blocking = {
         "missing_question_text",
@@ -483,6 +550,8 @@ def eligible_for_seed(record: dict) -> bool:
         "missing_difficulty",
     }
     if record["question_type"] not in {"choice", "fill_blank"}:
+        return False
+    if record["grading_readiness"] != "machine_ready":
         return False
     if blocking.intersection(record["import_issues"]):
         return False
@@ -712,6 +781,8 @@ def find_default_source(project_root: Path) -> Path:
 def build(source: Path, output_root: Path, project_root: Path, limit: int) -> dict:
     parsed = parse_review_docx(source)
     records = [to_record(item, source, project_root) for item in parsed]
+    structure_path = output_root / "config" / "rational_answer_structures.json"
+    answer_structure_override_count = apply_answer_structures(records, structure_path)
     qids = [record["original_qid"] for record in records]
     duplicate_qids = sorted(qid for qid, count in Counter(qids).items() if count > 1)
     if duplicate_qids:
@@ -733,6 +804,7 @@ def build(source: Path, output_root: Path, project_root: Path, limit: int) -> di
         "seed_exam_point_counts": dict(sorted(Counter(record["main_exam_point"]["name"] for record in selected).items())),
         "seed_machine_ready_count": sum(record["grading_readiness"] == "machine_ready" for record in selected),
         "seed_raw_answer_only_count": sum(record["grading_readiness"] == "raw_answer_only" for record in selected),
+        "answer_structure_override_count": answer_structure_override_count,
         **asset_report,
         "issue_counts": dict(sorted(issue_counts.items())),
         "source_status_note": "校本审核 DOCX 作为权威来源，题目与参考答案默认已审核；import_status 仅描述程序抽取和结构化状态。",

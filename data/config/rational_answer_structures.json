@@ -1,0 +1,276 @@
+{
+  "schema_version": "1.0",
+  "description": "从校本审核 DOCX 的原始参考答案中拆分出的确定性判分项；不修改题目与答案内容。",
+  "questions": {
+    "q.math.g6.rational.school.035": {
+      "items": [
+        {
+          "item_id": "blank_1",
+          "answer": "符号",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "符号"
+        },
+        {
+          "item_id": "blank_2",
+          "answer": "绝对值",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "绝对值"
+        },
+        {
+          "item_id": "blank_3",
+          "answer": "0",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "0"
+        },
+        {
+          "item_id": "blank_4",
+          "answer": "较大",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "较大"
+        },
+        {
+          "item_id": "blank_5",
+          "answer": "较小",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "较小"
+        },
+        {
+          "item_id": "blank_6",
+          "answer": "较大",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "较大"
+        },
+        {
+          "item_id": "blank_7",
+          "answer": [
+            "这个数",
+            "原数"
+          ],
+          "answer_match_type": "set",
+          "reference_answer_raw": "这个数（原数）"
+        }
+      ]
+    },
+    "q.math.g6.rational.school.060": {
+      "items": [
+        {
+          "item_id": "blank_1",
+          "answer": "正",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "正"
+        },
+        {
+          "item_id": "blank_2",
+          "answer": "负",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "负"
+        },
+        {
+          "item_id": "blank_3",
+          "answer": "负",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "负"
+        },
+        {
+          "item_id": "blank_4",
+          "answer": "正",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "正"
+        }
+      ]
+    },
+    "q.math.g6.rational.school.061": {
+      "items": [
+        {
+          "item_id": "blank_1",
+          "answer": "正",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "正"
+        },
+        {
+          "item_id": "blank_2",
+          "answer": "负",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "负"
+        },
+        {
+          "item_id": "blank_3",
+          "answer": "绝对值",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "绝对值"
+        },
+        {
+          "item_id": "blank_4",
+          "answer": "乘",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "乘"
+        },
+        {
+          "item_id": "blank_5",
+          "answer": "0",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "0"
+        }
+      ]
+    },
+    "q.math.g6.rational.school.082": {
+      "items": [
+        {
+          "item_id": "blank_1",
+          "answer": "正",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "正"
+        },
+        {
+          "item_id": "blank_2",
+          "answer": "负",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "负"
+        },
+        {
+          "item_id": "blank_3",
+          "answer": "绝对值",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "绝对值"
+        },
+        {
+          "item_id": "blank_4",
+          "answer": "除",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "除"
+        },
+        {
+          "item_id": "blank_5",
+          "answer": [
+            "不为0",
+            "不等于零"
+          ],
+          "answer_match_type": "set",
+          "reference_answer_raw": "不为0（不等于零）"
+        },
+        {
+          "item_id": "blank_6",
+          "answer": "0",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "0"
+        },
+        {
+          "item_id": "blank_7",
+          "answer": "分数",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "分数"
+        },
+        {
+          "item_id": "blank_8",
+          "answer": "假分数",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "假分数"
+        }
+      ]
+    },
+    "q.math.g6.rational.school.041": {
+      "items": [
+        {
+          "item_id": "blank_1",
+          "answer": "a+b=b+a",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "a+b=b+a"
+        },
+        {
+          "item_id": "blank_2",
+          "answer": "(a+b)+c=a+(b+c)",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "(a+b)+c=a+(b+c)"
+        }
+      ]
+    },
+    "q.math.g6.rational.school.049": {
+      "items": [
+        {
+          "item_id": "blank_1",
+          "answer": "相反数",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "相反数"
+        }
+      ]
+    },
+    "q.math.g6.rational.school.084": {
+      "items": [
+        {
+          "item_id": "blank_1",
+          "answer": "＋1和−1",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "＋1 和 −1"
+        },
+        {
+          "item_id": "blank_2",
+          "answer": "0",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "0"
+        }
+      ]
+    },
+    "q.math.g6.rational.school.109": {
+      "items": [
+        {
+          "item_id": "blank_1",
+          "answer": "乘方",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "乘方"
+        },
+        {
+          "item_id": "blank_2",
+          "answer": "乘除",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "乘除"
+        },
+        {
+          "item_id": "blank_3",
+          "answer": "加减",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "加减"
+        },
+        {
+          "item_id": "blank_4",
+          "answer": "左",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "左"
+        },
+        {
+          "item_id": "blank_5",
+          "answer": "右",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "右"
+        },
+        {
+          "item_id": "blank_6",
+          "answer": "小括号",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "小括号"
+        },
+        {
+          "item_id": "blank_7",
+          "answer": "中括号",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "中括号"
+        },
+        {
+          "item_id": "blank_8",
+          "answer": "大括号",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "大括号"
+        }
+      ]
+    },
+    "q.math.g6.rational.school.128": {
+      "items": [
+        {
+          "item_id": "blank_1",
+          "answer": "6.96×10⁸",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "6.96×10⁸"
+        }
+      ]
+    }
+  }
+}

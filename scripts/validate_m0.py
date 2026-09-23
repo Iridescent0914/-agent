@@ -77,7 +77,8 @@ def main() -> int:
         require(record.get("difficulty") in {1, 2, 3, 4, 5}, f"{record.get('original_qid')} 难度无效", errors)
         require(bool(record.get("question_text")), f"{record.get('original_qid')} 缺题干", errors)
         require(bool(record.get("correct_answer")), f"{record.get('original_qid')} 缺参考答案结构", errors)
-        require(record.get("grading_readiness") in {"machine_ready", "raw_answer_only"}, f"{record.get('original_qid')} 判分准备状态无效", errors)
+        require("[ASSET:" not in json.dumps(record.get("correct_answer"), ensure_ascii=False), f"{record.get('original_qid')} 的可判分答案仍含资源占位符", errors)
+        require(record.get("grading_readiness") == "machine_ready", f"{record.get('original_qid')} 尚未达到确定性判分状态", errors)
         require(record.get("source_review_status") == "reviewed", f"{record.get('original_qid')} 未继承权威来源状态", errors)
         require(record.get("import_status") in {"parsed", "needs_technical_cleanup", "excluded"}, f"{record.get('original_qid')} 导入状态无效", errors)
         require("[ASSET:unknown]" not in json.dumps(record, ensure_ascii=False), f"{record.get('original_qid')} 存在未关联资源", errors)
@@ -90,6 +91,11 @@ def main() -> int:
         if record.get("answer_match_type") == "group":
             require(isinstance(answer, dict) and answer.get("kind") == "group", f"{record.get('original_qid')} 小题组答案结构无效", errors)
             require(bool(answer.get("items")), f"{record.get('original_qid')} 小题组答案项为空", errors)
+            item_ids = [item.get("item_id") for item in answer.get("items", [])]
+            require(len(item_ids) == len(set(item_ids)), f"{record.get('original_qid')} 小题组 item_id 不唯一", errors)
+            for item in answer.get("items", []):
+                require(item.get("answer") is not None, f"{record.get('original_qid')} 的 {item.get('item_id')} 缺少可判分答案", errors)
+                require(bool(item.get("answer_match_type")), f"{record.get('original_qid')} 的 {item.get('item_id')} 缺少判分方式", errors)
         elif record.get("question_type") == "choice":
             options = record.get("options") or {}
             require(len(options) >= 2, f"{record.get('original_qid')} 选择题选项不足", errors)
