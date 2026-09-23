@@ -7,17 +7,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import (
-    Attempt,
-    ExamPoint,
-    PaperInstance,
-    PaperInstanceItem,
-    Question,
-    QuestionExamPoint,
-    Student,
-)
+from app.models import Attempt, Student
 from app.schemas.common import Page
 from app.schemas.students import StudentAttemptOut, StudentDetail, StudentListItem
+from app.services.student_profile import attempt_summary, load_context
 
 
 router = APIRouter(prefix="/students", tags=["students"])
@@ -108,56 +101,11 @@ def list_student_attempts(
     if db.get(Student, student_id) is None:
         raise HTTPException(status_code=404, detail="student not found")
 
-    conditions = [
-        Attempt.student_id == student_id,
-        QuestionExamPoint.relation_type == "main",
-    ]
+    context = load_context(db, student_id)
+    items = [attempt_summary(record) for record in reversed(context.records)]
     if is_correct is not None:
-        conditions.append(Attempt.is_correct.is_(is_correct))
-    if exam_point_code:
-        conditions.append(ExamPoint.code == exam_point_code)
-
-    base = (
-        select(
-            Attempt,
-            Question,
-            ExamPoint,
-            PaperInstanceItem.paper_instance_id,
-        )
-        .join(Question, Question.id == Attempt.question_id)
-        .join(PaperInstanceItem, PaperInstanceItem.id == Attempt.paper_instance_item_id)
-        .join(QuestionExamPoint, QuestionExamPoint.question_id == Question.id)
-        .join(ExamPoint, ExamPoint.id == QuestionExamPoint.exam_point_id)
-        .where(*conditions)
-    )
-    total = db.scalar(
-        select(func.count(Attempt.id))
-        .join(Question, Question.id == Attempt.question_id)
-        .join(QuestionExamPoint, QuestionExamPoint.question_id == Question.id)
-        .join(ExamPoint, ExamPoint.id == QuestionExamPoint.exam_point_id)
-        .where(*conditions)
-    ) or 0
-    rows = db.execute(
-        base.order_by(Attempt.answered_at.desc(), Attempt.id)
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    ).all()
-    items = [
-        StudentAttemptOut(
-            id=row.Attempt.id,
-            answered_at=row.Attempt.answered_at,
-            original_qid=row.Question.original_qid,
-            question_id=row.Question.id,
-            question_text=row.Question.question_text,
-            difficulty=row.Question.difficulty,
-            main_exam_point_code=row.ExamPoint.code,
-            main_exam_point_name=row.ExamPoint.name,
-            student_answer=row.Attempt.student_answer,
-            grade_status=row.Attempt.grade_status,
-            is_correct=row.Attempt.is_correct,
-            paper_instance_id=row.paper_instance_id,
-            paper_instance_item_id=row.Attempt.paper_instance_item_id,
-        )
-        for row in rows
-    ]
-    return Page(items=items, total=total, page=page, page_size=page_size)
+        items = [item for item in items if item.is_correct is is_correct]
+    if exam_point_code is not None:
+        items = [item for item in items if item.main_exam_point_code == exam_point_code]
+    start = (page - 1) * page_size
+    return Page(items=items[start:start + page_size], total=len(items), page=page, page_size=page_size)

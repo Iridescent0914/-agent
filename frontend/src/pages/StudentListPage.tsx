@@ -1,4 +1,5 @@
-import { Alert, Card, Empty, Progress, Space, Table, Tag, Typography } from 'antd'
+import { BarChartOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Empty, Progress, Space, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -35,6 +36,17 @@ export function StudentListPage() {
       },
     },
     { title: '数据类型', width: 100, render: () => <Tag color="purple">演示数据</Tag> },
+    {
+      title: '操作',
+      key: 'action',
+      width: 170,
+      fixed: 'right',
+      render: (_, row) => (
+        <Link to={`/students/${row.id}`}>
+          <Button type='primary' icon={<BarChartOutlined />}>查看学生画像</Button>
+        </Link>
+      ),
+    },
   ]
 
   return (

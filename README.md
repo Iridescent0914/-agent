@@ -1,6 +1,6 @@
 # 数学教学 Agent Demo
 
-当前已完成 M0“有理数题库准备”和 M1“工程骨架与基础数据”。系统使用 30 组已审核、可确定性判分的有理数选择 / 填空题，提供题库查询、资源展示、虚拟学生和可追溯历史作答，为 M2 学生画像计算提供输入。
+当前已完成 M0“有理数题库准备”、M1“工程骨架与基础数据”和 M2“学生画像与规则推荐基础”。系统将 150 条确认作答按历史试卷快照重放为可解释画像，并在教师指定范围内提供可追溯的规则推荐预览。
 
 ## 当前功能
 
@@ -10,10 +10,14 @@
 - 3 次历史作业、15 份发布试卷、150 条确认作答及修订记录；
 - 题库列表、筛选、分页和详情 API / 页面；
 - 学生列表、详情和历史作答 API / 页面；
+- 从 0.5 开始按 `(answered_at, id)` 重放 EMA，生成 50 条学生 × 考点画像汇总；
+- 画像默认聚焦最多 5 个薄弱、近期错误或低证据考点，用一张联动柱状图和一张复用趋势图解释诊断；完整考点、逐次作答和最近错误按需展开；
+- 每个画像点和推荐理由可回溯到历史 Attempt、修订号与发布试卷快照；
+- 教师可设置新知识 / 回顾范围、题量、题型、难度、近期去重和考点占比，预览规则推荐及候选缺口；
 - 112 个 WMF 公式资源转换为浏览器可显示的 PNG；
-- M1 自动验收、API 测试和前端 production build。
+- M2 自动验收、39 项后端测试、前端 production build 和桌面 / 窄屏浏览器验收。
 
-M1 不计算学生掌握度，不实现个性化组卷、在线判分或 OCR。这些功能分别在 M2–M4、M6 实现。
+M2 的推荐只生成只读预览，不创建 Assignment 或 PaperInstance。正式组卷、教师调整与发布在 M3 完成；在线判分和改判事务在 M4 完成；图片识别在 M6 完成。
 
 ## 目录
 
@@ -44,7 +48,8 @@ Copy-Item .env.example .env
 docker compose build
 docker compose up -d postgres backend frontend
 docker compose exec backend python -m scripts.seed_database
-docker compose exec backend python -m scripts.verify_m1
+docker compose exec backend python -m scripts.rebuild_mastery --all
+docker compose exec backend python -m scripts.verify_m2
 ```
 
 访问：
@@ -55,6 +60,15 @@ docker compose exec backend python -m scripts.verify_m1
 健康检查：http://localhost:8000/api/v1/health
 就绪检查：http://localhost:8000/api/v1/ready
 ```
+
+关闭本项目的全部 Docker 容器和网络：
+
+```powershell
+cd "D:\desktop\数学教学知识库与agent\code"
+docker compose down
+```
+
+该命令会保留 PostgreSQL 数据卷，下次启动时数据仍然存在。不要添加 `-v`，否则会同时删除数据库卷。
 
 Compose 启动后端时会执行 `alembic upgrade head`，但不会自动导入业务种子。种子导入使用显式命令，避免每次启动静默修改数据。
 
@@ -174,7 +188,8 @@ $env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
 cd backend
 & "..\.conda-env\Scripts\alembic.exe" upgrade head
 & "..\.conda-env\python.exe" -m scripts.seed_database
-& "..\.conda-env\python.exe" -m scripts.verify_m1
+& "..\.conda-env\python.exe" -m scripts.rebuild_mastery --all
+& "..\.conda-env\python.exe" -m scripts.verify_m2
 ```
 
 本地启动后端：
@@ -219,6 +234,7 @@ $env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
 cd code\backend
 & "..\.conda-env\python.exe" -m pytest -q
 & "..\.conda-env\python.exe" -m scripts.verify_m1
+& "..\.conda-env\python.exe" -m scripts.verify_m2
 ```
 
 前端：
@@ -226,6 +242,7 @@ cd code\backend
 ```powershell
 cd code\frontend
 npm run build
+npm run test:e2e
 ```
 
 M0 回归：
@@ -271,6 +288,19 @@ Assignment
 
 全量中间库仍保留在 `data/interim/rational_all.json`。M1 只把 `data/seed/rational_questions.json` 和 `data/seed/rational_knowledge_tree.json` 导入业务数据库。
 
+## M2 画像重算
+
+`StudentMastery` 是可重建汇总，Attempt、AttemptRevision 和已发布试卷快照才是证据来源。重算一个或全部学生：
+
+```powershell
+cd code\backend
+$env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
+& "..\.conda-env\python.exe" -m scripts.rebuild_mastery --student-code S001 --dry-run
+& "..\.conda-env\python.exe" -m scripts.rebuild_mastery --all
+```
+
+查询画像和推荐预览不会写入数据库。改判、撤销确认和新提交接入后，M4 应在同一事务中复用现有重放与汇总写入服务。
+
 ## 下一阶段
 
-M2 从当前 `teacher_confirmed` Attempt 按时间顺序重放，生成 `StudentMastery`、证据量、考点掌握度和初步弱点。不得直接手写 mastery 代替历史作答计算。
+M3 复用 M2 的画像和推荐服务创建每名学生的草稿试卷，完成教师换题、删题、调序、发布和快照冻结。推荐参数、分项得分、证据引用与候选缺口应继续保留，不能在组卷路由中复制另一套推荐算法。

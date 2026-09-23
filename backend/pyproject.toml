@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "math-teaching-agent-backend"
 version = "0.1.0"
-description = "M1 backend for the math teaching agent demo"
+description = "M2 backend for the math teaching agent demo"
 requires-python = ">=3.11"
 dependencies = [
   "alembic>=1.13,<2",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,7 +19,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=False,
-    allow_methods=["GET", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 app.include_router(api_router, prefix=settings.api_v1_prefix)
@@ -39,5 +40,6 @@ async def validation_exception_handler(
 ) -> JSONResponse:
     return JSONResponse(
         status_code=422,
-        content={"code": "validation_error", "message": "请求参数无效", "details": exc.errors()},
+        content={"code": "validation_error", "message": "请求参数无效",
+                 "details": jsonable_encoder(exc.errors(), custom_encoder={ValueError: str})},
     )

@@ -20,7 +20,7 @@ class StudentListItem(BaseModel):
 
 class StudentDetail(StudentListItem):
     created_at: datetime
-    evidence_note: str = "M1 仅展示历史作答证据，掌握度和薄弱点将在 M2 计算。"
+    evidence_note: str = "作答证据量按确认作答次数分档，并非统计置信概率；掌握度仅作教学参考。"
 
 
 class StudentAttemptOut(BaseModel):
@@ -29,11 +29,14 @@ class StudentAttemptOut(BaseModel):
     original_qid: str
     question_id: uuid.UUID
     question_text: str
-    difficulty: int
+    difficulty: int | None
     main_exam_point_code: str
     main_exam_point_name: str
     student_answer: Any | None
     grade_status: str
     is_correct: bool | None
-    paper_instance_id: uuid.UUID
+    paper_instance_id: uuid.UUID | None
     paper_instance_item_id: uuid.UUID
+    revision_no: int
+    used_in_profile: bool
+    exclusion_reason: str | None

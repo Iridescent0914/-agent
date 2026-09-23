@@ -3,21 +3,30 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:800
 interface ApiErrorShape {
   message?: string
   detail?: string
+  details?: Array<{ msg?: string }>
 }
 
-export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, { signal })
+async function apiRequest<T>(path: string, options: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, options)
   if (!response.ok) {
     let message = `请求失败（${response.status}）`
     try {
       const body = (await response.json()) as ApiErrorShape
-      message = body.message || body.detail || message
+      message = body.details?.map((detail) => detail.msg).filter(Boolean).join('；') || body.message || body.detail || message
     } catch {
       // Keep the status-based fallback when the server did not return JSON.
     }
     throw new Error(message)
   }
   return (await response.json()) as T
+}
+
+export function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return apiRequest<T>(path, { signal })
+}
+
+export function apiPost<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return apiRequest<T>(path, { method: 'POST', body: JSON.stringify(body), signal, headers: { 'Content-Type': 'application/json' } })
 }
 
 export function queryString(values: Record<string, string | number | boolean | undefined | null>): string {

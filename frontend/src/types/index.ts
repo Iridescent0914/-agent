@@ -72,12 +72,15 @@ export interface StudentAttempt {
   original_qid: string
   question_id: string
   question_text: string
-  difficulty: number
+  difficulty: number | null
   main_exam_point_code: string
   main_exam_point_name: string
   student_answer: unknown
   grade_status: string
   is_correct: boolean | null
-  paper_instance_id: string
+  paper_instance_id: string | null
   paper_instance_item_id: string
+  revision_no: number
+  used_in_profile: boolean
+  exclusion_reason: string | null
 }
