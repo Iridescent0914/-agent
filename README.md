@@ -1,73 +1,201 @@
-# 数学教学 Agent：M0 数据准备
+# 数学教学 Agent Demo
 
-当前仓库已完成 Demo 第一阶段 M0，处理范围为“有理数”校本审核题库。校本审核 DOCX 是题目、标签和参考答案的权威来源，导入记录统一使用 `source_review_status=reviewed`，不要求老师再次核对已有题目。
+当前已完成 M0“有理数题库准备”和 M1“工程骨架与基础数据”。系统使用 30 组已审核、可确定性判分的有理数选择 / 填空题，提供题库查询、资源展示、虚拟学生和可追溯历史作答，为 M2 学生画像计算提供输入。
 
-一组小题保留为一个 `Question`，组内各空或各小题保存在 `correct_answer.items`。首批种子库只接收能按确定性规则判分的 `machine_ready` 记录。
+## 当前功能
 
-## 当前结果
+- FastAPI + SQLAlchemy + PostgreSQL 后端；
+- Alembic 四段迁移及发布试卷快照保护；
+- 30 组种子题、知识树和 5 名虚拟学生的幂等导入；
+- 3 次历史作业、15 份发布试卷、150 条确认作答及修订记录；
+- 题库列表、筛选、分页和详情 API / 页面；
+- 学生列表、详情和历史作答 API / 页面；
+- 112 个 WMF 公式资源转换为浏览器可显示的 PNG；
+- M1 自动验收、API 测试和前端 production build。
 
-- 全量抽取：139 组题。
-- M0 种子库：30 组题，其中填空题 20 组、选择题 10 组。
-- 覆盖：10 个考点、4 档难度。
-- 判分状态：30 组全部为 `machine_ready`，`raw_answer_only` 为 0。
-- 源答案显式拆分：9 组，映射保存在 `data/config/rational_answer_structures.json`。
-- 资源引用：564 个；种子题的标准答案中不含图片占位符。
-- 自动验证：0 个错误。
+M1 不计算学生掌握度，不实现个性化组卷、在线判分或 OCR。这些功能分别在 M2–M4、M6 实现。
 
-## 运行
+## 目录
 
-在 `code` 目录执行：
+```text
+code/
+├── backend/                       FastAPI、模型、迁移、种子、验收和测试
+├── frontend/                      React + TypeScript + Ant Design
+├── data/
+│   ├── seed/                      M0 正式种子
+│   ├── assets/rational/           M0 原始资源
+│   └── web/rational/              M1 Web 资源与 manifest
+├── scripts/
+│   ├── build_rational_m0.py
+│   ├── validate_m0.py
+│   ├── convert_seed_assets.py
+│   └── convert_wmf_to_png.ps1
+├── docker-compose.yml
+└── .env.example
+```
+
+## Docker Compose 启动
+
+首次运行：
 
 ```powershell
-python .\scripts\build_rational_m0.py
+cd code
+Copy-Item .env.example .env
+docker compose build
+docker compose up -d postgres backend frontend
+docker compose exec backend python -m scripts.seed_database
+docker compose exec backend python -m scripts.verify_m1
+```
+
+访问：
+
+```text
+前端：http://localhost:5173
+后端文档：http://localhost:8000/docs
+健康检查：http://localhost:8000/api/v1/health
+就绪检查：http://localhost:8000/api/v1/ready
+```
+
+Compose 启动后端时会执行 `alembic upgrade head`，但不会自动导入业务种子。种子导入使用显式命令，避免每次启动静默修改数据。
+
+如果 Docker Hub 暂时不可达，可使用下面的 D 盘本地环境方式。
+
+## 项目内 conda 环境启动
+
+以下路径均位于当前 `code/` 目录，不创建默认 C 盘 conda 环境：
+
+```powershell
+cd code
+$env:CONDA_PKGS_DIRS = "$PWD\.conda-pkgs"
+conda create --prefix "$PWD\.conda-env" -c conda-forge python=3.12 postgresql=16 -y
+
+$env:PIP_CACHE_DIR = "$PWD\.pip-cache"
+& "$PWD\.conda-env\python.exe" -m pip install -e ".\backend[dev]" `
+  -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+Windows PostgreSQL 在中文路径执行 `initdb` 时可能发生编码错误。可创建只包含英文的目录联接，实际文件仍保存在项目中：
+
+```powershell
+New-Item -ItemType Junction -Path "D:\desktop\math-agent-code" -Target "$PWD"
+
+& "D:\desktop\math-agent-code\.conda-env\Library\bin\initdb.exe" `
+  -D "D:\desktop\math-agent-code\.postgres-data" `
+  -U postgres -A trust --encoding=UTF8 --locale=C
+
+& "D:\desktop\math-agent-code\.conda-env\Library\bin\pg_ctl.exe" `
+  -D "D:\desktop\math-agent-code\.postgres-data" `
+  -l "D:\desktop\math-agent-code\.postgres-data\server.log" `
+  -o "-p 55432" start
+
+& "D:\desktop\math-agent-code\.conda-env\Library\bin\createdb.exe" `
+  -h localhost -p 55432 -U postgres math_agent
+```
+
+迁移和导入：
+
+```powershell
+$env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
+cd backend
+& "..\.conda-env\Scripts\alembic.exe" upgrade head
+& "..\.conda-env\python.exe" -m scripts.seed_database
+& "..\.conda-env\python.exe" -m scripts.verify_m1
+```
+
+本地启动后端：
+
+```powershell
+$env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
+cd backend
+& "..\.conda-env\python.exe" -m uvicorn app.main:app --reload --port 8000
+```
+
+另开终端启动前端：
+
+```powershell
+cd code\frontend
+npm install
+npm run dev
+```
+
+停止项目内 PostgreSQL：
+
+```powershell
+& "D:\desktop\math-agent-code\.conda-env\Library\bin\pg_ctl.exe" `
+  -D "D:\desktop\math-agent-code\.postgres-data" stop
+```
+
+## 资源转换
+
+已生成的 Web 资源位于 `data/web/rational/`。重新构建 M0 数据后执行：
+
+```powershell
+python .\scripts\convert_seed_assets.py
+```
+
+脚本只处理正式种子题实际引用的资源，并生成 `asset_manifest.json`。Windows 优先使用 ImageMagick，未安装时使用项目内 PowerShell + GDI+ 转换器。转换失败会返回非零状态，不会覆盖原始 WMF。
+
+## 测试与验收
+
+后端：
+
+```powershell
+$env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
+cd code\backend
+& "..\.conda-env\python.exe" -m pytest -q
+& "..\.conda-env\python.exe" -m scripts.verify_m1
+```
+
+前端：
+
+```powershell
+cd code\frontend
+npm run build
+```
+
+M0 回归：
+
+```powershell
+cd code
 python .\scripts\validate_m0.py
 ```
 
-只有需要应用 `rational_import_audit.csv` 中的开发侧技术修正时，才执行：
+## 种子导入规则
 
-```powershell
-python .\scripts\apply_import_corrections.py
+稳定身份键：
+
+- `KnowledgePoint.code`；
+- `ExamPoint.code`；
+- `Question.original_qid`；
+- `Student.student_code`；
+- `Assignment.seed_key`；
+- `PaperInstance.instance_code`。
+
+第二次执行 `seed_database` 不会生成重复题目、学生、作业、试卷或作答。题目的 `correct_answer`、多空 `items`、归一化规则和资源列表均按 JSONB 原样保存。
+
+虚拟学生历史完整经过：
+
+```text
+Assignment
+→ published PaperInstance
+→ PaperInstanceItem 快照
+→ manual Submission
+→ teacher_confirmed Attempt
+→ AttemptRevision
 ```
 
-脚本只使用 Python 标准库，不需要安装 `python-docx` 或 `openpyxl`。
+数据库触发器拒绝修改或删除已发布试卷，也拒绝增删改其中的题目快照。
 
-## 目录与产物
+## M0 数据结果
 
-- `data/interim/rational_all.json`：从权威 DOCX 抽取的 139 组全量中间数据。
-- `data/seed/rational_questions.json`：M1 可以直接导入的 30 组确定性判分种子题。
-- `data/seed/rational_knowledge_tree.json`：章—知识点—考点—题目的首版知识树。
-- `data/config/rational_answer_structures.json`：由校本原始答案直接拆出的逐空答案映射。
-- `data/audit/rational_import_audit.csv`：开发者导入检查与技术修正表。
-- `data/audit/rational_m0_report.json`：抽取、筛选、资源和问题统计。
-- `data/assets/rational/`：从 DOCX 导出的公式和题目图片。
-- `scripts/build_rational_m0.py`：抽取、结构化、资源导出和种子筛选。
-- `scripts/validate_m0.py`：M0 验收校验。
-- `scripts/apply_import_corrections.py`：可选技术修正应用脚本。
-- `docs/04_M0_第一步工作总结与M1交接.md`：M0 结果与 M1 开工边界。
+- 全量抽取：139 组；
+- 正式种子：30 组，其中填空 20、选择 10；
+- 覆盖 10 个主考点、4 档难度；
+- 30 组全部 `machine_ready`、`source_review_status=reviewed`；
+- 自动校验错误：0。
 
-## 全量中间库与种子库
+全量中间库仍保留在 `data/interim/rational_all.json`。M1 只把 `data/seed/rational_questions.json` 和 `data/seed/rational_knowledge_tree.json` 导入业务数据库。
 
-`data/interim/rational_all.json` 是有理数章节的全量中间库，共 139 组。所有成功抽取的题都会进入该文件，是否进入不取决于 `raw_answer_only`。
+## 下一阶段
 
-- `machine_ready`：答案已经能够由程序确定性判分；全量库中有 41 组。
-- `raw_answer_only`：原始参考答案已保存，但尚未形成可靠的逐空或逐小题判分结构；全量库中有 98 组。
-- `data/seed/rational_questions.json`：从 `machine_ready` 记录中筛出的 30 组当前种子题。
-
-98 组 `raw_answer_only` 还包括当前范围外的计算题和解答题，并非都要立即结构化。
-
-## 尚未进入种子库的题怎么处理
-
-全量中间库中的 `raw_answer_only` 记录不会丢失，也不会直接用于 M1 组卷。它们按以下流程晋级：
-
-1. 在导入检查表中定位 `answer_items_not_structured`、资源缺失或题型不一致等技术问题。
-2. 对纯文本参考答案，在 `rational_answer_structures.json` 中补充 `item_id`、答案和匹配方式。
-3. 对图片或公式答案，先把 WMF 转成浏览器可显示格式或转写为可比较表达式。
-4. 重新运行构建和验证；只有 `machine_ready` 且通过全部校验的记录才进入种子库。
-
-这属于开发侧数据结构化工作。若校本原文确实缺题干、缺答案或自身矛盾，才单独列为内容问题交给老师处理。
-
-## M1 使用约束
-
-当前只开发有理数章节，不抽象多章节通用导入流水线，也不处理其他章节数据。M1 只导入 `data/seed/rational_questions.json` 与 `data/seed/rational_knowledge_tree.json`，先跑通有理数题库、学生、组卷和批改闭环。
-
-题库页面若要展示含公式图片的题目，需要先处理 WMF 的 Web 格式转换；这不影响 M0 的答案判分验收，但属于 M1 前端展示的开工任务。
+M2 从当前 `teacher_confirmed` Attempt 按时间顺序重放，生成 `StudentMastery`、证据量、考点掌握度和初步弱点。不得直接手写 mastery 代替历史作答计算。

@@ -1,0 +1,46 @@
+:root {
+  color: #1f2937;
+  background: #f2f5f8;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+a { color: inherit; }
+
+.app-layout { min-height: 100vh; }
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  height: 72px;
+  padding-inline: clamp(20px, 5vw, 72px);
+  background: linear-gradient(105deg, #10253d 0%, #1d4772 65%, #315b8a 100%);
+}
+.app-header .ant-menu { flex: 1; min-width: 200px; background: transparent; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 250px; text-decoration: none; }
+.brand-mark {
+  display: grid; place-items: center; width: 42px; height: 42px;
+  border-radius: 12px; background: #f5c86b; color: #173553; font: 700 25px Georgia, serif;
+}
+.brand-title, .brand-subtitle { display: block; color: white !important; line-height: 1.35; }
+.brand-title { font-size: 17px; font-weight: 650; }
+.brand-subtitle { color: #bfd2e8 !important; font-size: 12px; letter-spacing: .04em; }
+.app-content { width: min(1440px, 100%); margin: 0 auto; padding: 32px clamp(18px, 4vw, 56px) 56px; }
+.page-stack, .full-width { width: 100%; }
+.no-margin { margin: 0 !important; }
+.table-card .ant-card-body { padding: 0; }
+.question-rich-text { white-space: pre-wrap; font-size: 16px; line-height: 2; color: #111827; }
+.inline-formula { width: auto !important; max-width: min(360px, 80vw); max-height: 52px; vertical-align: middle; margin: 0 4px; }
+.inline-formula img { width: auto !important; max-height: 52px; object-fit: contain; }
+.asset-error { color: #b42318; padding: 2px 5px; background: #fff1f0; border-radius: 4px; }
+.preserve-lines { white-space: pre-wrap; }
+.json-block { margin: 0; padding: 14px; overflow: auto; border-radius: 8px; background: #f6f8fa; }
+
+@media (max-width: 720px) {
+  .app-header { height: auto; min-height: 72px; flex-wrap: wrap; gap: 4px 18px; padding-block: 12px; }
+  .brand { min-width: unset; }
+  .app-header .ant-menu { order: 2; width: 100%; }
+  .app-content { padding-top: 22px; }
+}
