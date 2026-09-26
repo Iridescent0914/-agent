@@ -64,7 +64,7 @@ docker compose exec backend python -m scripts.verify_m2
 关闭本项目的全部 Docker 容器和网络：
 
 ```powershell
-cd "D:\desktop\数学教学知识库与agent\code"
+cd "D:\desktop\math-agent\code"
 docker compose down
 ```
 
@@ -102,29 +102,25 @@ docker compose build --build-arg NPM_REGISTRY=https://registry.npmjs.org fronten
 在第一个 PowerShell 窗口运行：
 
 ```powershell
-cd "D:\desktop\数学教学知识库与agent\code"
+cd "D:\desktop\math-agent\code"
 
-if (-not (Test-Path "D:\desktop\math-agent-code")) {
-    New-Item -ItemType Junction -Path "D:\desktop\math-agent-code" -Target (Get-Location)
-}
-
-& "D:\desktop\math-agent-code\.conda-env\Library\bin\pg_ctl.exe" `
-  -D "D:\desktop\math-agent-code\.postgres-data" `
-  -l "D:\desktop\math-agent-code\.postgres-data\server.log" `
+& "D:\desktop\math-agent\code\.conda-env\Library\bin\pg_ctl.exe" `
+  -D "D:\desktop\math-agent\code\.postgres-data" `
+  -l "D:\desktop\math-agent\code\.postgres-data\server.log" `
   -o "-p 55432" start
 ```
 
-`math-agent-code` 是指向当前项目的目录联接，用来避开 PostgreSQL 对中文路径的兼容问题，不会复制项目或额外保存一份数据。看到 `server started` 表示数据库已经在后台运行，这个窗口可以关闭。
+项目现在位于全英文路径 `D:\desktop\math-agent\code`，PostgreSQL 可以直接使用项目内环境和数据目录，不再需要额外的目录联接。看到 `server started` 表示数据库已经在后台运行，这个窗口可以关闭。
 
 ### 2. 启动后端
 
 在第二个 PowerShell 窗口运行：
 
 ```powershell
-cd "D:\desktop\math-agent-code\backend"
+cd "D:\desktop\math-agent\code\backend"
 $env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
-$env:WEB_ASSET_DIR = "D:\desktop\math-agent-code\data\web\rational"
-& "D:\desktop\math-agent-code\.conda-env\python.exe" -m uvicorn app.main:app --reload --port 8000
+$env:WEB_ASSET_DIR = "D:\desktop\math-agent\code\data\web\rational"
+& "D:\desktop\math-agent\code\.conda-env\python.exe" -m uvicorn app.main:app --reload --port 8000
 ```
 
 启动后可访问后端接口文档：<http://localhost:8000/docs>。
@@ -134,7 +130,7 @@ $env:WEB_ASSET_DIR = "D:\desktop\math-agent-code\data\web\rational"
 在第三个 PowerShell 窗口运行：
 
 ```powershell
-cd "D:\desktop\数学教学知识库与agent\code\frontend"
+cd "D:\desktop\math-agent\code\frontend"
 npm run dev
 ```
 
@@ -145,8 +141,8 @@ npm run dev
 先在前端和后端窗口分别按 `Ctrl+C`，再运行：
 
 ```powershell
-& "D:\desktop\math-agent-code\.conda-env\Library\bin\pg_ctl.exe" `
-  -D "D:\desktop\math-agent-code\.postgres-data" stop
+& "D:\desktop\math-agent\code\.conda-env\Library\bin\pg_ctl.exe" `
+  -D "D:\desktop\math-agent\code\.postgres-data" stop
 ```
 
 ## 首次创建 D 盘 conda 环境（当前电脑无需再执行）
@@ -154,7 +150,7 @@ npm run dev
 以下命令只用于在新电脑或删除 `.conda-env` 后重新安装。`--prefix "$PWD\.conda-env"` 会创建 conda 环境，但把它放在当前 D 盘项目目录，而不是 conda 默认的 C 盘环境目录：
 
 ```powershell
-cd code
+cd "D:\desktop\math-agent\code"
 $env:CONDA_PKGS_DIRS = "$PWD\.conda-pkgs"
 conda create --prefix "$PWD\.conda-env" -c conda-forge python=3.12 postgresql=16 -y
 
@@ -163,21 +159,19 @@ $env:PIP_CACHE_DIR = "$PWD\.pip-cache"
   -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-Windows PostgreSQL 在中文路径执行 `initdb` 时可能发生编码错误。可创建只包含英文的目录联接，实际文件仍保存在项目中：
+项目根目录为全英文路径，可以直接初始化项目内 PostgreSQL 数据目录：
 
 ```powershell
-New-Item -ItemType Junction -Path "D:\desktop\math-agent-code" -Target "$PWD"
-
-& "D:\desktop\math-agent-code\.conda-env\Library\bin\initdb.exe" `
-  -D "D:\desktop\math-agent-code\.postgres-data" `
+& "D:\desktop\math-agent\code\.conda-env\Library\bin\initdb.exe" `
+  -D "D:\desktop\math-agent\code\.postgres-data" `
   -U postgres -A trust --encoding=UTF8 --locale=C
 
-& "D:\desktop\math-agent-code\.conda-env\Library\bin\pg_ctl.exe" `
-  -D "D:\desktop\math-agent-code\.postgres-data" `
-  -l "D:\desktop\math-agent-code\.postgres-data\server.log" `
+& "D:\desktop\math-agent\code\.conda-env\Library\bin\pg_ctl.exe" `
+  -D "D:\desktop\math-agent\code\.postgres-data" `
+  -l "D:\desktop\math-agent\code\.postgres-data\server.log" `
   -o "-p 55432" start
 
-& "D:\desktop\math-agent-code\.conda-env\Library\bin\createdb.exe" `
+& "D:\desktop\math-agent\code\.conda-env\Library\bin\createdb.exe" `
   -h localhost -p 55432 -U postgres math_agent
 ```
 
@@ -186,7 +180,7 @@ New-Item -ItemType Junction -Path "D:\desktop\math-agent-code" -Target "$PWD"
 ```powershell
 $env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
 cd backend
-& "..\.conda-env\Scripts\alembic.exe" upgrade head
+& "..\.conda-env\python.exe" -m alembic upgrade head
 & "..\.conda-env\python.exe" -m scripts.seed_database
 & "..\.conda-env\python.exe" -m scripts.rebuild_mastery --all
 & "..\.conda-env\python.exe" -m scripts.verify_m2
@@ -203,7 +197,7 @@ cd backend
 另开终端启动前端：
 
 ```powershell
-cd code\frontend
+cd "D:\desktop\math-agent\code\frontend"
 npm install
 npm run dev
 ```
@@ -211,8 +205,8 @@ npm run dev
 停止项目内 PostgreSQL：
 
 ```powershell
-& "D:\desktop\math-agent-code\.conda-env\Library\bin\pg_ctl.exe" `
-  -D "D:\desktop\math-agent-code\.postgres-data" stop
+& "D:\desktop\math-agent\code\.conda-env\Library\bin\pg_ctl.exe" `
+  -D "D:\desktop\math-agent\code\.postgres-data" stop
 ```
 
 ## 资源转换
