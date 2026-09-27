@@ -34,6 +34,20 @@ export interface QuestionCatalogStats {
   type_counts: Record<string, number>
 }
 
+export interface QuestionCreateRequest {
+  original_qid?: string
+  question_type: 'choice' | 'fill_blank' | 'calculation' | 'solution' | 'true_false'
+  difficulty: number
+  section: string
+  question_text: string
+  options?: string[]
+  reference_answer_raw: string
+  main_exam_point_code: string
+  solution?: string
+  wrong_analysis?: string
+  operator_name: string
+}
+
 export interface AssetInfo {
   path: string
   web_url: string | null
@@ -94,6 +108,12 @@ export interface StudentSummary {
   attempt_count: number
   correct_count: number
   latest_answered_at: string | null
+}
+
+export interface StudentCreateRequest {
+  student_code: string
+  display_name: string
+  class_name: string
 }
 
 export interface StudentDetail extends StudentSummary {

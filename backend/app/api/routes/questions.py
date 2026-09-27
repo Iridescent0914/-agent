@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import case, distinct, func, or_, select
@@ -10,7 +11,9 @@ from app.core.database import get_db
 from app.models import ExamPoint, KnowledgePoint, Question, QuestionExamPoint
 from app.schemas.common import Page
 from app.schemas.questions import (
+    QuestionArchiveRequest,
     QuestionCatalogStats,
+    QuestionCreateRequest,
     QuestionDetail,
     QuestionListItem,
     QuestionReviewRequest,
@@ -64,7 +67,7 @@ def _base_query():
     return select(Question).options(
         selectinload(Question.main_knowledge_point),
         selectinload(Question.exam_point_links).selectinload(QuestionExamPoint.exam_point),
-    )
+    ).where(Question.archived_at.is_(None))
 
 
 def _detail(db: Session, question_id: uuid.UUID) -> QuestionDetail:
@@ -111,6 +114,101 @@ def _review_error(exc: Exception) -> HTTPException:
     return HTTPException(status_code=422, detail=str(exc))
 
 
+@router.post('', response_model=QuestionDetail, status_code=201)
+def create_question(
+    request: QuestionCreateRequest,
+    db: Session = Depends(get_db),
+) -> QuestionDetail:
+    exam = db.scalar(
+        select(ExamPoint)
+        .options(selectinload(ExamPoint.knowledge_point))
+        .where(ExamPoint.code == request.main_exam_point_code)
+    )
+    if exam is None:
+        raise HTTPException(status_code=422, detail='主考点不存在')
+    original_qid = request.original_qid or (
+        f'q.{exam.knowledge_point.chapter_code}.teacher.{uuid.uuid4().hex[:12]}'
+    )
+    if db.scalar(select(Question.id).where(Question.original_qid == original_qid)):
+        raise HTTPException(status_code=409, detail='题目编号已存在')
+
+    source_number = int(db.scalar(
+        select(func.max(Question.source_question_number)).where(
+            Question.source_file == 'teacher_upload'
+        )
+    ) or 0) + 1
+    now = datetime.now(timezone.utc)
+    question = Question(
+        original_qid=original_qid,
+        schema_version='teacher-question-v1',
+        chapter_code=exam.knowledge_point.chapter_code,
+        chapter_name=exam.knowledge_point.chapter_name,
+        section=request.section,
+        question_type=request.question_type,
+        difficulty=request.difficulty,
+        main_knowledge_point_id=exam.knowledge_point_id,
+        question_text=request.question_text,
+        options=request.options,
+        correct_answer=None,
+        reference_answer_raw=request.reference_answer_raw,
+        answer_match_type=None,
+        answer_normalization_rule={},
+        solution=request.solution,
+        wrong_analysis=request.wrong_analysis,
+        estimated_score_rate=None,
+        has_image=False,
+        has_equation=any(mark in request.question_text for mark in ('$', '\\(', '\\[')),
+        assets=[],
+        source_file='teacher_upload',
+        source_question_number=source_number,
+        source_review_status='reviewed',
+        grading_readiness='raw_answer_only',
+        import_status='teacher_created',
+        import_issues=['answer_items_not_structured'],
+        review_revision=1,
+        review_history=[{
+            'event_id': str(uuid.uuid4()),
+            'type': 'created',
+            'at': now.isoformat(),
+            'reviewer': request.operator_name,
+            'note': '教师手动新增题目',
+            'before_revision': 0,
+            'after_revision': 1,
+        }],
+        reviewed_by=request.operator_name,
+        reviewed_at=now,
+    )
+    db.add(question)
+    db.flush()
+    db.add(QuestionExamPoint(
+        question_id=question.id,
+        exam_point_id=exam.id,
+        relation_type='main',
+    ))
+    db.flush()
+    return _detail(db, question.id)
+
+
+@router.delete('/{question_id}')
+def archive_question(
+    question_id: uuid.UUID,
+    request: QuestionArchiveRequest,
+    db: Session = Depends(get_db),
+):
+    question = db.scalar(
+        select(Question).where(
+            Question.id == question_id,
+            Question.archived_at.is_(None),
+        ).with_for_update()
+    )
+    if question is None:
+        raise HTTPException(status_code=404, detail='question not found')
+    question.archived_at = datetime.now(timezone.utc)
+    question.archived_by = request.operator_name
+    db.flush()
+    return {'deleted_id': str(question.id)}
+
+
 @router.get("", response_model=Page[QuestionListItem])
 def list_questions(
     page: int = Query(1, ge=1),
@@ -128,7 +226,7 @@ def list_questions(
     keyword: str | None = Query(None, max_length=100),
     db: Session = Depends(get_db),
 ) -> Page[QuestionListItem]:
-    filters = []
+    filters = [Question.archived_at.is_(None)]
     if question_type:
         filters.append(Question.question_type == question_type)
     if grading_readiness:
@@ -190,7 +288,9 @@ def question_catalog_stats(db: Session = Depends(get_db)) -> QuestionCatalogStat
             Question.question_type,
             Question.grading_readiness,
             func.count(Question.id),
-        ).group_by(Question.question_type, Question.grading_readiness)
+        ).where(Question.archived_at.is_(None)).group_by(
+            Question.question_type, Question.grading_readiness
+        )
     ).all()
     type_counts: dict[str, int] = {}
     ready_count = 0

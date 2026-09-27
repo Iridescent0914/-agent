@@ -4,7 +4,39 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class StudentCreateRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    student_code: str = Field(
+        min_length=1, max_length=32, pattern=r'^[A-Za-z0-9._-]+$'
+    )
+    display_name: str = Field(min_length=1, max_length=80)
+    class_name: str = Field(min_length=1, max_length=120)
+
+    @field_validator('student_code', 'display_name', 'class_name')
+    @classmethod
+    def strip_text(cls, value: str) -> str:
+        clean = value.strip()
+        if not clean:
+            raise ValueError('字段不能为空')
+        return clean
+
+
+class StudentArchiveRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    operator_name: str = Field(min_length=1, max_length=80)
+
+    @field_validator('operator_name')
+    @classmethod
+    def strip_operator(cls, value: str) -> str:
+        clean = value.strip()
+        if not clean:
+            raise ValueError('操作人不能为空')
+        return clean
 
 
 class StudentListItem(BaseModel):

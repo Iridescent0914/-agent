@@ -20,7 +20,8 @@ export function AssignmentListPage() {
     { title: '作业', dataIndex: 'title', render: (value, row) => <Link to={`/assignments/${row.id}`}>{value}</Link> },
     { title: '学生', dataIndex: 'student_count', width: 90 },
     { title: '草稿', dataIndex: 'draft_count', width: 90, render: (value) => <Tag color={value ? 'gold' : 'default'}>{value}</Tag> },
-    { title: '已发布', dataIndex: 'published_count', width: 100, render: (value) => <Tag color={value ? 'green' : 'default'}>{value}</Tag> },
+    { title: '有效发布', dataIndex: 'published_count', width: 100, render: (value) => <Tag color={value ? 'green' : 'default'}>{value}</Tag> },
+    { title: '已作废', dataIndex: 'invalidated_count', width: 100, render: (value) => <Tag color={value ? 'red' : 'default'}>{value}</Tag> },
     { title: '创建时间', dataIndex: 'created_at', width: 190, render: (value) => new Date(value).toLocaleString('zh-CN') },
     { title: '操作', width: 90, render: (_, row) => <Link to={`/assignments/${row.id}`}>查看</Link> },
   ]
@@ -33,4 +34,3 @@ export function AssignmentListPage() {
     <Card className="table-card"><Table rowKey="id" loading={loading} columns={columns} dataSource={data?.items ?? []} pagination={false} scroll={{ x: 760 }} /></Card>
   </Space>
 }
-

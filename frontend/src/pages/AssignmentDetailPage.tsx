@@ -1,9 +1,9 @@
-import { ArrowLeftOutlined, ReloadOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, DeleteOutlined, RedoOutlined, ReloadOutlined, StopOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Modal, Space, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { apiGet, apiPost } from '../api/client'
+import { apiDelete, apiGet, apiPost } from '../api/client'
 import type { AssignmentDetail, PaperSummary } from '../types/assignment'
 
 export function AssignmentDetailPage() {
@@ -44,19 +44,85 @@ export function AssignmentDetailPage() {
       },
     })
   }
+  const deleteDraft = (paper: PaperSummary) => {
+    Modal.confirm({
+      title: `删除 ${paper.student_name} 的 v${paper.version_no} 草稿？`,
+      content: '草稿及其中题目将被永久删除，已发布版本不受影响。',
+      okText: '删除草稿', cancelText: '取消', okButtonProps: { danger: true },
+      onOk: async () => {
+        setLoading(true); setError(null)
+        try {
+          await apiDelete<{ deleted_id: string }>(`/paper-instances/${paper.id}`, {
+            expected_edit_revision: paper.edit_revision,
+          })
+          message.success('草稿已删除')
+          load()
+        } catch (reason) {
+          setError((reason as Error).message); setLoading(false)
+        }
+      },
+    })
+  }
+  const withdrawPaper = (paper: PaperSummary) => {
+    Modal.confirm({
+      title: `撤回 ${paper.student_name} 的 v${paper.version_no} 试卷？`,
+      content: '撤回后实例码仍可查询历史，但该版本不再作为有效发布版本。',
+      okText: '确认撤回', cancelText: '取消', okButtonProps: { danger: true },
+      onOk: async () => {
+        setLoading(true); setError(null)
+        try {
+          await apiPost(`/paper-instances/${paper.id}/withdraw`, {
+            expected_edit_revision: paper.edit_revision,
+            reason: '教师从作业详情页主动撤回已发布试卷',
+          })
+          message.success('已发布试卷已撤回')
+          load()
+        } catch (reason) {
+          setError((reason as Error).message); setLoading(false)
+        }
+      },
+    })
+  }
+  const republishPaper = (paper: PaperSummary) => {
+    Modal.confirm({
+      title: `重新发布 ${paper.student_name} 的 v${paper.version_no} 试卷？`,
+      content: '试卷内容和原实例码保持不变，重新发布后恢复为当前有效版本。',
+      okText: '确认重新发布', cancelText: '取消',
+      onOk: async () => {
+        setLoading(true); setError(null)
+        try {
+          await apiPost(`/paper-instances/${paper.id}/republish`, {
+            expected_edit_revision: paper.edit_revision,
+          })
+          message.success('试卷已重新发布')
+          load()
+        } catch (reason) {
+          setError((reason as Error).message); setLoading(false)
+        }
+      },
+    })
+  }
   const columns: ColumnsType<PaperSummary> = [
     { title: '学生', render: (_, row) => `${row.student_code} · ${row.student_name}` },
     { title: '版本', dataIndex: 'version_no', width: 80, render: (value) => `v${value}` },
-    { title: '状态', width: 100, render: (_, row) => <Tag color={row.status === 'published' ? 'green' : 'gold'}>{row.status === 'published' ? '已发布' : '草稿'}</Tag> },
+    { title: '状态', width: 120, render: (_, row) => <Tag color={row.status === 'draft' ? 'gold' : row.is_active ? 'green' : 'red'}>{row.status === 'draft' ? '草稿' : row.is_active ? '有效发布' : row.invalidation_type === 'superseded' ? '已被更新' : row.invalidation_type === 'withdrawn' ? '已撤回' : '已失效'}</Tag> },
     { title: '题量', width: 110, render: (_, row) => `${row.item_count} / ${row.requested_count ?? row.item_count}` },
     { title: '实例码', dataIndex: 'instance_code', width: 160, render: (value) => value || '—' },
-    { title: '操作', width: 100, render: (_, row) => <Link to={`/paper-instances/${row.id}`}>{row.status === 'draft' ? '编辑' : '查看'}</Link> },
+    {
+      title: '操作', width: 210, fixed: 'right',
+      render: (_, row) => <Space>
+        <Link to={`/paper-instances/${row.id}`}>{row.status === 'draft' ? '编辑' : '查看'}</Link>
+        {row.status === 'draft' && <Button type='link' danger size='small' icon={<DeleteOutlined />} onClick={() => deleteDraft(row)}>删除草稿</Button>}
+        {row.status === 'published' && row.is_active && <Button type='link' danger size='small' icon={<StopOutlined />} onClick={() => withdrawPaper(row)}>撤回</Button>}
+        {row.status === 'published' && row.invalidation_type === 'withdrawn' && <Button type='link' size='small' icon={<RedoOutlined />} onClick={() => republishPaper(row)}>重新发布</Button>}
+      </Space>,
+    },
   ]
   return <Space direction="vertical" size="large" className="page-stack assignment-workspace">
     <div><Button type="link" icon={<ArrowLeftOutlined />}><Link to="/assignments">返回作业列表</Link></Button></div>
     {error && <Alert type="error" showIcon message="操作失败" description={error} />}
     <div className="student-heading">
-      <div><Typography.Title level={2}>{data?.title ?? '作业详情'}</Typography.Title><Typography.Text type="secondary">每名学生拥有独立版本；已发布版本保持只读</Typography.Text></div>
+      <div><Typography.Title level={2}>{data?.title ?? '作业详情'}</Typography.Title><Typography.Text type="secondary">草稿可删除；新版发布后旧版自动作废，但保留审计快照</Typography.Text></div>
       <Space><Button icon={<ReloadOutlined />} onClick={load}>刷新</Button><Button type="primary" disabled={!selected.length} onClick={publishSelected}>发布所选草稿</Button></Space>
     </div>
     <Card className="table-card">

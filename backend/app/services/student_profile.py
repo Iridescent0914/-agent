@@ -45,8 +45,12 @@ def exam_point_catalog(db: Session, chapter_code: str | None = None) -> list[Exa
     counts = (
         select(QuestionExamPoint.exam_point_id, func.count(Question.id).label("count"))
         .join(Question, Question.id == QuestionExamPoint.question_id)
-        .where(QuestionExamPoint.relation_type == "main",
-               Question.grading_readiness == "machine_ready", Question.source_review_status == "reviewed")
+        .where(
+            QuestionExamPoint.relation_type == 'main',
+            Question.grading_readiness == 'machine_ready',
+            Question.source_review_status == 'reviewed',
+            Question.archived_at.is_(None),
+        )
         .group_by(QuestionExamPoint.exam_point_id).subquery()
     )
     query = (select(ExamPoint, KnowledgePoint.chapter_code, counts.c.count)
@@ -66,7 +70,10 @@ def exam_point_catalog(db: Session, chapter_code: str | None = None) -> list[Exa
 
 
 def load_context(db: Session, student_id: UUID) -> ProfileContext:
-    student = db.get(Student, student_id)
+    student = db.scalar(select(Student).where(
+        Student.id == student_id,
+        Student.archived_at.is_(None),
+    ))
     if student is None:
         raise LookupError("student not found")
     catalog = exam_point_catalog(db)

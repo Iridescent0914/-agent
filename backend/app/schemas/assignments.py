@@ -57,6 +57,7 @@ class AssignmentListItem(BaseModel):
     student_count: int
     draft_count: int
     published_count: int
+    invalidated_count: int
     created_at: datetime
 
 
@@ -64,4 +65,3 @@ class AssignmentDetailOut(AssignmentListItem):
     teaching_scope: dict
     generation_config: dict | None
     papers: list[PaperSummaryOut]
-

@@ -9,10 +9,12 @@ from app.core.database import get_db
 from app.schemas.papers import (
     AlternativeOut, DraftMutationRequest, PaperByCodeOut, PaperInstanceStudentOut,
     PaperInstanceTeacherOut, PublishPaperRequest, ReorderItemsRequest, ReplaceItemRequest,
+    WithdrawPaperRequest,
 )
 from app.services.paper_workflow import (
-    PaperConflict, PaperValidation, alternatives, by_code, delete_item, publish_paper,
-    reorder_items, replace_item, revise_paper, student_view, teacher_view,
+    PaperConflict, PaperValidation, alternatives, by_code, delete_draft, delete_item,
+    publish_paper, reorder_items, replace_item, republish_paper, revise_paper,
+    student_view, teacher_view, withdraw_paper,
 )
 
 
@@ -104,3 +106,39 @@ def revise(paper_id: UUID, db: Session = Depends(get_db)):
     except (LookupError, ValueError, RuntimeError) as exc:
         raise _error(exc) from exc
 
+
+@router.delete('/{paper_id}')
+def remove_draft(paper_id: UUID, request: DraftMutationRequest = Body(...),
+                 db: Session = Depends(get_db)):
+    try:
+        deleted_id = delete_draft(
+            db, paper_id, expected_revision=request.expected_edit_revision
+        )
+        return {'deleted_id': str(deleted_id)}
+    except (LookupError, ValueError, RuntimeError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/{paper_id}/withdraw', response_model=PaperInstanceTeacherOut)
+def withdraw(paper_id: UUID, request: WithdrawPaperRequest,
+             db: Session = Depends(get_db)):
+    try:
+        withdraw_paper(
+            db, paper_id, expected_revision=request.expected_edit_revision,
+            reason=request.reason,
+        )
+        return teacher_view(db, paper_id)
+    except (LookupError, ValueError, RuntimeError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post('/{paper_id}/republish', response_model=PaperInstanceTeacherOut)
+def republish(paper_id: UUID, request: DraftMutationRequest,
+              db: Session = Depends(get_db)):
+    try:
+        republish_paper(
+            db, paper_id, expected_revision=request.expected_edit_revision,
+        )
+        return teacher_view(db, paper_id)
+    except (LookupError, ValueError, RuntimeError) as exc:
+        raise _error(exc) from exc

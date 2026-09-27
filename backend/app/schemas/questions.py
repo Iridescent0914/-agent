@@ -42,6 +42,69 @@ class QuestionCatalogStats(BaseModel):
     type_counts: dict[str, int]
 
 
+class QuestionCreateRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    original_qid: str | None = Field(default=None, max_length=180)
+    question_type: Literal[
+        'choice', 'fill_blank', 'calculation', 'solution', 'true_false'
+    ]
+    difficulty: int = Field(ge=1, le=5)
+    section: str = Field(default='教师新增', min_length=1, max_length=255)
+    question_text: str = Field(min_length=1, max_length=10000)
+    options: list[str] | None = Field(default=None, min_length=2, max_length=8)
+    reference_answer_raw: str = Field(min_length=1, max_length=5000)
+    main_exam_point_code: str = Field(min_length=1, max_length=180)
+    solution: str | None = Field(default=None, max_length=10000)
+    wrong_analysis: str | None = Field(default=None, max_length=10000)
+    operator_name: str = Field(min_length=1, max_length=80)
+
+    @field_validator(
+        'section', 'question_text', 'reference_answer_raw',
+        'main_exam_point_code', 'operator_name',
+    )
+    @classmethod
+    def strip_required_text(cls, value: str) -> str:
+        clean = value.strip()
+        if not clean:
+            raise ValueError('字段不能为空')
+        return clean
+
+    @field_validator('original_qid', 'solution', 'wrong_analysis')
+    @classmethod
+    def strip_optional_text(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
+    @model_validator(mode='after')
+    def validate_options(self):
+        if self.question_type == 'choice':
+            if not self.options:
+                raise ValueError('选择题至少需要两个选项')
+            cleaned = [option.strip() for option in self.options]
+            if any(not option for option in cleaned):
+                raise ValueError('选项不能为空')
+            if len(set(cleaned)) != len(cleaned):
+                raise ValueError('选项不能重复')
+            self.options = cleaned
+        else:
+            self.options = None
+        return self
+
+
+class QuestionArchiveRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    operator_name: str = Field(min_length=1, max_length=80)
+
+    @field_validator('operator_name')
+    @classmethod
+    def strip_operator(cls, value: str) -> str:
+        clean = value.strip()
+        if not clean:
+            raise ValueError('操作人不能为空')
+        return clean
+
+
 class QuestionAnswerItemInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

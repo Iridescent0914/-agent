@@ -46,6 +46,12 @@ class PaperSummaryOut(BaseModel):
     edit_revision: int
     instance_code: str | None
     supersedes_instance_id: UUID | None
+    superseded_by_instance_id: UUID | None
+    is_active: bool
+    invalidated_at: datetime | None
+    invalidation_type: str | None
+    invalidation_reason: str | None
+    invalidated_by: str | None
     created_at: datetime
     published_at: datetime | None
 
@@ -64,6 +70,11 @@ class PaperInstanceStudentOut(BaseModel):
     version_no: int
     status: str
     instance_code: str | None
+    is_active: bool
+    invalidated_at: datetime | None
+    invalidation_type: str | None
+    invalidation_reason: str | None
+    superseded_by_instance_id: UUID | None
     items: list[StudentPaperItemOut]
 
 
@@ -79,11 +90,20 @@ class PaperByCodeOut(BaseModel):
     instance_code: str
     item_count: int
     published_at: datetime
+    is_active: bool
+    invalidated_at: datetime | None
+    invalidation_type: str | None
+    invalidation_reason: str | None
+    superseded_by_instance_id: UUID | None
 
 
 class DraftMutationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     expected_edit_revision: int = Field(ge=1, strict=True)
+
+
+class WithdrawPaperRequest(DraftMutationRequest):
+    reason: str = Field(min_length=1, max_length=500)
 
 
 class ReplaceItemRequest(DraftMutationRequest):
@@ -129,4 +149,3 @@ class BatchPublishRequest(BaseModel):
 
 class AlternativeOut(BaseModel):
     items: list[RecommendedQuestion]
-

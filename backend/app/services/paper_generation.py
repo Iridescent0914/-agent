@@ -21,7 +21,10 @@ from app.services.student_profile import load_context
 
 def _students(db: Session, student_ids: Iterable[UUID]) -> list[Student]:
     ids = list(student_ids)
-    found = list(db.scalars(select(Student).where(Student.id.in_(ids))))
+    found = list(db.scalars(select(Student).where(
+        Student.id.in_(ids),
+        Student.archived_at.is_(None),
+    )))
     if len(found) != len(ids):
         raise LookupError("one or more students not found")
     by_id = {student.id: student for student in found}
@@ -120,4 +123,3 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
             ))
     db.flush()
     return assignment, True
-

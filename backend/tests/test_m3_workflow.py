@@ -157,3 +157,87 @@ def test_edit_publish_lookup_and_revise(client, db):
     assert [item["question_snapshot"] for item in revised.json()["items"]] == [
         item["question_snapshot"] for item in published_body["items"]
     ]
+
+    revised_body = revised.json()
+    published_revision = client.post(
+        f'/api/v1/paper-instances/{revised_body["id"]}/publish',
+        json={
+            'expected_edit_revision': revised_body['edit_revision'],
+            'acknowledge_shortfall': True,
+            'acknowledgement_reason': '教师确认修订版三题足够',
+        },
+    )
+    assert published_revision.status_code == 200, published_revision.text
+    new_body = published_revision.json()
+    assert new_body['is_active'] is True
+
+    old_body = client.get(f'/api/v1/paper-instances/{paper_id}').json()
+    assert old_body['is_active'] is False
+    assert old_body['invalidation_type'] == 'superseded'
+    assert old_body['superseded_by_instance_id'] == new_body['id']
+    old_lookup = client.get(f'/api/v1/paper-instances/by-code/{code}').json()
+    assert old_lookup['id'] == paper_id and old_lookup['is_active'] is False
+    assert old_lookup['superseded_by_instance_id'] == new_body['id']
+    assert client.post(
+        f'/api/v1/paper-instances/{paper_id}/republish',
+        json={'expected_edit_revision': old_body['edit_revision']},
+    ).status_code == 409
+
+    withdrawn = client.post(
+        f'/api/v1/paper-instances/{new_body["id"]}/withdraw',
+        json={'expected_edit_revision': new_body['edit_revision'], 'reason': '教师发现范围错误'},
+    )
+    assert withdrawn.status_code == 200, withdrawn.text
+    assert withdrawn.json()['is_active'] is False
+    assert withdrawn.json()['invalidation_type'] == 'withdrawn'
+    assert client.post(
+        f'/api/v1/paper-instances/{new_body["id"]}/withdraw',
+        json={
+            'expected_edit_revision': withdrawn.json()['edit_revision'],
+            'reason': '重复撤回',
+        },
+    ).status_code == 409
+    republished = client.post(
+        f'/api/v1/paper-instances/{new_body["id"]}/republish',
+        json={'expected_edit_revision': withdrawn.json()['edit_revision']},
+    )
+    assert republished.status_code == 200, republished.text
+    republished_body = republished.json()
+    assert republished_body['is_active'] is True
+    assert republished_body['instance_code'] == new_body['instance_code']
+    assert republished_body['invalidated_at'] is None
+    assert republished_body['invalidation_type'] is None
+    assert republished_body['edit_revision'] == withdrawn.json()['edit_revision'] + 1
+    assert republished_body['edit_history'][-1]['type'] == 'republish'
+    assert client.post(
+        f'/api/v1/paper-instances/{new_body["id"]}/republish',
+        json={'expected_edit_revision': republished_body['edit_revision']},
+    ).status_code == 409
+
+
+def test_draft_can_be_deleted_but_published_paper_cannot(client, db):
+    body = request_body(db, key='test-' + uuid4().hex)
+    assignment = client.post('/api/v1/assignments', json=body).json()
+    draft = assignment['papers'][0]
+    before = counts(db)
+    deleted = client.request(
+        'DELETE', f'/api/v1/paper-instances/{draft["id"]}',
+        json={'expected_edit_revision': draft['edit_revision']},
+    )
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()['deleted_id'] == draft['id']
+    assert client.get(f'/api/v1/paper-instances/{draft["id"]}').status_code == 404
+    after = counts(db)
+    assert after[1] == before[1] - 1 and after[2] == before[2] - 4
+
+    published = assignment['papers'][1]
+    response = client.post(
+        f'/api/v1/paper-instances/{published["id"]}/publish',
+        json={'expected_edit_revision': published['edit_revision']},
+    )
+    assert response.status_code == 200, response.text
+    published_body = response.json()
+    assert client.request(
+        'DELETE', f'/api/v1/paper-instances/{published["id"]}',
+        json={'expected_edit_revision': published_body['edit_revision']},
+    ).status_code == 409

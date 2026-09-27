@@ -14,7 +14,7 @@ def load_question(db: Session, question_id: UUID) -> Question:
     question = db.scalar(
         select(Question)
         .options(selectinload(Question.exam_point_links).selectinload(QuestionExamPoint.exam_point))
-        .where(Question.id == question_id)
+        .where(Question.id == question_id, Question.archived_at.is_(None))
     )
     if question is None:
         raise LookupError("question not found")
@@ -88,4 +88,3 @@ def copy_item(*, source: PaperInstanceItem, paper_id: UUID) -> PaperInstanceItem
         answer_region=deepcopy(source.answer_region),
         selection_audit=audit,
     )
-

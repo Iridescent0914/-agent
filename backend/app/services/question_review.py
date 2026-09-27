@@ -54,7 +54,10 @@ def validate_review_items(question_type: str, items: list[dict[str, str]]) -> No
 
 def _locked_question(db: Session, question_id: UUID) -> Question:
     question = db.scalar(
-        select(Question).where(Question.id == question_id).with_for_update()
+        select(Question).where(
+            Question.id == question_id,
+            Question.archived_at.is_(None),
+        ).with_for_update()
     )
     if question is None:
         raise LookupError("question not found")

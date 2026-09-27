@@ -1,4 +1,4 @@
-import { ArrowDownOutlined, ArrowLeftOutlined, ArrowUpOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { ArrowDownOutlined, ArrowLeftOutlined, ArrowUpOutlined, DeleteOutlined, EditOutlined, RedoOutlined, StopOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Descriptions, Drawer, List, Modal, Space, Tag, Typography, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -58,6 +58,45 @@ export function PaperInstancePage() {
     Modal.confirm({ title: '确认发布这份试卷？', content: short ? '当前题量少于目标题量，将记录教师确认。' : '发布后内容不可修改。',
       onOk: () => update(() => apiPost<PaperInstance>(`/paper-instances/${paper.id}/publish`, { expected_edit_revision: paper.edit_revision, acknowledge_shortfall: short, acknowledgement_reason: short ? '教师确认当前题量' : null })) })
   }
+  const deleteDraft = () => {
+    if (!paper) return
+    Modal.confirm({
+      title: '删除整份草稿？',
+      content: '草稿及其中题目将被永久删除；已发布版本不受影响。',
+      okText: '删除草稿', okButtonProps: { danger: true },
+      onOk: async () => {
+        await apiDelete<{ deleted_id: string }>(`/paper-instances/${paper.id}`, {
+          expected_edit_revision: paper.edit_revision,
+        })
+        message.success('草稿已删除')
+        navigate(`/assignments/${paper.assignment_id}`)
+      },
+    })
+  }
+  const withdraw = () => {
+    if (!paper) return
+    Modal.confirm({
+      title: '撤回这份已发布试卷？',
+      content: '撤回后实例码仍可查询历史，但该版本不能再用于新的答题或批改。',
+      okText: '确认撤回', okButtonProps: { danger: true },
+      onOk: () => update(() => apiPost<PaperInstance>(
+        `/paper-instances/${paper.id}/withdraw`,
+        { expected_edit_revision: paper.edit_revision, reason: '教师主动撤回已发布试卷' },
+      )).then(() => message.success('已发布试卷已撤回')),
+    })
+  }
+  const republish = () => {
+    if (!paper) return
+    Modal.confirm({
+      title: '重新发布这份试卷？',
+      content: '试卷内容和原实例码保持不变，重新发布后恢复为当前有效版本。',
+      okText: '确认重新发布',
+      onOk: () => update(() => apiPost<PaperInstance>(
+        `/paper-instances/${paper.id}/republish`,
+        { expected_edit_revision: paper.edit_revision },
+      )).then(() => message.success('试卷已重新发布')),
+    })
+  }
   const revise = async () => {
     if (!paper) return
     try { const draft = await apiPost<PaperInstance>(`/paper-instances/${paper.id}/revise`, {}); navigate(`/paper-instances/${draft.id}`) }
@@ -67,10 +106,11 @@ export function PaperInstancePage() {
     {paper && <Button type="link" icon={<ArrowLeftOutlined />}><Link to={`/assignments/${paper.assignment_id}`}>返回作业</Link></Button>}
     {error && <Alert type="error" showIcon message="操作失败" description={error} action={<Button onClick={load}>刷新</Button>} />}
     <div className="student-heading">
-      <div><Typography.Title level={2}>{paper ? `${paper.student_code} · ${paper.student_name} · v${paper.version_no}` : '试卷'}</Typography.Title><Typography.Text type="secondary">{paper?.status === 'draft' ? '未发布草稿，可调整题目' : `已发布 · ${paper?.instance_code}`}</Typography.Text></div>
-      {paper?.status === 'draft' ? <Button type="primary" onClick={publish} loading={loading}>发布试卷</Button> : <Button icon={<EditOutlined />} onClick={revise}>创建修订版</Button>}
+      <div><Typography.Title level={2}>{paper ? `${paper.student_code} · ${paper.student_name} · v${paper.version_no}` : '试卷'}</Typography.Title><Typography.Text type="secondary">{paper?.status === 'draft' ? '未发布草稿，可调整题目' : paper?.is_active ? `有效发布 · ${paper.instance_code}` : paper?.invalidation_type === 'superseded' ? `已被更新 · ${paper.instance_code}` : `已撤回 · ${paper?.instance_code}`}</Typography.Text></div>
+      {paper?.status === 'draft' ? <Space><Button danger icon={<DeleteOutlined />} onClick={deleteDraft}>删除草稿</Button><Button type="primary" onClick={publish} loading={loading}>发布试卷</Button></Space> : <Space>{paper?.is_active && <Button danger icon={<StopOutlined />} onClick={withdraw}>撤回发布</Button>}{paper?.invalidation_type === 'superseded' ? paper.superseded_by_instance_id && <Button><Link to={`/paper-instances/${paper.superseded_by_instance_id}`}>查看新版本</Link></Button> : <>{paper?.invalidation_type === 'withdrawn' && <Button type="primary" icon={<RedoOutlined />} onClick={republish}>重新发布</Button>}<Button icon={<EditOutlined />} onClick={revise}>创建修订版</Button></>}</Space>}
     </div>
-    {paper && <Descriptions bordered size="small" column={{ xs: 1, sm: 2, md: 4 }}><Descriptions.Item label="状态"><Tag color={paper.status === 'draft' ? 'gold' : 'green'}>{paper.status === 'draft' ? '草稿' : '已发布'}</Tag></Descriptions.Item><Descriptions.Item label="题量">{paper.item_count} / {paper.requested_count ?? paper.item_count}</Descriptions.Item><Descriptions.Item label="编辑修订">{paper.edit_revision}</Descriptions.Item><Descriptions.Item label="实例码">{paper.instance_code ?? '发布时生成'}</Descriptions.Item></Descriptions>}
+    {paper?.invalidated_at && <Alert type="warning" showIcon message={paper.invalidation_type === 'superseded' ? '此版本已被更新' : '此版本已撤回'} description={<Space direction="vertical"><span>{paper.invalidation_reason}</span>{paper.superseded_by_instance_id && <Link to={`/paper-instances/${paper.superseded_by_instance_id}`}>查看当前新版本</Link>}</Space>} />}
+    {paper && <Descriptions bordered size="small" column={{ xs: 1, sm: 2, md: 4 }}><Descriptions.Item label="状态"><Tag color={paper.status === 'draft' ? 'gold' : paper.is_active ? 'green' : 'red'}>{paper.status === 'draft' ? '草稿' : paper.is_active ? '有效发布' : paper.invalidation_type === 'superseded' ? '已被更新' : '已撤回'}</Tag></Descriptions.Item><Descriptions.Item label="题量">{paper.item_count} / {paper.requested_count ?? paper.item_count}</Descriptions.Item><Descriptions.Item label="编辑修订">{paper.edit_revision}</Descriptions.Item><Descriptions.Item label="实例码">{paper.instance_code ?? '发布时生成'}</Descriptions.Item></Descriptions>}
     {paper?.items.map((item, index) => <Card key={item.id} loading={loading} title={`第 ${item.order_no} 题 · ${item.question_snapshot.original_qid ?? ''}`} extra={paper.status === 'draft' && <Space>
       <Button aria-label={`上移第${item.order_no}题`} icon={<ArrowUpOutlined />} disabled={index === 0} onClick={() => move(item, -1)} />
       <Button aria-label={`下移第${item.order_no}题`} icon={<ArrowDownOutlined />} disabled={index === paper.items.length - 1} onClick={() => move(item, 1)} />
@@ -87,4 +127,3 @@ export function PaperInstancePage() {
     </Drawer>
   </Space>
 }
-

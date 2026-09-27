@@ -39,6 +39,8 @@ def main() -> None:
         incomplete = 0
         missing_selection = 0
         invalid_supersedes = 0
+        invalid_lifecycle = 0
+        invalid_superseded_by = 0
         for paper in papers:
             current = sorted(by_paper.get(paper.id, []), key=lambda item: item.order_no)
             if [item.order_no for item in current] != list(range(1, len(current) + 1)):
@@ -54,11 +56,36 @@ def main() -> None:
                 parent = db.get(PaperInstance, paper.supersedes_instance_id)
                 if parent is None or parent.student_id != paper.student_id or parent.assignment_id != paper.assignment_id:
                     invalid_supersedes += 1
+                elif paper.status == 'published' and (
+                    parent.invalidated_at is None or parent.superseded_by_instance_id != paper.id
+                ):
+                    invalid_supersedes += 1
+            lifecycle_values = (
+                paper.invalidation_type, paper.invalidation_reason, paper.invalidated_by
+            )
+            if (paper.invalidated_at is None) != all(value is None for value in lifecycle_values):
+                invalid_lifecycle += 1
+            if paper.superseded_by_instance_id:
+                child = db.get(PaperInstance, paper.superseded_by_instance_id)
+                if child is None or child.supersedes_instance_id != paper.id or child.status != 'published':
+                    invalid_superseded_by += 1
         published_identity = sum(
             paper.status == "published" and (not paper.instance_code or paper.published_at is None)
             for paper in papers
         )
         missing_recommendation = sum(paper.recommendation_audit is None for paper in papers)
+        active_version_duplicates = int(db.scalar(
+            select(func.count()).select_from(
+                select(PaperInstance.assignment_id, PaperInstance.student_id)
+                .where(
+                    PaperInstance.status == 'published',
+                    PaperInstance.invalidated_at.is_(None),
+                )
+                .group_by(PaperInstance.assignment_id, PaperInstance.student_id)
+                .having(func.count(PaperInstance.id) > 1)
+                .subquery()
+            )
+        ) or 0)
         if len(codes) != len(set(codes)):
             errors.append("duplicate instance codes")
         for name, value in {
@@ -69,6 +96,9 @@ def main() -> None:
             "missing recommendation audits": missing_recommendation,
             "missing selection audits": missing_selection,
             "invalid supersedes links": invalid_supersedes,
+            'invalid lifecycle metadata': invalid_lifecycle,
+            'invalid superseded-by links': invalid_superseded_by,
+            'multiple active published versions': active_version_duplicates,
             "published identity errors": published_identity,
         }.items():
             if value:
@@ -87,6 +117,13 @@ def main() -> None:
             "missing_recommendation_audits": missing_recommendation,
             "missing_selection_audits": missing_selection,
             "invalid_supersedes_links": invalid_supersedes,
+            'invalid_lifecycle_metadata': invalid_lifecycle,
+            'invalid_superseded_by_links': invalid_superseded_by,
+            'active_published_instances': sum(
+                paper.status == 'published' and paper.invalidated_at is None for paper in papers
+            ),
+            'invalidated_instances': sum(paper.invalidated_at is not None for paper in papers),
+            'multiple_active_published_versions': active_version_duplicates,
             "published_without_code_or_time": published_identity,
             "validation_errors": len(errors),
             "errors": errors,

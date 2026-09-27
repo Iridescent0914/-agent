@@ -112,6 +112,8 @@ class Question(TimestampMixin, Base):
     review_history: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
     reviewed_by: Mapped[str | None] = mapped_column(String(80))
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    archived_by: Mapped[str | None] = mapped_column(String(80))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
@@ -155,6 +157,8 @@ class Student(TimestampMixin, Base):
     display_name: Mapped[str] = mapped_column(String(80), nullable=False)
     class_name: Mapped[str] = mapped_column(String(120), nullable=False)
     is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    archived_by: Mapped[str | None] = mapped_column(String(80))
 
 
 class StudentMastery(Base):
@@ -228,6 +232,13 @@ class PaperInstance(TimestampMixin, Base):
     edit_history: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
     edit_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    invalidation_type: Mapped[str | None] = mapped_column(String(24))
+    invalidation_reason: Mapped[str | None] = mapped_column(Text)
+    invalidated_by: Mapped[str | None] = mapped_column(String(80))
+    superseded_by_instance_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('paper_instances.id', ondelete='RESTRICT'), unique=True
+    )
 
 
 class PaperInstanceItem(TimestampMixin, Base):

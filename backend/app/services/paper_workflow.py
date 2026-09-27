@@ -87,6 +87,10 @@ def _summary(db: Session, paper: PaperInstance, student: Student | None = None,
         requested_count=audit.get("requested_count"), shortfall=audit.get("shortfall"),
         edit_revision=paper.edit_revision, instance_code=paper.instance_code,
         supersedes_instance_id=paper.supersedes_instance_id,
+        superseded_by_instance_id=paper.superseded_by_instance_id,
+        is_active=paper.status == 'published' and paper.invalidated_at is None,
+        invalidated_at=paper.invalidated_at, invalidation_type=paper.invalidation_type,
+        invalidation_reason=paper.invalidation_reason, invalidated_by=paper.invalidated_by,
         created_at=paper.created_at, published_at=paper.published_at,
     )
 
@@ -128,7 +132,11 @@ def student_view(db: Session, paper_id: UUID) -> PaperInstanceStudentOut:
     return PaperInstanceStudentOut(
         id=paper.id, assignment_id=paper.assignment_id, student_id=paper.student_id,
         student_code=student.student_code, version_no=paper.version_no,
-        status=paper.status, instance_code=paper.instance_code, items=items,
+        status=paper.status, instance_code=paper.instance_code,
+        is_active=paper.status == 'published' and paper.invalidated_at is None,
+        invalidated_at=paper.invalidated_at, invalidation_type=paper.invalidation_type,
+        invalidation_reason=paper.invalidation_reason,
+        superseded_by_instance_id=paper.superseded_by_instance_id, items=items,
     )
 
 
@@ -146,7 +154,10 @@ def assignment_detail(db: Session, assignment_id: UUID) -> AssignmentDetailOut:
         assignment_type=assignment.assignment_type,
         student_count=len({paper.student_id for paper in papers}),
         draft_count=sum(paper.status == "draft" for paper in papers),
-        published_count=sum(paper.status == "published" for paper in papers),
+        published_count=sum(
+            paper.status == 'published' and paper.invalidated_at is None for paper in papers
+        ),
+        invalidated_count=sum(paper.invalidated_at is not None for paper in papers),
         created_at=assignment.created_at, teaching_scope=assignment.teaching_scope,
         generation_config=assignment.generation_config, papers=summaries,
     )
@@ -166,7 +177,10 @@ def list_assignment_items(db: Session, *, offset: int, limit: int) -> tuple[list
             assignment_type=assignment.assignment_type,
             student_count=len({paper.student_id for paper in papers}),
             draft_count=sum(paper.status == "draft" for paper in papers),
-            published_count=sum(paper.status == "published" for paper in papers),
+            published_count=sum(
+                paper.status == 'published' and paper.invalidated_at is None for paper in papers
+            ),
+            invalidated_count=sum(paper.invalidated_at is not None for paper in papers),
             created_at=assignment.created_at,
         ))
     return result, total
@@ -208,7 +222,11 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
         select(Question, ExamPoint)
         .join(QuestionExamPoint, QuestionExamPoint.question_id == Question.id)
         .join(ExamPoint, ExamPoint.id == QuestionExamPoint.exam_point_id)
-        .where(Question.chapter_code == params.chapter_code, QuestionExamPoint.relation_type == "main")
+        .where(
+            Question.chapter_code == params.chapter_code,
+            Question.archived_at.is_(None),
+            QuestionExamPoint.relation_type == 'main',
+        )
     ).all()
     ranked = []
     cap = max(1, int((params.new_count + params.review_count) * params.max_exam_point_ratio))
@@ -323,6 +341,94 @@ def _new_code(db: Session) -> str:
     raise RuntimeError("could not allocate a unique instance code")
 
 
+def delete_draft(db: Session, paper_id: UUID, *, expected_revision: int) -> UUID:
+    paper = _paper(db, paper_id, lock=True)
+    _draft(paper, expected_revision)
+    deleted_id = paper.id
+    db.delete(paper)
+    db.flush()
+    return deleted_id
+
+
+def _supersede_paper(source: PaperInstance, target: PaperInstance) -> None:
+    if source.status != 'published':
+        raise PaperConflict('only a published paper can be superseded')
+    if source.assignment_id != target.assignment_id or source.student_id != target.student_id:
+        raise PaperValidation('superseding version ownership does not match')
+    if source.superseded_by_instance_id not in (None, target.id):
+        raise PaperConflict('paper was already superseded by another version')
+
+    source.superseded_by_instance_id = target.id
+    if source.invalidated_at is None:
+        source.invalidated_at = datetime.now(timezone.utc)
+        source.invalidation_type = 'superseded'
+        source.invalidation_reason = f'版本 v{target.version_no} 发布后自动作废'
+        source.invalidated_by = 'demo_teacher'
+        event_type = 'superseded'
+    else:
+        event_type = 'link_superseding_version'
+    _event(source, event_type, {
+        'superseded_by_instance_id': str(target.id),
+        'superseded_by_version_no': target.version_no,
+    })
+
+
+def withdraw_paper(db: Session, paper_id: UUID, *, expected_revision: int,
+                   reason: str) -> PaperInstance:
+    paper = _paper(db, paper_id, lock=True)
+    if paper.status != 'published':
+        raise PaperConflict('only a published paper can be withdrawn')
+    if paper.edit_revision != expected_revision:
+        raise PaperConflict('paper was changed; refresh before withdrawing')
+    if paper.invalidated_at is not None:
+        raise PaperConflict('paper is already invalidated')
+    clean_reason = reason.strip()
+    if not clean_reason:
+        raise PaperValidation('withdrawal reason is required')
+    paper.invalidated_at = datetime.now(timezone.utc)
+    paper.invalidation_type = 'withdrawn'
+    paper.invalidation_reason = clean_reason
+    paper.invalidated_by = 'demo_teacher'
+    _event(paper, 'withdraw', {'reason': clean_reason})
+    db.flush()
+    return paper
+
+
+def republish_paper(db: Session, paper_id: UUID, *, expected_revision: int) -> PaperInstance:
+    paper = _paper(db, paper_id, lock=True)
+    if paper.status != 'published':
+        raise PaperConflict('only a published paper can be republished')
+    if paper.edit_revision != expected_revision:
+        raise PaperConflict('paper was changed; refresh before republishing')
+    if paper.invalidation_type != 'withdrawn' or paper.invalidated_at is None:
+        raise PaperConflict('only a withdrawn paper can be republished')
+    if paper.superseded_by_instance_id is not None:
+        raise PaperConflict('a superseded paper cannot be republished')
+
+    active = db.scalar(select(PaperInstance).where(
+        PaperInstance.assignment_id == paper.assignment_id,
+        PaperInstance.student_id == paper.student_id,
+        PaperInstance.status == 'published',
+        PaperInstance.invalidated_at.is_(None),
+        PaperInstance.id != paper.id,
+    ).with_for_update())
+    if active is not None:
+        raise PaperConflict('another published version is currently active')
+
+    previous = {
+        'withdrawn_at': paper.invalidated_at.isoformat(),
+        'withdrawal_reason': paper.invalidation_reason,
+        'withdrawn_by': paper.invalidated_by,
+    }
+    paper.invalidated_at = None
+    paper.invalidation_type = None
+    paper.invalidation_reason = None
+    paper.invalidated_by = None
+    _event(paper, 'republish', previous)
+    db.flush()
+    return paper
+
+
 def publish_paper(db: Session, paper_id: UUID, *, expected_revision: int,
                   acknowledge_shortfall: bool = False,
                   acknowledgement_reason: str | None = None) -> PaperInstance:
@@ -348,6 +454,21 @@ def publish_paper(db: Session, paper_id: UUID, *, expected_revision: int,
         })
     else:
         _event(paper, "publish", {"item_count": len(items)})
+    active = db.scalar(select(PaperInstance).where(
+        PaperInstance.assignment_id == paper.assignment_id,
+        PaperInstance.student_id == paper.student_id,
+        PaperInstance.status == 'published',
+        PaperInstance.invalidated_at.is_(None),
+    ).with_for_update())
+    if paper.supersedes_instance_id is not None:
+        source = _paper(db, paper.supersedes_instance_id, lock=True)
+        if active is not None and active.id != source.id:
+            raise PaperConflict('another published version is currently active')
+        _supersede_paper(source, paper)
+        db.flush()
+    elif active is not None:
+        raise PaperConflict('an active published version already exists')
+
     paper.instance_code = _new_code(db)
     paper.published_at = datetime.now(timezone.utc)
     paper.status = "published"
@@ -404,4 +525,8 @@ def by_code(db: Session, instance_code: str) -> PaperByCodeOut:
         student_id=student.id, student_code=student.student_code, student_name=student.display_name,
         version_no=paper.version_no, status=paper.status, instance_code=paper.instance_code,
         item_count=len(paper_items(db, paper.id)), published_at=paper.published_at,
+        is_active=paper.invalidated_at is None, invalidated_at=paper.invalidated_at,
+        invalidation_type=paper.invalidation_type,
+        invalidation_reason=paper.invalidation_reason,
+        superseded_by_instance_id=paper.superseded_by_instance_id,
     )

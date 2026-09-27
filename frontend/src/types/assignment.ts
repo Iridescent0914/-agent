@@ -35,6 +35,12 @@ export interface PaperSummary {
   edit_revision: number
   instance_code: string | null
   supersedes_instance_id: string | null
+  superseded_by_instance_id: string | null
+  is_active: boolean
+  invalidated_at: string | null
+  invalidation_type: 'withdrawn' | 'superseded' | null
+  invalidation_reason: string | null
+  invalidated_by: string | null
   created_at: string
   published_at: string | null
 }
@@ -47,6 +53,7 @@ export interface AssignmentListItem {
   student_count: number
   draft_count: number
   published_count: number
+  invalidated_count: number
   created_at: string
 }
 
@@ -83,4 +90,3 @@ export interface PaperInstance extends PaperSummary {
 
 export interface Alternatives { items: RecommendedQuestion[] }
 export type AssignmentPage = Page<AssignmentListItem>
-

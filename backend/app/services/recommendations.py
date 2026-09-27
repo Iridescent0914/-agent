@@ -155,7 +155,11 @@ def preview(db: Session, context: ProfileContext, params: RecommendationRequest,
         select(Question, ExamPoint)
         .join(QuestionExamPoint, QuestionExamPoint.question_id == Question.id)
         .join(ExamPoint, ExamPoint.id == QuestionExamPoint.exam_point_id)
-        .where(Question.chapter_code == params.chapter_code, QuestionExamPoint.relation_type == "main")
+        .where(
+            Question.chapter_code == params.chapter_code,
+            Question.archived_at.is_(None),
+            QuestionExamPoint.relation_type == 'main',
+        )
     ).all()
     candidates = [Candidate(q.id, q.original_qid, q.question_type, q.difficulty, exam.id, exam.code, exam.name,
                              q.grading_readiness == "machine_ready" and q.source_review_status == "reviewed")

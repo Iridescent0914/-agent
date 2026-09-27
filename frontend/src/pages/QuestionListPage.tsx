@@ -1,10 +1,15 @@
-import { SearchOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Col, Empty, Form, Input, Row, Select, Space, Statistic, Table, Tag, Typography } from 'antd'
+import { DeleteOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Col, Empty, Form, Input, Modal, Row, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { apiGet } from '../api/client'
-import type { Page, QuestionCatalogStats, QuestionSummary } from '../types'
+import { apiDelete, apiGet, apiPost } from '../api/client'
+import type { Page, QuestionCatalogStats, QuestionCreateRequest, QuestionDetail, QuestionSummary } from '../types'
+import type { ExamPoint } from '../types/profile'
+
+interface QuestionCreateValues extends Omit<QuestionCreateRequest, 'options'> {
+  options_text?: string
+}
 
 const typeLabel: Record<string, string> = {
   choice: '选择题',
@@ -20,13 +25,19 @@ function cleanPreview(value: string) {
 }
 
 export function QuestionListPage() {
+  const [createForm] = Form.useForm<QuestionCreateValues>()
   const [searchParams, setSearchParams] = useSearchParams()
   const [data, setData] = useState<Page<QuestionSummary> | null>(null)
   const [stats, setStats] = useState<QuestionCatalogStats | null>(null)
   const [loading, setLoading] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [examPoints, setExamPoints] = useState<ExamPoint[]>([])
+  const [refreshKey, setRefreshKey] = useState(0)
   const page = Number(searchParams.get('page') || 1)
   const pageSize = Number(searchParams.get('page_size') || 20)
+  const createType = Form.useWatch('question_type', createForm)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -39,7 +50,7 @@ export function QuestionListPage() {
       })
       .finally(() => setLoading(false))
     return () => controller.abort()
-  }, [searchParams])
+  }, [searchParams, refreshKey])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -47,9 +58,59 @@ export function QuestionListPage() {
       .then(setStats)
       .catch(() => undefined)
     return () => controller.abort()
+  }, [refreshKey])
+
+  useEffect(() => {
+    apiGet<ExamPoint[]>('/exam-points?chapter_code=math.g6.rational')
+      .then(setExamPoints)
+      .catch((reason: Error) => setError(reason.message))
   }, [])
 
-  const columns: ColumnsType<QuestionSummary> = useMemo(() => [
+  async function createQuestion() {
+    const values = await createForm.validateFields()
+    setCreating(true); setError(null)
+    try {
+      const options = values.question_type === 'choice'
+        ? (values.options_text || '').split(/\r?\n/).map((value) => value.trim()).filter(Boolean)
+        : undefined
+      const created = await apiPost<QuestionDetail>('/questions', {
+        ...values,
+        options,
+        options_text: undefined,
+        original_qid: values.original_qid?.trim() || undefined,
+        solution: values.solution?.trim() || undefined,
+        wrong_analysis: values.wrong_analysis?.trim() || undefined,
+      })
+      message.success('题目已添加，请继续审核答案后加入自动组卷池')
+      setCreateOpen(false)
+      createForm.resetFields()
+      setRefreshKey((value) => value + 1)
+      setSearchParams({ page: '1', page_size: String(pageSize), keyword: created.original_qid })
+    } catch (reason) {
+      setError((reason as Error).message)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  function deleteQuestion(record: QuestionSummary) {
+    Modal.confirm({
+      title: `删除题目 ${record.original_qid}？`,
+      content: '题目将退出题库和后续组卷；既有试卷快照与历史作答会保留。',
+      okText: '确认删除', cancelText: '取消', okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await apiDelete(`/questions/${record.id}`, { operator_name: '任课教师' })
+          message.success('题目已删除')
+          setRefreshKey((value) => value + 1)
+        } catch (reason) {
+          setError((reason as Error).message)
+        }
+      },
+    })
+  }
+
+  const columns: ColumnsType<QuestionSummary> = [
     {
       title: '题目',
       dataIndex: 'original_qid',
@@ -84,13 +145,13 @@ export function QuestionListPage() {
     {
       title: '操作',
       key: 'action',
-      width: 110,
+      width: 210,
       fixed: 'right',
       render: (_, record) => {
         const canEdit = record.question_type === 'choice' || record.question_type === 'fill_blank'
         const isPending = record.grading_readiness === 'raw_answer_only'
         const label = canEdit ? (isPending ? '去审核' : '撤回/编辑') : '查看'
-        return (
+        return <Space>
           <Link to={`/questions/${record.id}`}>
             <Button
               type={canEdit && isPending ? 'primary' : canEdit ? 'default' : 'link'}
@@ -99,10 +160,11 @@ export function QuestionListPage() {
               {label}
             </Button>
           </Link>
-        )
+          <Button danger type='text' icon={<DeleteOutlined />} onClick={() => deleteQuestion(record)}>删除</Button>
+        </Space>
       },
     },
-  ], [])
+  ]
 
   function update(values: Record<string, string | number | undefined>) {
     const next = new URLSearchParams(searchParams)
@@ -124,9 +186,12 @@ export function QuestionListPage() {
 
   return (
     <Space direction="vertical" size="large" className="page-stack">
-      <div>
-        <Typography.Title level={2}>有理数题库</Typography.Title>
-        <Typography.Text type="secondary">完整题库用于教师查看；只有结构化答案可靠的题目才进入自动组卷池。</Typography.Text>
+      <div className='student-heading'>
+        <div>
+          <Typography.Title level={2}>有理数题库</Typography.Title>
+          <Typography.Text type='secondary'>完整题库用于教师查看；只有结构化答案可靠的题目才进入自动组卷池。</Typography.Text>
+        </div>
+        <Button type='primary' icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>上传新题</Button>
       </div>
       <Row gutter={16}>
         <Col xs={24} md={8}><Card><Statistic title="原始题库" value={stats?.total ?? 0} suffix="组" /></Card></Col>
@@ -171,6 +236,50 @@ export function QuestionListPage() {
           scroll={{ x: 1200 }}
         />
       </Card>
+      <Modal
+        title='上传新题'
+        width={760}
+        open={createOpen}
+        okText='保存到题库'
+        cancelText='取消'
+        confirmLoading={creating}
+        onOk={() => void createQuestion()}
+        onCancel={() => { setCreateOpen(false); createForm.resetFields() }}
+        destroyOnClose
+      >
+        <Alert
+          type='info'
+          showIcon
+          message='新题先进入待审核区'
+          description='选择题和填空题保存后可继续核对结构化答案，再确认进入自动组卷池。'
+        />
+        <Form
+          form={createForm}
+          layout='vertical'
+          initialValues={{
+            question_type: 'fill_blank',
+            difficulty: 3,
+            section: '教师新增',
+            operator_name: '任课教师',
+          }}
+        >
+          <Row gutter={16}>
+            <Col xs={24} md={12}><Form.Item name='original_qid' label='题目编号（可留空自动生成）'><Input maxLength={180} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name='question_type' label='题型' rules={[{ required: true }]}><Select options={Object.entries(typeLabel).filter(([value]) => value !== 'unknown').map(([value, label]) => ({ value, label }))} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name='difficulty' label='难度' rules={[{ required: true }]}><Select options={[1, 2, 3, 4, 5].map((value) => ({ value, label: `${value} 星` }))} /></Form.Item></Col>
+          </Row>
+          <Row gutter={16}>
+            <Col xs={24} md={12}><Form.Item name='main_exam_point_code' label='主考点' rules={[{ required: true }]}><Select showSearch optionFilterProp='label' options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item></Col>
+            <Col xs={24} md={12}><Form.Item name='section' label='小节' rules={[{ required: true }]}><Input maxLength={255} /></Form.Item></Col>
+          </Row>
+          <Form.Item name='question_text' label='题干' rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={5} maxLength={10000} showCount /></Form.Item>
+          {createType === 'choice' && <Form.Item name='options_text' label='选项（每行一个）' rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={4} placeholder={'例如：\nA. -1\nB. 0\nC. 1'} /></Form.Item>}
+          <Form.Item name='reference_answer_raw' label='参考答案' rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={3} maxLength={5000} showCount /></Form.Item>
+          <Form.Item name='solution' label='解析（可选）'><Input.TextArea rows={3} maxLength={10000} /></Form.Item>
+          <Form.Item name='wrong_analysis' label='易错分析（可选）'><Input.TextArea rows={2} maxLength={10000} /></Form.Item>
+          <Form.Item name='operator_name' label='录入教师' rules={[{ required: true, whitespace: true }]}><Input maxLength={80} /></Form.Item>
+        </Form>
+      </Modal>
     </Space>
   )
 }

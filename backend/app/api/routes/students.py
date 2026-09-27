@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -9,7 +10,10 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models import Attempt, Student
 from app.schemas.common import Page
-from app.schemas.students import StudentAttemptOut, StudentDetail, StudentListItem
+from app.schemas.students import (
+    StudentArchiveRequest, StudentAttemptOut, StudentCreateRequest,
+    StudentDetail, StudentListItem,
+)
 from app.services.student_profile import attempt_summary, load_context
 
 
@@ -42,6 +46,54 @@ def _student_item(student: Student, row: object) -> StudentListItem:
     )
 
 
+@router.post('', response_model=StudentDetail, status_code=201)
+def create_student(
+    request: StudentCreateRequest,
+    db: Session = Depends(get_db),
+) -> StudentDetail:
+    if db.scalar(select(Student.id).where(Student.student_code == request.student_code)):
+        raise HTTPException(status_code=409, detail='学生编号已存在')
+    student = Student(
+        student_code=request.student_code,
+        display_name=request.display_name,
+        class_name=request.class_name,
+        is_demo=False,
+    )
+    db.add(student)
+    db.flush()
+    return StudentDetail(
+        id=student.id,
+        student_code=student.student_code,
+        display_name=student.display_name,
+        class_name=student.class_name,
+        is_demo=student.is_demo,
+        attempt_count=0,
+        correct_count=0,
+        latest_answered_at=None,
+        created_at=student.created_at,
+    )
+
+
+@router.delete('/{student_id}')
+def archive_student(
+    student_id: uuid.UUID,
+    request: StudentArchiveRequest,
+    db: Session = Depends(get_db),
+):
+    student = db.scalar(
+        select(Student).where(
+            Student.id == student_id,
+            Student.archived_at.is_(None),
+        ).with_for_update()
+    )
+    if student is None:
+        raise HTTPException(status_code=404, detail='student not found')
+    student.archived_at = datetime.now(timezone.utc)
+    student.archived_by = request.operator_name
+    db.flush()
+    return {'deleted_id': str(student.id)}
+
+
 @router.get("", response_model=Page[StudentListItem])
 def list_students(
     page: int = Query(1, ge=1),
@@ -49,7 +101,9 @@ def list_students(
     db: Session = Depends(get_db),
 ) -> Page[StudentListItem]:
     stats = _student_stats_subquery()
-    total = db.scalar(select(func.count(Student.id))) or 0
+    total = db.scalar(select(func.count(Student.id)).where(
+        Student.archived_at.is_(None)
+    )) or 0
     rows = db.execute(
         select(
             Student,
@@ -58,6 +112,7 @@ def list_students(
             stats.c.latest_answered_at,
         )
         .outerjoin(stats, stats.c.student_id == Student.id)
+        .where(Student.archived_at.is_(None))
         .order_by(Student.student_code, Student.id)
         .offset((page - 1) * page_size)
         .limit(page_size)
@@ -81,7 +136,7 @@ def get_student(student_id: uuid.UUID, db: Session = Depends(get_db)) -> Student
             stats.c.latest_answered_at,
         )
         .outerjoin(stats, stats.c.student_id == Student.id)
-        .where(Student.id == student_id)
+        .where(Student.id == student_id, Student.archived_at.is_(None))
     ).one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="student not found")
@@ -98,7 +153,10 @@ def list_student_attempts(
     exam_point_code: str | None = None,
     db: Session = Depends(get_db),
 ) -> Page[StudentAttemptOut]:
-    if db.get(Student, student_id) is None:
+    if db.scalar(select(Student.id).where(
+        Student.id == student_id,
+        Student.archived_at.is_(None),
+    )) is None:
         raise HTTPException(status_code=404, detail="student not found")
 
     context = load_context(db, student_id)
