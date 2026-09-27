@@ -13,7 +13,7 @@ export interface Tag {
 export interface QuestionSummary {
   id: string
   original_qid: string
-  question_type: 'choice' | 'fill_blank'
+  question_type: 'choice' | 'fill_blank' | 'calculation' | 'solution' | 'true_false' | 'unknown'
   difficulty: number
   section: string
   question_text: string
@@ -22,6 +22,16 @@ export interface QuestionSummary {
   has_image: boolean
   has_equation: boolean
   asset_count: number
+  grading_readiness: 'machine_ready' | 'raw_answer_only'
+  import_status: string
+  import_issue_count: number
+}
+
+export interface QuestionCatalogStats {
+  total: number
+  ready_count: number
+  pending_count: number
+  type_counts: Record<string, number>
 }
 
 export interface AssetInfo {
@@ -35,7 +45,7 @@ export interface QuestionDetail extends QuestionSummary {
   options: unknown
   correct_answer: unknown
   reference_answer_raw: string
-  answer_match_type: string
+  answer_match_type: string | null
   answer_normalization_rule: Record<string, unknown>
   related_exam_points: Tag[]
   solution: string | null
@@ -45,9 +55,34 @@ export interface QuestionDetail extends QuestionSummary {
   source_file: string
   source_question_number: number
   source_review_status: string
-  grading_readiness: string
+  import_issues: string[]
+  review_revision: number
+  review_history: Array<Record<string, unknown>>
+  reviewed_by: string | null
+  reviewed_at: string | null
   created_at: string
   updated_at: string
+}
+
+export type QuestionAnswerMatchType = 'choice' | 'numeric' | 'exact' | 'latex_exact'
+
+export interface QuestionAnswerItemInput {
+  item_id: string
+  answer: string
+  answer_match_type: QuestionAnswerMatchType
+}
+
+export interface QuestionReviewRequest {
+  expected_review_revision: number
+  reviewer_name: string
+  review_note?: string
+  items: QuestionAnswerItemInput[]
+}
+
+export interface QuestionWithdrawRequest {
+  expected_review_revision: number
+  reviewer_name: string
+  review_note?: string
 }
 
 export interface StudentSummary {

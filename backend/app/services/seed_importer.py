@@ -57,9 +57,15 @@ def _load_json(path: Path) -> Any:
         return json.load(handle)
 
 
-def _validate_inputs(questions: list[dict[str, Any]], tree: dict[str, Any]) -> None:
-    if len(questions) != 30:
-        raise ValueError(f"M1 requires exactly 30 seed question groups, got {len(questions)}")
+def _validate_inputs(
+    questions: list[dict[str, Any]],
+    tree: dict[str, Any],
+    *,
+    expected_count: int | None = None,
+    require_machine_ready: bool = True,
+) -> None:
+    if expected_count is not None and len(questions) != expected_count:
+        raise ValueError(f"expected {expected_count} question groups, got {len(questions)}")
     qids = [item.get("original_qid") for item in questions]
     if None in qids or len(set(qids)) != len(qids):
         raise ValueError("Seed original_qid values must be present and unique")
@@ -71,8 +77,6 @@ def _validate_inputs(questions: list[dict[str, Any]], tree: dict[str, Any]) -> N
                 "question_type",
                 "difficulty",
                 "question_text",
-                "correct_answer",
-                "answer_match_type",
                 "main_knowledge_point",
                 "main_exam_point",
             )
@@ -80,8 +84,15 @@ def _validate_inputs(questions: list[dict[str, Any]], tree: dict[str, Any]) -> N
         ]
         if missing:
             raise ValueError(f"{item['original_qid']} missing fields: {', '.join(missing)}")
-        if item.get("grading_readiness") != "machine_ready":
+        if item.get("question_type") not in {
+            "choice", "fill_blank", "calculation", "solution", "true_false", "unknown"
+        }:
+            raise ValueError(f"{item['original_qid']} has unsupported question_type")
+        if require_machine_ready and item.get("grading_readiness") != "machine_ready":
             raise ValueError(f"{item['original_qid']} is not machine_ready")
+        if item.get("grading_readiness") == "machine_ready":
+            if item.get("correct_answer") is None or item.get("answer_match_type") is None:
+                raise ValueError(f"{item['original_qid']} lacks a structured answer")
         if item.get("source_review_status") != "reviewed":
             raise ValueError(f"{item['original_qid']} is not source-reviewed")
     if not tree.get("knowledge_points"):
@@ -106,6 +117,7 @@ def _get_or_create_kp(
     chapter_code: str,
     chapter_name: str,
     section: str | None = None,
+    sort_order: int = 0,
 ) -> KnowledgePoint:
     instance = session.scalar(select(KnowledgePoint).where(KnowledgePoint.code == code))
     values = {
@@ -113,6 +125,7 @@ def _get_or_create_kp(
         "chapter_code": chapter_code,
         "chapter_name": chapter_name,
         "section": section,
+        "sort_order": sort_order,
     }
     if instance is None:
         instance = KnowledgePoint(code=code, **values)
@@ -133,9 +146,14 @@ def _get_or_create_exam(
     code: str,
     name: str,
     knowledge_point: KnowledgePoint,
+    sort_order: int = 0,
 ) -> ExamPoint:
     instance = session.scalar(select(ExamPoint).where(ExamPoint.code == code))
-    values = {"name": name, "knowledge_point_id": knowledge_point.id}
+    values = {
+        "name": name,
+        "knowledge_point_id": knowledge_point.id,
+        "sort_order": sort_order,
+    }
     if instance is None:
         instance = ExamPoint(code=code, **values)
         session.add(instance)
@@ -163,6 +181,7 @@ def _import_knowledge_tree(
             chapter_code=chapter["id"],
             chapter_name=chapter["name"],
             section=kp_data.get("section"),
+            sort_order=kp_data.get("order_no", 0),
         )
         kp_by_code[kp.code] = kp
         for exam_data in kp_data.get("exam_points", []):
@@ -172,6 +191,7 @@ def _import_knowledge_tree(
                 code=exam_data["id"],
                 name=exam_data["name"],
                 knowledge_point=kp,
+                sort_order=exam_data.get("order_no", 0),
             )
             exam_by_code[exam.code] = exam
     return kp_by_code, exam_by_code
@@ -188,9 +208,9 @@ def _question_values(item: dict[str, Any], kp: KnowledgePoint) -> dict[str, Any]
         "main_knowledge_point_id": kp.id,
         "question_text": item["question_text"],
         "options": item.get("options"),
-        "correct_answer": item["correct_answer"],
+        "correct_answer": item.get("correct_answer"),
         "reference_answer_raw": item.get("reference_answer_raw", ""),
-        "answer_match_type": item["answer_match_type"],
+        "answer_match_type": item.get("answer_match_type"),
         "answer_normalization_rule": item.get("answer_normalization_rule", {}),
         "solution": item.get("solution"),
         "wrong_analysis": item.get("wrong_analysis"),
@@ -202,7 +222,25 @@ def _question_values(item: dict[str, Any], kp: KnowledgePoint) -> dict[str, Any]
         "source_question_number": item["source_question_number"],
         "source_review_status": item["source_review_status"],
         "grading_readiness": item["grading_readiness"],
+        "import_status": item.get("import_status", "parsed"),
+        "import_issues": item.get("import_issues", []),
     }
+
+
+def _preserve_reviewed_answer(question: Question, values: dict[str, Any]) -> None:
+    if not question.review_history:
+        return
+    # Teacher-reviewed answers are operational data. Re-running the source
+    # importer may refresh the stem/metadata, but must not undo a saved review
+    # draft or a confirmed promotion.
+    for field in (
+        "correct_answer",
+        "answer_match_type",
+        "answer_normalization_rule",
+        "grading_readiness",
+        "import_issues",
+    ):
+        values.pop(field)
 
 
 def _import_questions(
@@ -232,6 +270,8 @@ def _import_questions(
             select(Question).where(Question.original_qid == item["original_qid"])
         )
         values = _question_values(item, kp)
+        if question is not None:
+            _preserve_reviewed_answer(question, values)
         if question is None:
             question = Question(original_qid=item["original_qid"], **values)
             session.add(question)
@@ -249,15 +289,30 @@ def _import_questions(
         exam_specs.extend((value, "related") for value in item.get("related_exam_points", []))
         seen: set[str] = set()
         for exam_data, relation_type in exam_specs:
-            if exam_data["id"] in seen:
+            exam_code = exam_data.get("id")
+            exam = exam_by_code.get(exam_code) if exam_code else next(
+                (
+                    candidate
+                    for candidate in exam_by_code.values()
+                    if candidate.name == exam_data.get("name")
+                ),
+                None,
+            )
+            # Some source rows contain percentages or other metadata in the
+            # related-exam-point cell.  Keep that text in the source catalog,
+            # but do not manufacture a selectable exam point without an ID.
+            if relation_type == "related" and exam_code is None and exam is None:
                 continue
-            seen.add(exam_data["id"])
-            exam = exam_by_code.get(exam_data["id"])
+            if exam is not None:
+                exam_code = exam.code
+            if exam_code in seen:
+                continue
+            seen.add(exam_code)
             if exam is None:
                 exam = _get_or_create_exam(
                     session,
                     stats,
-                    code=exam_data["id"],
+                    code=exam_code,
                     name=exam_data["name"],
                     knowledge_point=kp,
                 )
@@ -471,17 +526,36 @@ def _import_demo_history(
 
 
 def import_seed_data(
-    session: Session, questions_path: Path, knowledge_tree_path: Path
+    session: Session,
+    questions_path: Path,
+    knowledge_tree_path: Path,
+    catalog_path: Path | None = None,
 ) -> ImportStats:
-    questions_data = _load_json(questions_path)
+    seed_data = _load_json(questions_path)
+    catalog_data = _load_json(catalog_path) if catalog_path is not None else seed_data
     tree_data = _load_json(knowledge_tree_path)
-    _validate_inputs(questions_data, tree_data)
+    _validate_inputs(seed_data, tree_data, expected_count=41)
+    _validate_inputs(
+        catalog_data,
+        tree_data,
+        expected_count=139 if catalog_path is not None else 41,
+        require_machine_ready=False,
+    )
+    catalog_qids = {item["original_qid"] for item in catalog_data}
+    missing_seed_qids = [
+        item["original_qid"] for item in seed_data
+        if item["original_qid"] not in catalog_qids
+    ]
+    if missing_seed_qids:
+        raise ValueError(f"catalog is missing seed questions: {missing_seed_qids}")
     stats = ImportStats()
     try:
         kp_by_code, exam_by_code = _import_knowledge_tree(session, stats, tree_data)
-        questions = _import_questions(
-            session, stats, questions_data, kp_by_code, exam_by_code
+        catalog_questions = _import_questions(
+            session, stats, catalog_data, kp_by_code, exam_by_code
         )
+        by_qid = {question.original_qid: question for question in catalog_questions}
+        questions = [by_qid[item["original_qid"]] for item in seed_data]
         students = _import_students(session, stats)
         _import_demo_history(session, stats, students, questions)
         session.commit()

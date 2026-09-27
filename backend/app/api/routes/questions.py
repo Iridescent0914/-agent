@@ -3,14 +3,28 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import distinct, func, or_, select
+from sqlalchemy import case, distinct, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
 from app.models import ExamPoint, KnowledgePoint, Question, QuestionExamPoint
 from app.schemas.common import Page
-from app.schemas.questions import QuestionDetail, QuestionListItem, TagOut
+from app.schemas.questions import (
+    QuestionCatalogStats,
+    QuestionDetail,
+    QuestionListItem,
+    QuestionReviewRequest,
+    QuestionWithdrawRequest,
+    TagOut,
+)
 from app.services.assets import resolve_assets
+from app.services.question_review import (
+    QuestionReviewConflict,
+    QuestionReviewValidation,
+    promote_question,
+    save_review_draft,
+    withdraw_question,
+)
 
 
 router = APIRouter(prefix="/questions", tags=["questions"])
@@ -40,6 +54,9 @@ def _summary(question: Question) -> QuestionListItem:
         has_image=question.has_image,
         has_equation=question.has_equation,
         asset_count=len(question.assets or []),
+        grading_readiness=question.grading_readiness,
+        import_status=question.import_status,
+        import_issue_count=len(question.import_issues or []),
     )
 
 
@@ -50,11 +67,61 @@ def _base_query():
     )
 
 
+def _detail(db: Session, question_id: uuid.UUID) -> QuestionDetail:
+    question = db.scalar(_base_query().where(Question.id == question_id))
+    if question is None:
+        raise HTTPException(status_code=404, detail="question not found")
+    summary = _summary(question)
+    related = [
+        TagOut(code=link.exam_point.code, name=link.exam_point.name)
+        for link in question.exam_point_links
+        if link.relation_type == "related"
+    ]
+    return QuestionDetail(
+        **summary.model_dump(),
+        chapter=TagOut(code=question.chapter_code, name=question.chapter_name),
+        options=question.options,
+        correct_answer=question.correct_answer,
+        reference_answer_raw=question.reference_answer_raw,
+        answer_match_type=question.answer_match_type,
+        answer_normalization_rule=question.answer_normalization_rule,
+        related_exam_points=related,
+        solution=question.solution,
+        wrong_analysis=question.wrong_analysis,
+        estimated_score_rate=question.estimated_score_rate,
+        assets=resolve_assets(question.assets or []),
+        source_file=question.source_file,
+        source_question_number=question.source_question_number,
+        source_review_status=question.source_review_status,
+        import_issues=question.import_issues or [],
+        review_revision=question.review_revision,
+        review_history=question.review_history or [],
+        reviewed_by=question.reviewed_by,
+        reviewed_at=question.reviewed_at,
+        created_at=question.created_at,
+        updated_at=question.updated_at,
+    )
+
+
+def _review_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, LookupError):
+        return HTTPException(status_code=404, detail=str(exc))
+    if isinstance(exc, QuestionReviewConflict):
+        return HTTPException(status_code=409, detail=str(exc))
+    return HTTPException(status_code=422, detail=str(exc))
+
+
 @router.get("", response_model=Page[QuestionListItem])
 def list_questions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    question_type: str | None = Query(None, pattern="^(choice|fill_blank)$"),
+    question_type: str | None = Query(
+        None,
+        pattern="^(choice|fill_blank|calculation|solution|true_false|unknown)$",
+    ),
+    grading_readiness: str | None = Query(
+        None, pattern="^(machine_ready|raw_answer_only)$"
+    ),
     difficulty: int | None = Query(None, ge=1, le=5),
     knowledge_point_code: str | None = None,
     exam_point_code: str | None = None,
@@ -64,6 +131,8 @@ def list_questions(
     filters = []
     if question_type:
         filters.append(Question.question_type == question_type)
+    if grading_readiness:
+        filters.append(Question.grading_readiness == grading_readiness)
     if difficulty is not None:
         filters.append(Question.difficulty == difficulty)
     if knowledge_point_code:
@@ -90,8 +159,19 @@ def list_questions(
 
     total = db.scalar(count_query) or 0
     rows = db.scalars(
-        query.distinct()
-        .order_by(Question.original_qid, Question.id)
+        query.order_by(
+            case((Question.grading_readiness == "machine_ready", 0), else_=1),
+            case(
+                (Question.question_type == "choice", 0),
+                (Question.question_type == "fill_blank", 1),
+                (Question.question_type == "calculation", 2),
+                (Question.question_type == "solution", 3),
+                (Question.question_type == "true_false", 4),
+                else_=5,
+            ),
+            Question.source_question_number,
+            Question.id,
+        )
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()
@@ -103,34 +183,71 @@ def list_questions(
     )
 
 
+@router.get("/stats", response_model=QuestionCatalogStats)
+def question_catalog_stats(db: Session = Depends(get_db)) -> QuestionCatalogStats:
+    rows = db.execute(
+        select(
+            Question.question_type,
+            Question.grading_readiness,
+            func.count(Question.id),
+        ).group_by(Question.question_type, Question.grading_readiness)
+    ).all()
+    type_counts: dict[str, int] = {}
+    ready_count = 0
+    total = 0
+    for question_type, readiness, count in rows:
+        value = int(count)
+        total += value
+        type_counts[question_type] = type_counts.get(question_type, 0) + value
+        if readiness == "machine_ready":
+            ready_count += value
+    return QuestionCatalogStats(
+        total=total,
+        ready_count=ready_count,
+        pending_count=total - ready_count,
+        type_counts=type_counts,
+    )
+
+
 @router.get("/{question_id}", response_model=QuestionDetail)
 def get_question(question_id: uuid.UUID, db: Session = Depends(get_db)) -> QuestionDetail:
-    question = db.scalar(_base_query().where(Question.id == question_id))
-    if question is None:
-        raise HTTPException(status_code=404, detail="question not found")
-    summary = _summary(question)
-    related = [
-        TagOut(code=link.exam_point.code, name=link.exam_point.name)
-        for link in question.exam_point_links
-        if link.relation_type == "related"
-    ]
-    return QuestionDetail(
-        **summary.model_dump(),
-        chapter=TagOut(code=question.chapter_code, name=question.chapter_name),
-        options=question.options,
-        correct_answer=question.correct_answer,
-        reference_answer_raw=question.reference_answer_raw,
-        answer_match_type=question.answer_match_type,
-        answer_normalization_rule=question.answer_normalization_rule,
-        related_exam_points=related,
-        solution=question.solution,
-        wrong_analysis=question.wrong_analysis,
-        estimated_score_rate=question.estimated_score_rate,
-        assets=resolve_assets(question.assets or []),
-        source_file=question.source_file,
-        source_question_number=question.source_question_number,
-        source_review_status=question.source_review_status,
-        grading_readiness=question.grading_readiness,
-        created_at=question.created_at,
-        updated_at=question.updated_at,
-    )
+    return _detail(db, question_id)
+
+
+@router.put("/{question_id}/review-draft", response_model=QuestionDetail)
+def update_review_draft(
+    question_id: uuid.UUID,
+    request: QuestionReviewRequest,
+    db: Session = Depends(get_db),
+) -> QuestionDetail:
+    try:
+        save_review_draft(db, question_id, request)
+        return _detail(db, question_id)
+    except (LookupError, QuestionReviewConflict, QuestionReviewValidation) as exc:
+        raise _review_error(exc) from exc
+
+
+@router.post("/{question_id}/promote", response_model=QuestionDetail)
+def confirm_question_for_pool(
+    question_id: uuid.UUID,
+    request: QuestionReviewRequest,
+    db: Session = Depends(get_db),
+) -> QuestionDetail:
+    try:
+        promote_question(db, question_id, request)
+        return _detail(db, question_id)
+    except (LookupError, QuestionReviewConflict, QuestionReviewValidation) as exc:
+        raise _review_error(exc) from exc
+
+
+@router.post("/{question_id}/withdraw", response_model=QuestionDetail)
+def withdraw_question_from_pool(
+    question_id: uuid.UUID,
+    request: QuestionWithdrawRequest,
+    db: Session = Depends(get_db),
+) -> QuestionDetail:
+    try:
+        withdraw_question(db, question_id, request)
+        return _detail(db, question_id)
+    except (LookupError, QuestionReviewConflict, QuestionReviewValidation) as exc:
+        raise _review_error(exc) from exc

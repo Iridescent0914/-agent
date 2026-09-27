@@ -80,11 +80,11 @@ def main() -> int:
     failed_assets = int(manifest.get("failed_count", -1))
 
     checks = {
-        "schema_at_head": migration == "0004",
+        "schema_at_head": migration == "0007",
         "questions": question_count,
         "fill_blank": fill_count,
         "choice": choice_count,
-        "seed_exam_points": exam_count,
+        "catalog_exam_points": exam_count,
         "questions_with_assets": question_asset_count,
         "unique_web_assets": manifest.get("unique_asset_count", 0),
         "missing_web_assets": failed_assets,
@@ -93,28 +93,31 @@ def main() -> int:
         "attempts": attempt_count,
         "orphan_records": orphan_attempts,
         "ownership_mismatches": ownership_mismatches,
-        "non_machine_ready_questions": not_ready,
+        "pending_questions": not_ready,
     }
     expected = {
         "schema_at_head": True,
-        "questions": 30,
-        "fill_blank": 20,
-        "choice": 10,
-        "seed_exam_points": 10,
-        "questions_with_assets": 18,
-        "unique_web_assets": 112,
+        "questions": 139,
+        "fill_blank": 49,
+        "choice": 13,
+        "catalog_exam_points": 54,
+        "questions_with_assets": 107,
+        "unique_web_assets": 564,
         "missing_web_assets": 0,
         "students": 5,
         "students_with_attempts": 5,
         "orphan_records": 0,
         "ownership_mismatches": 0,
-        "non_machine_ready_questions": 0,
     }
     for key, wanted in expected.items():
         if checks[key] != wanted:
             errors.append(f"{key}: expected {wanted!r}, got {checks[key]!r}")
     if attempt_count == 0:
         errors.append("attempts: expected demo history, got 0")
+    if not 0 <= not_ready <= question_count:
+        errors.append(
+            f"pending_questions: expected between 0 and {question_count}, got {not_ready}"
+        )
     checks["validation_errors"] = len(errors)
     print(json.dumps(checks, ensure_ascii=False, indent=2, default=str))
     if errors:

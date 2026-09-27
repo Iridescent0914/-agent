@@ -41,6 +41,7 @@ class KnowledgePoint(Base):
     chapter_code: Mapped[str] = mapped_column(String(160), nullable=False)
     chapter_name: Mapped[str] = mapped_column(String(160), nullable=False)
     section: Mapped[str | None] = mapped_column(String(255))
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("knowledge_points.id", ondelete="SET NULL")
     )
@@ -54,6 +55,7 @@ class ExamPoint(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     code: Mapped[str] = mapped_column(String(180), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(500), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     knowledge_point_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("knowledge_points.id", ondelete="RESTRICT"), nullable=False
     )
@@ -66,7 +68,13 @@ class Question(TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint("difficulty BETWEEN 1 AND 5", name="ck_questions_difficulty"),
         CheckConstraint(
-            "question_type IN ('choice', 'fill_blank')", name="ck_questions_type"
+            "question_type IN ('choice', 'fill_blank', 'calculation', 'solution', 'true_false', 'unknown')",
+            name="ck_questions_type",
+        ),
+        CheckConstraint(
+            "grading_readiness <> 'machine_ready' OR "
+            "(correct_answer IS NOT NULL AND answer_match_type IS NOT NULL)",
+            name="ck_machine_ready_answer",
         ),
         Index("ix_questions_filters", "chapter_code", "question_type", "difficulty"),
     )
@@ -84,9 +92,9 @@ class Question(TimestampMixin, Base):
     )
     question_text: Mapped[str] = mapped_column(Text, nullable=False)
     options: Mapped[Any | None] = mapped_column(JSONB)
-    correct_answer: Mapped[Any] = mapped_column(JSONB, nullable=False)
+    correct_answer: Mapped[Any | None] = mapped_column(JSONB)
     reference_answer_raw: Mapped[str] = mapped_column(Text, nullable=False)
-    answer_match_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    answer_match_type: Mapped[str | None] = mapped_column(String(32))
     answer_normalization_rule: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     solution: Mapped[str | None] = mapped_column(Text)
     wrong_analysis: Mapped[str | None] = mapped_column(Text)
@@ -98,6 +106,12 @@ class Question(TimestampMixin, Base):
     source_question_number: Mapped[int] = mapped_column(Integer, nullable=False)
     source_review_status: Mapped[str] = mapped_column(String(32), nullable=False)
     grading_readiness: Mapped[str] = mapped_column(String(32), nullable=False)
+    import_status: Mapped[str] = mapped_column(String(32), nullable=False, default="parsed")
+    import_issues: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    review_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    review_history: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
+    reviewed_by: Mapped[str | None] = mapped_column(String(80))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
@@ -178,9 +192,11 @@ class Assignment(TimestampMixin, Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     seed_key: Mapped[str | None] = mapped_column(String(100), unique=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(100), unique=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     chapter_code: Mapped[str] = mapped_column(String(160), nullable=False)
     teaching_scope: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    generation_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     assignment_type: Mapped[str] = mapped_column(String(32), nullable=False, default="practice")
 
 
@@ -192,6 +208,7 @@ class PaperInstance(TimestampMixin, Base):
         ),
         CheckConstraint("version_no > 0", name="ck_paper_version_positive"),
         CheckConstraint("status IN ('draft', 'published')", name="ck_paper_status"),
+        CheckConstraint("edit_revision > 0", name="ck_paper_edit_revision_positive"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -207,6 +224,9 @@ class PaperInstance(TimestampMixin, Base):
     supersedes_instance_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("paper_instances.id", ondelete="SET NULL")
     )
+    recommendation_audit: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    edit_history: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
+    edit_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -231,6 +251,7 @@ class PaperInstanceItem(TimestampMixin, Base):
     answer_rule_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     exam_point_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     answer_region: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    selection_audit: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class Submission(Base):

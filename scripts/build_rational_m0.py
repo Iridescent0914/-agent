@@ -520,18 +520,31 @@ def apply_answer_structures(records: list[dict], structure_path: Path) -> int:
     for qid, override in overrides.items():
         if qid not in by_qid:
             raise ValueError(f"答案结构映射引用了不存在的题目：{qid}")
+        record = by_qid[qid]
         items = override.get("items") or []
-        correct_answer = {"kind": "group", "items": items}
+        if items:
+            correct_answer = {"kind": "group", "items": items}
+            answer_match_type = "group"
+            normalization_rule = {
+                "item_order_matters": True,
+                "partial_credit": True,
+                "unparsed_items_use_reference_answer_raw": False,
+            }
+        else:
+            correct_answer = override.get("answer")
+            answer_match_type = override.get("answer_match_type")
+            normalization_rule = override.get(
+                "answer_normalization_rule",
+                {"trim_whitespace": True, "normalize_fullwidth_symbols": True},
+            )
         if not deterministic_answer_structure(correct_answer):
             raise ValueError(f"答案结构映射不满足确定性判分要求：{qid}")
-        record = by_qid[qid]
         record["correct_answer"] = correct_answer
-        record["answer_match_type"] = "group"
-        record["answer_normalization_rule"] = {
-            "item_order_matters": True,
-            "partial_credit": True,
-            "unparsed_items_use_reference_answer_raw": False,
-        }
+        record["answer_match_type"] = answer_match_type
+        record["answer_normalization_rule"] = normalization_rule
+        if override.get("drop_unknown_assets"):
+            record["question_text"] = record["question_text"].replace("[ASSET:unknown]", "").strip()
+            record["has_image"] = "[ASSET:" in record["question_text"]
         record["grading_readiness"] = "machine_ready"
         record["answer_structure_source"] = "source_derived_override"
         record["import_issues"] = [issue for issue in record["import_issues"] if issue != "answer_items_not_structured"]
@@ -584,7 +597,7 @@ def select_diverse(records: list[dict], limit: int) -> list[dict]:
 
     selected: list[dict] = []
     ranked_keys = sorted(groups, key=lambda key: (len(groups[key]), key), reverse=True)
-    keys = ranked_keys[:10]
+    keys = ranked_keys
     while keys and len(selected) < limit:
         next_keys = []
         for key in keys:
@@ -605,13 +618,20 @@ def build_knowledge_tree(records: Iterable[dict]) -> dict:
         if not kp["name"]:
             continue
         kp_id = kp["id"] or f"math.g6.rational.kp.local.{hashlib.sha1(kp['name'].encode('utf-8')).hexdigest()[:10]}"
-        node = kp_map.setdefault(kp_id, {"id": kp_id, "name": kp["name"], "exam_points": {}})
+        node = kp_map.setdefault(
+            kp_id,
+            {"id": kp_id, "name": kp["name"], "order_no": len(kp_map) + 1, "exam_points": {}},
+        )
         exam = record["main_exam_point"]
         if exam["name"]:
-            node["exam_points"].setdefault(exam["id"], {"id": exam["id"], "name": exam["name"]})
+            node["exam_points"].setdefault(
+                exam["id"],
+                {"id": exam["id"], "name": exam["name"], "order_no": len(node["exam_points"]) + 1},
+            )
     knowledge_points = []
-    for node in sorted(kp_map.values(), key=lambda item: (item["name"], item["id"])):
-        node["exam_points"] = sorted(node["exam_points"].values(), key=lambda item: (item["name"], item["id"]))
+    # Insertion order follows the reviewed source document (teaching order).
+    for node in kp_map.values():
+        node["exam_points"] = list(node["exam_points"].values())
         knowledge_points.append(node)
     return {
         "schema_version": "1.0",
@@ -826,7 +846,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--source", type=Path, help="有理数校本审核 DOCX；默认自动查找")
     parser.add_argument("--output-root", type=Path, default=default_code_root / "data")
     parser.add_argument("--project-root", type=Path, default=default_project_root)
-    parser.add_argument("--limit", type=int, default=40, help="首批候选题上限，必须为 30–50")
+    parser.add_argument("--limit", type=int, default=50, help="自动组卷候选题上限，必须为 30–50")
     return parser.parse_args()
 
 

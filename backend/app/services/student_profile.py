@@ -56,7 +56,13 @@ def exam_point_catalog(db: Session, chapter_code: str | None = None) -> list[Exa
         query = query.where(KnowledgePoint.chapter_code == chapter_code)
     return [ExamPointOut(id=exam.id, code=exam.code, name=exam.name,
                          chapter_code=chapter, available_question_count=count or 0)
-            for exam, chapter, count in db.execute(query.order_by(ExamPoint.code)).all()]
+            for exam, chapter, count in db.execute(
+                query.order_by(
+                    KnowledgePoint.sort_order,
+                    ExamPoint.sort_order,
+                    ExamPoint.code,
+                )
+            ).all()]
 
 
 def load_context(db: Session, student_id: UUID) -> ProfileContext:

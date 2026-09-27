@@ -10,11 +10,14 @@ from app.services.seed_importer import import_seed_data
 CODE_ROOT = Path(__file__).resolve().parents[2]
 QUESTIONS_PATH = CODE_ROOT / "data" / "seed" / "rational_questions.json"
 KNOWLEDGE_TREE_PATH = CODE_ROOT / "data" / "seed" / "rational_knowledge_tree.json"
+CATALOG_PATH = CODE_ROOT / "data" / "interim" / "rational_all.json"
 
 
 def main() -> None:
     with SessionLocal() as session:
-        stats = import_seed_data(session, QUESTIONS_PATH, KNOWLEDGE_TREE_PATH)
+        stats = import_seed_data(
+            session, QUESTIONS_PATH, KNOWLEDGE_TREE_PATH, CATALOG_PATH
+        )
     print(json.dumps(stats.as_dict(), ensure_ascii=False, indent=2))
 
 

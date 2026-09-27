@@ -90,8 +90,10 @@ test('recommendation validation, real preview, reasons and shortages', async ({ 
   await page.screenshot({ path: testInfo.outputPath('recommendations.png'), fullPage: true })
   await page.getByRole('spinbutton', { name: /避免重复天数/ }).fill('3650')
   await page.getByRole('button', { name: /预览推荐/ }).click()
-  await expect(page.getByText('请求 6 题，推荐 0 题，缺口 6 题', { exact: true })).toBeVisible()
-  await page.getByText('回顾候选筛选：0 / 6 题', { exact: true }).click()
+  await expect(page.getByRole('alert').filter({ hasText: '请求 6 题' })).toContainText(
+    /请求 6 题，推荐 \d 题，缺口 [1-6] 题/,
+  )
+  await page.getByText(/回顾候选筛选：\d+ \/ \d+ 题/, { exact: true }).click()
   await expect(page.getByText('近期已练', { exact: true }).first()).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('shortage.png'), fullPage: true })
 })

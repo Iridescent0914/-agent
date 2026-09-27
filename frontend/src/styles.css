@@ -38,6 +38,64 @@ a { color: inherit; }
 .asset-error { color: #b42318; padding: 2px 5px; background: #fff1f0; border-radius: 4px; }
 .preserve-lines { white-space: pre-wrap; }
 .json-block { margin: 0; padding: 14px; overflow: auto; border-radius: 8px; background: #f6f8fa; }
+.answer-item-editor {
+  padding: 18px;
+  border: 1px solid #d9e2ec;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.answer-item-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.answer-item-grid {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(220px, 1.5fr);
+  gap: 16px;
+}
+.math-answer-input math-field {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 9px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  background: white;
+  font-size: 20px;
+}
+.math-answer-input math-field:focus-within {
+  border-color: #315b8a;
+  box-shadow: 0 0 0 2px rgba(49, 91, 138, .12);
+}
+.latex-source {
+  margin-top: 6px;
+  color: #667085;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.question-review-action {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #ffd591;
+  border-radius: 10px;
+  background: #fff7e6;
+}
+.question-review-action.is-ready {
+  border-color: #b7eb8f;
+  background: #f6ffed;
+}
+.question-review-cta {
+  min-width: 260px;
+  min-height: 46px;
+  font-weight: 650;
+  box-shadow: 0 4px 12px rgba(49, 91, 138, .22);
+}
 
 .student-workspace { min-width: 0; }
 .student-heading, .section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
@@ -73,6 +131,12 @@ a { color: inherit; }
 .student-workspace .ant-alert { margin-block: 12px; }
 .student-workspace .ant-select-selection-item { max-width: 100%; }
 .student-workspace .ant-pagination { flex-wrap: wrap; }
+.assignment-workspace, .paper-workspace { min-width: 0; }
+.assignment-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+.assignment-form-grid .ant-select { width: 100%; }
+.preview-table { margin-block: 18px; }
+.paper-workspace .ant-card-extra { max-width: 100%; }
+.paper-workspace details { margin-top: 16px; }
 
 @media (max-width: 900px) {
   .profile-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -84,6 +148,11 @@ a { color: inherit; }
   .profile-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .section-heading .exam-select { width: 100%; }
   .student-heading { align-items: flex-start; }
+  .assignment-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .paper-workspace .ant-card-head { align-items: flex-start; }
+  .paper-workspace .ant-card-extra { margin-inline-start: 0; padding-bottom: 12px; }
+  .answer-item-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .question-review-action, .question-review-cta { width: 100%; }
 }
 
 @media (max-width: 720px) {

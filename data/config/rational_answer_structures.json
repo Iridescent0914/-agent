@@ -2,6 +2,16 @@
   "schema_version": "1.0",
   "description": "从校本审核 DOCX 的原始参考答案中拆分出的确定性判分项；不修改题目与答案内容。",
   "questions": {
+    "q.math.g6.rational.school.019": {
+      "answer": "3037",
+      "answer_match_type": "numeric",
+      "drop_unknown_assets": true,
+      "answer_normalization_rule": {
+        "trim_whitespace": true,
+        "normalize_fullwidth_symbols": true,
+        "allow_fraction_decimal_equivalence": false
+      }
+    },
     "q.math.g6.rational.school.035": {
       "items": [
         {

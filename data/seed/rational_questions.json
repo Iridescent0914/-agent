@@ -864,6 +864,1093 @@
   },
   {
     "schema_version": "1.2",
+    "original_qid": "q.math.g6.rational.school.120",
+    "chapter": {
+      "id": "math.g6.rational",
+      "name": "有理数"
+    },
+    "section": "有理数的加法与减法",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 2,
+    "question_text": "3、如果[ASSET:assets/rational/q.math.g6.rational.school.120_rId973.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.120_rId975.wmf]的值为________.",
+    "options": null,
+    "correct_answer": "2",
+    "reference_answer_raw": "2",
+    "answer_match_type": "numeric",
+    "answer_normalization_rule": {
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "allow_fraction_decimal_equivalence": false,
+      "allow_equivalent_fraction": false,
+      "require_simplified_fraction": false,
+      "require_unit": false
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.rational.add_sub",
+      "name": "有理数的加法与减法"
+    },
+    "related_knowledge_points": [],
+    "main_exam_point": {
+      "id": "math.g6.rational.exam.local.abdf37931c",
+      "name": "绝对值的非负性、有理数的混合运算"
+    },
+    "related_exam_points": [],
+    "solution": null,
+    "wrong_analysis": "易忽略非负和的条件，或计算(a+b)^(2)时符号出错\n121. ★★· 填空题",
+    "estimated_score_rate": "85%",
+    "has_image": true,
+    "has_equation": true,
+    "assets": [
+      {
+        "relationship_id": "rId973",
+        "path": "assets/rational/q.math.g6.rational.school.120_rId973.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId975",
+        "path": "assets/rational/q.math.g6.rational.school.120_rId975.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+    "source_question_number": 120,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "1.2",
+    "original_qid": "q.math.g6.rational.school.043",
+    "chapter": {
+      "id": "math.g6.rational",
+      "name": "有理数"
+    },
+    "section": "有理数的加法与减法",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 3,
+    "question_text": "3、如果[ASSET:assets/rational/q.math.g6.rational.school.043_rId381.wmf]，[ASSET:assets/rational/q.math.g6.rational.school.043_rId383.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.043_rId385.wmf]________.",
+    "options": null,
+    "correct_answer": "所有可能值为 −4,−2,2,4",
+    "reference_answer_raw": "所有可能值为 −4,−2,2,4",
+    "answer_match_type": "exact",
+    "answer_normalization_rule": {
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.rational.add_sub",
+      "name": "有理数的加法与减法"
+    },
+    "related_knowledge_points": [],
+    "main_exam_point": {
+      "id": "math.g6.rational.exam.local.aaee87b9a9",
+      "name": "解含有绝对值的方程、有理数加减法"
+    },
+    "related_exam_points": [],
+    "solution": null,
+    "wrong_analysis": "容易只考虑 x和 y同为正或同为负两种情况，忽略一正一负的两种组合，导致漏解。\n44. ★★· 填空题",
+    "estimated_score_rate": "70%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId381",
+        "path": "assets/rational/q.math.g6.rational.school.043_rId381.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId383",
+        "path": "assets/rational/q.math.g6.rational.school.043_rId383.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId385",
+        "path": "assets/rational/q.math.g6.rational.school.043_rId385.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+    "source_question_number": 43,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "1.2",
+    "original_qid": "q.math.g6.rational.school.087",
+    "chapter": {
+      "id": "math.g6.rational",
+      "name": "有理数"
+    },
+    "section": "有理数的加法与减法",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 2,
+    "question_text": "7、一个数的[ASSET:assets/rational/q.math.g6.rational.school.087_rId713.wmf]是−0.36，这个数是________.",
+    "options": null,
+    "correct_answer": "−0.81",
+    "reference_answer_raw": "答案：−0.81",
+    "answer_match_type": "numeric",
+    "answer_normalization_rule": {
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "allow_fraction_decimal_equivalence": false,
+      "allow_equivalent_fraction": false,
+      "require_simplified_fraction": false,
+      "require_unit": false
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.rational.add_sub",
+      "name": "有理数的加法与减法"
+    },
+    "related_knowledge_points": [],
+    "main_exam_point": {
+      "id": "math.g6.rational.exam.local.a5cd7fd631",
+      "name": "有理数的乘除法"
+    },
+    "related_exam_points": [],
+    "solution": null,
+    "wrong_analysis": "容易列式错误\n88. ★★· 填空题",
+    "estimated_score_rate": "85%",
+    "has_image": true,
+    "has_equation": true,
+    "assets": [
+      {
+        "relationship_id": "rId713",
+        "path": "assets/rational/q.math.g6.rational.school.087_rId713.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+    "source_question_number": 87,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "1.2",
+    "original_qid": "q.math.g6.rational.school.028",
+    "chapter": {
+      "id": "math.g6.rational",
+      "name": "有理数"
+    },
+    "section": "有理数的加法与减法",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 2,
+    "question_text": "2、填空题：\n（1）比较大小：正数________负数，零________负数，正数________零；两个负数，绝对值________的比较小.\n（2）已知[ASSET:assets/rational/q.math.g6.rational.school.028_rId249.wmf]，且[ASSET:assets/rational/q.math.g6.rational.school.028_rId251.wmf]和[ASSET:assets/rational/q.math.g6.rational.school.028_rId253.wmf]均为负数，那么[ASSET:assets/rational/q.math.g6.rational.school.028_rId255.wmf]和[ASSET:assets/rational/q.math.g6.rational.school.028_rId257.wmf]的大小关系为________.\n（3）已知[ASSET:assets/rational/q.math.g6.rational.school.028_rId259.wmf]，且[ASSET:assets/rational/q.math.g6.rational.school.028_rId261.wmf]，那么a、b________同号.（填“一定”或“不一定”）.\n（4）已知[ASSET:assets/rational/q.math.g6.rational.school.028_rId263.wmf]，[ASSET:assets/rational/q.math.g6.rational.school.028_rId265.wmf]，且[ASSET:assets/rational/q.math.g6.rational.school.028_rId267.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.028_rId269.wmf]________.\n（5）我们规定[ASSET:assets/rational/q.math.g6.rational.school.028_rId271.wmf]表示不大于[ASSET:assets/rational/q.math.g6.rational.school.028_rId273.wmf]的最大整数，例如[ASSET:assets/rational/q.math.g6.rational.school.028_rId275.wmf]，[ASSET:assets/rational/q.math.g6.rational.school.028_rId277.wmf].当[ASSET:assets/rational/q.math.g6.rational.school.028_rId279.wmf]时，[ASSET:assets/rational/q.math.g6.rational.school.028_rId281.wmf]的取值范围是________.",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "1",
+          "answer": [
+            "大于",
+            "大于",
+            "大于",
+            "大"
+          ],
+          "answer_match_type": "exact",
+          "reference_answer_raw": "大于；大于；大于；大"
+        },
+        {
+          "item_id": "2",
+          "answer": "a < b",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "a < b"
+        },
+        {
+          "item_id": "3",
+          "answer": "不一定",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "不一定"
+        },
+        {
+          "item_id": "4",
+          "answer": "a = -4",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "a = -4"
+        },
+        {
+          "item_id": "5",
+          "answer": "-5 ≤ x < -4",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "-5 ≤ x < -4"
+        }
+      ]
+    },
+    "reference_answer_raw": "大于；大于；大于；大\na < b\n不一定\na = -4\n-5 ≤ x < -4",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.rational.add_sub",
+      "name": "有理数的加法与减法"
+    },
+    "related_knowledge_points": [],
+    "main_exam_point": {
+      "id": "math.g6.rational.exam.local.8c72646615",
+      "name": "解含有绝对值的方程、有理数的大小比较"
+    },
+    "related_exam_points": [],
+    "solution": null,
+    "wrong_analysis": "负数范围内，绝对值越大数越小，容易忘记负数比较方向与绝对值相反。取整函数的“不大于”边界理解不清。\n29. ★★· 填空题",
+    "estimated_score_rate": "85%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId249",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId249.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId251",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId251.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId253",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId253.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId255",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId255.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId257",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId257.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId259",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId259.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId261",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId261.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId263",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId263.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId265",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId265.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId267",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId267.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId269",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId269.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId271",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId271.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId273",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId273.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId275",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId275.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId277",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId277.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId279",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId279.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId281",
+        "path": "assets/rational/q.math.g6.rational.school.028_rId281.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+    "source_question_number": 28,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "1.2",
+    "original_qid": "q.math.g6.rational.school.101",
+    "chapter": {
+      "id": "math.g6.rational",
+      "name": "有理数"
+    },
+    "section": "有理数的加法与减法",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 2,
+    "question_text": "6、（1）计算：（直接将答案填在横线上）\n[ASSET:assets/rational/q.math.g6.rational.school.101_rId823.wmf]的倒数是______；\n[ASSET:assets/rational/q.math.g6.rational.school.101_rId825.wmf]的倒数是______；\n[ASSET:assets/rational/q.math.g6.rational.school.101_rId827.wmf]的倒数是______；\n（2）猜想：（直接将答案填在横线上）\n[ASSET:assets/rational/q.math.g6.rational.school.101_rId829.wmf]的倒数是______；\n[ASSET:assets/rational/q.math.g6.rational.school.101_rId831.wmf]的倒数是______.",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "blank_1",
+          "answer": "3",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "3"
+        },
+        {
+          "item_id": "blank_2",
+          "answer": "-4",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "-4"
+        },
+        {
+          "item_id": "blank_3",
+          "answer": "5",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "5"
+        },
+        {
+          "item_id": "blank_4",
+          "answer": "2023",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "2023"
+        },
+        {
+          "item_id": "blank_5",
+          "answer": "-2024",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "-2024"
+        }
+      ]
+    },
+    "reference_answer_raw": "3；-4；5；2023；-2024",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.rational.add_sub",
+      "name": "有理数的加法与减法"
+    },
+    "related_knowledge_points": [],
+    "main_exam_point": {
+      "id": "math.g6.rational.exam.local.7a38de07a8",
+      "name": "有理数的巧算"
+    },
+    "related_exam_points": [],
+    "solution": null,
+    "wrong_analysis": "每个括号内均为负数，连乘时符号变化容易出错，倒数符号不能忽略。\n102. ★★· 解答题",
+    "estimated_score_rate": "85%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId823",
+        "path": "assets/rational/q.math.g6.rational.school.101_rId823.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId825",
+        "path": "assets/rational/q.math.g6.rational.school.101_rId825.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId827",
+        "path": "assets/rational/q.math.g6.rational.school.101_rId827.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId829",
+        "path": "assets/rational/q.math.g6.rational.school.101_rId829.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId831",
+        "path": "assets/rational/q.math.g6.rational.school.101_rId831.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+    "source_question_number": 101,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "1.2",
+    "original_qid": "q.math.g6.rational.school.072",
+    "chapter": {
+      "id": "math.g6.rational",
+      "name": "有理数"
+    },
+    "section": "有理数的加法与减法",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 2,
+    "question_text": "3、比较大小：\n（1）[ASSET:assets/rational/q.math.g6.rational.school.072_rId567.wmf]______[ASSET:assets/rational/q.math.g6.rational.school.072_rId569.wmf] （2）[ASSET:assets/rational/q.math.g6.rational.school.072_rId571.wmf]______[ASSET:assets/rational/q.math.g6.rational.school.072_rId573.wmf]\n（3）[ASSET:assets/rational/q.math.g6.rational.school.072_rId575.wmf]______[ASSET:assets/rational/q.math.g6.rational.school.072_rId577.wmf]",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "2",
+          "answer": ">",
+          "answer_match_type": "exact",
+          "reference_answer_raw": ">"
+        },
+        {
+          "item_id": "3",
+          "answer": "<",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "<"
+        }
+      ]
+    },
+    "reference_answer_raw": ">\n（2）>\n（3）<",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.rational.add_sub",
+      "name": "有理数的加法与减法"
+    },
+    "related_knowledge_points": [],
+    "main_exam_point": {
+      "id": "math.g6.rational.exam.local.63a86a7068",
+      "name": "有理数乘除法、有理数大小比较"
+    },
+    "related_exam_points": [],
+    "solution": null,
+    "wrong_analysis": "题容易将减法变加法时符号搞反。\n73. ★★· 填空题",
+    "estimated_score_rate": "85%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId567",
+        "path": "assets/rational/q.math.g6.rational.school.072_rId567.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId569",
+        "path": "assets/rational/q.math.g6.rational.school.072_rId569.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId571",
+        "path": "assets/rational/q.math.g6.rational.school.072_rId571.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId573",
+        "path": "assets/rational/q.math.g6.rational.school.072_rId573.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId575",
+        "path": "assets/rational/q.math.g6.rational.school.072_rId575.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId577",
+        "path": "assets/rational/q.math.g6.rational.school.072_rId577.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+    "source_question_number": 72,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "1.2",
+    "original_qid": "q.math.g6.rational.school.019",
+    "chapter": {
+      "id": "math.g6.rational",
+      "name": "有理数"
+    },
+    "section": "有理数的加法与减法",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 5,
+    "question_text": "6、（选做）如图，数轴上点A表示的数是1，现将点A沿数轴做如下移动：第一次将点A向左移动3个单位长度到达点A1，第二次将点A1向右移动6个单位长度到达点A2，第三次将点A2向左移动9个单位长度到达点A3，…，按照这种规律移动下去，则点A2024表示的数是___________.",
+    "options": null,
+    "correct_answer": "3037",
+    "reference_answer_raw": "每两次移动合起来向右3个单位，2024次共有1012组，所以从1开始最终到1+1012×3=3037。",
+    "answer_match_type": "numeric",
+    "answer_normalization_rule": {
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "allow_fraction_decimal_equivalence": false
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.rational.add_sub",
+      "name": "有理数的加法与减法"
+    },
+    "related_knowledge_points": [],
+    "main_exam_point": {
+      "id": "math.g6.rational.exam.local.45115cda57",
+      "name": "数轴上的点的规律移动"
+    },
+    "related_exam_points": [],
+    "solution": null,
+    "wrong_analysis": "容易把移动方向规律搞反，或未将奇偶项分开讨论，直接用等差数列求和却错判符号，导致结果正负号错误。\n20. ★★· 填空题",
+    "estimated_score_rate": "40%",
+    "has_image": false,
+    "has_equation": false,
+    "assets": [],
+    "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+    "source_question_number": 19,
+    "source_review_status": "reviewed",
+    "import_status": "parsed",
+    "import_issues": [
+      "contains_asset"
+    ],
+    "is_seed_candidate": true,
+    "answer_structure_source": "source_derived_override"
+  },
+  {
+    "schema_version": "1.2",
+    "original_qid": "q.math.g6.rational.school.063",
+    "chapter": {
+      "id": "math.g6.rational",
+      "name": "有理数"
+    },
+    "section": "有理数的加法与减法",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 3,
+    "question_text": "4、用“>”或“<”或“=”填空：\n（1）如果[ASSET:assets/rational/q.math.g6.rational.school.063_rId494.wmf]，[ASSET:assets/rational/q.math.g6.rational.school.063_rId496.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.063_rId498.wmf]________0；\n（2）如果[ASSET:assets/rational/q.math.g6.rational.school.063_rId500.wmf]，[ASSET:assets/rational/q.math.g6.rational.school.063_rId502.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.063_rId504.wmf]________0；\n（3）如果[ASSET:assets/rational/q.math.g6.rational.school.063_rId506.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.063_rId508.wmf]________[ASSET:assets/rational/q.math.g6.rational.school.063_rId510.wmf]；\n（4）如果[ASSET:assets/rational/q.math.g6.rational.school.063_rId512.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.063_rId514.wmf]________[ASSET:assets/rational/q.math.g6.rational.school.063_rId516.wmf]；\n（5）如果a、b为有理数，且[ASSET:assets/rational/q.math.g6.rational.school.063_rId518.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.063_rId520.wmf]________0.",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "1",
+          "answer": ">",
+          "answer_match_type": "exact",
+          "reference_answer_raw": ">"
+        },
+        {
+          "item_id": "2",
+          "answer": "<",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "<"
+        },
+        {
+          "item_id": "3",
+          "answer": "<",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "<"
+        },
+        {
+          "item_id": "4",
+          "answer": ">",
+          "answer_match_type": "exact",
+          "reference_answer_raw": ">"
+        },
+        {
+          "item_id": "5",
+          "answer": ">",
+          "answer_match_type": "exact",
+          "reference_answer_raw": ">"
+        }
+      ]
+    },
+    "reference_answer_raw": "（1） >\n（2） <\n（3） <\n（4） >\n（5） >",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.rational.add_sub",
+      "name": "有理数的加法与减法"
+    },
+    "related_knowledge_points": [],
+    "main_exam_point": {
+      "id": "math.g6.rational.exam.local.39ca8b5a4a",
+      "name": "有理数乘法的符号法则、有理数大小比较"
+    },
+    "related_exam_points": [],
+    "solution": null,
+    "wrong_analysis": "第（3）（4）题容易把 2a与 a 的大小关系想当然（以为 2a一定大于 a），忽略负数情况；第（5）题容易在判断 a+b和 a−b的符号时出错。\n64. ★★· 解答题",
+    "estimated_score_rate": "75%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId494",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId494.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId496",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId496.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId498",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId498.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId500",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId500.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId502",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId502.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId504",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId504.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId506",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId506.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId508",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId508.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId510",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId510.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId512",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId512.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId514",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId514.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId516",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId516.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId518",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId518.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId520",
+        "path": "assets/rational/q.math.g6.rational.school.063_rId520.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+    "source_question_number": 63,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "1.2",
+    "original_qid": "q.math.g6.rational.school.131",
+    "chapter": {
+      "id": "math.g6.rational",
+      "name": "有理数"
+    },
+    "section": "有理数的加法与减法",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 2,
+    "question_text": "5、填空:\n气温由－5℃上升了4℃时的气温是______.\n（2）2022年3月抗击“新冠肺炎”居家学习期间，小华计划每天背诵6个汉语成语．将超过的个数记为正数，不足的个数记为负数，某一周连续5天的背诵记录如下：＋4，0，＋5，－3，＋2，则这5天他共背诵汉语成语______.\n（3）上海2024年2月21日至28日的平均气温为－2℃，月22日至29日的平均气温为1℃2月21日的平均气温为－3℃，则2月29日的平均气温为______.\n（4）已知[ASSET:assets/rational/q.math.g6.rational.school.131_rId1063.wmf]，[ASSET:assets/rational/q.math.g6.rational.school.131_rId1065.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.131_rId1067.wmf]，[ASSET:assets/rational/q.math.g6.rational.school.131_rId1069.wmf]的大小关系式____________.\n（5）有四个数：[ASSET:assets/rational/q.math.g6.rational.school.131_rId1071.wmf]，[ASSET:assets/rational/q.math.g6.rational.school.131_rId1073.wmf]，[ASSET:assets/rational/q.math.g6.rational.school.131_rId1075.wmf]，[ASSET:assets/rational/q.math.g6.rational.school.131_rId1077.wmf]它们的大小关系是______.",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "1",
+          "answer": "-1℃",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "-1℃"
+        },
+        {
+          "item_id": "2",
+          "answer": "38个",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "38个"
+        },
+        {
+          "item_id": "3",
+          "answer": "21℃",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "21℃"
+        },
+        {
+          "item_id": "4",
+          "answer": "P=Q",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "P=Q"
+        },
+        {
+          "item_id": "5",
+          "answer": "d<b<c<a",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "d<b<c<a"
+        }
+      ]
+    },
+    "reference_answer_raw": "（1）-1℃。（2）38个。（3）21℃。（4）P=Q。（5）d<b<c<a。",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.rational.add_sub",
+      "name": "有理数的加法与减法"
+    },
+    "related_knowledge_points": [],
+    "main_exam_point": {
+      "id": "math.g6.rational.exam.local.2a51903bd0",
+      "name": "有理数的混合运算、有理数的大小比较"
+    },
+    "related_exam_points": [],
+    "solution": null,
+    "wrong_analysis": "平均气温题要用两段总和相减求单日气温；比较负分数大小时，越接近0越大。\n132. ★★· 解答题",
+    "estimated_score_rate": "85%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId1063",
+        "path": "assets/rational/q.math.g6.rational.school.131_rId1063.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId1065",
+        "path": "assets/rational/q.math.g6.rational.school.131_rId1065.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId1067",
+        "path": "assets/rational/q.math.g6.rational.school.131_rId1067.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId1069",
+        "path": "assets/rational/q.math.g6.rational.school.131_rId1069.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId1071",
+        "path": "assets/rational/q.math.g6.rational.school.131_rId1071.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId1073",
+        "path": "assets/rational/q.math.g6.rational.school.131_rId1073.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId1075",
+        "path": "assets/rational/q.math.g6.rational.school.131_rId1075.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId1077",
+        "path": "assets/rational/q.math.g6.rational.school.131_rId1077.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+    "source_question_number": 131,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "1.2",
+    "original_qid": "q.math.g6.rational.school.121",
+    "chapter": {
+      "id": "math.g6.rational",
+      "name": "有理数"
+    },
+    "section": "有理数的加法与减法",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 4,
+    "question_text": "4、已知[ASSET:assets/rational/q.math.g6.rational.school.121_rId977.wmf]，如果[ASSET:assets/rational/q.math.g6.rational.school.121_rId979.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.121_rId981.wmf]________；\n如果[ASSET:assets/rational/q.math.g6.rational.school.121_rId983.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.121_rId985.wmf]________.",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "blank_1",
+          "answer": "2022",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "2022"
+        },
+        {
+          "item_id": "blank_2",
+          "answer": "0",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "0"
+        }
+      ]
+    },
+    "reference_answer_raw": "2022 ; 0",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.rational.add_sub",
+      "name": "有理数的加法与减法"
+    },
+    "related_knowledge_points": [],
+    "main_exam_point": {
+      "id": "math.g6.rational.exam.local.214a6c99ba",
+      "name": "有理数的乘方"
+    },
+    "related_exam_points": [],
+    "solution": null,
+    "wrong_analysis": "易数错项数或忽略 −1的奇偶次幂符号，2022 为偶数，正负项数相等，和为零。\n122. ★★· 判断题",
+    "estimated_score_rate": "55%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId977",
+        "path": "assets/rational/q.math.g6.rational.school.121_rId977.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId979",
+        "path": "assets/rational/q.math.g6.rational.school.121_rId979.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId981",
+        "path": "assets/rational/q.math.g6.rational.school.121_rId981.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId983",
+        "path": "assets/rational/q.math.g6.rational.school.121_rId983.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId985",
+        "path": "assets/rational/q.math.g6.rational.school.121_rId985.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+    "source_question_number": 121,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "1.2",
+    "original_qid": "q.math.g6.rational.school.088",
+    "chapter": {
+      "id": "math.g6.rational",
+      "name": "有理数"
+    },
+    "section": "有理数的加法与减法",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 2,
+    "question_text": "8、如果a、b互为倒数，c、d互为相反数，那么[ASSET:assets/rational/q.math.g6.rational.school.088_rId715.wmf]_________.",
+    "options": null,
+    "correct_answer": "4",
+    "reference_answer_raw": "答案：4。解析：因为a、b互为倒数，所以ab=1；c、d互为相反数，所以c+d=0，故2ab-(c+d)+2=2×1-0+2=4。",
+    "answer_match_type": "numeric",
+    "answer_normalization_rule": {
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "allow_fraction_decimal_equivalence": false,
+      "allow_equivalent_fraction": false,
+      "require_simplified_fraction": false,
+      "require_unit": false
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.rational.add_sub",
+      "name": "有理数的加法与减法"
+    },
+    "related_knowledge_points": [],
+    "main_exam_point": {
+      "id": "math.g6.rational.exam.local.17d6b1aa75",
+      "name": "倒数的定义与性质、相反数的性质"
+    },
+    "related_exam_points": [],
+    "solution": null,
+    "wrong_analysis": "容易把“互为倒数”与“互为相反数”的条件混淆\n89. ★★· 解答题",
+    "estimated_score_rate": "85%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId715",
+        "path": "assets/rational/q.math.g6.rational.school.088_rId715.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+    "source_question_number": 88,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "1.2",
     "original_qid": "q.math.g6.rational.school.042",
     "chapter": {
       "id": "math.g6.rational",

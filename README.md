@@ -1,23 +1,29 @@
 # 数学教学 Agent Demo
 
-当前已完成 M0“有理数题库准备”、M1“工程骨架与基础数据”和 M2“学生画像与规则推荐基础”。系统将 150 条确认作答按历史试卷快照重放为可解释画像，并在教师指定范围内提供可追溯的规则推荐预览。
+当前已完成 M0“有理数题库准备”、M1“工程骨架与基础数据”、M2“学生画像与规则推荐基础”和 M3“个性化组卷、教师调整与发布”。系统可将历史作答重放为画像，并为多名学生生成可解释、可调整、发布后冻结的独立试卷。
 
 ## 当前功能
 
 - FastAPI + SQLAlchemy + PostgreSQL 后端；
-- Alembic 四段迁移及发布试卷快照保护；
-- 30 组种子题、知识树和 5 名虚拟学生的幂等导入；
+- Alembic 七段迁移、推荐审计和发布试卷快照保护；
+- 139 组完整题库、初始 41 组自动组卷题、知识树和 5 名虚拟学生的幂等导入；
 - 3 次历史作业、15 份发布试卷、150 条确认作答及修订记录；
 - 题库列表、筛选、分页和详情 API / 页面；
+- 选择题、填空题支持教师修改答案、保存审核草稿、确认入池、撤回后重新编辑和版本冲突保护；
+- 填空题支持普通文本、数值和可视化公式输入；公式以 LaTeX 源码保存，不保存为图片；
 - 学生列表、详情和历史作答 API / 页面；
 - 从 0.5 开始按 `(answered_at, id)` 重放 EMA，生成 50 条学生 × 考点画像汇总；
 - 画像默认聚焦最多 5 个薄弱、近期错误或低证据考点，用一张联动柱状图和一张复用趋势图解释诊断；完整考点、逐次作答和最近错误按需展开；
 - 每个画像点和推荐理由可回溯到历史 Attempt、修订号与发布试卷快照；
 - 教师可设置新知识 / 回顾范围、题量、题型、难度、近期去重和考点占比，预览规则推荐及候选缺口；
-- 112 个 WMF 公式资源转换为浏览器可显示的 PNG；
-- M2 自动验收、39 项后端测试、前端 production build 和桌面 / 窄屏浏览器验收。
+- 564 个唯一公式/图片资源转换为浏览器可显示格式；
+- 多学生只读预检与原子生成，每名学生拥有独立 draft PaperInstance；
+- 草稿支持规则一致的备选换题、删题、连续调序和乐观锁冲突保护；
+- 单份 / 批量发布、全局唯一实例码、按码精确查询和发布后复制新版本；
+- 推荐参数、分项得分、证据、候选缺口与教师编辑事件均随试卷保存；
+- M3 自动验收、48 项后端测试、前端 production build 和桌面 / 390px 浏览器验收。
 
-M2 的推荐只生成只读预览，不创建 Assignment 或 PaperInstance。正式组卷、教师调整与发布在 M3 完成；在线判分和改判事务在 M4 完成；图片识别在 M6 完成。
+推荐预览仍保持只读；只有教师确认生成后才创建 Assignment 和草稿。在线判分和改判事务在 M4 完成；打印答题区和图片识别在 M6 完成。
 
 ## 目录
 
@@ -40,16 +46,68 @@ code/
 
 ## Docker Compose 启动
 
-首次运行：
+### 首次运行
+
+只在第一次创建容器、镜像和数据库卷时执行：
 
 ```powershell
-cd code
+cd "D:\desktop\math-agent\code"
 Copy-Item .env.example .env
-docker compose build
-docker compose up -d postgres backend frontend
+docker compose up -d --build
 docker compose exec backend python -m scripts.seed_database
 docker compose exec backend python -m scripts.rebuild_mastery --all
+docker compose exec backend python -m scripts.verify_m1
 docker compose exec backend python -m scripts.verify_m2
+docker compose exec backend python -m scripts.verify_m3
+```
+
+`seed_database` 和 `rebuild_mastery` 是初始化业务数据，不需要在日常启动时重复执行。后端容器每次启动都会自动执行 `alembic upgrade head`。
+
+### 非首次运行（日常启动）
+
+以后正常启动只需要：
+
+```powershell
+cd "D:\desktop\math-agent\code"
+docker compose up -d
+docker compose ps
+```
+
+`docker compose up -d` 会复用已有镜像、容器配置和 PostgreSQL 数据卷，不会重新导入种子，也不会清空已创建的学生画像和作业。
+
+查看后端、前端实时日志：
+
+```powershell
+docker compose logs -f backend frontend
+```
+
+按 `Ctrl+C` 只退出日志查看，不会停止容器。
+
+如果之前使用的是 `docker compose stop`，也可以快速恢复原容器：
+
+```powershell
+docker compose start
+docker compose ps
+```
+
+### 代码或依赖发生变化时
+
+当前源码通过目录挂载进入容器，普通 Python / TypeScript 源码修改会由后端 reload 和 Vite 自动加载，通常不需要重新构建镜像。
+
+修改了 `backend/pyproject.toml`、`frontend/package.json` 或 Dockerfile 后再执行：
+
+```powershell
+cd "D:\desktop\math-agent\code"
+docker compose build backend frontend
+docker compose run --rm frontend npm install
+docker compose up -d
+```
+
+拉取到新的 Alembic 迁移时不需要手动执行迁移；启动 backend 时会自动升级到最新版本。可以通过以下命令确认：
+
+```powershell
+docker compose exec backend python -m alembic current
+docker compose exec backend python -m scripts.verify_m3
 ```
 
 访问：
@@ -61,7 +119,14 @@ docker compose exec backend python -m scripts.verify_m2
 就绪检查：http://localhost:8000/api/v1/ready
 ```
 
-关闭本项目的全部 Docker 容器和网络：
+临时停止但保留容器：
+
+```powershell
+cd "D:\desktop\math-agent\code"
+docker compose stop
+```
+
+关闭并移除本项目的容器和网络：
 
 ```powershell
 cd "D:\desktop\math-agent\code"
@@ -184,6 +249,7 @@ cd backend
 & "..\.conda-env\python.exe" -m scripts.seed_database
 & "..\.conda-env\python.exe" -m scripts.rebuild_mastery --all
 & "..\.conda-env\python.exe" -m scripts.verify_m2
+& "..\.conda-env\python.exe" -m scripts.verify_m3
 ```
 
 本地启动后端：
@@ -272,15 +338,20 @@ Assignment
 
 数据库触发器拒绝修改或删除已发布试卷，也拒绝增删改其中的题目快照。
 
-## M0 数据结果
+## 题库分层结果
 
-- 全量抽取：139 组；
-- 正式种子：30 组，其中填空 20、选择 10；
-- 覆盖 10 个主考点、4 档难度；
-- 30 组全部 `machine_ready`、`source_review_status=reviewed`；
+- 完整题库：139 组，全部可在题库页面查看；
+- 初始自动组卷池：41 组，其中填空 31、选择 10；教师确认或撤回后数量会动态变化；
+- 初始待入库验证：98 组，其中优先处理选择题和填空题，计算题与解答题保留原题和参考答案供老师核验；
+- 自动组卷池覆盖 21 个主考点、4 档难度；
+- 41 组自动组卷题全部为 `machine_ready`、`source_review_status=reviewed`；
 - 自动校验错误：0。
 
-全量中间库仍保留在 `data/interim/rational_all.json`。M1 只把 `data/seed/rational_questions.json` 和 `data/seed/rational_knowledge_tree.json` 导入业务数据库。
+全量数据来自 `data/interim/rational_all.json`，其中 `machine_ready` 题可参加推荐组卷，`raw_answer_only` 题只进入展示层。知识点与考点使用校本资料中的出现顺序，不再按名称排序。
+
+待入库的选择题和填空题可从题目详情页点击“审核答案并进入组卷池”。老师可先保存审核草稿，再执行“校验并确认入池”。已入池题目可执行“撤回并重新编辑”，撤回后不再参与新组卷，修改并重新校验后可再次入池。每次保存、入池和撤回都会记录操作人、版本和前后答案。数值只接收整数或小数，分数、根式等请选择公式输入。当前公式采用 LaTeX 精确匹配，暂不承诺不同代数写法的等价判定。
+
+已经保存过教师审核记录的答案属于业务数据；以后再次执行 `seed_database` 时会保留其答案、判分规则、审核版本和入池状态。
 
 ## M2 画像重算
 
@@ -295,6 +366,18 @@ $env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
 
 查询画像和推荐预览不会写入数据库。改判、撤销确认和新提交接入后，M4 应在同一事务中复用现有重放与汇总写入服务。
 
+## M3 组卷与发布
+
+教师从“组卷”页面选择学生、教学范围和题量，先进行不会写库的全班预检，再原子生成草稿。草稿可换题、删题和调序；发布时生成 `RAT-XXXX-XXXX` 实例码并冻结快照。已发布版本需要改题时使用“创建修订版”，旧编号始终定位旧版。
+
+M3 只读数据验收：
+
+```powershell
+cd code\backend
+$env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
+& '..\.conda-env\python.exe' -m scripts.verify_m3
+```
+
 ## 下一阶段
 
-M3 复用 M2 的画像和推荐服务创建每名学生的草稿试卷，完成教师换题、删题、调序、发布和快照冻结。推荐参数、分项得分、证据引用与候选缺口应继续保留，不能在组卷路由中复制另一套推荐算法。
+M4 基于明确的已发布 `paper_instance_id` 和其中的答案 / 判分规则快照，实现手工答案录入、确定性判分、人工复核、AttemptRevision 及画像事务重算。不得回读当前 Question 的答案，也不得将旧实例码重定向到最新版。

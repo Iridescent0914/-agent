@@ -29,6 +29,14 @@ export function apiPost<T>(path: string, body: unknown, signal?: AbortSignal): P
   return apiRequest<T>(path, { method: 'POST', body: JSON.stringify(body), signal, headers: { 'Content-Type': 'application/json' } })
 }
 
+export function apiPut<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return apiRequest<T>(path, { method: 'PUT', body: JSON.stringify(body), signal, headers: { 'Content-Type': 'application/json' } })
+}
+
+export function apiDelete<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return apiRequest<T>(path, { method: 'DELETE', body: JSON.stringify(body), signal, headers: { 'Content-Type': 'application/json' } })
+}
+
 export function queryString(values: Record<string, string | number | boolean | undefined | null>): string {
   const params = new URLSearchParams()
   Object.entries(values).forEach(([key, value]) => {

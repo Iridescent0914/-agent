@@ -12,19 +12,29 @@ def test_health_and_readiness() -> None:
     assert client.get("/api/v1/health").json() == {"status": "ok"}
     response = client.get("/api/v1/ready")
     assert response.status_code == 200
-    assert response.json()["migration"] == "0004"
+    assert response.json()["migration"] == "0007"
 
 
 def test_question_list_filters_and_detail_assets() -> None:
     response = client.get("/api/v1/questions", params={"page_size": 100})
     assert response.status_code == 200
     body = response.json()
-    assert body["total"] == 30
-    assert len(body["items"]) == 30
+    assert body["total"] == 139
+    assert len(body["items"]) == 100
 
     choice = client.get("/api/v1/questions", params={"question_type": "choice"}).json()
-    assert choice["total"] == 10
+    assert choice["total"] == 13
     assert all(item["question_type"] == "choice" for item in choice["items"])
+
+    ready = client.get(
+        "/api/v1/questions", params={"grading_readiness": "machine_ready", "page_size": 100}
+    ).json()
+    assert 0 <= ready["total"] <= 139
+    assert all(item["grading_readiness"] == "machine_ready" for item in ready["items"])
+    stats = client.get("/api/v1/questions/stats").json()
+    assert stats["total"] == 139
+    assert stats["ready_count"] == ready["total"]
+    assert stats["ready_count"] + stats["pending_count"] == stats["total"]
 
     with_assets = next(item for item in body["items"] if item["asset_count"] > 0)
     detail_response = client.get(f"/api/v1/questions/{with_assets['id']}")

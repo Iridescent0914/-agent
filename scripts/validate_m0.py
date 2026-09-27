@@ -102,7 +102,7 @@ def main() -> int:
             require(answer in options, f"{record.get('original_qid')} 答案不在选项中", errors)
 
     exam_ids = {item["main_exam_point"]["id"] for item in seed_records}
-    require(5 <= len(exam_ids) <= 10, f"首批题目应覆盖 5–10 个考点，实际 {len(exam_ids)}", errors)
+    require(len(exam_ids) == 21, f"自动组卷池应覆盖 21 个考点，实际 {len(exam_ids)}", errors)
 
     tree_exam_ids = {
         exam["id"]

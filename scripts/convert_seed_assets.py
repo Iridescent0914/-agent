@@ -14,7 +14,9 @@ from typing import Any
 
 CODE_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = CODE_ROOT / "data"
-QUESTIONS_PATH = DATA_DIR / "seed" / "rational_questions.json"
+# Convert the complete catalog so pending questions are still reviewable.
+# Automatic assignment eligibility is controlled separately by grading_readiness.
+QUESTIONS_PATH = DATA_DIR / "interim" / "rational_all.json"
 OUTPUT_DIR = DATA_DIR / "web" / "rational"
 MANIFEST_PATH = OUTPUT_DIR / "asset_manifest.json"
 POWERSHELL_CONVERTER = CODE_ROOT / "scripts" / "convert_wmf_to_png.ps1"
@@ -110,7 +112,9 @@ def convert_asset(source: Path, destination: Path) -> tuple[bool, str]:
 def main() -> int:
     with QUESTIONS_PATH.open("r", encoding="utf-8") as handle:
         questions = json.load(handle)
-    references = collect_references(questions)
+    all_references = collect_references(questions)
+    unresolved_references = [value for value in all_references if value == "unknown"]
+    references = [value for value in all_references if value != "unknown"]
     unique_references = sorted(set(references))
     previous = load_previous_manifest()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -177,6 +181,7 @@ def main() -> int:
         "unique_asset_count": len(unique_references),
         "converted_count": len(entries) - failures,
         "failed_count": failures,
+        "unresolved_reference_count": len(unresolved_references),
         "assets": entries,
     }
     with MANIFEST_PATH.open("w", encoding="utf-8") as handle:

@@ -1784,14 +1784,15 @@
     "question_type": "fill_blank",
     "question_type_source": "填空题",
     "difficulty": 5,
-    "question_text": "6、（选做）如图，数轴上点A表示的数是1，现将点A沿数轴做如下移动：第一次将点A向左移动3个单位长度到达点A1，第二次将点A1向右移动6个单位长度到达点A2，第三次将点A2向左移动9个单位长度到达点A3，…，按照这种规律移动下去，则点A2024表示的数是___________.\n[ASSET:unknown][ASSET:unknown]",
+    "question_text": "6、（选做）如图，数轴上点A表示的数是1，现将点A沿数轴做如下移动：第一次将点A向左移动3个单位长度到达点A1，第二次将点A1向右移动6个单位长度到达点A2，第三次将点A2向左移动9个单位长度到达点A3，…，按照这种规律移动下去，则点A2024表示的数是___________.",
     "options": null,
-    "correct_answer": "每两次移动合起来向右3个单位，2024次共有1012组，所以从1开始最终到1+1012×3=3037",
+    "correct_answer": "3037",
     "reference_answer_raw": "每两次移动合起来向右3个单位，2024次共有1012组，所以从1开始最终到1+1012×3=3037。",
-    "answer_match_type": "exact",
+    "answer_match_type": "numeric",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "allow_fraction_decimal_equivalence": false
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1807,18 +1808,18 @@
     "solution": null,
     "wrong_analysis": "容易把移动方向规律搞反，或未将奇偶项分开讨论，直接用等差数列求和却错判符号，导致结果正负号错误。\n20. ★★· 填空题",
     "estimated_score_rate": "40%",
-    "has_image": true,
+    "has_image": false,
     "has_equation": false,
     "assets": [],
     "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
     "source_question_number": 19,
     "source_review_status": "reviewed",
-    "import_status": "needs_technical_cleanup",
+    "import_status": "parsed",
     "import_issues": [
-      "contains_asset",
-      "asset_relationship_missing"
+      "contains_asset"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": true,
+    "answer_structure_source": "source_derived_override"
   },
   {
     "schema_version": "1.2",
@@ -2654,7 +2655,7 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": true
   },
   {
     "schema_version": "1.2",
@@ -3891,7 +3892,7 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": true
   },
   {
     "schema_version": "1.2",
@@ -5423,7 +5424,7 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": true
   },
   {
     "schema_version": "1.2",
@@ -6092,7 +6093,7 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": true
   },
   {
     "schema_version": "1.2",
@@ -7391,7 +7392,7 @@
       "contains_asset",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": true
   },
   {
     "schema_version": "1.2",
@@ -7448,7 +7449,7 @@
       "contains_asset",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": true
   },
   {
     "schema_version": "1.2",
@@ -8521,7 +8522,7 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": true
   },
   {
     "schema_version": "1.2",
@@ -10026,7 +10027,7 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": true
   },
   {
     "schema_version": "1.2",
@@ -10121,7 +10122,7 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": true
   },
   {
     "schema_version": "1.2",
@@ -10962,7 +10963,7 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": true
   },
   {
     "schema_version": "1.2",
