@@ -33,6 +33,10 @@ export function apiPut<T>(path: string, body: unknown, signal?: AbortSignal): Pr
   return apiRequest<T>(path, { method: 'PUT', body: JSON.stringify(body), signal, headers: { 'Content-Type': 'application/json' } })
 }
 
+export function apiPatch<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return apiRequest<T>(path, { method: 'PATCH', body: JSON.stringify(body), signal, headers: { 'Content-Type': 'application/json' } })
+}
+
 export function apiDelete<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   return apiRequest<T>(path, { method: 'DELETE', body: JSON.stringify(body), signal, headers: { 'Content-Type': 'application/json' } })
 }

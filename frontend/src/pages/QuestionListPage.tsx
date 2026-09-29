@@ -138,11 +138,6 @@ export function QuestionListPage() {
     { title: '知识点', dataIndex: ['main_knowledge_point', 'name'], width: 170 },
     { title: '主考点', dataIndex: ['main_exam_point', 'name'], width: 180 },
     {
-      title: '资源',
-      width: 110,
-      render: (_, record) => record.asset_count > 0 ? <Tag color="blue">公式 {record.asset_count}</Tag> : <Tag>纯文本</Tag>,
-    },
-    {
       title: '操作',
       key: 'action',
       width: 210,
@@ -233,7 +228,7 @@ export function QuestionListPage() {
           loading={loading}
           pagination={pagination}
           locale={{ emptyText: <Empty description="没有符合条件的题目" /> }}
-          scroll={{ x: 1200 }}
+          scroll={{ x: 1090 }}
         />
       </Card>
       <Modal

@@ -4,6 +4,8 @@ import { AssignmentCreatePage } from './pages/AssignmentCreatePage'
 import { AssignmentDetailPage } from './pages/AssignmentDetailPage'
 import { AssignmentListPage } from './pages/AssignmentListPage'
 import { PaperInstancePage } from './pages/PaperInstancePage'
+import { GradingQueuePage } from './pages/GradingQueuePage'
+import { PaperGradingPage } from './pages/PaperGradingPage'
 import { QuestionDetailPage } from './pages/QuestionDetailPage'
 import { QuestionListPage } from './pages/QuestionListPage'
 import { StudentDetailPage } from './pages/StudentDetailPage'
@@ -22,6 +24,8 @@ export default function App() {
         <Route path="/assignments/new" element={<AssignmentCreatePage />} />
         <Route path="/assignments/:assignmentId" element={<AssignmentDetailPage />} />
         <Route path="/paper-instances/:paperInstanceId" element={<PaperInstancePage />} />
+        <Route path="/grading" element={<GradingQueuePage />} />
+        <Route path="/paper-instances/:paperInstanceId/grading" element={<PaperGradingPage />} />
         <Route path="*" element={<Navigate to="/questions" replace />} />
       </Routes>
     </AppShell>

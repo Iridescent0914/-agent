@@ -12,6 +12,7 @@ test('pending fill question opens formula-aware review editor without writing da
   const before = await (await page.request.get(`${api}/questions/${question.id}`)).json()
 
   await page.goto('/questions?question_type=fill_blank&grading_readiness=raw_answer_only&page_size=1')
+  await expect(page.getByRole('columnheader', { name: '资源', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: '去审核', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '去审核', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/questions/${question.id}$`))

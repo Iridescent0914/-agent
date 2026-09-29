@@ -109,9 +109,10 @@ export function AssignmentDetailPage() {
     { title: '题量', width: 110, render: (_, row) => `${row.item_count} / ${row.requested_count ?? row.item_count}` },
     { title: '实例码', dataIndex: 'instance_code', width: 160, render: (value) => value || '—' },
     {
-      title: '操作', width: 210, fixed: 'right',
+      title: '操作', width: 270, fixed: 'right',
       render: (_, row) => <Space>
         <Link to={`/paper-instances/${row.id}`}>{row.status === 'draft' ? '编辑' : '查看'}</Link>
+        {row.status === 'published' && <Link to={`/paper-instances/${row.id}/grading`}>批改</Link>}
         {row.status === 'draft' && <Button type='link' danger size='small' icon={<DeleteOutlined />} onClick={() => deleteDraft(row)}>删除草稿</Button>}
         {row.status === 'published' && row.is_active && <Button type='link' danger size='small' icon={<StopOutlined />} onClick={() => withdrawPaper(row)}>撤回</Button>}
         {row.status === 'published' && row.invalidation_type === 'withdrawn' && <Button type='link' size='small' icon={<RedoOutlined />} onClick={() => republishPaper(row)}>重新发布</Button>}

@@ -281,6 +281,7 @@ class Submission(Base):
     )
     source: Mapped[str] = mapped_column(String(16), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    request_fingerprint: Mapped[str | None] = mapped_column(String(64))
     attachments: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -293,8 +294,17 @@ class Attempt(Base):
             name="ck_attempt_grade_status",
         ),
         CheckConstraint(
-            "grade_status <> 'needs_review' OR is_correct IS NULL",
-            name="ck_needs_review_unknown",
+            "(grade_status = 'needs_review' AND is_correct IS NULL) OR "
+            "(grade_status IN ('auto_confirmed', 'teacher_confirmed') AND is_correct IS NOT NULL)",
+            name="ck_attempt_result_complete",
+        ),
+        CheckConstraint(
+            "ocr_confidence IS NULL OR (ocr_confidence BETWEEN 0 AND 1)",
+            name="ck_attempt_ocr_confidence_range",
+        ),
+        CheckConstraint(
+            "NOT manual_override OR grade_status IN ('teacher_confirmed', 'needs_review')",
+            name="ck_attempt_manual_override_status",
         ),
         CheckConstraint("revision_no > 0", name="ck_attempt_revision_positive"),
         Index("ix_attempts_student_answered", "student_id", "answered_at"),
@@ -316,6 +326,7 @@ class Attempt(Base):
     )
     student_answer: Mapped[Any | None] = mapped_column(JSONB)
     normalized_answer: Mapped[Any | None] = mapped_column(JSONB)
+    grading_details: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     grade_status: Mapped[str] = mapped_column(String(24), nullable=False)
     is_correct: Mapped[bool | None] = mapped_column(Boolean)
     ocr_confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
@@ -341,6 +352,7 @@ class AttemptRevision(Base):
     before_state: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     after_state: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     operator_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    operator_id: Mapped[str | None] = mapped_column(String(80))
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -42,10 +42,13 @@ test('profile charts, snapshot evidence, history pagination and student switchin
   await assertNoPageOverflow(page)
 
   await page.getByRole('tab', { name: '历史作答', exact: true }).click()
-  await expect(page.getByText('共 30 条', { exact: true })).toBeVisible()
+  const history = await (await page.request.get(
+    `${api}/students/${students[0].id}/attempts?page_size=100`,
+  )).json()
+  await expect(page.getByText(`共 ${history.total} 条`, { exact: true })).toBeVisible()
   await page.locator('.ant-pagination-next button').click()
   await expect(page.locator('.ant-pagination-item-active')).toHaveText('2')
-  const attempts = (await (await page.request.get(`${api}/students/${students[0].id}/attempts?page_size=100`)).json()).items
+  const attempts = history.items
   let withAsset: { original_qid: string; main_exam_point_name: string } | undefined
   for (const attempt of attempts) {
     const detail = await (await page.request.get(`${api}/students/${students[0].id}/attempts/${attempt.id}`)).json()
@@ -56,7 +59,7 @@ test('profile charts, snapshot evidence, history pagination and student switchin
   const currentExam = examCatalog.find((item: { code: string }) => item.code === (withAsset as { main_exam_point_code: string }).main_exam_point_code)
   await page.getByRole('combobox', { name: '历史考点筛选' }).fill(currentExam.name)
   await page.locator('.ant-select-dropdown:visible').getByText(currentExam.name, { exact: true }).click()
-  await page.getByRole('button', { name: withAsset!.original_qid, exact: true }).click()
+  await page.getByRole('button', { name: withAsset!.original_qid, exact: true }).first().click()
   await expect(page.getByRole('dialog').locator('img').first()).toBeVisible()
   await expect.poll(() => page.getByRole('dialog').locator('img').evaluateAll((images) => images.every((image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBeTruthy()
   await page.screenshot({ path: testInfo.outputPath('evidence.png'), fullPage: true })
