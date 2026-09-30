@@ -8,6 +8,34 @@ async function noOverflow(page: import('@playwright/test').Page) {
 }
 
 
+async function ensureUnsubmittedPaper(page: import('@playwright/test').Page) {
+  const current = await (await page.request.get(`${api}/grading/queue?status=unsubmitted`)).json()
+  if (current.items.length) return current.items[0]
+  const students = await (await page.request.get(`${api}/students?page_size=100`)).json()
+  const created = await page.request.post(`${api}/assignments`, { data: {
+    idempotency_key: `m4-e2e-unsubmitted-${Date.now()}`,
+    title: 'M4 E2E 未提交试卷',
+    student_ids: [students.items[0].id],
+    recommendation_parameters: {
+      review_exam_point_codes: [
+        'math.g6.rational.exam.local.a61b42d3fd',
+        'math.g6.rational.exam.local.dae9bb3283',
+      ],
+      review_count: 2,
+      avoid_recent_days: 0,
+      max_exam_point_ratio: 1,
+    },
+  } })
+  expect(created.status()).toBe(201)
+  const paper = (await created.json()).papers[0]
+  const published = await page.request.post(`${api}/paper-instances/${paper.id}/publish`, {
+    data: { expected_edit_revision: paper.edit_revision },
+  })
+  expect(published.ok()).toBeTruthy()
+  return { paper_instance_id: paper.id }
+}
+
+
 test('grading queue opens an existing submission with traceable results', async ({ page }) => {
   await page.goto('/grading')
   await expect(page.getByRole('heading', { name: '作业批改', exact: true })).toBeVisible()
@@ -90,9 +118,8 @@ test('republished answer key exposes an explicit regrade action', async ({ page 
 
 
 test('an unsubmitted published paper exposes manual answer inputs without writing data', async ({ page }) => {
-  const queue = await (await page.request.get(`${api}/grading/queue?status=unsubmitted`)).json()
-  expect(queue.items.length).toBeGreaterThan(0)
-  await page.goto(`/paper-instances/${queue.items[0].paper_instance_id}/grading`)
+  const target = await ensureUnsubmittedPaper(page)
+  await page.goto(`/paper-instances/${target.paper_instance_id}/grading`)
   await expect(page.getByRole('button', { name: '提交并自动判分', exact: true })).toBeVisible()
   await expect(page.getByText('学生整题留空', { exact: true }).first()).toBeVisible()
   const textAnswer = page.locator('.manual-answer-field-stack').filter({ has: page.locator('input') }).first()
@@ -116,6 +143,6 @@ test('an unsubmitted published paper exposes manual answer inputs without writin
   await expect(expression).toContainText('1')
   await expect(expression).toContainText('2')
   await noOverflow(page)
-  const after = await (await page.request.get(`${api}/paper-instances/${queue.items[0].paper_instance_id}/submission`)).json()
+  const after = await (await page.request.get(`${api}/paper-instances/${target.paper_instance_id}/submission`)).json()
   expect(after.submission_id).toBeNull()
 })

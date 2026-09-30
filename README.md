@@ -1,6 +1,6 @@
 # 数学教学 Agent Demo
 
-当前已完成 M0“有理数题库准备”、M1“工程骨架与基础数据”、M2“学生画像与规则推荐基础”、M3“个性化组卷、教师调整与发布”和 M4“手动批改、人工复核与画像闭环”。系统可以从历史证据生成画像和个性化试卷，并把新作答、改判与撤销确认可靠地回放到下一轮推荐。
+当前已完成 M0“有理数题库准备”、M1“工程骨架与基础数据”、M2“学生画像与规则推荐基础”、M3“个性化组卷、教师调整与发布”、M4“手动批改、人工复核与画像闭环”和 M5“可视化、演示与质量保障”。系统可以从历史证据生成画像和个性化试卷，把新作答、改判与撤销确认可靠地回放到下一轮推荐，并在班级学情页解释证据覆盖、考点正确率、掌握度参考值和作业进度。
 
 ## 当前功能
 
@@ -25,9 +25,13 @@
 - 一份试卷一个 Submission、一题一个 Attempt，重复提交不重复计数，改判追加 AttemptRevision；
 - 教师确认、修正答案或撤销确认后，在同一事务中按当前证据全量重算学生画像；
 - 批改工作台、逐题结果、修订时间线和画像入口支持桌面与 390px 页面；
-- M4 自动验收、79 项后端测试、前端 production build 和 22 项桌面 / 390px 浏览器测试；公式键盘收尾后的 M4 专项 8 项再次通过。
+- 班级学情总览按发布快照和当前有效修订聚合，支持考点正确率、掌握度参考均值、证据覆盖、未评估状态和学生下钻；
+- 作业进度只统计每名学生的当前有效发布版本，区分未提交、待复核、已完成、草稿和历史作废版本；
+- `m5_start` / `m5_showcase` 两套固定演示场景、隔离数据库安全重置脚本和只读 `verify_m5.py`；
+- 页面级懒加载，ECharts 与 zrender 独立分包；学情页和批改筛选 URL 支持桌面与 390px 页面；
+- M5 自动验收、86 项后端测试、前端 production build 和 28 项桌面 / 390px 浏览器测试。
 
-推荐预览仍保持只读；只有教师确认生成后才创建 Assignment 和草稿。M4 首次录入会锁定题库中当时已发布且可机判的标准答案：录入前完成的答案修订会直接用于首次评分；只有提交之后题库再次修改，已有提交才显示“重新评分”。重新评分由教师显式触发并追加修订，始终不改写 `PaperInstanceItem` 发布快照。打印答题区和图片识别仍在 M6 完成。
+推荐预览仍保持只读；只有教师确认生成后才创建 Assignment 和草稿。M4 首次录入会锁定题库中当时已发布且可机判的标准答案：录入前完成的答案修订会直接用于首次评分；只有提交之后题库再次修改，已有提交才显示“重新评分”。重新评分由教师显式触发并追加修订，始终不改写 `PaperInstanceItem` 发布快照。M5 不伪造能力雷达：当前没有教师核对过的考点—能力映射，因此优先展示可追溯的考点数据。打印答题区和图片识别仍在 M6 完成。
 
 ## 目录
 
@@ -37,13 +41,15 @@ code/
 ├── frontend/                      React + TypeScript + Ant Design
 ├── data/
 │   ├── seed/                      M0 正式种子
+│   │   └── m5_demo_scenarios.json M5 固定演示场景合同
 │   ├── assets/rational/           M0 原始资源
 │   └── web/rational/              M1 Web 资源与 manifest
 ├── scripts/
 │   ├── build_rational_m0.py
 │   ├── validate_m0.py
 │   ├── convert_seed_assets.py
-│   └── convert_wmf_to_png.ps1
+│   ├── convert_wmf_to_png.ps1
+│   └── reset_m5_demo.ps1          仅重建隔离的 M5 演示数据库
 ├── docker-compose.yml
 └── .env.example
 ```
@@ -63,6 +69,8 @@ docker compose exec backend python -m scripts.rebuild_mastery --all
 docker compose exec backend python -m scripts.verify_m1
 docker compose exec backend python -m scripts.verify_m2
 docker compose exec backend python -m scripts.verify_m3
+docker compose exec backend python -m scripts.verify_m4
+docker compose exec backend python -m scripts.verify_m5
 ```
 
 `seed_database` 和 `rebuild_mastery` 是初始化业务数据，不需要在日常启动时重复执行。后端容器每次启动都会自动执行 `alembic upgrade head`。
@@ -301,6 +309,7 @@ cd code\backend
 & "..\.conda-env\python.exe" -m scripts.verify_m2
 & "..\.conda-env\python.exe" -m scripts.verify_m3
 & "..\.conda-env\python.exe" -m scripts.verify_m4
+& "..\.conda-env\python.exe" -m scripts.verify_m5
 ```
 
 前端：
@@ -410,6 +419,38 @@ $env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
 & '..\.conda-env\python.exe' -m scripts.verify_m4
 ```
 
+## M5 班级学情与固定演示
+
+前端默认进入“学情”页面。班级聚合沿用个人画像的同一证据校验与重放逻辑：`needs_review` 不进入正确率分母，未评估学生不按 0 或内部冷启动值 0.5 参与班级掌握度均值。每个考点同时给出证据学生数、确认作答数、正确率和掌握度参考值，并可下钻到学生画像和具体 Attempt。
+
+固定演示场景（按演示目标二选一；若需切换到另一场景，可另行执行对应命令）：
+
+```powershell
+cd code\backend
+$env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
+& '..\.conda-env\python.exe' -m scripts.prepare_m5_demo --scenario m5_start
+# 或：& '..\.conda-env\python.exe' -m scripts.prepare_m5_demo --scenario m5_showcase
+```
+
+`prepare_m5_demo` 是幂等构造器，但不会删除或倒带已有审计记录。需要重复恢复同一初始状态时，使用独立的 `math_agent_m5_demo` 数据库：
+
+```powershell
+cd code
+.\scripts\reset_m5_demo.ps1 -Scenario m5_showcase -ConfirmResetM5Demo
+```
+
+重置脚本只允许删除精确命名的 `math_agent_m5_demo`，不会修改默认 `math_agent` 开发库，也不会关闭 AttemptRevision 的追加式保护。执行前须确保项目内 PostgreSQL 已在 55432 端口运行。
+
+M5 只读验收：
+
+```powershell
+cd code\backend
+$env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
+& '..\.conda-env\python.exe' -m scripts.verify_m5
+```
+
+生产构建已按路由懒加载，并将 ECharts 与 zrender 从页面代码中拆出。MathLive 是仅在公式录入路由加载的单模块大包，构建仍会如实报告其大于 500 kB；项目没有通过调高 Vite 告警阈值隐藏该事实。
+
 ## 下一阶段
 
-M5 重点完成班级学情、演示数据固定、页面打磨和更完整的质量保障。M6 再将固定答题区图片识别结果转换为 M4 已稳定的答案合同，复用同一判分、人工复核、修订审计和画像重算链路。
+M6 将从发布快照导出固定答题区，接入真实图片上传、VLM 答案提取和原图核对。识别结果转换为 M4 已稳定的答案合同，并复用同一判分、人工复核、修订审计、画像重算和 M5 班级聚合链路。

@@ -1,0 +1,375 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from decimal import Decimal, ROUND_HALF_UP
+from uuid import UUID
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.models import Assignment, Attempt, PaperInstance, PaperInstanceItem, Student, Submission
+from app.schemas.analytics import (
+    AssignmentAnalyticsOut,
+    AssignmentProgressStudent,
+    AssignmentProgressSummary,
+    ClassAnalyticsSummary,
+    ClassExamPointAnalytics,
+    ClassFocusPoint,
+    ClassOption,
+    ClassOverviewOut,
+    ExamPointStudentAnalytics,
+    ExamPointStudentListOut,
+)
+from app.services.mastery import RULE_VERSION
+from app.services.student_profile import (
+    ProfileContext,
+    exam_point_catalog,
+    load_context,
+    mastery_items,
+)
+
+
+class AnalyticsDataError(RuntimeError):
+    """Raised when persisted workflow state cannot be aggregated unambiguously."""
+
+
+def _ratio(numerator: int, denominator: int) -> float | None:
+    if denominator == 0:
+        return None
+    return float(
+        (Decimal(numerator) / Decimal(denominator)).quantize(
+            Decimal("0.0001"), rounding=ROUND_HALF_UP
+        )
+    )
+
+
+def _mean(values: list[float]) -> float | None:
+    if not values:
+        return None
+    return float(
+        (sum(Decimal(str(value)) for value in values) / Decimal(len(values))).quantize(
+            Decimal("0.0001"), rounding=ROUND_HALF_UP
+        )
+    )
+
+
+def _active_students(db: Session, class_name: str) -> list[Student]:
+    return list(
+        db.scalars(
+            select(Student)
+            .where(Student.class_name == class_name, Student.archived_at.is_(None))
+            .order_by(Student.student_code, Student.id)
+        )
+    )
+
+
+def _record_exam_code(record: object) -> str | None:
+    item = getattr(record, "item", None)
+    snapshot = item.exam_point_snapshot if item is not None else None
+    if not isinstance(snapshot, dict):
+        return None
+    main = snapshot.get("main")
+    if not isinstance(main, dict):
+        return None
+    code = main.get("id")
+    return code if isinstance(code, str) else None
+
+
+def list_classes(db: Session) -> list[ClassOption]:
+    rows = db.execute(
+        select(Student.class_name, func.count(Student.id))
+        .where(Student.archived_at.is_(None))
+        .group_by(Student.class_name)
+        .order_by(Student.class_name)
+    ).all()
+    return [ClassOption(class_name=name, student_count=count) for name, count in rows]
+
+
+def _contexts(db: Session, students: list[Student]) -> list[ProfileContext]:
+    # The demo has five students. Reusing load_context keeps class and individual
+    # evidence semantics identical. A future batch loader should sit underneath
+    # load_context instead of creating a second definition of valid evidence.
+    return [load_context(db, student.id) for student in students]
+
+
+def build_class_overview(
+    db: Session, *, class_name: str, chapter_code: str
+) -> ClassOverviewOut:
+    students = _active_students(db, class_name)
+    if not students:
+        raise LookupError("class not found")
+    catalog = exam_point_catalog(db, chapter_code)
+    if not catalog:
+        raise LookupError("chapter not found")
+    catalog_codes = {item.code for item in catalog}
+    contexts = _contexts(db, students)
+    all_catalog_codes = {item.code for item in contexts[0].catalog}
+    mastery_by_student = {
+        context.student.id: {item.exam_point_code: item for item in mastery_items(context, chapter_code)}
+        for context in contexts
+    }
+
+    exam_rows: list[ClassExamPointAnalytics] = []
+    for exam in catalog:
+        items = [mastery_by_student[student.id][exam.code] for student in students]
+        evidenced = [item for item in items if item.mastery is not None]
+        confirmed = sum(item.attempt_count for item in evidenced)
+        correct = sum(item.correct_count for item in evidenced)
+        exam_rows.append(
+            ClassExamPointAnalytics(
+                exam_point_id=exam.id,
+                exam_point_code=exam.code,
+                exam_point_name=exam.name,
+                student_count=len(students),
+                evidence_student_count=len(evidenced),
+                stable_student_count=sum(
+                    item.assessment_status == "assessed" for item in items
+                ),
+                unassessed_student_count=len(students) - len(evidenced),
+                confirmed_attempt_count=confirmed,
+                correct_attempt_count=correct,
+                incorrect_attempt_count=confirmed - correct,
+                accuracy=_ratio(correct, confirmed),
+                average_mastery=_mean(
+                    [item.mastery for item in evidenced if item.mastery is not None]
+                ),
+                recent_wrong_count=sum(item.recent_wrong_count for item in evidenced),
+                available_question_count=exam.available_question_count,
+            )
+        )
+
+    confirmed_attempt_count = sum(row.confirmed_attempt_count for row in exam_rows)
+    pending_review_count = 0
+    invalid_evidence_count = 0
+    evidence_student_count = 0
+    for context in contexts:
+        if any(
+            (context.student.id, exam.id) in context.results for exam in catalog
+        ):
+            evidence_student_count += 1
+        for record in context.records:
+            code = _record_exam_code(record)
+            if record.problem == "needs_review":
+                if code in catalog_codes:
+                    pending_review_count += 1
+            elif record.problem is not None:
+                # Missing or unknown snapshot codes cannot safely be assigned to
+                # another chapter, so surface them instead of silently hiding them.
+                if code in catalog_codes or code is None or code not in all_catalog_codes:
+                    invalid_evidence_count += 1
+
+    focus_points: list[ClassFocusPoint] = []
+    for row in exam_rows:
+        if row.evidence_student_count == 0 and row.available_question_count > 0:
+            focus_points.append(
+                ClassFocusPoint(
+                    exam_point_code=row.exam_point_code,
+                    exam_point_name=row.exam_point_name,
+                    category="diagnostic",
+                    reason=f"全班 {row.student_count} 名学生暂未评估，可安排基础诊断。",
+                )
+            )
+        elif row.stable_student_count > 0 and row.average_mastery is not None and row.average_mastery < 0.4:
+            focus_points.append(
+                ClassFocusPoint(
+                    exam_point_code=row.exam_point_code,
+                    exam_point_name=row.exam_point_name,
+                    category="practice",
+                    reason=(
+                        f"{row.evidence_student_count}/{row.student_count} 名学生有证据，"
+                        f"掌握度参考均值 {row.average_mastery:.4f}，建议重点练习。"
+                    ),
+                )
+            )
+        elif row.recent_wrong_count > 0:
+            focus_points.append(
+                ClassFocusPoint(
+                    exam_point_code=row.exam_point_code,
+                    exam_point_name=row.exam_point_name,
+                    category="recent_errors",
+                    reason=(
+                        f"各学生最近窗口合计 {row.recent_wrong_count} 次错误，"
+                        f"来自 {row.confirmed_attempt_count} 次确认作答。"
+                    ),
+                )
+            )
+        elif row.evidence_student_count > row.stable_student_count:
+            focus_points.append(
+                ClassFocusPoint(
+                    exam_point_code=row.exam_point_code,
+                    exam_point_name=row.exam_point_name,
+                    category="observe",
+                    reason=(
+                        f"{row.evidence_student_count} 名学生已有作答，"
+                        f"其中 {row.stable_student_count} 名达到当前证据充足条件。"
+                    ),
+                )
+            )
+
+    focus_priority = {"practice": 0, "recent_errors": 1, "observe": 2, "diagnostic": 3}
+    focus_points.sort(key=lambda item: (focus_priority[item.category], item.exam_point_code))
+    covered = sum(row.evidence_student_count > 0 for row in exam_rows)
+    return ClassOverviewOut(
+        class_name=class_name,
+        chapter_code=chapter_code,
+        computed_at=datetime.now(timezone.utc),
+        rule_version=RULE_VERSION,
+        summary=ClassAnalyticsSummary(
+            student_count=len(students),
+            evidence_student_count=evidence_student_count,
+            confirmed_attempt_count=confirmed_attempt_count,
+            pending_review_count=pending_review_count,
+            invalid_evidence_count=invalid_evidence_count,
+            covered_exam_point_count=covered,
+            uncovered_exam_point_count=len(exam_rows) - covered,
+        ),
+        exam_points=exam_rows,
+        focus_points=focus_points,
+    )
+
+
+def build_exam_point_students(
+    db: Session,
+    *,
+    class_name: str,
+    chapter_code: str,
+    exam_point_code: str,
+) -> ExamPointStudentListOut:
+    students = _active_students(db, class_name)
+    if not students:
+        raise LookupError("class not found")
+    exam = next(
+        (item for item in exam_point_catalog(db, chapter_code) if item.code == exam_point_code),
+        None,
+    )
+    if exam is None:
+        raise LookupError("exam point not found in chapter")
+    rows: list[ExamPointStudentAnalytics] = []
+    for context in _contexts(db, students):
+        item = next(
+            value
+            for value in mastery_items(context, chapter_code)
+            if value.exam_point_code == exam_point_code
+        )
+        rows.append(
+            ExamPointStudentAnalytics(
+                student_id=context.student.id,
+                student_code=context.student.student_code,
+                student_name=context.student.display_name,
+                assessment_status=item.assessment_status,
+                mastery=item.mastery,
+                attempt_count=item.attempt_count,
+                correct_count=item.correct_count,
+                accuracy=_ratio(item.correct_count, item.attempt_count),
+                recent_wrong_count=item.recent_wrong_count,
+                last_practiced_at=item.last_practiced_at,
+            )
+        )
+    status_order = {"assessed": 0, "insufficient": 1, "unassessed": 2}
+    rows.sort(
+        key=lambda item: (
+            status_order[item.assessment_status],
+            item.mastery if item.mastery is not None else 2.0,
+            item.student_code,
+        )
+    )
+    return ExamPointStudentListOut(
+        class_name=class_name,
+        chapter_code=chapter_code,
+        exam_point_code=exam.code,
+        exam_point_name=exam.name,
+        computed_at=datetime.now(timezone.utc),
+        items=rows,
+    )
+
+
+def build_assignment_overview(db: Session, assignment_id: UUID) -> AssignmentAnalyticsOut:
+    assignment = db.get(Assignment, assignment_id)
+    if assignment is None:
+        raise LookupError("assignment not found")
+    rows = db.execute(
+        select(PaperInstance, Student)
+        .join(Student, Student.id == PaperInstance.student_id)
+        .where(PaperInstance.assignment_id == assignment_id)
+        .order_by(Student.student_code, PaperInstance.version_no, PaperInstance.id)
+    ).all()
+    student_count = len({paper.student_id for paper, _ in rows})
+    draft_count = sum(paper.status == "draft" for paper, _ in rows)
+    invalidated_count = sum(paper.invalidated_at is not None for paper, _ in rows)
+    active_by_student: dict[UUID, list[tuple[PaperInstance, Student]]] = {}
+    for paper, student in rows:
+        if paper.status == "published" and paper.invalidated_at is None:
+            active_by_student.setdefault(student.id, []).append((paper, student))
+    duplicates = [student_id for student_id, values in active_by_student.items() if len(values) > 1]
+    if duplicates:
+        raise AnalyticsDataError(
+            f"assignment has multiple active published papers for {len(duplicates)} student(s)"
+        )
+
+    progress: list[AssignmentProgressStudent] = []
+    for values in active_by_student.values():
+        paper, student = values[0]
+        submission = db.scalar(
+            select(Submission).where(Submission.paper_instance_id == paper.id)
+        )
+        attempts = []
+        if submission is not None:
+            attempts = list(
+                db.scalars(select(Attempt).where(Attempt.submission_id == submission.id))
+            )
+        pending = sum(attempt.grade_status == "needs_review" for attempt in attempts)
+        status = (
+            "unsubmitted"
+            if submission is None
+            else "needs_review"
+            if pending
+            else "completed"
+        )
+        item_count = int(
+            db.scalar(
+                select(func.count(PaperInstanceItem.id)).where(
+                    PaperInstanceItem.paper_instance_id == paper.id
+                )
+            )
+            or 0
+        )
+        progress.append(
+            AssignmentProgressStudent(
+                paper_instance_id=paper.id,
+                student_id=student.id,
+                student_code=student.student_code,
+                student_name=student.display_name,
+                version_no=paper.version_no,
+                instance_code=paper.instance_code or "",
+                item_count=item_count,
+                grading_status=status,
+                needs_review_count=pending,
+                submitted_at=submission.submitted_at if submission is not None else None,
+            )
+        )
+    progress.sort(key=lambda item: item.student_code)
+    active_count = len(progress)
+    submitted_count = sum(item.grading_status != "unsubmitted" for item in progress)
+    needs_review_count = sum(item.grading_status == "needs_review" for item in progress)
+    completed_count = sum(item.grading_status == "completed" for item in progress)
+    return AssignmentAnalyticsOut(
+        assignment_id=assignment.id,
+        assignment_title=assignment.title,
+        chapter_code=assignment.chapter_code,
+        computed_at=datetime.now(timezone.utc),
+        summary=AssignmentProgressSummary(
+            student_count=student_count,
+            draft_count=draft_count,
+            active_published_count=active_count,
+            historical_invalidated_count=invalidated_count,
+            submitted_count=submitted_count,
+            unsubmitted_count=active_count - submitted_count,
+            needs_review_count=needs_review_count,
+            completed_count=completed_count,
+            pending_attempt_count=sum(item.needs_review_count for item in progress),
+            submission_rate=_ratio(submitted_count, active_count),
+            completion_rate=_ratio(completed_count, active_count),
+        ),
+        students=progress,
+    )
+

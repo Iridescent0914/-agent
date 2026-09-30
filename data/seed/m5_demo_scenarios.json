@@ -1,0 +1,42 @@
+{
+  "schema_version": "m5-demo-scenarios-v1",
+  "fixed_as_of": "2026-09-29T10:00:00+08:00",
+  "class_name": "六年级 Demo 班",
+  "chapter_code": "math.g6.rational",
+  "student_codes": ["S001", "S002", "S003", "S004", "S005"],
+  "recommendation_parameters": {
+    "review_exam_point_codes": [
+      "math.g6.rational.exam.local.a61b42d3fd",
+      "math.g6.rational.exam.local.dae9bb3283"
+    ],
+    "review_count": 4,
+    "avoid_recent_days": 0,
+    "max_exam_point_ratio": 0.5
+  },
+  "scenarios": {
+    "m5_start": {
+      "assignment_seed_key": "M5-DEMO-START",
+      "idempotency_key": "m5-demo-start-v1",
+      "assignment_title": "M5 演示：有理数个性化练习（起点）",
+      "student_states": {
+        "S001": "unsubmitted",
+        "S002": "unsubmitted",
+        "S003": "unsubmitted",
+        "S004": "unsubmitted",
+        "S005": "unsubmitted"
+      }
+    },
+    "m5_showcase": {
+      "assignment_seed_key": "M5-DEMO-SHOWCASE",
+      "idempotency_key": "m5-demo-showcase-v1",
+      "assignment_title": "M5 演示：有理数个性化练习（展示态）",
+      "student_states": {
+        "S001": "mixed_completed",
+        "S002": "needs_review",
+        "S003": "unsubmitted",
+        "S004": "completed",
+        "S005": "corrected_completed"
+      }
+    }
+  }
+}

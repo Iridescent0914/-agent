@@ -1,7 +1,7 @@
 import { Alert, Button, Card, Select, Space, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { apiGet, queryString } from '../api/client'
 import type { GradingQueue, GradingQueueItem, GradingStatus } from '../types/submission'
 
@@ -10,8 +10,12 @@ const statusLabels: Record<GradingStatus, string> = {
 }
 
 export function GradingQueuePage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedStatus = searchParams.get('status')
   const [data, setData] = useState<GradingQueue>({ items: [], total: 0 })
-  const [status, setStatus] = useState<GradingStatus | undefined>()
+  const [status, setStatus] = useState<GradingStatus | undefined>(
+    requestedStatus === 'unsubmitted' || requestedStatus === 'needs_review' || requestedStatus === 'completed' ? requestedStatus : undefined,
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const load = () => {
@@ -32,7 +36,7 @@ export function GradingQueuePage() {
   ]
   return <Space direction="vertical" size="large" className="page-stack grading-workspace">
     {error && <Alert type="error" showIcon message="加载失败" description={error} action={<Button onClick={load}>重试</Button>} />}
-    <div className="student-heading"><div><Typography.Title level={2}>作业批改</Typography.Title><Typography.Text type="secondary">手动录入、确定性判分与人工复核</Typography.Text></div><Select allowClear placeholder="全部状态" value={status} onChange={setStatus} options={Object.entries(statusLabels).map(([value, label]) => ({ value, label }))} style={{ width: 150 }} /></div>
+    <div className="student-heading"><div><Typography.Title level={2}>作业批改</Typography.Title><Typography.Text type="secondary">手动录入、确定性判分与人工复核</Typography.Text></div><Select allowClear placeholder="全部状态" value={status} onChange={(value) => { setStatus(value); setSearchParams(value ? { status: value } : {}, { replace: true }) }} options={Object.entries(statusLabels).map(([value, label]) => ({ value, label }))} style={{ width: 150 }} /></div>
     <Card className="table-card"><Table rowKey="paper_instance_id" loading={loading} columns={columns} dataSource={data.items} pagination={false} scroll={{ x: 900 }} /></Card>
   </Space>
 }
