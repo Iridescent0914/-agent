@@ -16,6 +16,17 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     public_asset_base_url: str = "http://localhost:8000/assets/rational"
     web_asset_dir: Path = Path(__file__).resolve().parents[3] / "data" / "web" / "rational"
+    recognition_upload_dir: Path = Path(__file__).resolve().parents[3] / "data" / "uploads" / "m6"
+    recognition_max_upload_bytes: int = 8 * 1024 * 1024
+    recognition_max_pixels: int = 20_000_000
+    recognition_retention_days: int = 30
+    vision_enabled: bool = False
+    vision_provider: str = "fake"
+    vision_model: str = "fake-m6-v1"
+    vision_api_base_url: str = ""
+    vision_api_key: str = ""
+    vision_timeout_seconds: float = 45.0
+    vision_max_tokens: int = 2048
 
     model_config = SettingsConfigDict(
         env_file=".env",

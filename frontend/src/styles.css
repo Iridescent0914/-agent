@@ -232,3 +232,29 @@ a { color: inherit; }
   .app-header .ant-menu { order: 2; width: 100%; }
   .app-content { padding-top: 22px; }
 }
+
+.paper-print-page { width: min(210mm, 100%); margin: 0 auto; padding: 20px; background: #fff; color: #111827; }
+.print-toolbar { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.print-header { padding-bottom: 12px; border-bottom: 2px solid #111827; }
+.print-question { break-inside: avoid; padding: 14px 0; border-bottom: 1px solid #d1d5db; }
+.print-options { white-space: pre-wrap; background: transparent; border: 0; }
+.print-answer-zone { break-inside: avoid; margin-top: 28px; border: 2px solid #111827; }
+.answer-slot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 28px; }
+.answer-slot { display: flex; gap: 10px; min-height: 34px; align-items: flex-end; }
+.answer-line { flex: 1; min-width: 80px; border-bottom: 1px solid #111827; color: #6b7280; font-size: 11px; }
+.print-footer { margin-top: 18px; text-align: center; color: #4b5563; }
+.recognition-preview { max-width: 720px; max-height: 520px; object-fit: contain; }
+.recognition-source-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.6fr); gap: 20px; align-items: start; }
+
+@media (max-width: 560px) {
+  .answer-slot-grid, .recognition-source-grid { grid-template-columns: 1fr; }
+  .paper-print-page { padding: 10px; }
+}
+
+@media print {
+  body { background: #fff !important; }
+  .app-header, .print-toolbar, .print-history-alert { display: none !important; }
+  .app-content { margin: 0 !important; padding: 0 !important; }
+  .paper-print-page { width: 100%; padding: 0; }
+  @page { size: A4; margin: 14mm; }
+}

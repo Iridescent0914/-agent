@@ -6,6 +6,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -284,6 +285,83 @@ class Submission(Base):
     request_fingerprint: Mapped[str | None] = mapped_column(String(64))
     attachments: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class RecognitionRun(TimestampMixin, Base):
+    __tablename__ = "recognition_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('uploaded', 'processing', 'ready_for_review', 'failed', 'committed', 'discarded')",
+            name="ck_recognition_run_status",
+        ),
+        CheckConstraint("byte_size > 0", name="ck_recognition_run_byte_size"),
+        CheckConstraint(
+            "pixel_width > 0 AND pixel_height > 0",
+            name="ck_recognition_run_dimensions",
+        ),
+        Index("ix_recognition_runs_paper_status", "paper_instance_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    paper_instance_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("paper_instances.id", ondelete="RESTRICT"), nullable=False
+    )
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id", ondelete="RESTRICT"), nullable=False
+    )
+    submission_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("submissions.id", ondelete="RESTRICT"), unique=True
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    model: Mapped[str] = mapped_column(String(160), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    image_storage_key: Mapped[str] = mapped_column(String(500), nullable=False)
+    image_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    original_filename: Mapped[str | None] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    byte_size: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    pixel_width: Mapped[int] = mapped_column(Integer, nullable=False)
+    pixel_height: Mapped[int] = mapped_column(Integer, nullable=False)
+    raw_response: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    error_code: Mapped[str | None] = mapped_column(String(80))
+    error_message: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    committed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    retention_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class RecognitionItem(TimestampMixin, Base):
+    __tablename__ = "recognition_items"
+    __table_args__ = (
+        UniqueConstraint("recognition_run_id", "paper_instance_item_id", name="uq_recognition_run_item"),
+        UniqueConstraint("recognition_run_id", "order_no", name="uq_recognition_run_order"),
+        CheckConstraint("order_no > 0", name="ck_recognition_item_order"),
+        CheckConstraint(
+            "recognition_status IN ('readable', 'blank', 'missing', 'illegible', 'ambiguous')",
+            name="ck_recognition_item_status",
+        ),
+        CheckConstraint(
+            "confidence IS NULL OR (confidence BETWEEN 0 AND 1)",
+            name="ck_recognition_item_confidence",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    recognition_run_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recognition_runs.id", ondelete="CASCADE"), nullable=False
+    )
+    paper_instance_item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("paper_instance_items.id", ondelete="RESTRICT"), nullable=False
+    )
+    order_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    recognition_status: Mapped[str] = mapped_column(String(24), nullable=False)
+    recognized_answer: Mapped[Any | None] = mapped_column(JSONB)
+    confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
+    provider_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class Attempt(Base):

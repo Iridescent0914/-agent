@@ -16,7 +16,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="brand-mark">∑</span>
           <span>
             <Typography.Text className="brand-title">数学教学 Agent</Typography.Text>
-            <Typography.Text className="brand-subtitle">有理数 Demo · M5</Typography.Text>
+            <Typography.Text className="brand-subtitle">有理数 Demo · M6</Typography.Text>
           </span>
         </Link>
         <Menu

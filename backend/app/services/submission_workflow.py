@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Assignment, Attempt, AttemptRevision, PaperInstance, PaperInstanceItem,
-    Question, Student, Submission,
+    Question, RecognitionRun, Student, Submission,
 )
 from app.schemas.submissions import (
     AttemptOut, AttemptReviewRequest, AttemptRevisionOut, GradingQueueItem,
@@ -178,6 +178,10 @@ def _attempt_out(attempt: Attempt, order_no: int) -> AttemptOut:
         revision_no=attempt.revision_no, answered_at=attempt.answered_at,
         reviewed_at=attempt.reviewed_at,
         used_in_profile=attempt.grade_status in {"auto_confirmed", "teacher_confirmed"},
+        recognition_status=attempt.recognition_status,
+        ocr_confidence=(
+            float(attempt.ocr_confidence) if attempt.ocr_confidence is not None else None
+        ),
     )
 
 
@@ -194,7 +198,11 @@ def submission_view(db: Session, paper_id: UUID, *, replayed: bool = False,
         raise GradingValidation("paper ownership is incomplete")
     submission = db.scalar(select(Submission).where(Submission.paper_instance_id == paper.id))
     attempts = {}
+    recognition_run = None
     if submission is not None:
+        recognition_run = db.scalar(
+            select(RecognitionRun).where(RecognitionRun.submission_id == submission.id)
+        )
         attempts = {
             value.paper_instance_item_id: value
             for value in db.scalars(
@@ -246,6 +254,14 @@ def submission_view(db: Session, paper_id: UUID, *, replayed: bool = False,
         can_submit=(submission is None and paper.status == "published" and paper.invalidated_at is None),
         student_id=student.id, student_code=student.student_code,
         student_name=student.display_name, source=submission.source if submission else None,
+        recognition_run_id=recognition_run.id if recognition_run else None,
+        recognition_image_url=(
+            f"/api/v1/recognition-runs/{recognition_run.id}/image"
+            if recognition_run else None
+        ),
+        recognition_provider=recognition_run.provider if recognition_run else None,
+        recognition_model=recognition_run.model if recognition_run else None,
+        recognition_prompt_version=recognition_run.prompt_version if recognition_run else None,
         submitted_at=submission.submitted_at if submission else None,
         replayed=replayed, unchanged=unchanged,
         answer_key_update_count=answer_key_update_count,

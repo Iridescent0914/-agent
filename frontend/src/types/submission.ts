@@ -22,6 +22,8 @@ export interface AttemptResult {
   answered_at: string
   reviewed_at: string | null
   used_in_profile: boolean
+  recognition_status: string | null
+  ocr_confidence: number | null
 }
 
 export interface SubmissionPaperItem {
@@ -61,6 +63,11 @@ export interface SubmissionDetail {
   student_code: string
   student_name: string
   source: string | null
+  recognition_run_id: string | null
+  recognition_image_url: string | null
+  recognition_provider: string | null
+  recognition_model: string | null
+  recognition_prompt_version: string | null
   submitted_at: string | null
   replayed: boolean
   unchanged: boolean

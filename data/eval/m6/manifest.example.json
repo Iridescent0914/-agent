@@ -1,0 +1,23 @@
+{
+  "schema_version": "m6-eval-manifest-v1",
+  "notes": "Copy to a private manifest and use anonymized real images. Do not commit student-identifying photos.",
+  "samples": [
+    {
+      "sample_id": "m6-example-001",
+      "image_path": "private-images/example-001.jpg",
+      "teacher_review_seconds": 18.5,
+      "conditions": ["negative_sign", "fraction"],
+      "expected_items": [
+        {
+          "order_no": 1,
+          "question_type": "fill_blank",
+          "blank_ids": ["answer"],
+          "answer_format": "math_or_text"
+        }
+      ],
+      "ground_truth": [
+        {"order_no": 1, "recognition_status": "readable", "answer": "-1/2"}
+      ]
+    }
+  ]
+}

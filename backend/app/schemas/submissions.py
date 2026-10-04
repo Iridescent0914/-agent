@@ -72,6 +72,8 @@ class AttemptOut(BaseModel):
     answered_at: datetime
     reviewed_at: datetime | None
     used_in_profile: bool
+    recognition_status: str | None = None
+    ocr_confidence: float | None = None
 
 
 class SubmissionPaperItemOut(BaseModel):
@@ -112,6 +114,11 @@ class SubmissionDetailOut(BaseModel):
     student_code: str
     student_name: str
     source: str | None
+    recognition_run_id: UUID | None = None
+    recognition_image_url: str | None = None
+    recognition_provider: str | None = None
+    recognition_model: str | None = None
+    recognition_prompt_version: str | None = None
     submitted_at: datetime | None
     replayed: bool = False
     unchanged: bool = False

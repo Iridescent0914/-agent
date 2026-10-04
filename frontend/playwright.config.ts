@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test'
 
+const port = process.env.PLAYWRIGHT_PORT ?? '5173'
+const baseURL = process.env.M2_FRONTEND_URL ?? `http://localhost:${port}`
+
 export default defineConfig({
   testDir: './tests',
   timeout: 60_000,
@@ -8,13 +11,13 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   webServer: {
-    command: 'npm run dev -- --host localhost --port 5173 --strictPort',
-    url: 'http://localhost:5173',
-    reuseExistingServer: true,
+    command: `npm run dev -- --host localhost --port ${port} --strictPort`,
+    url: baseURL,
+    reuseExistingServer: false,
     timeout: 60_000,
   },
   use: {
-    baseURL: process.env.M2_FRONTEND_URL ?? 'http://localhost:5173',
+    baseURL,
     browserName: 'chromium',
     channel: process.env.PLAYWRIGHT_CHANNEL ?? 'msedge',
     trace: 'retain-on-failure',

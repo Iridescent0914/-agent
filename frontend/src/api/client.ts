@@ -1,5 +1,9 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '')
 
+export function apiUrl(path: string): string {
+  return path.startsWith('http') ? path : API_BASE_URL + path
+}
+
 interface ApiErrorShape {
   message?: string
   detail?: string
@@ -27,6 +31,10 @@ export function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
 
 export function apiPost<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   return apiRequest<T>(path, { method: 'POST', body: JSON.stringify(body), signal, headers: { 'Content-Type': 'application/json' } })
+}
+
+export function apiPostForm<T>(path: string, body: FormData, signal?: AbortSignal): Promise<T> {
+  return apiRequest<T>(path, { method: 'POST', body, signal })
 }
 
 export function apiPut<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {

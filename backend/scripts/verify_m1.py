@@ -80,7 +80,7 @@ def main() -> int:
     failed_assets = int(manifest.get("failed_count", -1))
 
     checks = {
-        'schema_at_head': migration == '0012',
+        'schema_at_head': migration == '0013',
         "questions": question_count,
         "fill_blank": fill_count,
         "choice": choice_count,

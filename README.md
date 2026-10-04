@@ -1,11 +1,11 @@
 # 数学教学 Agent Demo
 
-当前已完成 M0“有理数题库准备”、M1“工程骨架与基础数据”、M2“学生画像与规则推荐基础”、M3“个性化组卷、教师调整与发布”、M4“手动批改、人工复核与画像闭环”和 M5“可视化、演示与质量保障”。系统可以从历史证据生成画像和个性化试卷，把新作答、改判与撤销确认可靠地回放到下一轮推荐，并在班级学情页解释证据覆盖、考点正确率、掌握度参考值和作业进度。
+当前已完成 M0～M5，并实现 M6“固定答题区与 VLM 图片识别”的工程闭环。系统可以打印不含标答的学生试卷，上传答题区照片，由视觉模型只抄读答案，再经教师核对、确定性规则判分、修订审计和画像重算进入下一轮推荐。真实 VLM 的质量验收仍需配置供应商凭据并使用真实样本集运行评估脚本，不能用内置 fake adapter 代替。
 
 ## 当前功能
 
 - FastAPI + SQLAlchemy + PostgreSQL 后端；
-- Alembic 十二段迁移、推荐审计、发布试卷快照保护、版本生命周期和批改审计守卫；
+- Alembic 十三段迁移、推荐审计、发布试卷快照保护、版本生命周期、批改审计和图片识别守卫；
 - 139 组完整题库、初始 41 组自动组卷题、知识树和 5 名虚拟学生的幂等导入；
 - 3 次历史作业、15 份发布试卷、150 条确认作答及修订记录；
 - 题库列表、筛选、分页、详情、教师录题和业务删除 API / 页面；
@@ -29,9 +29,9 @@
 - 作业进度只统计每名学生的当前有效发布版本，区分未提交、待复核、已完成、草稿和历史作废版本；
 - `m5_start` / `m5_showcase` 两套固定演示场景、隔离数据库安全重置脚本和只读 `verify_m5.py`；
 - 页面级懒加载，ECharts 与 zrender 独立分包；学情页和批改筛选 URL 支持桌面与 390px 页面；
-- M5 自动验收、86 项后端测试、前端 production build 和 28 项桌面 / 390px 浏览器测试。
+- M1～M6 只读验收、97 项后端测试、前端 production build，以及桌面 / 390px 浏览器回归。
 
-推荐预览仍保持只读；只有教师确认生成后才创建 Assignment 和草稿。M4 首次录入会锁定题库中当时已发布且可机判的标准答案：录入前完成的答案修订会直接用于首次评分；只有提交之后题库再次修改，已有提交才显示“重新评分”。重新评分由教师显式触发并追加修订，始终不改写 `PaperInstanceItem` 发布快照。M5 不伪造能力雷达：当前没有教师核对过的考点—能力映射，因此优先展示可追溯的考点数据。打印答题区和图片识别仍在 M6 完成。
+推荐预览仍保持只读；只有教师确认生成后才创建 Assignment 和草稿。M4 首次录入会锁定题库中当时已发布且可机判的标准答案：录入前完成的答案修订会直接用于首次评分；只有提交之后题库再次修改，已有提交才显示“重新评分”。重新评分由教师显式触发并追加修订，始终不改写 `PaperInstanceItem` 发布快照。M6 的模型置信度仅用于展示，所有图片作答初始均为 `needs_review`，教师确认前不会更新画像。
 
 ## 目录
 
@@ -71,6 +71,7 @@ docker compose exec backend python -m scripts.verify_m2
 docker compose exec backend python -m scripts.verify_m3
 docker compose exec backend python -m scripts.verify_m4
 docker compose exec backend python -m scripts.verify_m5
+docker compose exec backend python -m scripts.verify_m6
 ```
 
 `seed_database` 和 `rebuild_mastery` 是初始化业务数据，不需要在日常启动时重复执行。后端容器每次启动都会自动执行 `alembic upgrade head`。
@@ -310,6 +311,7 @@ cd code\backend
 & "..\.conda-env\python.exe" -m scripts.verify_m3
 & "..\.conda-env\python.exe" -m scripts.verify_m4
 & "..\.conda-env\python.exe" -m scripts.verify_m5
+& "..\.conda-env\python.exe" -m scripts.verify_m6
 ```
 
 前端：
@@ -451,6 +453,39 @@ $env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
 
 生产构建已按路由懒加载，并将 ECharts 与 zrender 从页面代码中拆出。MathLive 是仅在公式录入路由加载的单模块大包，构建仍会如实报告其大于 500 kB；项目没有通过调高 Vite 告警阈值隐藏该事实。
 
+## M6 打印、图片识别与教师复核
+
+已发布试卷详情页提供“打印学生卷”和“上传答题区照片”。打印接口是独立学生视图，不返回 `answer_snapshot`、评分规则或分析；图片支持 JPEG、PNG、WebP，服务端会校验真实格式和像素、应用 EXIF 方向、去除元数据并重新编码。识别结果只抄读答案，提交后所有 Attempt 先进入 `needs_review`，教师对照原图确认或修正后才调用 M4 的 `grade_answer` 并重算画像。
+
+默认配置使用 `VISION_PROVIDER=fake`，只用于离线开发和故障回退，会把每题标成“无法辨认”，不代表真实识别验收通过。接入兼容 `/chat/completions` 的视觉模型时，在本地 `.env` 配置：
+
+```dotenv
+VISION_ENABLED=true
+VISION_PROVIDER=openai_compatible
+VISION_MODEL=<支持图片输入的模型名>
+VISION_API_BASE_URL=<供应商 API 根地址>
+VISION_API_KEY=<只保存在本地环境中的密钥>
+VISION_MAX_TOKENS=2048
+```
+
+推荐的本地演示模型是 `Qwen/Qwen3-VL-4B-Instruct`，使用 Instruct 而不是 Thinking 版本。通过 vLLM 在本机提供 OpenAI 兼容接口时，`VISION_API_KEY` 可以留空；只有配置了密钥时，后端才发送 `Authorization` 请求头。识别提示词会按发布快照动态传递选择题可用字母（不限于 ABCD），但不会传递标准答案。模型输出的大小写和全角字母会被归一化，超出本题选项范围、组合小题缺失或重复的结果会自动进入“存在歧义”，只能由教师修正，不能直接判错。
+
+当前主链路使用 VLM 读取整个统一答题区。`PP-OCRv5` 与 `PP-FormulaNet_plus-M` 计划在答题模板具备稳定定位标记和逐题裁剪坐标后作为快速路径接入；本阶段未引入 PaddlePaddle 重型运行时，详见项目根目录 `11_数学教学Agent_M6模型接入与答题识别优化计划.md`。
+
+真实图片评估使用 `data/eval/m6/manifest.example.json` 作为清单模板；私人答题图片目录和结果文件已加入 `.gitignore`：
+
+```powershell
+cd code\backend
+$env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
+& '..\.conda-env\python.exe' -m scripts.evaluate_m6_recognition --help
+& '..\.conda-env\python.exe' -m scripts.purge_recognition_images
+& '..\.conda-env\python.exe' -m scripts.verify_m6
+```
+
+`purge_recognition_images` 默认仅 dry-run，只有显式传入 `--confirm` 才删除超过保留期的原图；数据库中的哈希、模型版本、识别结果、Submission、Attempt 和修订审计仍会保留。
+
+完整实现与演示交接见 `docs/13_M6_工作总结与教师演示版交接.md`。
+
 ## 下一阶段
 
-M6 将从发布快照导出固定答题区，接入真实图片上传、VLM 答案提取和原图核对。识别结果转换为 M4 已稳定的答案合同，并复用同一判分、人工复核、修订审计、画像重算和 M5 班级聚合链路。
+先配置真实视觉模型并收集去身份化样本，执行准确率、漏识别率、需修改比例与教师复核耗时评估。达到项目约定阈值后，才能将 M6 标记为“教师演示版完成”；在此之前工程功能可演示，但识别质量只算待验收。

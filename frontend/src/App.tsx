@@ -8,6 +8,8 @@ const AssignmentCreatePage = lazy(() => import('./pages/AssignmentCreatePage').t
 const AssignmentDetailPage = lazy(() => import('./pages/AssignmentDetailPage').then((module) => ({ default: module.AssignmentDetailPage })))
 const AssignmentListPage = lazy(() => import('./pages/AssignmentListPage').then((module) => ({ default: module.AssignmentListPage })))
 const PaperInstancePage = lazy(() => import('./pages/PaperInstancePage').then((module) => ({ default: module.PaperInstancePage })))
+const PaperPrintPage = lazy(() => import('./pages/PaperPrintPage').then((module) => ({ default: module.PaperPrintPage })))
+const RecognitionPage = lazy(() => import('./pages/RecognitionPage').then((module) => ({ default: module.RecognitionPage })))
 const GradingQueuePage = lazy(() => import('./pages/GradingQueuePage').then((module) => ({ default: module.GradingQueuePage })))
 const PaperGradingPage = lazy(() => import('./pages/PaperGradingPage').then((module) => ({ default: module.PaperGradingPage })))
 const QuestionDetailPage = lazy(() => import('./pages/QuestionDetailPage').then((module) => ({ default: module.QuestionDetailPage })))
@@ -29,6 +31,8 @@ export default function App() {
           <Route path="/assignments" element={<AssignmentListPage />} />
           <Route path="/assignments/new" element={<AssignmentCreatePage />} />
           <Route path="/assignments/:assignmentId" element={<AssignmentDetailPage />} />
+          <Route path="/paper-instances/:paperInstanceId/print" element={<PaperPrintPage />} />
+          <Route path="/paper-instances/:paperInstanceId/recognize" element={<RecognitionPage />} />
           <Route path="/paper-instances/:paperInstanceId" element={<PaperInstancePage />} />
           <Route path="/grading" element={<GradingQueuePage />} />
           <Route path="/paper-instances/:paperInstanceId/grading" element={<PaperGradingPage />} />
