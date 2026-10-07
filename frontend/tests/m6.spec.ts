@@ -35,6 +35,7 @@ test('student print view keeps the instance code and exposes no answer key', asy
 })
 
 test('image upload shows uncertainty before committing to review', async ({ page }) => {
+  let requestedImageUrl = ''
   await page.route(`**/api/v1/paper-instances/${paperId}/submission`, (route) => route.fulfill({
     contentType: 'application/json',
     body: JSON.stringify({
@@ -70,14 +71,20 @@ test('image upload shows uncertainty before committing to review', async ({ page
       }],
     }),
   }))
-  await page.route(`**/api/v1/recognition-runs/${runId}/image`, (route) => route.fulfill({
-    status: 200, contentType: 'image/png', body: Buffer.from('iVBORw0KGgo=', 'base64'),
-  }))
+  await page.route(`**/recognition-runs/${runId}/image`, (route) => {
+    requestedImageUrl = route.request().url()
+    return route.fulfill({
+      status: 200,
+      contentType: 'image/png',
+      body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'),
+    })
+  })
   await page.goto(`/paper-instances/${paperId}/recognize`)
   await page.locator('input[type=file]').setInputFiles({ name: 'answers.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('test') })
   await page.getByRole('button', { name: '上传图片' }).click()
   await page.getByRole('button', { name: '开始提取答案' }).click()
   await expect(page.getByText('无法辨认', { exact: true })).toBeVisible()
   await expect(page.getByText('模型置信度不触发自动确认', { exact: false })).toBeVisible()
+  await expect.poll(() => requestedImageUrl).toBe(`http://localhost:8000/api/v1/recognition-runs/${runId}/image`)
   await noOverflow(page)
 })

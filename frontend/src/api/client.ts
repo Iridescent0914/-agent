@@ -1,7 +1,12 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '')
 
 export function apiUrl(path: string): string {
-  return path.startsWith('http') ? path : API_BASE_URL + path
+  if (/^https?:\/\//i.test(path)) return path
+  if (path.startsWith('/api/')) {
+    const apiIndex = API_BASE_URL.indexOf('/api/')
+    return (apiIndex >= 0 ? API_BASE_URL.slice(0, apiIndex) : API_BASE_URL) + path
+  }
+  return `${API_BASE_URL}/${path.replace(/^\/+/, '')}`
 }
 
 interface ApiErrorShape {
@@ -22,6 +27,7 @@ async function apiRequest<T>(path: string, options: RequestInit): Promise<T> {
     }
     throw new Error(message)
   }
+  if (response.status === 204) return undefined as T
   return (await response.json()) as T
 }
 
@@ -45,7 +51,7 @@ export function apiPatch<T>(path: string, body: unknown, signal?: AbortSignal): 
   return apiRequest<T>(path, { method: 'PATCH', body: JSON.stringify(body), signal, headers: { 'Content-Type': 'application/json' } })
 }
 
-export function apiDelete<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+export function apiDelete<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   return apiRequest<T>(path, { method: 'DELETE', body: JSON.stringify(body), signal, headers: { 'Content-Type': 'application/json' } })
 }
 

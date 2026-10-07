@@ -28,6 +28,12 @@ def main() -> int:
         items = list(db.scalars(select(RecognitionItem)))
         image_submissions = list(db.scalars(select(Submission).where(Submission.source == "image")))
         submission_ids = {row.id for row in image_submissions}
+        committed_real_runs = [
+            run for run in runs
+            if run.status == "committed"
+            and run.submission_id in submission_ids
+            and run.provider.strip().lower() != "fake"
+        ]
         attempts = list(db.scalars(select(Attempt).where(Attempt.submission_id.in_(submission_ids)))) if submission_ids else []
         duplicate_items = db.execute(
             select(RecognitionItem.recognition_run_id, RecognitionItem.order_no, func.count())
@@ -58,10 +64,12 @@ def main() -> int:
             attempt.grade_status == "teacher_confirmed" and attempt.revision_no < 2
             for attempt in attempts
         )
-        if args.require_image_scenario and not image_submissions:
-            errors.append("no committed image submission exists")
+        if args.require_image_scenario and not committed_real_runs:
+            errors.append("no committed real-provider image submission exists")
         elif not image_submissions:
             warnings.append("当前数据库尚未准备 M6 图片演示场景")
+        elif not committed_real_runs:
+            warnings.append("当前数据库只有 fake 图片场景，不能用于 M6 真实识别验收")
         for name, count in {
             "duplicate recognition items": len(duplicate_items),
             "run item ownership errors": ownership_errors,
@@ -77,6 +85,7 @@ def main() -> int:
             "ready_run_count": sum(run.status == "ready_for_review" for run in runs),
             "failed_run_count": sum(run.status == "failed" for run in runs),
             "committed_run_count": sum(run.status == "committed" for run in runs),
+            "committed_real_run_count": len(committed_real_runs),
             "image_submission_count": len(image_submissions),
             "image_attempt_count": len(attempts),
             "pending_image_attempt_count": sum(a.grade_status == "needs_review" for a in attempts),

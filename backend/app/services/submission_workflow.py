@@ -256,7 +256,7 @@ def submission_view(db: Session, paper_id: UUID, *, replayed: bool = False,
         student_name=student.display_name, source=submission.source if submission else None,
         recognition_run_id=recognition_run.id if recognition_run else None,
         recognition_image_url=(
-            f"/api/v1/recognition-runs/{recognition_run.id}/image"
+            f"/recognition-runs/{recognition_run.id}/image"
             if recognition_run else None
         ),
         recognition_provider=recognition_run.provider if recognition_run else None,

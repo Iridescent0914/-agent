@@ -20,7 +20,10 @@ from app.schemas.papers import (
 )
 from app.schemas.recommendations import RecommendationRequest
 from app.services.assets import resolve_assets
-from app.services.paper_snapshots import copy_item, load_question, snapshot_payload
+from app.services.paper_snapshots import (
+    copy_item, load_question, snapshot_payload, student_safe_question_snapshot,
+    student_safe_value,
+)
 from app.services.recommendations import Candidate, score_candidate
 from app.services.student_profile import load_context
 
@@ -125,8 +128,10 @@ def student_view(db: Session, paper_id: UUID) -> PaperInstanceStudentOut:
     if student is None:
         raise LookupError("paper student not found")
     items = [StudentPaperItemOut(
-        id=item.id, order_no=item.order_no, question_snapshot=item.question_snapshot,
-        options_snapshot=item.options_snapshot, exam_point_snapshot=item.exam_point_snapshot,
+        id=item.id, order_no=item.order_no,
+        question_snapshot=student_safe_question_snapshot(item.question_snapshot),
+        options_snapshot=student_safe_value(item.options_snapshot),
+        exam_point_snapshot=item.exam_point_snapshot,
         assets=resolve_assets(item.question_snapshot.get("assets", [])),
     ) for item in paper_items(db, paper.id)]
     return PaperInstanceStudentOut(

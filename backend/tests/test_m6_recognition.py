@@ -15,7 +15,7 @@ from app.core.config import get_settings
 from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import Attempt, RecognitionRun, Student, StudentMastery
-from app.services.recognition_workflow import _expected_vision_item
+from app.services.recognition_workflow import _expected_vision_item, extract_run
 from app.services.vision_service import (
     OpenAICompatibleVisionService,
     VisionServiceError,
@@ -238,6 +238,7 @@ def test_print_view_never_returns_answer_keys(client, db):
     for private_key in (
         "answer_snapshot", "answer_rule_snapshot", "correct_answer",
         "grading_details", "selection_audit", "recommendation_score",
+        "solution", "wrong_analysis",
     ):
         assert private_key not in serialized
     for item in body["items"]:
@@ -276,6 +277,15 @@ def test_image_submission_waits_for_teacher_before_mastery(client, db):
         assert submission["source"] == "image"
         assert submission["summary"]["needs_review_count"] == len(paper["items"])
         assert all(row["attempt"]["grade_status"] == "needs_review" for row in submission["items"])
+        duplicate_upload = client.post(
+            f"/api/v1/paper-instances/{paper['id']}/recognition-runs",
+            data={
+                "instance_code": paper["instance_code"],
+                "idempotency_key": "m6-after-submit-" + uuid4().hex,
+            },
+            files={"file": ("answers.jpg", _jpeg(), "image/jpeg")},
+        )
+        assert duplicate_upload.status_code == 409
         db.expire_all()
         mastery_pending = {
             row.exam_point_id: (row.mastery, row.attempt_count)
@@ -284,6 +294,25 @@ def test_image_submission_waits_for_teacher_before_mastery(client, db):
         assert mastery_pending == mastery_before
 
         first = submission["items"][0]
+        first_attempt = db.get(Attempt, first["attempt"]["id"])
+        first_attempt.recognition_status = "readable"
+        first_attempt.student_answer = "A"
+        db.flush()
+        dishonest_accept = client.post(
+            f"/api/v1/submissions/{submission['submission_id']}/recognition-review",
+            json={
+                "reason": "accept must preserve recognition",
+                "actor": "m6_test_teacher",
+                "items": [{
+                    "attempt_id": first["attempt"]["id"],
+                    "expected_revision_no": first["attempt"]["revision_no"],
+                    "action": "accept",
+                    "response_status": "answered",
+                    "answer": "B",
+                }],
+            },
+        )
+        assert dishonest_accept.status_code == 422
         source_item = next(row for row in paper["items"] if row["id"] == first["id"])
         reviewed = client.post(
             f"/api/v1/submissions/{submission['submission_id']}/recognition-review",
@@ -364,6 +393,36 @@ def test_upload_idempotency_replays_the_same_run(client, db):
     (get_settings().recognition_upload_dir / stored.image_storage_key).unlink(
         missing_ok=True
     )
+
+
+def test_extract_claims_run_before_calling_provider(client, db):
+    _, paper = _published_paper(client, db)
+    upload = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/recognition-runs",
+        data={
+            "instance_code": paper["instance_code"],
+            "idempotency_key": "m6-processing-" + uuid4().hex,
+        },
+        files={"file": ("answers.jpg", _jpeg(), "image/jpeg")},
+    )
+    assert upload.status_code == 201, upload.text
+    stored = db.get(RecognitionRun, upload.json()["id"])
+
+    class InspectingService:
+        def extract_answers(self, *, image_bytes, content_type, expected_items):
+            assert image_bytes
+            assert content_type == "image/jpeg"
+            assert db.get(RecognitionRun, stored.id).status == "processing"
+            return {"schema_version": "m6-recognition-v2", "answers": []}
+
+    try:
+        result = extract_run(db, stored.id, service=InspectingService())
+        assert result.status == "ready_for_review"
+        assert all(item.recognition_status == "missing" for item in result.items)
+    finally:
+        (get_settings().recognition_upload_dir / stored.image_storage_key).unlink(
+            missing_ok=True
+        )
 
 
 def test_withdrawn_paper_is_rechecked_before_image_commit(client, db):

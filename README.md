@@ -455,7 +455,7 @@ $env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
 
 ## M6 打印、图片识别与教师复核
 
-已发布试卷详情页提供“打印学生卷”和“上传答题区照片”。打印接口是独立学生视图，不返回 `answer_snapshot`、评分规则或分析；图片支持 JPEG、PNG、WebP，服务端会校验真实格式和像素、应用 EXIF 方向、去除元数据并重新编码。识别结果只抄读答案，提交后所有 Attempt 先进入 `needs_review`，教师对照原图确认或修正后才调用 M4 的 `grade_answer` 并重算画像。
+已发布试卷详情页提供“打印学生卷”和“上传答题区照片”。打印接口和普通 student view 都使用题目字段白名单，不返回标准答案、评分规则、解析、易错分析或教师审计字段；图片支持 JPEG、PNG、WebP，服务端会校验真实格式和像素、应用 EXIF 方向、去除元数据并重新编码。识别结果只抄读答案，提交后所有 Attempt 先进入 `needs_review`，教师对照原图确认或修正后才调用 M4 的 `grade_answer` 并重算画像。
 
 默认配置使用 `VISION_PROVIDER=fake`，只用于离线开发和故障回退，会把每题标成“无法辨认”，不代表真实识别验收通过。接入兼容 `/chat/completions` 的视觉模型时，在本地 `.env` 配置：
 
@@ -480,7 +480,10 @@ $env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
 & '..\.conda-env\python.exe' -m scripts.evaluate_m6_recognition --help
 & '..\.conda-env\python.exe' -m scripts.purge_recognition_images
 & '..\.conda-env\python.exe' -m scripts.verify_m6
+& '..\.conda-env\python.exe' -m scripts.verify_m6 --require-image-scenario
 ```
+
+`verify_m6 --require-image-scenario` 只接受由非 fake 供应商完成并提交的图片闭环。真实评估拒绝 disabled/fake 适配器和空样本；使用 `--require-thresholds` 时，还会按 manifest 中的 `acceptance_thresholds` 决定退出码。示例阈值只是演示基线，应由项目组结合真实复核负担确认。
 
 `purge_recognition_images` 默认仅 dry-run，只有显式传入 `--confirm` 才删除超过保留期的原图；数据库中的哈希、模型版本、识别结果、Submission、Attempt 和修订审计仍会保留。
 

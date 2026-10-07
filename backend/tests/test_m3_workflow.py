@@ -149,6 +149,8 @@ def test_edit_publish_lookup_and_revise(client, db):
     student_view = client.get(f"/api/v1/paper-instances/{paper_id}", params={"view": "student"})
     assert student_view.status_code == 200
     assert "answer_snapshot" not in student_view.json()["items"][0]
+    assert "solution" not in student_view.json()["items"][0]["question_snapshot"]
+    assert "wrong_analysis" not in student_view.json()["items"][0]["question_snapshot"]
     revised = client.post(f"/api/v1/paper-instances/{paper_id}/revise")
     assert revised.status_code == 201, revised.text
     assert revised.json()["version_no"] == 2

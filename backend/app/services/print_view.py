@@ -8,25 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import Assignment, PaperInstance, PaperInstanceItem, Student
 from app.schemas.recognition import AnswerSlotOut, PrintItemOut, PrintViewOut
 from app.services.assets import resolve_assets
-
-
-_PRIVATE_PRINT_KEYS = {
-    "answer", "answer_snapshot", "answer_rule_snapshot", "correct_answer",
-    "grading_details", "analysis", "selection_audit", "recommendation_score",
-    "is_correct",
-}
-
-
-def _student_safe(value):
-    if isinstance(value, dict):
-        return {
-            key: _student_safe(item)
-            for key, item in value.items()
-            if key not in _PRIVATE_PRINT_KEYS
-        }
-    if isinstance(value, list):
-        return [_student_safe(item) for item in value]
-    return value
+from app.services.paper_snapshots import student_safe_question_snapshot, student_safe_value
 
 
 def build_print_view(db: Session, paper_id: UUID) -> PrintViewOut:
@@ -59,8 +41,8 @@ def build_print_view(db: Session, paper_id: UUID) -> PrintViewOut:
         print_items.append(PrintItemOut(
             id=item.id,
             order_no=item.order_no,
-            question_snapshot=_student_safe(snapshot),
-            options_snapshot=_student_safe(item.options_snapshot),
+            question_snapshot=student_safe_question_snapshot(snapshot),
+            options_snapshot=student_safe_value(item.options_snapshot),
             assets=resolve_assets(snapshot.get("assets", [])),
         ))
         slots.append(AnswerSlotOut(

@@ -88,7 +88,7 @@ def _run_out(db: Session, run: RecognitionRun) -> RecognitionRunOut:
             "recognized_answer": row.recognized_answer,
             "confidence": float(row.confidence) if row.confidence is not None else None,
         } for row in rows],
-        image_url=f"/api/v1/recognition-runs/{run.id}/image",
+        image_url=f"/recognition-runs/{run.id}/image",
     )
 
 
@@ -204,6 +204,11 @@ def create_run(
         raise GradingValidation("纸面实例码与所选试卷不匹配")
     if paper.invalidated_at is not None and paper.invalidation_type != "superseded":
         raise GradingValidation("该试卷版本不能接收新提交")
+    existing_submission = db.scalar(select(Submission).where(
+        Submission.paper_instance_id == paper.id
+    ).with_for_update())
+    if existing_submission is not None:
+        raise GradingConflict("paper already has a submission")
     image, content_type, width, height = normalize_image(data)
     digest = hashlib.sha256(image).hexdigest()
     fingerprint = hashlib.sha256(
@@ -256,16 +261,25 @@ def create_run(
 def extract_run(
     db: Session, run_id: UUID, *, service: VisionService | None = None
 ) -> RecognitionRunOut:
-    # Do not keep a row lock while a remote VLM request is in flight. A second
-    # extractor may duplicate the provider call, but the lock below ensures
-    # that only one result can change the run and its item set.
-    run = db.get(RecognitionRun, run_id)
+    # This synchronous endpoint holds only the run row lock while calling the
+    # provider. It prevents duplicate paid calls. Moving the call to a worker
+    # is the future route to exposing a durable processing state without a
+    # long-lived request transaction.
+    run = db.scalar(
+        select(RecognitionRun).where(RecognitionRun.id == run_id).with_for_update()
+    )
     if run is None:
         raise LookupError("recognition run not found")
     if run.status not in {"uploaded", "failed"}:
         raise GradingConflict("recognition run cannot be extracted in its current state")
     items = _items(db, run.paper_instance_id)
     started_at = datetime.now(timezone.utc)
+    run.status = "processing"
+    run.started_at = started_at
+    run.completed_at = None
+    run.error_code = None
+    run.error_message = None
+    db.flush()
     payload: dict[str, Any] | None = None
     try:
         try:
@@ -288,10 +302,8 @@ def extract_run(
         )
         if run is None:
             raise LookupError("recognition run not found")
-        if run.status not in {"uploaded", "failed"}:
+        if run.status != "processing":
             raise GradingConflict("recognition run was changed while extraction was running")
-        run.status = "processing"
-        run.started_at = started_at
         for old in list(db.scalars(select(RecognitionItem).where(
             RecognitionItem.recognition_run_id == run.id
         ))):
@@ -319,9 +331,8 @@ def extract_run(
         )
         if run is None:
             raise LookupError("recognition run not found") from exc
-        if run.status not in {"uploaded", "failed"}:
+        if run.status != "processing":
             raise GradingConflict("recognition run was changed while extraction was running") from exc
-        run.started_at = started_at
         run.status = "failed"
         if payload is not None:
             run.raw_response = payload
@@ -467,10 +478,19 @@ def review_recognition(
             raise GradingConflict("attempt was changed; refresh before reviewing")
         if attempt.grade_status != "needs_review":
             raise GradingConflict("confirmed image evidence cannot be overwritten")
-        if incoming_request.action == "accept" and attempt.recognition_status in {
-            "missing", "illegible", "ambiguous"
-        }:
-            raise GradingValidation("uncertain recognition must be corrected explicitly")
+        if incoming_request.action == "accept":
+            if attempt.recognition_status not in {"readable", "blank"}:
+                raise GradingValidation("uncertain recognition must be corrected explicitly")
+            expected_status = (
+                "blank" if attempt.recognition_status == "blank" else "answered"
+            )
+            if (
+                incoming_request.response_status != expected_status
+                or incoming_request.answer != attempt.student_answer
+            ):
+                raise GradingValidation(
+                    "accept must preserve the recognized response; use correct to change it"
+                )
         item = paper_items.get(attempt.paper_instance_item_id)
         if item is None:
             raise GradingValidation("attempt item is unavailable")

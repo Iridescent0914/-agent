@@ -10,6 +10,52 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import PaperInstanceItem, Question, QuestionExamPoint
 
 
+_STUDENT_QUESTION_KEYS = {
+    "schema_version",
+    "original_qid",
+    "chapter_code",
+    "chapter_name",
+    "section",
+    "question_text",
+    "question_type",
+    "difficulty",
+    "assets",
+}
+_STUDENT_PRIVATE_NESTED_KEYS = {
+    "answer",
+    "answer_snapshot",
+    "answer_rule_snapshot",
+    "correct",
+    "correct_answer",
+    "is_correct",
+    "solution",
+    "wrong_analysis",
+}
+
+
+def student_safe_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: student_safe_value(item)
+            for key, item in value.items()
+            if key not in _STUDENT_PRIVATE_NESTED_KEYS
+        }
+    if isinstance(value, list):
+        return [student_safe_value(item) for item in value]
+    return deepcopy(value)
+
+
+def student_safe_question_snapshot(snapshot: Any) -> dict[str, Any]:
+    """Return only question fields that are safe to expose to a student."""
+    if not isinstance(snapshot, dict):
+        return {}
+    return {
+        key: student_safe_value(value)
+        for key, value in snapshot.items()
+        if key in _STUDENT_QUESTION_KEYS
+    }
+
+
 def load_question(db: Session, question_id: UUID) -> Question:
     question = db.scalar(
         select(Question)
