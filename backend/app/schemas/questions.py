@@ -18,6 +18,15 @@ class AssetOut(BaseModel):
     conversion_status: str
 
 
+class QuestionAssetInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    path: str = Field(
+        pattern=r'^assets/teacher/[0-9a-f]{32}\.png$',
+        max_length=80,
+    )
+
+
 class QuestionListItem(BaseModel):
     id: uuid.UUID
     original_qid: str
@@ -58,6 +67,7 @@ class QuestionCreateRequest(BaseModel):
     solution: str | None = Field(default=None, max_length=10000)
     wrong_analysis: str | None = Field(default=None, max_length=10000)
     operator_name: str = Field(min_length=1, max_length=80)
+    assets: list[QuestionAssetInput] = Field(default_factory=list, max_length=8)
 
     @field_validator(
         'section', 'question_text', 'reference_answer_raw',
@@ -88,6 +98,9 @@ class QuestionCreateRequest(BaseModel):
             self.options = cleaned
         else:
             self.options = None
+        asset_paths = [asset.path for asset in self.assets]
+        if len(asset_paths) != len(set(asset_paths)):
+            raise ValueError('题目图片不能重复')
         return self
 
 

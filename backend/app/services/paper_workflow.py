@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Assignment, ExamPoint, PaperInstance, PaperInstanceItem, Question,
-    QuestionExamPoint, Student,
+    QuestionExamPoint, SchoolClass, Student,
 )
 from app.schemas.assignments import AssignmentDetailOut, AssignmentListItem
 from app.schemas.papers import (
@@ -154,8 +154,11 @@ def assignment_detail(db: Session, assignment_id: UUID) -> AssignmentDetailOut:
         .order_by(PaperInstance.student_id, PaperInstance.version_no)
     ))
     summaries = [_summary(db, paper) for paper in papers]
+    school_class = db.get(SchoolClass, assignment.class_id) if assignment.class_id else None
     return AssignmentDetailOut(
         id=assignment.id, title=assignment.title, chapter_code=assignment.chapter_code,
+        class_id=assignment.class_id,
+        class_name=school_class.name if school_class else None,
         assignment_type=assignment.assignment_type,
         student_count=len({paper.student_id for paper in papers}),
         draft_count=sum(paper.status == "draft" for paper in papers),
@@ -168,17 +171,39 @@ def assignment_detail(db: Session, assignment_id: UUID) -> AssignmentDetailOut:
     )
 
 
-def list_assignment_items(db: Session, *, offset: int, limit: int) -> tuple[list[AssignmentListItem], int]:
-    total = int(db.scalar(select(func.count(Assignment.id)).where(Assignment.assignment_type == "practice")) or 0)
+def list_assignment_items(
+    db: Session, *, offset: int, limit: int, class_name: str | None = None
+) -> tuple[list[AssignmentListItem], int]:
+    assignment_query = select(Assignment).where(Assignment.assignment_type == "practice")
+    if class_name is not None:
+        class_assignment_ids = (
+            select(PaperInstance.assignment_id)
+            .join(Student, Student.id == PaperInstance.student_id)
+            .where(Student.class_name == class_name, Student.archived_at.is_(None))
+            .distinct()
+        )
+        assignment_query = assignment_query.where(Assignment.id.in_(class_assignment_ids))
+    total = int(
+        db.scalar(select(func.count()).select_from(assignment_query.subquery())) or 0
+    )
     assignments = list(db.scalars(
-        select(Assignment).where(Assignment.assignment_type == "practice")
-        .order_by(Assignment.created_at.desc(), Assignment.id).offset(offset).limit(limit)
+        assignment_query.order_by(Assignment.created_at.desc(), Assignment.id)
+        .offset(offset).limit(limit)
     ))
     result = []
     for assignment in assignments:
-        papers = list(db.scalars(select(PaperInstance).where(PaperInstance.assignment_id == assignment.id)))
+        school_class = db.get(SchoolClass, assignment.class_id) if assignment.class_id else None
+        paper_query = select(PaperInstance).where(PaperInstance.assignment_id == assignment.id)
+        if class_name is not None:
+            paper_query = (
+                paper_query.join(Student, Student.id == PaperInstance.student_id)
+                .where(Student.class_name == class_name, Student.archived_at.is_(None))
+            )
+        papers = list(db.scalars(paper_query))
         result.append(AssignmentListItem(
             id=assignment.id, title=assignment.title, chapter_code=assignment.chapter_code,
+            class_id=assignment.class_id,
+            class_name=school_class.name if school_class else None,
             assignment_type=assignment.assignment_type,
             student_count=len({paper.student_id for paper in papers}),
             draft_count=sum(paper.status == "draft" for paper in papers),
@@ -189,6 +214,27 @@ def list_assignment_items(db: Session, *, offset: int, limit: int) -> tuple[list
             created_at=assignment.created_at,
         ))
     return result, total
+
+
+def delete_empty_assignment(db: Session, assignment_id: UUID) -> UUID:
+    assignment = db.scalar(
+        select(Assignment).where(Assignment.id == assignment_id).with_for_update()
+    )
+    if assignment is None:
+        raise LookupError("assignment not found")
+    paper_count = int(
+        db.scalar(
+            select(func.count(PaperInstance.id)).where(
+                PaperInstance.assignment_id == assignment_id
+            )
+        )
+        or 0
+    )
+    if paper_count:
+        raise PaperConflict("作业中仍有试卷，请先处理试卷后再删除作业")
+    db.delete(assignment)
+    db.flush()
+    return assignment_id
 
 
 def _parameters(db: Session, paper: PaperInstance) -> tuple[RecommendationRequest, datetime]:

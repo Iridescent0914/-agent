@@ -1,4 +1,4 @@
-import { BarChartOutlined, BookOutlined, CheckSquareOutlined, FileDoneOutlined, TeamOutlined } from '@ant-design/icons'
+import { ApartmentOutlined, BarChartOutlined, BookOutlined, CheckSquareOutlined, FileDoneOutlined, TeamOutlined } from '@ant-design/icons'
 import { Layout, Menu, Typography } from 'antd'
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
@@ -7,7 +7,7 @@ const { Header, Content } = Layout
 
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
-  const selected = location.pathname.startsWith('/analytics') ? 'analytics' : location.pathname.startsWith('/grading') || location.pathname.endsWith('/grading') ? 'grading' : location.pathname.startsWith('/students') ? 'students' :
+  const selected = location.pathname.startsWith('/analytics') ? 'analytics' : location.pathname.startsWith('/grading') || location.pathname.endsWith('/grading') ? 'grading' : location.pathname.startsWith('/classes') ? 'classes' : location.pathname.startsWith('/students') ? 'students' :
     location.pathname.startsWith('/assignments') || location.pathname.startsWith('/paper-instances') ? 'assignments' : 'questions'
   return (
     <Layout className="app-layout">
@@ -27,6 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             { key: 'analytics', icon: <BarChartOutlined />, label: <Link to="/analytics">学情</Link> },
             { key: 'questions', icon: <BookOutlined />, label: <Link to="/questions">题库</Link> },
             { key: 'students', icon: <TeamOutlined />, label: <Link to="/students">学生</Link> },
+            { key: 'classes', icon: <ApartmentOutlined />, label: <Link to="/classes">班级</Link> },
             { key: 'assignments', icon: <FileDoneOutlined />, label: <Link to="/assignments">组卷</Link> },
             { key: 'grading', icon: <CheckSquareOutlined />, label: <Link to="/grading">批改</Link> },
           ]}

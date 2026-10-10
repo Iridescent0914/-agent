@@ -1,10 +1,11 @@
 import { DeleteOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Col, Empty, Form, Input, Modal, Row, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd'
+import { Alert, Button, Card, Col, Empty, Form, Input, Modal, Row, Select, Space, Statistic, Table, Tag, Typography, Upload, message } from 'antd'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
+import type { UploadFile } from 'antd/es/upload/interface'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { apiDelete, apiGet, apiPost } from '../api/client'
-import type { Page, QuestionCatalogStats, QuestionCreateRequest, QuestionDetail, QuestionSummary } from '../types'
+import { apiDelete, apiGet, apiPost, apiPostForm } from '../api/client'
+import type { AssetInfo, Page, QuestionCatalogStats, QuestionCreateRequest, QuestionDetail, QuestionSummary } from '../types'
 import type { ExamPoint } from '../types/profile'
 
 interface QuestionCreateValues extends Omit<QuestionCreateRequest, 'options'> {
@@ -34,6 +35,7 @@ export function QuestionListPage() {
   const [error, setError] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [examPoints, setExamPoints] = useState<ExamPoint[]>([])
+  const [questionImages, setQuestionImages] = useState<UploadFile[]>([])
   const [refreshKey, setRefreshKey] = useState(0)
   const page = Number(searchParams.get('page') || 1)
   const pageSize = Number(searchParams.get('page_size') || 20)
@@ -70,6 +72,13 @@ export function QuestionListPage() {
     const values = await createForm.validateFields()
     setCreating(true); setError(null)
     try {
+      const uploadedAssets: AssetInfo[] = []
+      for (const image of questionImages) {
+        if (!image.originFileObj) throw new Error(`无法读取图片：${image.name}`)
+        const formData = new FormData()
+        formData.append('file', image.originFileObj)
+        uploadedAssets.push(await apiPostForm<AssetInfo>('/questions/assets', formData))
+      }
       const options = values.question_type === 'choice'
         ? (values.options_text || '').split(/\r?\n/).map((value) => value.trim()).filter(Boolean)
         : undefined
@@ -80,10 +89,12 @@ export function QuestionListPage() {
         original_qid: values.original_qid?.trim() || undefined,
         solution: values.solution?.trim() || undefined,
         wrong_analysis: values.wrong_analysis?.trim() || undefined,
+        assets: uploadedAssets.map((asset) => ({ path: asset.path })),
       })
       message.success('题目已添加，请继续审核答案后加入自动组卷池')
       setCreateOpen(false)
       createForm.resetFields()
+      setQuestionImages([])
       setRefreshKey((value) => value + 1)
       setSearchParams({ page: '1', page_size: String(pageSize), keyword: created.original_qid })
     } catch (reason) {
@@ -239,7 +250,7 @@ export function QuestionListPage() {
         cancelText='取消'
         confirmLoading={creating}
         onOk={() => void createQuestion()}
-        onCancel={() => { setCreateOpen(false); createForm.resetFields() }}
+        onCancel={() => { setCreateOpen(false); createForm.resetFields(); setQuestionImages([]) }}
         destroyOnClose
       >
         <Alert
@@ -268,6 +279,33 @@ export function QuestionListPage() {
             <Col xs={24} md={12}><Form.Item name='section' label='小节' rules={[{ required: true }]}><Input maxLength={255} /></Form.Item></Col>
           </Row>
           <Form.Item name='question_text' label='题干' rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={5} maxLength={10000} showCount /></Form.Item>
+          <Form.Item
+            label='题目图片（可选）'
+            extra='支持 JPG、PNG、WebP，单张不超过 8MB，最多 8 张。图片会按顺序追加到题干末尾，详情页可点击放大。'
+          >
+            <Upload
+              className='question-image-upload'
+              accept='image/jpeg,image/png,image/webp'
+              listType='picture-card'
+              multiple
+              maxCount={8}
+              fileList={questionImages}
+              beforeUpload={(file) => {
+                if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                  message.error('仅支持 JPG、PNG 或 WebP 图片')
+                  return Upload.LIST_IGNORE
+                }
+                if (file.size > 8 * 1024 * 1024) {
+                  message.error('单张图片不能超过 8MB')
+                  return Upload.LIST_IGNORE
+                }
+                return false
+              }}
+              onChange={({ fileList }) => setQuestionImages(fileList)}
+            >
+              {questionImages.length < 8 && <div><PlusOutlined /><div style={{ marginTop: 8 }}>添加图片</div></div>}
+            </Upload>
+          </Form.Item>
           {createType === 'choice' && <Form.Item name='options_text' label='选项（每行一个）' rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={4} placeholder={'例如：\nA. -1\nB. 0\nC. 1'} /></Form.Item>}
           <Form.Item name='reference_answer_raw' label='参考答案' rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={3} maxLength={5000} showCount /></Form.Item>
           <Form.Item name='solution' label='解析（可选）'><Input.TextArea rows={3} maxLength={10000} /></Form.Item>

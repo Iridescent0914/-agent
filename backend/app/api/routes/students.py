@@ -8,10 +8,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import Attempt, Student
+from app.models import Attempt, SchoolClass, Student
 from app.schemas.common import Page
 from app.schemas.students import (
-    StudentArchiveRequest, StudentAttemptOut, StudentCreateRequest,
+    StudentArchiveRequest, StudentAttemptOut, StudentClassUpdateRequest, StudentCreateRequest,
     StudentDetail, StudentListItem,
 )
 from app.services.student_profile import attempt_summary, load_context
@@ -38,6 +38,7 @@ def _student_item(student: Student, row: object) -> StudentListItem:
         id=student.id,
         student_code=student.student_code,
         display_name=student.display_name,
+        class_id=student.class_id,
         class_name=student.class_name,
         is_demo=student.is_demo,
         attempt_count=int(getattr(row, "attempt_count") or 0),
@@ -53,10 +54,24 @@ def create_student(
 ) -> StudentDetail:
     if db.scalar(select(Student.id).where(Student.student_code == request.student_code)):
         raise HTTPException(status_code=409, detail='学生编号已存在')
+    school_class = None
+    if request.class_id is not None:
+        school_class = db.get(SchoolClass, request.class_id)
+        if school_class is None:
+            raise HTTPException(status_code=404, detail='班级不存在')
+    elif request.class_name is not None:
+        school_class = db.scalar(select(SchoolClass).where(SchoolClass.name == request.class_name))
+        if school_class is None:
+            # Compatibility with older clients that created a class while
+            # adding its first student.
+            school_class = SchoolClass(name=request.class_name)
+            db.add(school_class)
+            db.flush()
     student = Student(
         student_code=request.student_code,
         display_name=request.display_name,
-        class_name=request.class_name,
+        class_id=school_class.id,
+        class_name=school_class.name,
         is_demo=False,
     )
     db.add(student)
@@ -65,6 +80,7 @@ def create_student(
         id=student.id,
         student_code=student.student_code,
         display_name=student.display_name,
+        class_id=student.class_id,
         class_name=student.class_name,
         is_demo=student.is_demo,
         attempt_count=0,
@@ -94,16 +110,53 @@ def archive_student(
     return {'deleted_id': str(student.id)}
 
 
+@router.patch('/{student_id}/class', response_model=StudentDetail)
+def update_student_class(
+    student_id: uuid.UUID,
+    request: StudentClassUpdateRequest,
+    db: Session = Depends(get_db),
+) -> StudentDetail:
+    student = db.scalar(
+        select(Student).where(
+            Student.id == student_id,
+            Student.archived_at.is_(None),
+        ).with_for_update()
+    )
+    if student is None:
+        raise HTTPException(status_code=404, detail='student not found')
+    school_class = db.get(SchoolClass, request.class_id)
+    if school_class is None:
+        raise HTTPException(status_code=404, detail='班级不存在')
+    student.class_id = school_class.id
+    student.class_name = school_class.name
+    db.flush()
+    stats = _student_stats_subquery()
+    row = db.execute(
+        select(
+            Student,
+            stats.c.attempt_count,
+            stats.c.correct_count,
+            stats.c.latest_answered_at,
+        )
+        .outerjoin(stats, stats.c.student_id == Student.id)
+        .where(Student.id == student.id)
+    ).one()
+    item = _student_item(row.Student, row)
+    return StudentDetail(**item.model_dump(), created_at=student.created_at)
+
+
 @router.get("", response_model=Page[StudentListItem])
 def list_students(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    class_id: uuid.UUID | None = Query(None),
     db: Session = Depends(get_db),
 ) -> Page[StudentListItem]:
     stats = _student_stats_subquery()
-    total = db.scalar(select(func.count(Student.id)).where(
-        Student.archived_at.is_(None)
-    )) or 0
+    filters = [Student.archived_at.is_(None)]
+    if class_id is not None:
+        filters.append(Student.class_id == class_id)
+    total = db.scalar(select(func.count(Student.id)).where(*filters)) or 0
     rows = db.execute(
         select(
             Student,
@@ -112,8 +165,8 @@ def list_students(
             stats.c.latest_answered_at,
         )
         .outerjoin(stats, stats.c.student_id == Student.id)
-        .where(Student.archived_at.is_(None))
-        .order_by(Student.student_code, Student.id)
+        .where(*filters)
+        .order_by(Student.class_name, Student.student_code, Student.id)
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()

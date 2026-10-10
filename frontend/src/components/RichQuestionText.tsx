@@ -17,24 +17,26 @@ export function RichQuestionText({ text, assets }: { text: string; assets: Asset
   if (cursor < text.length) segments.push({ type: 'text', value: text.slice(cursor) })
 
   return (
-    <Typography.Paragraph className="question-rich-text">
-      {segments.map((segment, index) => {
-        if (segment.type === 'text') return <Fragment key={index}>{segment.value}</Fragment>
-        const asset = assetMap.get(segment.value)
-        if (!asset?.web_url) {
-          return <span key={index} className="asset-error">[公式资源加载失败]</span>
-        }
-        return (
-          <Image
-            key={index}
-            className="inline-formula"
-            preview={false}
-            src={asset.web_url}
-            alt="题目公式"
-            fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='28'%3E%3Ctext x='4' y='19' fill='%23c00'%3E公式加载失败%3C/text%3E%3C/svg%3E"
-          />
-        )
-      })}
-    </Typography.Paragraph>
+    <Image.PreviewGroup>
+      <Typography.Paragraph className="question-rich-text">
+        {segments.map((segment, index) => {
+          if (segment.type === 'text') return <Fragment key={index}>{segment.value}</Fragment>
+          const asset = assetMap.get(segment.value)
+          if (!asset?.web_url) {
+            return <span key={index} className="asset-error">[图片或公式资源加载失败]</span>
+          }
+          return (
+            <Image
+              key={index}
+              className="inline-formula"
+              preview={{ mask: '点击放大' }}
+              src={asset.web_url}
+              alt="题目图片或公式（点击放大）"
+              fallback="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='28'%3E%3Ctext x='4' y='19' fill='%23c00'%3E图片或公式加载失败%3C/text%3E%3C/svg%3E"
+            />
+          )
+        })}
+      </Typography.Paragraph>
+    </Image.PreviewGroup>
   )
 }

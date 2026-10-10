@@ -3,15 +3,17 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import case, distinct, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.models import ExamPoint, KnowledgePoint, Question, QuestionExamPoint
 from app.schemas.common import Page
 from app.schemas.questions import (
     QuestionArchiveRequest,
+    AssetOut,
     QuestionCatalogStats,
     QuestionCreateRequest,
     QuestionDetail,
@@ -20,7 +22,7 @@ from app.schemas.questions import (
     QuestionWithdrawRequest,
     TagOut,
 )
-from app.services.assets import resolve_assets
+from app.services.assets import resolve_assets, store_teacher_asset, teacher_asset_exists
 from app.services.question_review import (
     QuestionReviewConflict,
     QuestionReviewValidation,
@@ -31,6 +33,8 @@ from app.services.question_review import (
 
 
 router = APIRouter(prefix="/questions", tags=["questions"])
+
+ALLOWED_QUESTION_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
 def _main_exam(question: Question) -> ExamPoint:
@@ -114,6 +118,26 @@ def _review_error(exc: Exception) -> HTTPException:
     return HTTPException(status_code=422, detail=str(exc))
 
 
+@router.post('/assets', response_model=AssetOut, status_code=201)
+async def upload_question_asset(file: UploadFile = File(...)) -> AssetOut:
+    if file.content_type not in ALLOWED_QUESTION_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail='仅支持 JPG、PNG 或 WebP 图片',
+        )
+    settings = get_settings()
+    payload = await file.read(settings.question_asset_max_upload_bytes + 1)
+    await file.close()
+    if not payload:
+        raise HTTPException(status_code=422, detail='图片文件不能为空')
+    if len(payload) > settings.question_asset_max_upload_bytes:
+        raise HTTPException(status_code=413, detail='单张图片不能超过 8MB')
+    try:
+        return AssetOut(**store_teacher_asset(payload))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @router.post('', response_model=QuestionDetail, status_code=201)
 def create_question(
     request: QuestionCreateRequest,
@@ -132,6 +156,19 @@ def create_question(
     if db.scalar(select(Question.id).where(Question.original_qid == original_qid)):
         raise HTTPException(status_code=409, detail='题目编号已存在')
 
+    missing_assets = [
+        asset.path for asset in request.assets if not teacher_asset_exists(asset.path)
+    ]
+    if missing_assets:
+        raise HTTPException(status_code=422, detail='题目图片不存在或已失效，请重新上传')
+
+    asset_records = [asset.model_dump() for asset in request.assets]
+    question_text = request.question_text
+    for asset in asset_records:
+        marker = f"[ASSET:{asset['path']}]"
+        if marker not in question_text:
+            question_text = f"{question_text.rstrip()}\n{marker}"
+
     source_number = int(db.scalar(
         select(func.max(Question.source_question_number)).where(
             Question.source_file == 'teacher_upload'
@@ -147,7 +184,7 @@ def create_question(
         question_type=request.question_type,
         difficulty=request.difficulty,
         main_knowledge_point_id=exam.knowledge_point_id,
-        question_text=request.question_text,
+        question_text=question_text,
         options=request.options,
         correct_answer=None,
         reference_answer_raw=request.reference_answer_raw,
@@ -156,9 +193,9 @@ def create_question(
         solution=request.solution,
         wrong_analysis=request.wrong_analysis,
         estimated_score_rate=None,
-        has_image=False,
-        has_equation=any(mark in request.question_text for mark in ('$', '\\(', '\\[')),
-        assets=[],
+        has_image=bool(asset_records),
+        has_equation=any(mark in question_text for mark in ('$', '\\(', '\\[')),
+        assets=asset_records,
         source_file='teacher_upload',
         source_question_number=source_number,
         source_review_status='reviewed',

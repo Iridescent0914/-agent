@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -198,6 +198,112 @@ def test_superseded_version_is_not_a_second_assignment_target(client, db):
     assert body["summary"]["historical_invalidated_count"] == 1
     assert len(body["students"]) == 1
     assert body["students"][0]["version_no"] == 2
+
+
+def test_assignment_progress_is_filtered_by_class(client, db):
+    _, demo_paper = _published_paper(client, db)
+    class_response = client.post(
+        "/api/v1/classes",
+        json={"name": "其他测试班", "grade": "六年级", "school_year": "2026-2027"},
+    )
+    assert class_response.status_code == 201, class_response.text
+    other_class = class_response.json()
+    other_student = Student(
+        student_code="OTHER-" + uuid4().hex[:8],
+        display_name="其他班学生",
+        class_id=UUID(other_class["id"]),
+        class_name="其他测试班",
+        is_demo=True,
+    )
+    db.add(other_student)
+    db.flush()
+    created = client.post(
+        "/api/v1/assignments",
+        json={
+            "idempotency_key": "class-filter-" + uuid4().hex,
+            "title": "其他班过滤测试",
+            "class_id": other_class["id"],
+            "student_ids": [str(other_student.id)],
+            "recommendation_parameters": {
+                "review_exam_point_codes": [
+                    "math.g6.rational.exam.local.a61b42d3fd",
+                ],
+                "review_count": 1,
+                "avoid_recent_days": 0,
+                "max_exam_point_ratio": 1,
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+    assignment = created.json()
+    paper = assignment["papers"][0]
+    published = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/publish",
+        json={"expected_edit_revision": paper["edit_revision"]},
+    )
+    assert published.status_code == 200, published.text
+
+    demo_list = client.get(
+        "/api/v1/assignments",
+        params={"page_size": 100, "class_name": "六年级 Demo 班"},
+    )
+    demo_ids = {item["id"] for item in demo_list.json()["items"]}
+    assert demo_paper["assignment_id"] in demo_ids
+    assert assignment["id"] not in demo_ids
+
+    demo_progress = client.get(
+        f"/api/v1/analytics/assignments/{demo_paper['assignment_id']}",
+        params={"class_name": "六年级 Demo 班"},
+    )
+    assert demo_progress.status_code == 200, demo_progress.text
+    assert demo_progress.json()["summary"]["student_count"] == 1
+    assert [item["student_code"] for item in demo_progress.json()["students"]] == ["S002"]
+
+    other_list = client.get(
+        "/api/v1/assignments",
+        params={"page_size": 100, "class_name": "其他测试班"},
+    )
+    assert [item["id"] for item in other_list.json()["items"]] == [assignment["id"]]
+
+    other_progress = client.get(
+        f"/api/v1/analytics/assignments/{assignment['id']}",
+        params={"class_name": "其他测试班"},
+    )
+    assert other_progress.status_code == 200, other_progress.text
+    assert [item["student_code"] for item in other_progress.json()["students"]] == [
+        other_student.student_code
+    ]
+
+
+def test_empty_assignment_can_be_deleted(client, db):
+    student = db.scalar(select(Student).where(Student.student_code == "S002"))
+    created = client.post(
+        "/api/v1/assignments",
+        json={
+            "idempotency_key": "delete-empty-" + uuid4().hex,
+            "title": "待删除空作业",
+            "class_id": str(student.class_id),
+            "student_ids": [str(student.id)],
+            "recommendation_parameters": {
+                "review_exam_point_codes": ["math.g6.rational.exam.local.a61b42d3fd"],
+                "review_count": 1,
+                "avoid_recent_days": 0,
+                "max_exam_point_ratio": 1,
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+    assignment = created.json()
+    paper = assignment["papers"][0]
+    removed = client.request(
+        "DELETE",
+        f"/api/v1/paper-instances/{paper['id']}",
+        json={"expected_edit_revision": paper["edit_revision"]},
+    )
+    assert removed.status_code == 200, removed.text
+    deleted = client.delete(f"/api/v1/assignments/{assignment['id']}")
+    assert deleted.status_code == 204, deleted.text
+    assert client.get(f"/api/v1/assignments/{assignment['id']}").status_code == 404
 
 
 def test_analytics_missing_entities_are_structured(client):

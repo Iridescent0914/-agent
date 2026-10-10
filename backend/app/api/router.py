@@ -1,12 +1,13 @@
 from fastapi import APIRouter
 
-from app.api.routes import analytics, assignments, health, papers, profile, questions, recognition, students, submissions
+from app.api.routes import analytics, assignments, classes, health, papers, profile, questions, recognition, students, submissions
 
 
 api_router = APIRouter()
 api_router.include_router(health.router)
 api_router.include_router(questions.router)
 api_router.include_router(students.router)
+api_router.include_router(classes.router)
 api_router.include_router(profile.router)
 api_router.include_router(assignments.router)
 api_router.include_router(papers.router)

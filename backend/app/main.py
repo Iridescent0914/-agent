@@ -13,6 +13,7 @@ from app.core.config import get_settings
 
 settings = get_settings()
 settings.web_asset_dir.mkdir(parents=True, exist_ok=True)
+settings.teacher_asset_dir.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
 app.add_middleware(
@@ -24,6 +25,11 @@ app.add_middleware(
 )
 app.include_router(api_router, prefix=settings.api_v1_prefix)
 app.mount("/assets/rational", StaticFiles(directory=settings.web_asset_dir), name="assets")
+app.mount(
+    "/assets/teacher",
+    StaticFiles(directory=settings.teacher_asset_dir),
+    name="teacher-assets",
+)
 
 
 @app.exception_handler(HTTPException)

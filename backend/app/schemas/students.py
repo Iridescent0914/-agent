@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class StudentCreateRequest(BaseModel):
@@ -14,15 +14,32 @@ class StudentCreateRequest(BaseModel):
         min_length=1, max_length=32, pattern=r'^[A-Za-z0-9._-]+$'
     )
     display_name: str = Field(min_length=1, max_length=80)
-    class_name: str = Field(min_length=1, max_length=120)
+    class_id: uuid.UUID | None = None
+    class_name: str | None = Field(default=None, min_length=1, max_length=120)
 
-    @field_validator('student_code', 'display_name', 'class_name')
+    @field_validator('student_code', 'display_name')
     @classmethod
     def strip_text(cls, value: str) -> str:
         clean = value.strip()
         if not clean:
             raise ValueError('字段不能为空')
         return clean
+
+    @field_validator('class_name')
+    @classmethod
+    def strip_class_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        clean = value.strip()
+        if not clean:
+            raise ValueError('班级名称不能为空')
+        return clean
+
+    @model_validator(mode='after')
+    def require_class(self):
+        if self.class_id is None and self.class_name is None:
+            raise ValueError('必须选择班级')
+        return self
 
 
 class StudentArchiveRequest(BaseModel):
@@ -39,10 +56,17 @@ class StudentArchiveRequest(BaseModel):
         return clean
 
 
+class StudentClassUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    class_id: uuid.UUID
+
+
 class StudentListItem(BaseModel):
     id: uuid.UUID
     student_code: str
     display_name: str
+    class_id: uuid.UUID | None
     class_name: str
     is_demo: bool
     attempt_count: int

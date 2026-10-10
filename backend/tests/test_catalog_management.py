@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from io import BytesIO
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 from sqlalchemy import func, select
 
+from app.core.config import get_settings
 from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import ExamPoint, PaperInstance, PaperInstanceItem, Question, Student
@@ -76,6 +79,52 @@ def test_teacher_can_create_review_and_archive_question(client, db):
     ) or 0) == before
     archived = db.get(Question, body['id'])
     assert archived is not None and archived.archived_by == '测试教师'
+
+
+def test_teacher_can_upload_images_when_creating_question(client, db, tmp_path, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, 'teacher_asset_dir', tmp_path)
+    monkeypatch.setattr(
+        settings,
+        'public_teacher_asset_base_url',
+        'http://testserver/assets/teacher',
+    )
+
+    image_bytes = BytesIO()
+    Image.new('RGB', (320, 180), color=(245, 248, 252)).save(image_bytes, format='JPEG')
+    uploaded = client.post(
+        '/api/v1/questions/assets',
+        files={'file': ('geometry.jpg', image_bytes.getvalue(), 'image/jpeg')},
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    asset = uploaded.json()
+    assert asset['path'].startswith('assets/teacher/')
+    assert asset['path'].endswith('.png')
+    assert (tmp_path / asset['path'].split('/')[-1]).is_file()
+
+    exam = db.scalar(select(ExamPoint).order_by(ExamPoint.code))
+    created = client.post('/api/v1/questions', json={
+        'question_type': 'fill_blank',
+        'difficulty': 3,
+        'section': '图片题测试',
+        'question_text': '观察下图并填空。',
+        'reference_answer_raw': '1',
+        'main_exam_point_code': exam.code,
+        'operator_name': '测试教师',
+        'assets': [{'path': asset['path']}],
+    })
+    assert created.status_code == 201, created.text
+    body = created.json()
+    assert body['has_image'] is True
+    assert body['asset_count'] == 1
+    assert f"[ASSET:{asset['path']}]" in body['question_text']
+    assert body['assets'][0]['web_url'] == asset['web_url']
+
+    invalid = client.post(
+        '/api/v1/questions/assets',
+        files={'file': ('fake.png', b'not-an-image', 'image/png')},
+    )
+    assert invalid.status_code == 422
 
 
 def test_archiving_referenced_question_preserves_paper_snapshot(client, db):

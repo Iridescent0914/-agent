@@ -150,16 +150,36 @@ class QuestionExamPoint(Base):
     exam_point: Mapped[ExamPoint] = relationship()
 
 
+class SchoolClass(TimestampMixin, Base):
+    __tablename__ = "school_classes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    grade: Mapped[str] = mapped_column(String(40), nullable=False, default="未设置")
+    school_year: Mapped[str] = mapped_column(String(40), nullable=False, default="未设置")
+    teacher_name: Mapped[str | None] = mapped_column(String(80))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    students: Mapped[list[Student]] = relationship(back_populates="school_class")
+
+
 class Student(TimestampMixin, Base):
     __tablename__ = "students"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     student_code: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    class_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("school_classes.id", ondelete="SET NULL"), index=True
+    )
     class_name: Mapped[str] = mapped_column(String(120), nullable=False)
     is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     archived_by: Mapped[str | None] = mapped_column(String(80))
+
+    school_class: Mapped[SchoolClass | None] = relationship(back_populates="students")
 
 
 class StudentMastery(Base):
@@ -199,10 +219,15 @@ class Assignment(TimestampMixin, Base):
     seed_key: Mapped[str | None] = mapped_column(String(100), unique=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(100), unique=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    class_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("school_classes.id", ondelete="RESTRICT"), index=True
+    )
     chapter_code: Mapped[str] = mapped_column(String(160), nullable=False)
     teaching_scope: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     generation_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     assignment_type: Mapped[str] = mapped_column(String(32), nullable=False, default="practice")
+
+    school_class: Mapped[SchoolClass | None] = relationship()
 
 
 class PaperInstance(TimestampMixin, Base):

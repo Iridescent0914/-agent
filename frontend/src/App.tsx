@@ -16,6 +16,7 @@ const QuestionDetailPage = lazy(() => import('./pages/QuestionDetailPage').then(
 const QuestionListPage = lazy(() => import('./pages/QuestionListPage').then((module) => ({ default: module.QuestionListPage })))
 const StudentDetailPage = lazy(() => import('./pages/StudentDetailPage').then((module) => ({ default: module.StudentDetailPage })))
 const StudentListPage = lazy(() => import('./pages/StudentListPage').then((module) => ({ default: module.StudentListPage })))
+const ClassManagementPage = lazy(() => import('./pages/ClassManagementPage').then((module) => ({ default: module.ClassManagementPage })))
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/questions" element={<QuestionListPage />} />
           <Route path="/questions/:questionId" element={<QuestionDetailPage />} />
           <Route path="/students" element={<StudentListPage />} />
+          <Route path="/classes" element={<ClassManagementPage />} />
           <Route path="/students/:studentId" element={<StudentDetailPage />} />
           <Route path="/assignments" element={<AssignmentListPage />} />
           <Route path="/assignments/new" element={<AssignmentCreatePage />} />

@@ -283,16 +283,27 @@ def build_exam_point_students(
     )
 
 
-def build_assignment_overview(db: Session, assignment_id: UUID) -> AssignmentAnalyticsOut:
+def build_assignment_overview(
+    db: Session, assignment_id: UUID, *, class_name: str | None = None
+) -> AssignmentAnalyticsOut:
     assignment = db.get(Assignment, assignment_id)
     if assignment is None:
         raise LookupError("assignment not found")
-    rows = db.execute(
+    row_query = (
         select(PaperInstance, Student)
         .join(Student, Student.id == PaperInstance.student_id)
         .where(PaperInstance.assignment_id == assignment_id)
-        .order_by(Student.student_code, PaperInstance.version_no, PaperInstance.id)
+    )
+    if class_name is not None:
+        row_query = row_query.where(
+            Student.class_name == class_name,
+            Student.archived_at.is_(None),
+        )
+    rows = db.execute(
+        row_query.order_by(Student.student_code, PaperInstance.version_no, PaperInstance.id)
     ).all()
+    if class_name is not None and not rows:
+        raise LookupError("assignment not found for class")
     student_count = len({paper.student_id for paper, _ in rows})
     draft_count = sum(paper.status == "draft" for paper, _ in rows)
     invalidated_count = sum(paper.invalidated_at is not None for paper, _ in rows)

@@ -11,6 +11,7 @@ from app.schemas.recommendations import RecommendationOut, RecommendationRequest
 
 class AssignmentPlanRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    class_id: UUID | None = None
     student_ids: list[UUID] = Field(min_length=1, max_length=100)
     recommendation_parameters: RecommendationRequest
 
@@ -52,6 +53,8 @@ class AssignmentPreviewOut(BaseModel):
 class AssignmentListItem(BaseModel):
     id: UUID
     title: str
+    class_id: UUID | None
+    class_name: str | None
     chapter_code: str
     assignment_type: str
     student_count: int

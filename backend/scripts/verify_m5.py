@@ -27,8 +27,8 @@ def main() -> None:
     warnings: list[str] = []
     with SessionLocal() as db:
         migration = db.scalar(text("SELECT version_num FROM alembic_version"))
-        if migration != "0013":
-            errors.append(f"migration is {migration}, expected 0013")
+        if migration != "0016":
+            errors.append(f"migration is {migration}, expected 0016")
 
         students = list(
             db.scalars(

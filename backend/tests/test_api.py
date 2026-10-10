@@ -12,7 +12,7 @@ def test_health_and_readiness() -> None:
     assert client.get("/api/v1/health").json() == {"status": "ok"}
     response = client.get("/api/v1/ready")
     assert response.status_code == 200
-    assert response.json()['migration'] == '0013'
+    assert response.json()['migration'] == '0016'
 
 
 def test_question_list_filters_and_detail_assets() -> None:
@@ -50,12 +50,14 @@ def test_student_history_is_traceable() -> None:
     response = client.get("/api/v1/students", params={"page_size": 100})
     assert response.status_code == 200
     body = response.json()
-    assert body["total"] == 5
+    assert body["total"] >= 5
     # The demo database is intentionally reusable: later M4 submissions append
     # attempts without replacing the 30 seeded history records per student.
-    assert all(item["attempt_count"] >= 30 for item in body["items"])
+    seeded = [item for item in body["items"] if item["student_code"] in {"S001", "S002", "S003", "S004", "S005"}]
+    assert len(seeded) == 5
+    assert all(item["attempt_count"] >= 30 for item in seeded)
 
-    student = body["items"][0]
+    student = seeded[0]
     detail = client.get(f"/api/v1/students/{student['id']}")
     assert detail.status_code == 200
     history = client.get(

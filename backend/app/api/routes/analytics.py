@@ -52,9 +52,13 @@ def get_exam_point_students(
 
 
 @router.get("/assignments/{assignment_id}", response_model=AssignmentAnalyticsOut)
-def get_assignment_analytics(assignment_id: UUID, db: Session = Depends(get_db)):
+def get_assignment_analytics(
+    assignment_id: UUID,
+    class_name: str | None = Query(None, min_length=1, max_length=120),
+    db: Session = Depends(get_db),
+):
     try:
-        return build_assignment_overview(db, assignment_id)
+        return build_assignment_overview(db, assignment_id, class_name=class_name)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except AnalyticsDataError as exc:

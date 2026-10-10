@@ -17,6 +17,7 @@ export interface AssignmentPreview {
 }
 
 export interface AssignmentRequest {
+  class_id: string
   student_ids: string[]
   recommendation_parameters: RecommendationParams
 }
@@ -48,6 +49,8 @@ export interface PaperSummary {
 export interface AssignmentListItem {
   id: string
   title: string
+  class_id: string | null
+  class_name: string | null
   chapter_code: string
   assignment_type: string
   student_count: number

@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     public_asset_base_url: str = "http://localhost:8000/assets/rational"
     web_asset_dir: Path = Path(__file__).resolve().parents[3] / "data" / "web" / "rational"
+    public_teacher_asset_base_url: str = "http://localhost:8000/assets/teacher"
+    teacher_asset_dir: Path = Path(__file__).resolve().parents[3] / "data" / "web" / "teacher"
+    question_asset_max_upload_bytes: int = 8 * 1024 * 1024
+    question_asset_max_pixels: int = 20_000_000
     recognition_upload_dir: Path = Path(__file__).resolve().parents[3] / "data" / "uploads" / "m6"
     recognition_max_upload_bytes: int = 8 * 1024 * 1024
     recognition_max_pixels: int = 20_000_000

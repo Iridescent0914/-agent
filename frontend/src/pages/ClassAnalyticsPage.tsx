@@ -30,16 +30,10 @@ export function ClassAnalyticsPage() {
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true); setError(null)
-    Promise.all([
-      apiGet<ClassOption[]>('/analytics/classes', controller.signal),
-      apiGet<AssignmentPage>('/assignments?page_size=100', controller.signal),
-    ]).then(([classData, assignmentData]) => {
+    apiGet<ClassOption[]>('/analytics/classes', controller.signal).then((classData) => {
       if (controller.signal.aborted) return
       setClasses(classData)
-      const usable = assignmentData.items.filter((item) => item.assignment_type !== 'historical_seed' && item.published_count > 0)
-      setAssignments(usable)
       setClassName((current) => classData.some((item) => item.class_name === current) ? current : classData[0]?.class_name ?? '')
-      setAssignmentId((current) => usable.some((item) => item.id === current) ? current : usable[0]?.id ?? '')
     }).catch((reason: Error) => {
       if (!controller.signal.aborted) setError(reason.message)
     }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
@@ -56,13 +50,29 @@ export function ClassAnalyticsPage() {
   }, [className, refresh])
 
   useEffect(() => {
-    if (!assignmentId) { setAssignment(null); return }
+    if (!className) { setAssignments([]); setAssignmentId(''); return }
+    const controller = new AbortController()
+    setAssignments([])
+    setAssignmentId('')
+    setAssignment(null)
+    apiGet<AssignmentPage>(`/assignments${queryString({ page_size: 100, class_name: className })}`, controller.signal)
+      .then((assignmentData) => {
+        const usable = assignmentData.items.filter((item) => item.assignment_type !== 'historical_seed' && item.published_count > 0)
+        setAssignments(usable)
+        setAssignmentId(usable[0]?.id ?? '')
+      })
+      .catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
+    return () => controller.abort()
+  }, [className, refresh])
+
+  useEffect(() => {
+    if (!assignmentId || !className) { setAssignment(null); return }
     const controller = new AbortController()
     setAssignment(null)
-    apiGet<AssignmentAnalytics>(`/analytics/assignments/${assignmentId}`, controller.signal)
+    apiGet<AssignmentAnalytics>(`/analytics/assignments/${assignmentId}${queryString({ class_name: className })}`, controller.signal)
       .then(setAssignment).catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
     return () => controller.abort()
-  }, [assignmentId, refresh])
+  }, [assignmentId, className, refresh])
 
   useEffect(() => {
     const next = new URLSearchParams()
@@ -111,10 +121,28 @@ export function ClassAnalyticsPage() {
         <Table rowKey="exam_point_code" columns={examColumns} dataSource={overview.exam_points} pagination={false} scroll={{ x: 900 }} size="small" />
       </Card>
       <Card title="需关注考点"><Table rowKey="exam_point_code" columns={focusColumns} dataSource={overview.focus_points} pagination={{ pageSize: 6, hideOnSinglePage: true }} /></Card>
-      <Card title="作业进度" extra={assignments.length > 0 && <Select aria-label="选择作业" value={assignmentId || undefined} onChange={setAssignmentId} options={assignments.map((item) => ({ value: item.id, label: item.title }))} style={{ width: 280, maxWidth: '70vw' }} />}>
+      <Card title={`${className} · 作业进度`} extra={assignments.length > 0 && <Select aria-label="选择作业" value={assignmentId || undefined} onChange={setAssignmentId} options={assignments.map((item) => ({ value: item.id, label: item.title }))} style={{ width: 280, maxWidth: '70vw' }} />}>
         <AssignmentProgressPanel data={assignment} />
       </Card>
-      <Alert type="info" showIcon message="数据口径" description="正确率为确认答对次数 ÷ 确认作答次数；掌握度为按原作答时间重放的 EMA 参考值。待复核不算错误，未评估学生不按 0 或 0.5 参与班级均值。" />
+      <Alert
+        type="info"
+        showIcon
+        message="这些数字是怎么计算的？"
+        description={<div>
+          <Typography.Paragraph>
+            <Typography.Text strong>正确率：</Typography.Text>
+            把本班在该考点下所有已经确认的作答合在一起，用“答对次数 ÷ 作答次数”。例如确认作答 20 次、答对 15 次，正确率就是 75%。
+          </Typography.Paragraph>
+          <Typography.Paragraph>
+            <Typography.Text strong>掌握度参考值：</Typography.Text>
+            每名学生每个考点从 50% 起步。每次确认作答后按“旧值 × 80% + 本次结果 × 20%”更新，答对时本次结果为 100%，答错为 0%。例如 50% 后答对一次变为 60%，随后答错一次变为 48%；因此越近的作答影响越大。
+          </Typography.Paragraph>
+          <Typography.Paragraph className="no-margin">
+            <Typography.Text strong>班级掌握度：</Typography.Text>
+            先分别计算每名有作答记录学生的掌握度，再求平均。没有做过该考点题目的学生不参与平均；待复核答案在确认前既不算对，也不算错。
+          </Typography.Paragraph>
+        </div>}
+      />
       <Typography.Text type="secondary">计算时间：{new Date(overview.computed_at).toLocaleString('zh-CN')} · 规则版本：{overview.rule_version}</Typography.Text>
     </>}
     <ExamPointStudentDrawer examPointCode={examPointCode} className={className} chapterCode={CHAPTER_CODE} onClose={() => setExamPointCode(null)} />

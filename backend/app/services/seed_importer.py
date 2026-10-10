@@ -20,6 +20,7 @@ from app.models import (
     PaperInstanceItem,
     Question,
     QuestionExamPoint,
+    SchoolClass,
     Student,
     Submission,
 )
@@ -332,8 +333,18 @@ def _import_questions(
 def _import_students(session: Session, stats: ImportStats) -> list[Student]:
     result: list[Student] = []
     for code, name, class_name in DEMO_STUDENTS:
+        school_class = session.scalar(select(SchoolClass).where(SchoolClass.name == class_name))
+        if school_class is None:
+            school_class = SchoolClass(name=class_name)
+            session.add(school_class)
+            session.flush()
         student = session.scalar(select(Student).where(Student.student_code == code))
-        values = {"display_name": name, "class_name": class_name, "is_demo": True}
+        values = {
+            "display_name": name,
+            "class_id": school_class.id,
+            "class_name": class_name,
+            "is_demo": True,
+        }
         if student is None:
             student = Student(student_code=code, **values)
             session.add(student)
@@ -409,6 +420,7 @@ def _import_demo_history(
             assignment = Assignment(
                 seed_key=seed_key,
                 title=f"有理数演示历史练习 {batch_index + 1}",
+                class_id=students[0].class_id,
                 chapter_code="math.g6.rational",
                 teaching_scope={"source": "m1_demo_seed", "batch": batch_index + 1},
                 assignment_type="historical_seed",

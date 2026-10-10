@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Assignment, PaperInstance, Student
+from app.models import Assignment, PaperInstance, SchoolClass, Student
 from app.schemas.assignments import (
     AssignmentCreateRequest, AssignmentPlanRequest, AssignmentPreviewOut,
     StudentRecommendationPreview,
@@ -31,10 +31,38 @@ def _students(db: Session, student_ids: Iterable[UUID]) -> list[Student]:
     return [by_id[student_id] for student_id in ids]
 
 
+def _school_class(
+    db: Session, students: list[Student], requested_class_id: UUID | None
+) -> SchoolClass:
+    if requested_class_id is not None:
+        school_class = db.get(SchoolClass, requested_class_id)
+        if school_class is None:
+            raise LookupError("class not found")
+        if any(
+            student.class_id != school_class.id and student.class_name != school_class.name
+            for student in students
+        ):
+            raise ValueError("所选学生中包含不属于该班级的学生")
+        return school_class
+
+    class_ids = {student.class_id for student in students if student.class_id is not None}
+    class_names = {student.class_name for student in students}
+    if len(class_ids) > 1 or len(class_names) > 1:
+        raise ValueError("一次作业只能选择同一班级的学生")
+    school_class = db.get(SchoolClass, next(iter(class_ids))) if class_ids else None
+    if school_class is None:
+        class_name = next(iter(class_names))
+        school_class = db.scalar(select(SchoolClass).where(SchoolClass.name == class_name))
+    if school_class is None:
+        raise LookupError("class not found")
+    return school_class
+
+
 def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                        as_of: datetime | None = None) -> AssignmentPreviewOut:
     at = as_of or datetime.now(timezone.utc)
     students = _students(db, request.student_ids)
+    _school_class(db, students, request.class_id)
     results = []
     for student in students:
         recommendation = preview(
@@ -69,14 +97,18 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
         return existing, False
 
     plan = AssignmentPlanRequest(
+        class_id=request.class_id,
         student_ids=request.student_ids,
         recommendation_parameters=request.recommendation_parameters,
     )
     result = preview_assignment(db, plan, as_of=as_of)
+    students = _students(db, request.student_ids)
+    school_class = _school_class(db, students, request.class_id)
     params = request.recommendation_parameters.model_dump(mode="json")
     assignment = Assignment(
         idempotency_key=request.idempotency_key,
         title=request.title,
+        class_id=school_class.id,
         chapter_code=request.recommendation_parameters.chapter_code,
         teaching_scope={
             "new_exam_point_codes": params["new_exam_point_codes"],

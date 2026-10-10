@@ -15,7 +15,7 @@ from app.schemas.common import Page
 from app.schemas.papers import BatchPublishRequest
 from app.services.paper_generation import create_assignment, preview_assignment
 from app.services.paper_workflow import (
-    PaperConflict, PaperValidation, assignment_detail, list_assignment_items,
+    PaperConflict, PaperValidation, assignment_detail, delete_empty_assignment, list_assignment_items,
     publish_paper,
 )
 
@@ -50,8 +50,11 @@ def create(request: AssignmentCreateRequest, db: Session = Depends(get_db)):
 
 @router.get("", response_model=Page[AssignmentListItem])
 def list_assignments(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),
+                     class_name: str | None = Query(None, min_length=1, max_length=120),
                      db: Session = Depends(get_db)):
-    items, total = list_assignment_items(db, offset=(page - 1) * page_size, limit=page_size)
+    items, total = list_assignment_items(
+        db, offset=(page - 1) * page_size, limit=page_size, class_name=class_name
+    )
     return Page(items=items, total=total, page=page, page_size=page_size)
 
 
@@ -60,6 +63,14 @@ def get_assignment(assignment_id: UUID, db: Session = Depends(get_db)):
     try:
         return assignment_detail(db, assignment_id)
     except LookupError as exc:
+        raise _error(exc) from exc
+
+
+@router.delete("/{assignment_id}", status_code=204)
+def delete_assignment(assignment_id: UUID, db: Session = Depends(get_db)) -> None:
+    try:
+        delete_empty_assignment(db, assignment_id)
+    except (LookupError, ValueError, RuntimeError) as exc:
         raise _error(exc) from exc
 
 

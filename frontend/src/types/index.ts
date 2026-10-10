@@ -46,6 +46,7 @@ export interface QuestionCreateRequest {
   solution?: string
   wrong_analysis?: string
   operator_name: string
+  assets?: Array<{ path: string }>
 }
 
 export interface AssetInfo {
@@ -103,6 +104,7 @@ export interface StudentSummary {
   id: string
   student_code: string
   display_name: string
+  class_id: string | null
   class_name: string
   is_demo: boolean
   attempt_count: number
@@ -113,7 +115,26 @@ export interface StudentSummary {
 export interface StudentCreateRequest {
   student_code: string
   display_name: string
-  class_name: string
+  class_id: string
+  class_name?: string
+}
+
+export interface ClassSummary {
+  id: string
+  name: string
+  grade: string
+  school_year: string
+  teacher_name: string | null
+  student_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ClassWriteRequest {
+  name: string
+  grade: string
+  school_year: string
+  teacher_name?: string | null
 }
 
 export interface StudentDetail extends StudentSummary {
