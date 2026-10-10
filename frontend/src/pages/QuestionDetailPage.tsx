@@ -18,6 +18,24 @@ const typeLabel: Record<string, string> = {
   unknown: '待确认题型',
 }
 
+const importIssueLabel: Record<string, string> = {
+  missing_question_text: '题干缺失',
+  missing_reference_answer: '参考答案缺失',
+  missing_main_knowledge_point: '知识点缺失',
+  missing_main_exam_point: '主考点缺失',
+  missing_difficulty: '难度缺失',
+  multiple_subquestions: '包含多个小题，需要核对答案项',
+  question_type_mismatch: '原始题型与题干结构不一致，需要核对',
+  options_not_structured: '选择题选项尚未结构化',
+  answer_items_not_structured: '答案尚未拆分为可判分结构',
+  source_contains_ai_draft_marker: '原始资料包含待确认的 AI 草拟内容',
+  asset_unavailable: '部分题目图片或公式资源无法访问',
+}
+
+function describeImportIssue(issue: string) {
+  return importIssueLabel[issue] || `其他导入问题：${issue}`
+}
+
 export function QuestionDetailPage() {
   const { questionId } = useParams()
   const [question, setQuestion] = useState<QuestionDetail | null>(null)
@@ -85,7 +103,7 @@ export function QuestionDetailPage() {
             <Descriptions.Item label="答案匹配类型">{question.answer_match_type || '待确认'}</Descriptions.Item>
             <Descriptions.Item label="来源审核状态">{question.source_review_status}</Descriptions.Item>
             <Descriptions.Item label="导入状态">{question.import_status}</Descriptions.Item>
-            <Descriptions.Item label="待处理项">{question.import_issues.length || '无'}</Descriptions.Item>
+            <Descriptions.Item label="当前待处理项">{question.import_issues.length || '无'}</Descriptions.Item>
             <Descriptions.Item label="审核版本">{question.review_revision}</Descriptions.Item>
             <Descriptions.Item label="最近审核人">{question.reviewed_by || '尚未人工审核'}</Descriptions.Item>
             <Descriptions.Item label="知识点">{question.main_knowledge_point.name}</Descriptions.Item>
@@ -96,16 +114,16 @@ export function QuestionDetailPage() {
           </Descriptions>
           {question.import_issues.length > 0 && (
             <>
-              <Typography.Title level={5}>待验证问题</Typography.Title>
-              <Space wrap>{question.import_issues.map((issue) => <Tag color="orange" key={issue}>{issue}</Tag>)}</Space>
+              <Typography.Title level={5}>当前需要处理</Typography.Title>
+              <Space wrap>{question.import_issues.map((issue) => <Tag color="orange" key={issue}>{describeImportIssue(issue)}</Tag>)}</Space>
             </>
           )}
           <Typography.Title level={5}>参考答案原文</Typography.Title>
-          <Typography.Paragraph className="preserve-lines">{question.reference_answer_raw}</Typography.Paragraph>
+          <RichQuestionText text={question.reference_answer_raw} assets={question.assets} />
           <Typography.Title level={5}>解析</Typography.Title>
-          {question.solution ? <Typography.Paragraph className="preserve-lines">{question.solution}</Typography.Paragraph> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无解析" />}
+          {question.solution ? <RichQuestionText text={question.solution} assets={question.assets} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无解析" />}
           <Typography.Title level={5}>易错分析</Typography.Title>
-          {question.wrong_analysis ? <Typography.Paragraph className="preserve-lines">{question.wrong_analysis}</Typography.Paragraph> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无易错分析" />}
+          {question.wrong_analysis ? <RichQuestionText text={question.wrong_analysis} assets={question.assets} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无易错分析" />}
         </Space>
       </Card>
     </Space>

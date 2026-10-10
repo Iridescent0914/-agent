@@ -25,7 +25,12 @@ from app.schemas.questions import (
     QuestionWithdrawRequest,
     TagOut,
 )
-from app.services.assets import resolve_assets, store_teacher_asset, teacher_asset_exists
+from app.services.assets import (
+    actionable_import_issues,
+    resolve_assets,
+    store_teacher_asset,
+    teacher_asset_exists,
+)
 from app.services.question_review import (
     QuestionReviewConflict,
     QuestionReviewValidation,
@@ -49,6 +54,11 @@ def _main_exam(question: Question) -> ExamPoint:
 
 def _summary(question: Question) -> QuestionListItem:
     exam = _main_exam(question)
+    import_issues = actionable_import_issues(
+        question.import_issues or [],
+        question.assets or [],
+        question.grading_readiness,
+    )
     return QuestionListItem(
         id=question.id,
         original_qid=question.original_qid,
@@ -66,7 +76,7 @@ def _summary(question: Question) -> QuestionListItem:
         asset_count=len(question.assets or []),
         grading_readiness=question.grading_readiness,
         import_status=question.import_status,
-        import_issue_count=len(question.import_issues or []),
+        import_issue_count=len(import_issues),
     )
 
 
@@ -103,7 +113,11 @@ def _detail(db: Session, question_id: uuid.UUID) -> QuestionDetail:
         source_file=question.source_file,
         source_question_number=question.source_question_number,
         source_review_status=question.source_review_status,
-        import_issues=question.import_issues or [],
+        import_issues=actionable_import_issues(
+            question.import_issues or [],
+            question.assets or [],
+            question.grading_readiness,
+        ),
         review_revision=question.review_revision,
         review_history=question.review_history or [],
         reviewed_by=question.reviewed_by,

@@ -55,6 +55,42 @@ def resolve_assets(assets: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
+def actionable_import_issues(
+    import_issues: list[str],
+    assets: list[dict[str, Any]],
+    grading_readiness: str,
+) -> list[str]:
+    """Return current actionable issues instead of stale extraction notes."""
+    resolved_assets = resolve_assets(assets)
+    has_unavailable_asset = any(
+        asset["conversion_status"] not in {"converted", "uploaded"}
+        or not asset["web_url"]
+        for asset in resolved_assets
+    )
+    result: list[str] = []
+    for issue in import_issues:
+        if issue == "contains_asset":
+            continue
+        if issue == "asset_needs_web_conversion":
+            if has_unavailable_asset and "asset_unavailable" not in result:
+                result.append("asset_unavailable")
+            continue
+        if issue not in result:
+            result.append(issue)
+    if grading_readiness == "machine_ready":
+        # Promotion is the teacher's confirmation that imported answer/type
+        # concerns are resolved. Only faults that still break use stay open.
+        current_technical_issues = {
+            "asset_unavailable",
+            "missing_question_text",
+            "missing_main_knowledge_point",
+            "missing_main_exam_point",
+            "missing_difficulty",
+        }
+        result = [issue for issue in result if issue in current_technical_issues]
+    return result
+
+
 def _teacher_asset_filename(source_path: str) -> str | None:
     prefix = "assets/teacher/"
     if not source_path.startswith(prefix):

@@ -31,6 +31,7 @@ def test_question_list_filters_and_detail_assets() -> None:
     ).json()
     assert 0 <= ready["total"] <= 139
     assert all(item["grading_readiness"] == "machine_ready" for item in ready["items"])
+    assert all(item["import_issue_count"] == 0 for item in ready["items"])
     stats = client.get("/api/v1/questions/stats").json()
     assert stats["total"] == 139
     assert stats["ready_count"] == ready["total"]
@@ -44,6 +45,9 @@ def test_question_list_filters_and_detail_assets() -> None:
     assert detail["assets"]
     assert all(asset["conversion_status"] == "converted" for asset in detail["assets"])
     assert all(asset["web_url"] for asset in detail["assets"])
+    assert "contains_asset" not in detail["import_issues"]
+    assert "asset_needs_web_conversion" not in detail["import_issues"]
+    assert len(detail["import_issues"]) == len(set(detail["import_issues"]))
 
 
 def test_question_catalog_supports_cascading_filters() -> None:
