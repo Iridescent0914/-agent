@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiDelete, apiGet, apiPost, apiPut } from '../api/client'
 import { AnswerView } from '../components/AnswerView'
 import { RichQuestionText } from '../components/RichQuestionText'
+import { QuestionOptions } from '../components/QuestionOptions'
 import type { Alternatives, PaperInstance, PaperItem } from '../types/assignment'
 
 export function PaperInstancePage() {
@@ -118,7 +119,7 @@ export function PaperInstancePage() {
     </Space>}>
       <Space wrap><Tag>{item.question_snapshot.question_type === 'choice' ? '选择题' : '填空题'}</Tag><Tag>难度 {item.question_snapshot.difficulty}</Tag><Tag color={item.selection_audit?.bucket === 'new' ? 'cyan' : 'gold'}>{item.selection_audit?.bucket === 'new' ? '新知识' : '回顾'}</Tag><Tag>{item.exam_point_snapshot.main?.name}</Tag></Space>
       <RichQuestionText text={item.question_snapshot.question_text ?? ''} assets={item.assets} />
-      {item.options_snapshot != null && <pre className="json-block">{JSON.stringify(item.options_snapshot, null, 2)}</pre>}
+      {item.options_snapshot != null && <QuestionOptions options={item.options_snapshot} assets={item.assets} />}
       <Typography.Paragraph type="secondary">推荐理由：{item.selection_audit?.reason_text ?? '来自历史版本快照'}</Typography.Paragraph>
       <details><summary>教师答案与判分规则</summary><AnswerView answer={item.answer_snapshot} /><pre className="json-block">{JSON.stringify(item.answer_rule_snapshot, null, 2)}</pre></details>
     </Card>)}

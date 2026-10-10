@@ -46,6 +46,44 @@ def test_question_list_filters_and_detail_assets() -> None:
     assert all(asset["web_url"] for asset in detail["assets"])
 
 
+def test_question_catalog_supports_cascading_filters() -> None:
+    response = client.get('/api/v1/questions/catalog')
+    assert response.status_code == 200
+    chapters = response.json()
+    assert chapters
+    chapter = chapters[0]
+    assert chapter['code'] and chapter['knowledge_points']
+    knowledge_point = chapter['knowledge_points'][0]
+    assert knowledge_point['code'] and knowledge_point['exam_points']
+    exam_point = knowledge_point['exam_points'][0]
+
+    by_chapter = client.get('/api/v1/questions', params={
+        'chapter_code': chapter['code'],
+        'page_size': 100,
+    }).json()
+    assert by_chapter['total'] > 0
+
+    by_knowledge = client.get('/api/v1/questions', params={
+        'knowledge_point_code': knowledge_point['code'],
+        'page_size': 100,
+    }).json()
+    assert by_knowledge['total'] > 0
+    assert all(
+        item['main_knowledge_point']['code'] == knowledge_point['code']
+        for item in by_knowledge['items']
+    )
+
+    by_exam = client.get('/api/v1/questions', params={
+        'exam_point_code': exam_point['code'],
+        'page_size': 100,
+    }).json()
+    assert by_exam['total'] > 0
+    assert all(
+        item['main_exam_point']['code'] == exam_point['code']
+        for item in by_exam['items']
+    )
+
+
 def test_student_history_is_traceable() -> None:
     response = client.get("/api/v1/students", params={"page_size": 100})
     assert response.status_code == 200

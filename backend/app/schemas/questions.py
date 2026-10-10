@@ -51,6 +51,18 @@ class QuestionCatalogStats(BaseModel):
     type_counts: dict[str, int]
 
 
+class QuestionCatalogExamPoint(TagOut):
+    pass
+
+
+class QuestionCatalogKnowledgePoint(TagOut):
+    exam_points: list[QuestionCatalogExamPoint]
+
+
+class QuestionCatalogChapter(TagOut):
+    knowledge_points: list[QuestionCatalogKnowledgePoint]
+
+
 class QuestionCreateRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
 

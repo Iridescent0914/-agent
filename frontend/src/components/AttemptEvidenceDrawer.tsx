@@ -5,6 +5,7 @@ import { apiGet } from '../api/client'
 import type { AttemptEvidence } from '../types/profile'
 import { AnswerView } from './AnswerView'
 import { RichQuestionText } from './RichQuestionText'
+import { QuestionOptions } from './QuestionOptions'
 
 export function AttemptEvidenceDrawer({ studentId, attemptId, onClose }: {
   studentId: string; attemptId: string | null; onClose: () => void
@@ -33,7 +34,7 @@ export function AttemptEvidenceDrawer({ studentId, attemptId, onClose }: {
       </Descriptions>
       <Typography.Title level={5}>原题快照</Typography.Title>
       <RichQuestionText text={value.question_snapshot.question_text ?? '题目快照缺失'} assets={value.assets} />
-      {value.options_snapshot != null && <AnswerView answer={value.options_snapshot} />}
+      {value.options_snapshot != null && <QuestionOptions options={value.options_snapshot} assets={value.assets} />}
       <Divider className="compact-divider" />
       <Typography.Text strong>学生答案</Typography.Text><AnswerView answer={value.student_answer} />
       <Typography.Text strong>当时标准答案</Typography.Text><AnswerView answer={value.answer_snapshot} />

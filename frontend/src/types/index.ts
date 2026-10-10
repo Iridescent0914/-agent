@@ -34,6 +34,16 @@ export interface QuestionCatalogStats {
   type_counts: Record<string, number>
 }
 
+export interface QuestionCatalogExamPoint extends Tag {}
+
+export interface QuestionCatalogKnowledgePoint extends Tag {
+  exam_points: QuestionCatalogExamPoint[]
+}
+
+export interface QuestionCatalogChapter extends Tag {
+  knowledge_points: QuestionCatalogKnowledgePoint[]
+}
+
 export interface QuestionCreateRequest {
   original_qid?: string
   question_type: 'choice' | 'fill_blank' | 'calculation' | 'solution' | 'true_false'

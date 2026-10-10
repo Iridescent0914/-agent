@@ -6,6 +6,7 @@ import { apiGet } from '../api/client'
 import { AnswerView } from '../components/AnswerView'
 import { QuestionReviewEditor } from '../components/QuestionReviewEditor'
 import { RichQuestionText } from '../components/RichQuestionText'
+import { QuestionOptions } from '../components/QuestionOptions'
 import type { QuestionDetail } from '../types'
 
 const typeLabel: Record<string, string> = {
@@ -73,7 +74,7 @@ export function QuestionDetailPage() {
           )}
           <RichQuestionText text={question.question_text} assets={question.assets} />
           {question.options !== null && question.options !== undefined && (
-            <pre className="json-block">{JSON.stringify(question.options, null, 2)}</pre>
+            <QuestionOptions options={question.options} assets={question.assets} />
           )}
           <Divider />
           <Typography.Title level={5}>结构化标准答案</Typography.Title>

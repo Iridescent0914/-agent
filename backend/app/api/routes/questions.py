@@ -14,6 +14,9 @@ from app.schemas.common import Page
 from app.schemas.questions import (
     QuestionArchiveRequest,
     AssetOut,
+    QuestionCatalogChapter,
+    QuestionCatalogExamPoint,
+    QuestionCatalogKnowledgePoint,
     QuestionCatalogStats,
     QuestionCreateRequest,
     QuestionDetail,
@@ -258,6 +261,7 @@ def list_questions(
         None, pattern="^(machine_ready|raw_answer_only)$"
     ),
     difficulty: int | None = Query(None, ge=1, le=5),
+    chapter_code: str | None = None,
     knowledge_point_code: str | None = None,
     exam_point_code: str | None = None,
     keyword: str | None = Query(None, max_length=100),
@@ -270,6 +274,8 @@ def list_questions(
         filters.append(Question.grading_readiness == grading_readiness)
     if difficulty is not None:
         filters.append(Question.difficulty == difficulty)
+    if chapter_code:
+        filters.append(Question.chapter_code == chapter_code)
     if knowledge_point_code:
         filters.append(KnowledgePoint.code == knowledge_point_code)
     if exam_point_code:
@@ -344,6 +350,41 @@ def question_catalog_stats(db: Session = Depends(get_db)) -> QuestionCatalogStat
         pending_count=total - ready_count,
         type_counts=type_counts,
     )
+
+
+@router.get('/catalog', response_model=list[QuestionCatalogChapter])
+def question_filter_catalog(db: Session = Depends(get_db)) -> list[QuestionCatalogChapter]:
+    knowledge_points = db.scalars(
+        select(KnowledgePoint)
+        .options(selectinload(KnowledgePoint.exam_points))
+        .order_by(
+            KnowledgePoint.chapter_name,
+            KnowledgePoint.sort_order,
+            KnowledgePoint.name,
+        )
+    ).unique().all()
+    chapters: dict[str, QuestionCatalogChapter] = {}
+    for knowledge_point in knowledge_points:
+        chapter = chapters.setdefault(
+            knowledge_point.chapter_code,
+            QuestionCatalogChapter(
+                code=knowledge_point.chapter_code,
+                name=knowledge_point.chapter_name,
+                knowledge_points=[],
+            ),
+        )
+        chapter.knowledge_points.append(QuestionCatalogKnowledgePoint(
+            code=knowledge_point.code,
+            name=knowledge_point.name,
+            exam_points=[
+                QuestionCatalogExamPoint(code=exam.code, name=exam.name)
+                for exam in sorted(
+                    knowledge_point.exam_points,
+                    key=lambda item: (item.sort_order, item.name),
+                )
+            ],
+        ))
+    return list(chapters.values())
 
 
 @router.get("/{question_id}", response_model=QuestionDetail)

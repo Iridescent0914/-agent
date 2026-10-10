@@ -5,8 +5,9 @@ import type { UploadFile } from 'antd/es/upload/interface'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { apiDelete, apiGet, apiPost, apiPostForm } from '../api/client'
-import type { AssetInfo, Page, QuestionCatalogStats, QuestionCreateRequest, QuestionDetail, QuestionSummary } from '../types'
+import type { AssetInfo, Page, QuestionCatalogChapter, QuestionCatalogStats, QuestionCreateRequest, QuestionDetail, QuestionSummary } from '../types'
 import type { ExamPoint } from '../types/profile'
+import { MathTextEditor } from '../components/MathTextEditor'
 
 interface QuestionCreateValues extends Omit<QuestionCreateRequest, 'options'> {
   options_text?: string
@@ -27,6 +28,7 @@ function cleanPreview(value: string) {
 
 export function QuestionListPage() {
   const [createForm] = Form.useForm<QuestionCreateValues>()
+  const [filterForm] = Form.useForm()
   const [searchParams, setSearchParams] = useSearchParams()
   const [data, setData] = useState<Page<QuestionSummary> | null>(null)
   const [stats, setStats] = useState<QuestionCatalogStats | null>(null)
@@ -35,11 +37,16 @@ export function QuestionListPage() {
   const [error, setError] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [examPoints, setExamPoints] = useState<ExamPoint[]>([])
+  const [catalog, setCatalog] = useState<QuestionCatalogChapter[]>([])
   const [questionImages, setQuestionImages] = useState<UploadFile[]>([])
   const [refreshKey, setRefreshKey] = useState(0)
   const page = Number(searchParams.get('page') || 1)
   const pageSize = Number(searchParams.get('page_size') || 20)
   const createType = Form.useWatch('question_type', createForm)
+  const filterChapterCode = Form.useWatch('chapter_code', filterForm)
+  const filterKnowledgePointCode = Form.useWatch('knowledge_point_code', filterForm)
+  const filterKnowledgePoints = catalog.find((chapter) => chapter.code === filterChapterCode)?.knowledge_points || []
+  const filterExamPoints = filterKnowledgePoints.find((point) => point.code === filterKnowledgePointCode)?.exam_points || []
 
   useEffect(() => {
     const controller = new AbortController()
@@ -65,6 +72,12 @@ export function QuestionListPage() {
   useEffect(() => {
     apiGet<ExamPoint[]>('/exam-points?chapter_code=math.g6.rational')
       .then(setExamPoints)
+      .catch((reason: Error) => setError(reason.message))
+  }, [])
+
+  useEffect(() => {
+    apiGet<QuestionCatalogChapter[]>('/questions/catalog')
+      .then(setCatalog)
       .catch((reason: Error) => setError(reason.message))
   }, [])
 
@@ -194,8 +207,8 @@ export function QuestionListPage() {
     <Space direction="vertical" size="large" className="page-stack">
       <div className='student-heading'>
         <div>
-          <Typography.Title level={2}>有理数题库</Typography.Title>
-          <Typography.Text type='secondary'>完整题库用于教师查看；只有结构化答案可靠的题目才进入自动组卷池。</Typography.Text>
+          <Typography.Title level={2}>题库</Typography.Title>
+          <Typography.Text type='secondary'>可按章节、知识点和主考点逐级筛选；只有结构化答案可靠的题目才进入自动组卷池。</Typography.Text>
         </div>
         <Button type='primary' icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>上传新题</Button>
       </div>
@@ -212,9 +225,13 @@ export function QuestionListPage() {
       />
       <Card>
         <Form
+          form={filterForm}
           layout="vertical"
           initialValues={{
             keyword: searchParams.get('keyword') || '',
+            chapter_code: searchParams.get('chapter_code') || undefined,
+            knowledge_point_code: searchParams.get('knowledge_point_code') || undefined,
+            exam_point_code: searchParams.get('exam_point_code') || undefined,
             question_type: searchParams.get('question_type') || undefined,
             grading_readiness: searchParams.get('grading_readiness') || undefined,
             difficulty: searchParams.get('difficulty') ? Number(searchParams.get('difficulty')) : undefined,
@@ -222,11 +239,16 @@ export function QuestionListPage() {
           onFinish={(values) => update({ ...values, page: 1 })}
         >
           <Row gutter={16} align="bottom">
-            <Col xs={24} md={8}><Form.Item name="keyword" label="关键词或 qid"><Input allowClear prefix={<SearchOutlined />} /></Form.Item></Col>
-            <Col xs={12} md={4}><Form.Item name="grading_readiness" label="题库状态"><Select allowClear options={[{ value: 'machine_ready', label: '自动组卷池' }, { value: 'raw_answer_only', label: '待入库验证' }]} /></Form.Item></Col>
-            <Col xs={12} md={4}><Form.Item name="question_type" label="题型"><Select allowClear options={Object.entries(typeLabel).map(([value, label]) => ({ value, label }))} /></Form.Item></Col>
-            <Col xs={12} md={4}><Form.Item name="difficulty" label="难度"><Select allowClear options={[1, 2, 3, 4, 5].map((value) => ({ value, label: `${value} 星` }))} /></Form.Item></Col>
-            <Col xs={24} md={4}><Form.Item><Button type="primary" htmlType="submit" block>筛选</Button></Form.Item></Col>
+            <Col xs={24} md={6}><Form.Item name="keyword" label="关键词或 qid"><Input allowClear prefix={<SearchOutlined />} /></Form.Item></Col>
+            <Col xs={12} md={4}><Form.Item name="chapter_code" label="章节"><Select allowClear options={catalog.map((chapter) => ({ value: chapter.code, label: chapter.name }))} onChange={() => filterForm.setFieldsValue({ knowledge_point_code: undefined, exam_point_code: undefined })} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="knowledge_point_code" label="知识点"><Select allowClear disabled={!filterChapterCode} options={filterKnowledgePoints.map((point) => ({ value: point.code, label: point.name }))} onChange={() => filterForm.setFieldValue('exam_point_code', undefined)} /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name="exam_point_code" label="主考点"><Select allowClear showSearch optionFilterProp="label" disabled={!filterKnowledgePointCode} options={filterExamPoints.map((point) => ({ value: point.code, label: point.name }))} /></Form.Item></Col>
+          </Row>
+          <Row gutter={16} align="bottom">
+            <Col xs={12} md={6}><Form.Item name="grading_readiness" label="题库状态"><Select allowClear options={[{ value: 'machine_ready', label: '自动组卷池' }, { value: 'raw_answer_only', label: '待入库验证' }]} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="question_type" label="题型"><Select allowClear options={Object.entries(typeLabel).map(([value, label]) => ({ value, label }))} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="difficulty" label="难度"><Select allowClear options={[1, 2, 3, 4, 5].map((value) => ({ value, label: `${value} 星` }))} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item><Button type="primary" htmlType="submit" block>筛选</Button></Form.Item></Col>
           </Row>
         </Form>
       </Card>
@@ -278,7 +300,7 @@ export function QuestionListPage() {
             <Col xs={24} md={12}><Form.Item name='main_exam_point_code' label='主考点' rules={[{ required: true }]}><Select showSearch optionFilterProp='label' options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item></Col>
             <Col xs={24} md={12}><Form.Item name='section' label='小节' rules={[{ required: true }]}><Input maxLength={255} /></Form.Item></Col>
           </Row>
-          <Form.Item name='question_text' label='题干' rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={5} maxLength={10000} showCount /></Form.Item>
+          <Form.Item name='question_text' label='题干' rules={[{ required: true, whitespace: true }]}><MathTextEditor rows={5} maxLength={10000} /></Form.Item>
           <Form.Item
             label='题目图片（可选）'
             extra='支持 JPG、PNG、WebP，单张不超过 8MB，最多 8 张。图片会按顺序追加到题干末尾，详情页可点击放大。'
