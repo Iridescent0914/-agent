@@ -11,6 +11,7 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.models import (
     Assignment, Attempt, AttemptRevision, PaperInstance, PaperInstanceItem,
     Question, RecognitionRun, Student, Submission,
@@ -257,7 +258,15 @@ def submission_view(db: Session, paper_id: UUID, *, replayed: bool = False,
         recognition_run_id=recognition_run.id if recognition_run else None,
         recognition_image_url=(
             f"/recognition-runs/{recognition_run.id}/image"
-            if recognition_run else None
+            if recognition_run and recognition_run.image_purged_at is None
+            and (
+                get_settings().recognition_upload_dir
+                / recognition_run.image_storage_key
+            ).is_file()
+            else None
+        ),
+        recognition_image_purged_at=(
+            recognition_run.image_purged_at if recognition_run else None
         ),
         recognition_provider=recognition_run.provider if recognition_run else None,
         recognition_model=recognition_run.model if recognition_run else None,
@@ -557,27 +566,61 @@ def revision_history(db: Session, attempt_id: UUID) -> list[AttemptRevisionOut]:
 
 def grading_queue(db: Session, *, offset: int = 0, limit: int = 100,
                   status: str | None = None) -> GradingQueueOut:
+    item_counts = (
+        select(
+            PaperInstanceItem.paper_instance_id.label("paper_id"),
+            func.count(PaperInstanceItem.id).label("item_count"),
+        )
+        .group_by(PaperInstanceItem.paper_instance_id)
+        .subquery()
+    )
+    pending_counts = (
+        select(
+            Attempt.submission_id.label("submission_id"),
+            func.count(Attempt.id).label("pending_count"),
+        )
+        .where(Attempt.grade_status == "needs_review")
+        .group_by(Attempt.submission_id)
+        .subquery()
+    )
+    pending = func.coalesce(pending_counts.c.pending_count, 0)
     query = (
-        select(PaperInstance, Assignment, Student, Submission)
+        select(
+            PaperInstance, Assignment, Student, Submission,
+            func.coalesce(item_counts.c.item_count, 0), pending,
+        )
         .join(Assignment, Assignment.id == PaperInstance.assignment_id)
         .join(Student, Student.id == PaperInstance.student_id)
         .outerjoin(Submission, Submission.paper_instance_id == PaperInstance.id)
+        .outerjoin(item_counts, item_counts.c.paper_id == PaperInstance.id)
+        .outerjoin(
+            pending_counts,
+            pending_counts.c.submission_id == Submission.id,
+        )
         .where(
             PaperInstance.status == "published",
             or_(PaperInstance.invalidated_at.is_(None), Submission.id.is_not(None)),
         )
-        .order_by(PaperInstance.published_at.desc(), PaperInstance.id)
     )
-    rows = db.execute(query).all()
+    if status == "unsubmitted":
+        query = query.where(Submission.id.is_(None))
+    elif status == "needs_review":
+        query = query.where(Submission.id.is_not(None), pending > 0)
+    elif status == "completed":
+        query = query.where(Submission.id.is_not(None), pending == 0)
+    total = int(db.scalar(select(func.count()).select_from(
+        query.order_by(None).subquery()
+    )) or 0)
+    rows = db.execute(
+        query.order_by(PaperInstance.published_at.desc(), PaperInstance.id)
+        .offset(offset).limit(limit)
+    ).all()
     output = []
-    for paper, assignment, student, submission in rows:
-        attempts = [] if submission is None else list(db.scalars(
-            select(Attempt).where(Attempt.submission_id == submission.id)
-        ))
-        pending = sum(item.grade_status == "needs_review" for item in attempts)
-        grade_status = "unsubmitted" if submission is None else "needs_review" if pending else "completed"
-        if status is not None and grade_status != status:
-            continue
+    for paper, assignment, student, submission, item_count, pending_count in rows:
+        grade_status = (
+            "unsubmitted" if submission is None
+            else "needs_review" if pending_count else "completed"
+        )
         output.append(GradingQueueItem(
             paper_instance_id=paper.id, assignment_id=assignment.id,
             assignment_title=assignment.title, student_id=student.id,
@@ -585,8 +628,7 @@ def grading_queue(db: Session, *, offset: int = 0, limit: int = 100,
             version_no=paper.version_no, instance_code=paper.instance_code or "",
             is_active=paper.invalidated_at is None,
             invalidation_type=paper.invalidation_type, grading_status=grade_status,
-            item_count=len(_items(db, paper.id)), needs_review_count=pending,
+            item_count=int(item_count), needs_review_count=int(pending_count),
             submitted_at=submission.submitted_at if submission else None,
         ))
-    total = len(output)
-    return GradingQueueOut(items=output[offset:offset + limit], total=total)
+    return GradingQueueOut(items=output, total=total)

@@ -289,9 +289,36 @@ def build_assignment_overview(
     assignment = db.get(Assignment, assignment_id)
     if assignment is None:
         raise LookupError("assignment not found")
+    item_counts = (
+        select(
+            PaperInstanceItem.paper_instance_id.label("paper_id"),
+            func.count(PaperInstanceItem.id).label("item_count"),
+        )
+        .group_by(PaperInstanceItem.paper_instance_id)
+        .subquery()
+    )
+    pending_counts = (
+        select(
+            Attempt.submission_id.label("submission_id"),
+            func.count(Attempt.id).label("pending_count"),
+        )
+        .where(Attempt.grade_status == "needs_review")
+        .group_by(Attempt.submission_id)
+        .subquery()
+    )
     row_query = (
-        select(PaperInstance, Student)
+        select(
+            PaperInstance, Student, Submission,
+            func.coalesce(item_counts.c.item_count, 0),
+            func.coalesce(pending_counts.c.pending_count, 0),
+        )
         .join(Student, Student.id == PaperInstance.student_id)
+        .outerjoin(Submission, Submission.paper_instance_id == PaperInstance.id)
+        .outerjoin(item_counts, item_counts.c.paper_id == PaperInstance.id)
+        .outerjoin(
+            pending_counts,
+            pending_counts.c.submission_id == Submission.id,
+        )
         .where(PaperInstance.assignment_id == assignment_id)
     )
     if class_name is not None:
@@ -304,13 +331,15 @@ def build_assignment_overview(
     ).all()
     if class_name is not None and not rows:
         raise LookupError("assignment not found for class")
-    student_count = len({paper.student_id for paper, _ in rows})
-    draft_count = sum(paper.status == "draft" for paper, _ in rows)
-    invalidated_count = sum(paper.invalidated_at is not None for paper, _ in rows)
-    active_by_student: dict[UUID, list[tuple[PaperInstance, Student]]] = {}
-    for paper, student in rows:
+    student_count = len({row[0].student_id for row in rows})
+    draft_count = sum(row[0].status == "draft" for row in rows)
+    invalidated_count = sum(row[0].invalidated_at is not None for row in rows)
+    active_by_student: dict[UUID, list[tuple]] = {}
+    for paper, student, submission, item_count, pending_count in rows:
         if paper.status == "published" and paper.invalidated_at is None:
-            active_by_student.setdefault(student.id, []).append((paper, student))
+            active_by_student.setdefault(student.id, []).append(
+                (paper, student, submission, item_count, pending_count)
+            )
     duplicates = [student_id for student_id, values in active_by_student.items() if len(values) > 1]
     if duplicates:
         raise AnalyticsDataError(
@@ -319,30 +348,14 @@ def build_assignment_overview(
 
     progress: list[AssignmentProgressStudent] = []
     for values in active_by_student.values():
-        paper, student = values[0]
-        submission = db.scalar(
-            select(Submission).where(Submission.paper_instance_id == paper.id)
-        )
-        attempts = []
-        if submission is not None:
-            attempts = list(
-                db.scalars(select(Attempt).where(Attempt.submission_id == submission.id))
-            )
-        pending = sum(attempt.grade_status == "needs_review" for attempt in attempts)
+        paper, student, submission, item_count, pending_count = values[0]
+        pending = int(pending_count)
         status = (
             "unsubmitted"
             if submission is None
             else "needs_review"
             if pending
             else "completed"
-        )
-        item_count = int(
-            db.scalar(
-                select(func.count(PaperInstanceItem.id)).where(
-                    PaperInstanceItem.paper_instance_id == paper.id
-                )
-            )
-            or 0
         )
         progress.append(
             AssignmentProgressStudent(
@@ -352,7 +365,7 @@ def build_assignment_overview(
                 student_name=student.display_name,
                 version_no=paper.version_no,
                 instance_code=paper.instance_code or "",
-                item_count=item_count,
+                item_count=int(item_count),
                 grading_status=status,
                 needs_review_count=pending,
                 submitted_at=submission.submitted_at if submission is not None else None,

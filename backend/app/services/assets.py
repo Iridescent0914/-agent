@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 from PIL import Image, ImageOps, UnidentifiedImageError
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.models import PaperInstanceItem, Question
 
 
 @lru_cache(maxsize=1)
@@ -112,14 +116,89 @@ def teacher_asset_exists(source_path: str) -> bool:
     return bool(filename and (get_settings().teacher_asset_dir / filename).is_file())
 
 
+def question_asset_exists(source_path: str) -> bool:
+    """Validate both immutable imported assets and teacher-uploaded assets."""
+    if teacher_asset_exists(source_path):
+        return True
+    entry = _manifest().get(source_path)
+    if entry is None or entry.get("status") != "converted":
+        return False
+    web_path = entry.get("web_path")
+    return bool(
+        isinstance(web_path, str)
+        and (get_settings().web_asset_dir / Path(web_path).name).is_file()
+    )
+
+
+def _asset_paths(value: Any) -> set[str]:
+    if not isinstance(value, list):
+        return set()
+    return {
+        str(item["path"])
+        for item in value
+        if isinstance(item, dict) and isinstance(item.get("path"), str)
+    }
+
+
+def referenced_teacher_assets(db: Session) -> set[str]:
+    """Collect live and historical references so published paper snapshots stay valid."""
+    paths: set[str] = set()
+    for assets in db.scalars(select(Question.assets)):
+        paths.update(_asset_paths(assets))
+    for snapshot in db.scalars(select(PaperInstanceItem.question_snapshot)):
+        if isinstance(snapshot, dict):
+            paths.update(_asset_paths(snapshot.get("assets")))
+    return {path for path in paths if _teacher_asset_filename(path) is not None}
+
+
+def delete_teacher_asset_if_unreferenced(db: Session, source_path: str) -> bool:
+    filename = _teacher_asset_filename(source_path)
+    if filename is None:
+        raise ValueError("题目图片路径无效")
+    if source_path in referenced_teacher_assets(db):
+        raise RuntimeError("题目图片仍被题目或历史试卷引用")
+    target = get_settings().teacher_asset_dir / filename
+    existed = target.is_file()
+    target.unlink(missing_ok=True)
+    return existed
+
+
+def cleanup_orphan_teacher_assets(
+    db: Session, *, now: datetime | None = None
+) -> int:
+    settings = get_settings()
+    directory = settings.teacher_asset_dir
+    if not directory.exists():
+        return 0
+    cutoff = (now or datetime.now(timezone.utc)) - timedelta(
+        hours=settings.teacher_asset_orphan_grace_hours
+    )
+    referenced = referenced_teacher_assets(db)
+    removed = 0
+    for target in directory.iterdir():
+        if not target.is_file():
+            continue
+        source_path = f"assets/teacher/{target.name}"
+        is_managed = _teacher_asset_filename(source_path) is not None
+        is_temporary = target.name.endswith(".tmp")
+        if not is_managed and not is_temporary:
+            continue
+        modified_at = datetime.fromtimestamp(target.stat().st_mtime, timezone.utc)
+        if modified_at > cutoff or source_path in referenced:
+            continue
+        target.unlink(missing_ok=True)
+        removed += 1
+    return removed
+
+
 def store_teacher_asset(payload: bytes) -> dict[str, str]:
     """Validate and normalize a teacher-uploaded image into a safe PNG asset."""
     settings = get_settings()
     try:
         with Image.open(BytesIO(payload)) as source:
-            source.load()
             if source.width * source.height > settings.question_asset_max_pixels:
                 raise ValueError("图片像素过大")
+            source.load()
             image = ImageOps.exif_transpose(source)
             has_alpha = image.mode in {"RGBA", "LA"} or "transparency" in image.info
             image = image.convert("RGBA" if has_alpha else "RGB")

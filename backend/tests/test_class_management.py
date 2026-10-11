@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal, get_db
 from app.main import app
+from app.models import Assignment
 
 
 @pytest.fixture()
@@ -27,7 +28,7 @@ def client(db: Session) -> TestClient:
         app.dependency_overrides.pop(get_db, None)
 
 
-def test_class_crud_and_student_assignment(client: TestClient) -> None:
+def test_class_crud_and_student_assignment(client: TestClient, db: Session) -> None:
     suffix = uuid4().hex[:8]
     class_name = f"测试班级-{suffix}"
     created = client.post(
@@ -72,25 +73,11 @@ def test_class_crud_and_student_assignment(client: TestClient) -> None:
     blocked = client.delete(f"/api/v1/classes/{school_class['id']}")
     assert blocked.status_code == 409
 
-    target = client.post(
-        "/api/v1/classes",
-        json={"name": f"转入班-{suffix}", "grade": "六年级", "school_year": "2026-2027"},
-    ).json()
-    moved = client.patch(
+    transfer = client.patch(
         f"/api/v1/students/{student.json()['id']}/class",
-        json={"class_id": target["id"]},
+        json={"class_id": school_class["id"]},
     )
-    assert moved.status_code == 200
-    assert moved.json()["class_name"] == target["name"]
-    source_students = client.get(
-        "/api/v1/students", params={"page_size": 100, "class_id": school_class["id"]}
-    )
-    assert source_students.json()["total"] == 0
-    target_students = client.get(
-        "/api/v1/students", params={"page_size": 100, "class_id": target["id"]}
-    )
-    assert [item["id"] for item in target_students.json()["items"]] == [student.json()["id"]]
-    assert client.delete(f"/api/v1/classes/{school_class['id']}").status_code == 204
+    assert transfer.status_code == 404
 
     archived = client.request(
         "DELETE",
@@ -98,5 +85,21 @@ def test_class_crud_and_student_assignment(client: TestClient) -> None:
         json={"operator_name": "测试教师"},
     )
     assert archived.status_code == 200
-    deleted = client.delete(f"/api/v1/classes/{target['id']}")
-    assert deleted.status_code == 204
+    db.add(Assignment(
+        idempotency_key=f"class-delete-{suffix}",
+        title="历史作业",
+        class_id=school_class["id"],
+        chapter_code="math.g6.rational",
+        teaching_scope={},
+        assignment_type="practice",
+    ))
+    db.flush()
+    historical = client.delete(f"/api/v1/classes/{school_class['id']}")
+    assert historical.status_code == 409
+    assert historical.json()["message"] == "班级已有历史作业，不能删除"
+
+    empty = client.post(
+        "/api/v1/classes",
+        json={"name": f"空班-{suffix}", "grade": "六年级", "school_year": "2026-2027"},
+    ).json()
+    assert client.delete(f"/api/v1/classes/{empty['id']}").status_code == 204

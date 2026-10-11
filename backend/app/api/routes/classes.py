@@ -7,7 +7,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import SchoolClass, Student
+from app.models import Assignment, SchoolClass, Student
 from app.schemas.classes import ClassCreateRequest, ClassOut, ClassUpdateRequest
 
 
@@ -110,5 +110,10 @@ def delete_school_class(class_id: uuid.UUID, db: Session = Depends(get_db)) -> N
         )
     ) or 0
     if active_count:
-        raise HTTPException(status_code=409, detail="班级中仍有学生，请先转移或删除学生")
+        raise HTTPException(status_code=409, detail="班级中仍有学生，请先删除相关学生")
+    assignment_count = db.scalar(
+        select(func.count(Assignment.id)).where(Assignment.class_id == class_id)
+    ) or 0
+    if assignment_count:
+        raise HTTPException(status_code=409, detail="班级已有历史作业，不能删除")
     db.delete(school_class)

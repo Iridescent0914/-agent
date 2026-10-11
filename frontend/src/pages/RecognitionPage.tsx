@@ -22,9 +22,19 @@ export function RecognitionPage() {
   const key = useRef('m6-image-' + crypto.randomUUID())
   useEffect(() => {
     if (!paperInstanceId) return
-    apiGet<SubmissionDetail>(`/paper-instances/${paperInstanceId}/submission`)
-      .then((value) => { setPaper(value); setCode(value.instance_code ?? '') })
+    const controller = new AbortController()
+    Promise.all([
+      apiGet<SubmissionDetail>(`/paper-instances/${paperInstanceId}/submission`, controller.signal),
+      apiGet<RecognitionRun | null>(`/paper-instances/${paperInstanceId}/recognition-runs/current`, controller.signal),
+    ])
+      .then(([value, currentRun]) => {
+        if (controller.signal.aborted) return
+        setPaper(value)
+        setCode(value.instance_code ?? '')
+        setRun(currentRun)
+      })
       .catch((reason: Error) => setError(reason.message))
+    return () => controller.abort()
   }, [paperInstanceId])
   const upload = async () => {
     if (!file || !paperInstanceId) { message.warning('请先选择答题区照片'); return }
@@ -40,6 +50,12 @@ export function RecognitionPage() {
     if (!run) return
     setBusy(true); setError(null)
     try { setRun(await apiPost<RecognitionRun>(`/recognition-runs/${run.id}/extract`, {})) }
+    catch (reason) { setError((reason as Error).message) } finally { setBusy(false) }
+  }
+  const refreshRun = async () => {
+    if (!run) return
+    setBusy(true); setError(null)
+    try { setRun(await apiGet<RecognitionRun>(`/recognition-runs/${run.id}`)) }
     catch (reason) { setError((reason as Error).message) } finally { setBusy(false) }
   }
   const commit = async () => {
@@ -74,6 +90,14 @@ export function RecognitionPage() {
     {paper && <Card><Descriptions column={{ xs: 1, md: 3 }}><Descriptions.Item label="学生">{paper.student_code}</Descriptions.Item><Descriptions.Item label="版本">v{paper.version_no}</Descriptions.Item><Descriptions.Item label="系统短码">{paper.instance_code}</Descriptions.Item></Descriptions><Alert type="info" showIcon message="隐私提示" description="请优先上传裁剪后的答题区，不要包含真实姓名、学号或其他身份信息。" /></Card>}
     {paper?.submission_id && !run && <Alert type="warning" showIcon message="这份试卷已经提交" description="同一试卷只保留一份 Submission，请进入批改页查看或修正现有作答。" action={<Button><Link to={`/paper-instances/${paperInstanceId}/grading`}>查看批改</Link></Button>} />}
     {!run && !paper?.submission_id && <Card title="1. 核对编号并选择图片"><Space direction="vertical" className="full-width"><Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} addonBefore="纸面短码" /><Upload beforeUpload={(value) => { setFile(value); return false }} maxCount={1} accept="image/jpeg,image/png,image/webp"><Button icon={<CameraOutlined />}>选择 JPEG / PNG / WebP</Button></Upload>{file && <Typography.Text>{file.name} · {(file.size / 1024).toFixed(1)} KB</Typography.Text>}<Button type="primary" loading={busy} onClick={upload}>上传图片</Button></Space></Card>}
-    {run && <><Card title="2. 原图与模型"><Space direction="vertical"><Image src={apiUrl(run.image_url)} className="recognition-preview" /><Typography.Text type="secondary">{run.provider} · {run.model} · {run.prompt_version}</Typography.Text>{run.status === 'uploaded' && <Button type="primary" loading={busy} onClick={extract}>开始提取答案</Button>}{run.status === 'processing' && <Alert type="info" showIcon message="正在提取答案，请稍候" />}{run.status === 'failed' && <Alert type="error" message={run.error_code} description={run.error_message} />}<Space wrap>{run.status === 'failed' && <Button loading={busy} onClick={extract}>重试识别</Button>}{['uploaded', 'failed', 'ready_for_review'].includes(run.status) && <Button danger loading={busy} onClick={discard}>放弃本次识别</Button>}<Button><Link to={`/paper-instances/${paperInstanceId}/grading`}>改用手动录入</Link></Button></Space></Space></Card>{run.items.length > 0 && <Card title="3. 识别结果"><Table rowKey="id" columns={columns} dataSource={run.items} pagination={false} /><Alert type="warning" showIcon message="提交后仍需教师逐题确认" description="缺失、无法辨认和歧义不会被视为答错；模型置信度不触发自动确认。" /><Button type="primary" loading={busy} onClick={commit}>提交为待复核作答</Button></Card>}</>}
+    {run && <><Card title="2. 原图与模型"><Space direction="vertical">
+      {run.image_url ? <Image src={apiUrl(run.image_url)} className="recognition-preview" /> : <Alert type="warning" showIcon message="原图已按保留策略清理" description="识别与批改记录仍保留，但无法再查看或重新提取原图。" />}
+      <Typography.Text type="secondary">{run.provider} · {run.model} · {run.prompt_version}</Typography.Text>
+      {run.status === 'uploaded' && run.image_url && <Button type="primary" loading={busy} onClick={extract}>开始提取答案</Button>}
+      {run.status === 'processing' && !run.processing_stale && <Alert type="info" showIcon message="正在提取答案，请稍候" action={<Button loading={busy} onClick={refreshRun}>刷新状态</Button>} />}
+      {run.status === 'processing' && run.processing_stale && <Alert type="warning" showIcon message="识别任务已超时" description="上一次处理可能因服务重启而中断，可安全重新发起。" action={run.image_url ? <Button loading={busy} onClick={extract}>恢复识别</Button> : undefined} />}
+      {run.status === 'failed' && <Alert type="error" message={run.error_code} description={run.error_message} />}
+      <Space wrap>{run.status === 'failed' && run.image_url && <Button loading={busy} onClick={extract}>重试识别</Button>}{['uploaded', 'failed', 'ready_for_review'].includes(run.status) && <Button danger loading={busy} onClick={discard}>放弃本次识别</Button>}<Button><Link to={`/paper-instances/${paperInstanceId}/grading`}>改用手动录入</Link></Button></Space>
+    </Space></Card>{run.items.length > 0 && <Card title="3. 识别结果"><Table rowKey="id" columns={columns} dataSource={run.items} pagination={false} /><Alert type="warning" showIcon message="提交后仍需教师逐题确认" description="缺失、无法辨认和歧义不会被视为答错；模型置信度不触发自动确认。" /><Button type="primary" loading={busy} onClick={commit}>提交为待复核作答</Button></Card>}</>}
   </Space>
 }

@@ -13,7 +13,7 @@ const reasonNames: Record<string, string> = {
   exam_point_cap: '考点题量上限', insufficient_scope_inventory: '范围内题量不足',
 }
 const defaults: RecommendationParams = {
-  chapter_code: 'math.g6.rational', new_exam_point_codes: [], review_exam_point_codes: [],
+  chapter_code: '', new_exam_point_codes: [], review_exam_point_codes: [],
   new_count: 0, review_count: 6, question_types: ['choice', 'fill_blank'],
   base_difficulty: 2, min_difficulty: 1, max_difficulty: 5, avoid_recent_days: 7, max_exam_point_ratio: 0.5,
 }
@@ -22,6 +22,7 @@ export function RecommendationPreview({ studentId, catalog, onEvidence }: {
   studentId: string; catalog: ExamPoint[]; onEvidence: (id: string) => void
 }) {
   const [form] = Form.useForm<RecommendationParams>()
+  const chapterCode = Form.useWatch('chapter_code', form)
   const newScope = Form.useWatch('new_exam_point_codes', form) ?? []
   const reviewScope = Form.useWatch('review_exam_point_codes', form) ?? []
   const [result, setResult] = useState<Recommendation | null>(null)
@@ -29,6 +30,9 @@ export function RecommendationPreview({ studentId, catalog, onEvidence }: {
   const [error, setError] = useState<string | null>(null)
   const request = useRef<AbortController | null>(null)
   useEffect(() => () => request.current?.abort(), [])
+  useEffect(() => {
+    if (!chapterCode && catalog[0]) form.setFieldValue('chapter_code', catalog[0].chapter_code)
+  }, [catalog, chapterCode, form])
   const invalidate = () => { request.current?.abort(); setLoading(false); setResult(null); setError(null) }
   const submit = async (values: RecommendationParams) => {
     request.current?.abort()
@@ -42,7 +46,10 @@ export function RecommendationPreview({ studentId, catalog, onEvidence }: {
       if (!controller.signal.aborted) setError((reason as Error).message)
     } finally { if (!controller.signal.aborted) setLoading(false) }
   }
-  const scopeOptions = (disabled: string[]) => catalog.map((exam) => ({ value: exam.code,
+  const chapterCatalog = catalog.filter((exam) => exam.chapter_code === chapterCode)
+  const chapterOptions = Array.from(new Set(catalog.map((exam) => exam.chapter_code)))
+    .map((code) => ({ value: code, label: code }))
+  const scopeOptions = (disabled: string[]) => chapterCatalog.map((exam) => ({ value: exam.code,
     label: `${exam.name}（${exam.available_question_count} 题）`, disabled: disabled.includes(exam.code) }))
   const columns: ColumnsType<RecommendedQuestion> = [
     { title: '题目', dataIndex: 'original_qid', width: 220, render: (_, row) => <Link to={`/questions/${row.question_id}`}>{row.original_qid}</Link> },
@@ -54,6 +61,7 @@ export function RecommendationPreview({ studentId, catalog, onEvidence }: {
   ]
   return <section className="profile-section">
     <Form form={form} layout="vertical" initialValues={defaults} onFinish={submit} onValuesChange={invalidate}>
+      <Form.Item label="章节" name="chapter_code" rules={[{ required: true }]}><Select options={chapterOptions} onChange={() => form.setFieldsValue({ new_exam_point_codes: [], review_exam_point_codes: [] })} /></Form.Item>
       <div className="recommendation-scope-grid">
         <Form.Item label="新知识范围" name="new_exam_point_codes"><Select aria-label="新知识范围" mode="multiple" options={scopeOptions(reviewScope)} showSearch optionFilterProp="label" placeholder="选择考点" maxTagCount="responsive" /></Form.Item>
         <Form.Item label="回顾范围" name="review_exam_point_codes"><Select aria-label="回顾范围" mode="multiple" options={scopeOptions(newScope)} showSearch optionFilterProp="label" placeholder="选择已学考点" maxTagCount="responsive" /></Form.Item>

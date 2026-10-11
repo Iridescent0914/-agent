@@ -11,7 +11,7 @@ import unicodedata
 from uuid import UUID, uuid4
 
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -58,6 +58,13 @@ def normalize_image(data: bytes) -> tuple[bytes, str, int, int]:
 
 
 def _run_out(db: Session, run: RecognitionRun) -> RecognitionRunOut:
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    stale_before = now - timedelta(seconds=settings.recognition_processing_timeout_seconds)
+    image_exists = (
+        run.image_purged_at is None
+        and (settings.recognition_upload_dir / run.image_storage_key).is_file()
+    )
     rows = list(db.scalars(
         select(RecognitionItem).where(RecognitionItem.recognition_run_id == run.id)
         .order_by(RecognitionItem.order_no)
@@ -79,7 +86,13 @@ def _run_out(db: Session, run: RecognitionRun) -> RecognitionRunOut:
         error_code=run.error_code,
         error_message=run.error_message,
         created_at=run.created_at,
+        started_at=run.started_at,
         completed_at=run.completed_at,
+        processing_stale=(
+            run.status == "processing"
+            and (run.started_at is None or run.started_at <= stale_before)
+        ),
+        image_purged_at=run.image_purged_at,
         items=[{
             "id": row.id,
             "paper_instance_item_id": row.paper_instance_item_id,
@@ -88,7 +101,7 @@ def _run_out(db: Session, run: RecognitionRun) -> RecognitionRunOut:
             "recognized_answer": row.recognized_answer,
             "confidence": float(row.confidence) if row.confidence is not None else None,
         } for row in rows],
-        image_url=f"/recognition-runs/{run.id}/image",
+        image_url=f"/recognition-runs/{run.id}/image" if image_exists else None,
     )
 
 
@@ -99,14 +112,84 @@ def get_run(db: Session, run_id: UUID) -> RecognitionRunOut:
     return _run_out(db, run)
 
 
+def get_current_run(db: Session, paper_id: UUID) -> RecognitionRunOut | None:
+    if db.get(PaperInstance, paper_id) is None:
+        raise LookupError("paper instance not found")
+    run = db.scalar(
+        select(RecognitionRun).where(
+            RecognitionRun.paper_instance_id == paper_id,
+            RecognitionRun.status.in_((
+                "uploaded", "processing", "ready_for_review", "failed",
+            )),
+        ).order_by(RecognitionRun.created_at.desc(), RecognitionRun.id.desc())
+    )
+    return _run_out(db, run) if run is not None else None
+
+
 def image_path(db: Session, run_id: UUID) -> tuple[Path, str]:
     run = db.get(RecognitionRun, run_id)
     if run is None:
         raise LookupError("recognition run not found")
+    if run.image_purged_at is not None:
+        raise LookupError("recognition image was removed by the retention policy")
     path = get_settings().recognition_upload_dir / run.image_storage_key
     if not path.is_file():
         raise LookupError("recognition image not found")
     return path, run.content_type
+
+
+def _purge_recognition_image(
+    run: RecognitionRun, *, now: datetime | None = None
+) -> None:
+    path = get_settings().recognition_upload_dir / run.image_storage_key
+    path.unlink(missing_ok=True)
+    run.image_purged_at = now or datetime.now(timezone.utc)
+
+
+def purge_expired_recognition_images(
+    db: Session, *, now: datetime | None = None
+) -> int:
+    current = now or datetime.now(timezone.utc)
+    runs = list(db.scalars(
+        select(RecognitionRun).where(
+            RecognitionRun.image_purged_at.is_(None),
+            RecognitionRun.retention_until.is_not(None),
+            RecognitionRun.retention_until <= current,
+        ).with_for_update(skip_locked=True)
+    ))
+    removed = 0
+    for run in runs:
+        if run.status == "ready_for_review":
+            replacement_submission = db.scalar(select(exists().where(
+                Submission.paper_instance_id == run.paper_instance_id,
+            )))
+            paper = db.get(PaperInstance, run.paper_instance_id)
+            maximum = run.created_at + timedelta(
+                days=get_settings().recognition_unreviewed_max_retention_days
+            )
+            abandoned = bool(replacement_submission) or (
+                paper is None
+                or paper.invalidation_type == "withdrawn"
+            )
+            if not abandoned and current < maximum:
+                continue
+            run.status = "discarded"
+            run.processing_token = None
+            run.completed_at = run.completed_at or current
+            if current >= maximum:
+                run.error_code = "review_expired"
+                run.error_message = "recognition review window expired"
+        if run.status == "committed" and run.submission_id is not None:
+            pending_review = db.scalar(select(exists().where(
+                Attempt.submission_id == run.submission_id,
+                Attempt.grade_status == "needs_review",
+            )))
+            if pending_review:
+                continue
+        _purge_recognition_image(run, now=current)
+        removed += 1
+    db.flush()
+    return removed
 
 
 def _option_label(value: Any) -> str | None:
@@ -222,6 +305,17 @@ def create_run(
             raise GradingConflict("idempotency key was reused with a different image")
         return _run_out(db, existing)
 
+    active = db.scalar(select(RecognitionRun).where(
+        RecognitionRun.paper_instance_id == paper.id,
+        RecognitionRun.status.in_((
+            "uploaded", "processing", "ready_for_review", "failed",
+        )),
+    ).with_for_update())
+    if active is not None:
+        raise GradingConflict(
+            "paper already has an active recognition run; resume or discard it first"
+        )
+
     settings = get_settings()
     settings.recognition_upload_dir.mkdir(parents=True, exist_ok=True)
     storage_key = f"{uuid4().hex}.jpg"
@@ -259,27 +353,48 @@ def create_run(
 
 
 def extract_run(
-    db: Session, run_id: UUID, *, service: VisionService | None = None
+    db: Session,
+    run_id: UUID,
+    *,
+    service: VisionService | None = None,
+    release_lock_before_provider: bool = False,
 ) -> RecognitionRunOut:
-    # This synchronous endpoint holds only the run row lock while calling the
-    # provider. It prevents duplicate paid calls. Moving the call to a worker
-    # is the future route to exposing a durable processing state without a
-    # long-lived request transaction.
+    # Claim and persist the run before the network call. The HTTP route enables
+    # the explicit commit so no database lock is held while waiting for the
+    # provider; direct service tests may keep their surrounding rollback scope.
     run = db.scalar(
         select(RecognitionRun).where(RecognitionRun.id == run_id).with_for_update()
     )
     if run is None:
         raise LookupError("recognition run not found")
-    if run.status not in {"uploaded", "failed"}:
+    now = datetime.now(timezone.utc)
+    stale_before = now - timedelta(
+        seconds=get_settings().recognition_processing_timeout_seconds
+    )
+    stale_processing = (
+        run.status == "processing"
+        and (run.started_at is None or run.started_at <= stale_before)
+    )
+    if run.status not in {"uploaded", "failed"} and not stale_processing:
         raise GradingConflict("recognition run cannot be extracted in its current state")
+    if run.image_purged_at is not None:
+        raise GradingValidation("recognition image was removed by the retention policy")
     items = _items(db, run.paper_instance_id)
     started_at = datetime.now(timezone.utc)
+    processing_token = uuid4()
     run.status = "processing"
+    run.processing_token = processing_token
     run.started_at = started_at
     run.completed_at = None
     run.error_code = None
     run.error_message = None
+    if service is None:
+        execution_settings = get_settings()
+        run.provider = execution_settings.vision_provider
+        run.model = execution_settings.vision_model
     db.flush()
+    if release_lock_before_provider:
+        db.commit()
     payload: dict[str, Any] | None = None
     try:
         try:
@@ -302,7 +417,7 @@ def extract_run(
         )
         if run is None:
             raise LookupError("recognition run not found")
-        if run.status != "processing":
+        if run.status != "processing" or run.processing_token != processing_token:
             raise GradingConflict("recognition run was changed while extraction was running")
         for old in list(db.scalars(select(RecognitionItem).where(
             RecognitionItem.recognition_run_id == run.id
@@ -321,6 +436,7 @@ def extract_run(
             ))
         run.raw_response = payload
         run.status = "ready_for_review"
+        run.processing_token = None
         run.error_code = None
         run.error_message = None
     except VisionServiceError as exc:
@@ -331,9 +447,10 @@ def extract_run(
         )
         if run is None:
             raise LookupError("recognition run not found") from exc
-        if run.status != "processing":
+        if run.status != "processing" or run.processing_token != processing_token:
             raise GradingConflict("recognition run was changed while extraction was running") from exc
         run.status = "failed"
+        run.processing_token = None
         if payload is not None:
             run.raw_response = payload
         run.error_code = exc.code
@@ -441,6 +558,7 @@ def commit_run(db: Session, run_id: UUID) -> SubmissionDetailOut:
             created_at=now,
         ))
     run.status = "committed"
+    run.processing_token = None
     run.submission_id = submission.id
     run.committed_at = now
     db.flush()
@@ -478,9 +596,15 @@ def review_recognition(
             raise GradingConflict("attempt was changed; refresh before reviewing")
         if attempt.grade_status != "needs_review":
             raise GradingConflict("confirmed image evidence cannot be overwritten")
+        if (attempt.grading_details or {}).get("recognition_reviewed"):
+            raise GradingConflict(
+                "recognition is already confirmed; use manual grading for the final decision"
+            )
         if incoming_request.action == "accept":
             if attempt.recognition_status not in {"readable", "blank"}:
                 raise GradingValidation("uncertain recognition must be corrected explicitly")
+            if len(attempts) > 1 and attempt.recognition_status == "blank":
+                raise GradingValidation("blank recognition must be confirmed individually")
             expected_status = (
                 "blank" if attempt.recognition_status == "blank" else "answered"
             )
@@ -521,7 +645,11 @@ def review_recognition(
             )
             if key in (attempt.grading_details or {})
         }
-        attempt.grading_details = {**result.details(), **preserved}
+        attempt.grading_details = {
+            **result.details(),
+            **preserved,
+            "recognition_reviewed": True,
+        }
         attempt.grade_status = (
             "needs_review" if result.grade_status == "needs_review" else "teacher_confirmed"
         )
@@ -555,6 +683,6 @@ def discard_run(db: Session, run_id: UUID) -> None:
     if run.status == "committed":
         raise GradingConflict("committed recognition cannot be discarded")
     run.status = "discarded"
-    path = get_settings().recognition_upload_dir / run.image_storage_key
-    path.unlink(missing_ok=True)
+    run.processing_token = None
+    _purge_recognition_image(run)
     db.flush()

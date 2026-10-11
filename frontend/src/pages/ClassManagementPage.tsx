@@ -70,7 +70,7 @@ export function ClassManagementPage() {
     Modal.confirm({
       title: `删除班级“${item.name}”？`,
       content: item.student_count > 0
-        ? `该班级仍有 ${item.student_count} 名学生，不能删除。请先转移或删除学生。`
+        ? `该班级仍有 ${item.student_count} 名学生，不能删除。请先删除相关学生。`
         : '删除后无法恢复，班级中的历史学生记录不会被删除。',
       okText: '确认删除',
       cancelText: '取消',

@@ -51,6 +51,6 @@ export function ExamPointStudentDrawer({
     <Typography.Paragraph type="secondary">未评估不是 0 分；正确率只统计当前有效的确认作答。</Typography.Paragraph>
     {error ? <Alert type="error" showIcon message="学生证据加载失败" description={error} action={<Button onClick={() => setRetry((value) => value + 1)}>重试</Button>} />
       : !data ? <Skeleton active />
-        : <Table rowKey="student_id" columns={columns} dataSource={data.items} pagination={false} scroll={{ x: 680 }} />}
+        : <Table rowKey="student_id" columns={columns} dataSource={data.items} pagination={{ pageSize: 50, showSizeChanger: true, pageSizeOptions: [20, 50, 100, 200] }} scroll={{ x: 680 }} />}
   </Drawer>
 }

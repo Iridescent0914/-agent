@@ -67,6 +67,19 @@ def load_question(db: Session, question_id: UUID) -> Question:
     return question
 
 
+def load_questions(db: Session, question_ids: set[UUID]) -> dict[UUID, Question]:
+    if not question_ids:
+        return {}
+    questions = list(db.scalars(
+        select(Question)
+        .options(selectinload(Question.exam_point_links).selectinload(QuestionExamPoint.exam_point))
+        .where(Question.id.in_(question_ids), Question.archived_at.is_(None))
+    ).unique())
+    if len(questions) != len(question_ids):
+        raise LookupError("one or more questions not found")
+    return {question.id: question for question in questions}
+
+
 def snapshot_payload(question: Question) -> dict[str, Any]:
     main = None
     related = []

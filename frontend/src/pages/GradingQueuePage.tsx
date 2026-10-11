@@ -18,12 +18,16 @@ export function GradingQueuePage() {
   )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
   const load = () => {
     setLoading(true); setError(null)
-    apiGet<GradingQueue>(`/grading/queue${queryString({ status })}`)
+    apiGet<GradingQueue>(`/grading/queue${queryString({
+      status, offset: (page - 1) * pageSize, limit: pageSize,
+    })}`)
       .then(setData).catch((reason) => setError((reason as Error).message)).finally(() => setLoading(false))
   }
-  useEffect(load, [status])
+  useEffect(load, [status, page, pageSize])
   const columns: ColumnsType<GradingQueueItem> = [
     { title: '作业', dataIndex: 'assignment_title' },
     { title: '学生', render: (_, row) => `${row.student_code} · ${row.student_name}` },
@@ -36,7 +40,12 @@ export function GradingQueuePage() {
   ]
   return <Space direction="vertical" size="large" className="page-stack grading-workspace">
     {error && <Alert type="error" showIcon message="加载失败" description={error} action={<Button onClick={load}>重试</Button>} />}
-    <div className="student-heading"><div><Typography.Title level={2}>作业批改</Typography.Title><Typography.Text type="secondary">手动录入、确定性判分与人工复核</Typography.Text></div><Select allowClear placeholder="全部状态" value={status} onChange={(value) => { setStatus(value); setSearchParams(value ? { status: value } : {}, { replace: true }) }} options={Object.entries(statusLabels).map(([value, label]) => ({ value, label }))} style={{ width: 150 }} /></div>
-    <Card className="table-card"><Table rowKey="paper_instance_id" loading={loading} columns={columns} dataSource={data.items} pagination={false} scroll={{ x: 900 }} /></Card>
+    <div className="student-heading"><div><Typography.Title level={2}>作业批改</Typography.Title><Typography.Text type="secondary">手动录入、确定性判分与人工复核</Typography.Text></div><Select allowClear placeholder="全部状态" value={status} onChange={(value) => { setStatus(value); setPage(1); setSearchParams(value ? { status: value } : {}, { replace: true }) }} options={Object.entries(statusLabels).map(([value, label]) => ({ value, label }))} style={{ width: 150 }} /></div>
+    <Card className="table-card"><Table rowKey="paper_instance_id" loading={loading} columns={columns} dataSource={data.items} pagination={{
+      current: page, pageSize, total: data.total, showSizeChanger: true,
+      pageSizeOptions: [20, 50, 100, 200], showTotal: (total) => `共 ${total} 份试卷`,
+    }} onChange={(pagination) => {
+      setPage(pagination.current ?? 1); setPageSize(pagination.pageSize ?? 50)
+    }} scroll={{ x: 900 }} /></Card>
   </Space>
 }

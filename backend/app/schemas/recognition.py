@@ -94,8 +94,11 @@ class RecognitionRunOut(BaseModel):
     error_message: str | None
     created_at: datetime
     completed_at: datetime | None
+    started_at: datetime | None
+    processing_stale: bool = False
+    image_purged_at: datetime | None
     items: list[RecognitionItemOut]
-    image_url: str
+    image_url: str | None
 
 
 class RecognitionReviewItem(BaseModel):

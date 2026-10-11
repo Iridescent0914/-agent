@@ -145,36 +145,77 @@ def student_view(db: Session, paper_id: UUID) -> PaperInstanceStudentOut:
     )
 
 
-def assignment_detail(db: Session, assignment_id: UUID) -> AssignmentDetailOut:
+def assignment_detail(
+    db: Session, assignment_id: UUID, *, include_papers: bool = True
+) -> AssignmentDetailOut:
     assignment = db.get(Assignment, assignment_id)
     if assignment is None:
         raise LookupError("assignment not found")
-    papers = list(db.scalars(
-        select(PaperInstance).where(PaperInstance.assignment_id == assignment.id)
-        .order_by(PaperInstance.student_id, PaperInstance.version_no)
-    ))
-    summaries = [_summary(db, paper) for paper in papers]
+    summaries = []
+    if include_papers:
+        summaries, _ = assignment_paper_summaries(
+            db, assignment.id, offset=0, limit=None
+        )
+    counts = db.execute(select(
+        func.count(func.distinct(PaperInstance.student_id)),
+        func.count(PaperInstance.id).filter(PaperInstance.status == "draft"),
+        func.count(PaperInstance.id).filter(
+            PaperInstance.status == "published",
+            PaperInstance.invalidated_at.is_(None),
+        ),
+        func.count(PaperInstance.id).filter(PaperInstance.invalidated_at.is_not(None)),
+    ).where(PaperInstance.assignment_id == assignment.id)).one()
     school_class = db.get(SchoolClass, assignment.class_id) if assignment.class_id else None
     return AssignmentDetailOut(
         id=assignment.id, title=assignment.title, chapter_code=assignment.chapter_code,
         class_id=assignment.class_id,
         class_name=school_class.name if school_class else None,
         assignment_type=assignment.assignment_type,
-        student_count=len({paper.student_id for paper in papers}),
-        draft_count=sum(paper.status == "draft" for paper in papers),
-        published_count=sum(
-            paper.status == 'published' and paper.invalidated_at is None for paper in papers
-        ),
-        invalidated_count=sum(paper.invalidated_at is not None for paper in papers),
+        student_count=int(counts[0] or 0),
+        draft_count=int(counts[1] or 0),
+        published_count=int(counts[2] or 0),
+        invalidated_count=int(counts[3] or 0),
         created_at=assignment.created_at, teaching_scope=assignment.teaching_scope,
         generation_config=assignment.generation_config, papers=summaries,
     )
 
 
+def assignment_paper_summaries(
+    db: Session, assignment_id: UUID, *, offset: int = 0, limit: int | None = 50
+) -> tuple[list[PaperSummaryOut], int]:
+    if db.get(Assignment, assignment_id) is None:
+        raise LookupError("assignment not found")
+    total = int(db.scalar(select(func.count(PaperInstance.id)).where(
+        PaperInstance.assignment_id == assignment_id
+    )) or 0)
+    query = (
+        select(PaperInstance, Student, func.count(PaperInstanceItem.id))
+        .join(Student, Student.id == PaperInstance.student_id)
+        .outerjoin(
+            PaperInstanceItem,
+            PaperInstanceItem.paper_instance_id == PaperInstance.id,
+        )
+        .where(PaperInstance.assignment_id == assignment_id)
+        .group_by(PaperInstance.id, Student.id)
+        .order_by(Student.student_code, PaperInstance.version_no, PaperInstance.id)
+        .offset(offset)
+    )
+    if limit is not None:
+        query = query.limit(limit)
+    rows = db.execute(query).all()
+    return [
+        _summary(db, paper, student=student, item_count=int(item_count or 0))
+        for paper, student, item_count in rows
+    ], total
+
+
 def list_assignment_items(
-    db: Session, *, offset: int, limit: int, class_name: str | None = None
+    db: Session, *, offset: int, limit: int, class_name: str | None = None,
+    chapter_code: str | None = None,
 ) -> tuple[list[AssignmentListItem], int]:
     assignment_query = select(Assignment).where(Assignment.assignment_type == "practice")
+    if chapter_code is not None:
+        assignment_query = assignment_query.where(Assignment.chapter_code == chapter_code)
     if class_name is not None:
         class_assignment_ids = (
             select(PaperInstance.assignment_id)
@@ -190,16 +231,31 @@ def list_assignment_items(
         assignment_query.order_by(Assignment.created_at.desc(), Assignment.id)
         .offset(offset).limit(limit)
     ))
+    assignment_ids = [assignment.id for assignment in assignments]
+    paper_query = select(PaperInstance)
+    if assignment_ids:
+        paper_query = paper_query.where(PaperInstance.assignment_id.in_(assignment_ids))
+    if class_name is not None:
+        paper_query = (
+            paper_query.join(Student, Student.id == PaperInstance.student_id)
+            .where(Student.class_name == class_name, Student.archived_at.is_(None))
+        )
+    papers_by_assignment: dict[UUID, list[PaperInstance]] = {
+        assignment_id: [] for assignment_id in assignment_ids
+    }
+    if assignment_ids:
+        for paper in db.scalars(paper_query):
+            papers_by_assignment[paper.assignment_id].append(paper)
+    class_ids = {assignment.class_id for assignment in assignments if assignment.class_id}
+    classes = {
+        item.id: item for item in db.scalars(
+            select(SchoolClass).where(SchoolClass.id.in_(class_ids))
+        )
+    } if class_ids else {}
     result = []
     for assignment in assignments:
-        school_class = db.get(SchoolClass, assignment.class_id) if assignment.class_id else None
-        paper_query = select(PaperInstance).where(PaperInstance.assignment_id == assignment.id)
-        if class_name is not None:
-            paper_query = (
-                paper_query.join(Student, Student.id == PaperInstance.student_id)
-                .where(Student.class_name == class_name, Student.archived_at.is_(None))
-            )
-        papers = list(db.scalars(paper_query))
+        school_class = classes.get(assignment.class_id)
+        papers = papers_by_assignment[assignment.id]
         result.append(AssignmentListItem(
             id=assignment.id, title=assignment.title, chapter_code=assignment.chapter_code,
             class_id=assignment.class_id,

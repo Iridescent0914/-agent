@@ -4,23 +4,30 @@ import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiDelete, apiGet, apiPost } from '../api/client'
+import type { Page } from '../types'
 import type { AssignmentDetail, PaperSummary } from '../types/assignment'
 
 export function AssignmentDetailPage() {
   const { assignmentId } = useParams()
   const navigate = useNavigate()
   const [data, setData] = useState<AssignmentDetail | null>(null)
+  const [paperData, setPaperData] = useState<Page<PaperSummary> | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
   const [selected, setSelected] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const load = () => {
     if (!assignmentId) return
     setLoading(true); setError(null)
-    apiGet<AssignmentDetail>(`/assignments/${assignmentId}`)
-      .then((value) => { setData(value); setSelected([]) })
+    Promise.all([
+      apiGet<AssignmentDetail>(`/assignments/${assignmentId}?include_papers=false`),
+      apiGet<Page<PaperSummary>>(`/assignments/${assignmentId}/papers?page=${page}&page_size=${pageSize}`),
+    ])
+      .then(([value, papers]) => { setData(value); setPaperData(papers); setSelected([]) })
       .catch((reason) => setError((reason as Error).message)).finally(() => setLoading(false))
   }
-  useEffect(load, [assignmentId])
+  useEffect(load, [assignmentId, page, pageSize])
   const publishPapers = (targets: PaperSummary[]) => {
     if (!assignmentId || !data || !targets.length) return
     const hasShortfall = targets.some((paper) => paper.item_count < (paper.requested_count ?? paper.item_count))
@@ -31,22 +38,21 @@ export function AssignmentDetailPage() {
       onOk: async () => {
         setLoading(true)
         try {
-          const updated = await apiPost<AssignmentDetail>(`/assignments/${assignmentId}/publish`, {
+          await apiPost<AssignmentDetail>(`/assignments/${assignmentId}/publish`, {
             papers: targets.map((paper) => ({
               paper_instance_id: paper.id, expected_edit_revision: paper.edit_revision,
               acknowledge_shortfall: paper.item_count < (paper.requested_count ?? paper.item_count),
               acknowledgement_reason: paper.item_count < (paper.requested_count ?? paper.item_count) ? '教师在批量发布时确认当前题量' : null,
             })),
           })
-          setData(updated); setSelected([]); message.success('发布成功')
+          setSelected([]); message.success('发布成功'); load()
         } catch (reason) { setError((reason as Error).message) }
         finally { setLoading(false) }
       },
     })
   }
   const publishSelected = () => {
-    if (!data) return
-    publishPapers(data.papers.filter((paper) => selected.includes(paper.id)))
+    publishPapers((paperData?.items ?? []).filter((paper) => selected.includes(paper.id)))
   }
   const deleteAssignment = () => {
     if (!assignmentId || !data) return
@@ -149,13 +155,18 @@ export function AssignmentDetailPage() {
       <div><Typography.Title level={2}>{data?.title ?? '作业详情'}</Typography.Title><Typography.Text type="secondary">{data?.class_name ? `${data.class_name} · ` : ''}草稿可直接发布或编辑；发布后保留审计快照</Typography.Text></div>
       <Space>
         <Button icon={<ReloadOutlined />} onClick={load}>刷新</Button>
-        {data?.papers.length === 0 && <Button danger icon={<DeleteOutlined />} onClick={deleteAssignment}>删除空作业</Button>}
+        {paperData?.total === 0 && <Button danger icon={<DeleteOutlined />} onClick={deleteAssignment}>删除空作业</Button>}
         <Button type="primary" disabled={!selected.length} onClick={publishSelected}>发布所选草稿</Button>
       </Space>
     </div>
     <Card className="table-card">
-      <Table rowKey="id" loading={loading} columns={columns} dataSource={data?.papers ?? []} pagination={false} scroll={{ x: 820 }}
-        rowSelection={{ selectedRowKeys: selected, onChange: (keys) => setSelected(keys.map(String)), getCheckboxProps: (row) => ({ disabled: row.status !== 'draft' }) }} />
+      <Table rowKey="id" loading={loading} columns={columns} dataSource={paperData?.items ?? []} pagination={{
+        current: page, pageSize, total: paperData?.total ?? 0, showSizeChanger: true,
+        pageSizeOptions: [20, 50, 100, 200], showTotal: (total) => `共 ${total} 份试卷`,
+      }} onChange={(pagination) => {
+        setPage(pagination.current ?? 1); setPageSize(pagination.pageSize ?? 50)
+      }} scroll={{ x: 820 }}
+        rowSelection={{ preserveSelectedRowKeys: true, selectedRowKeys: selected, onChange: (keys) => setSelected(keys.map(String)), getCheckboxProps: (row) => ({ disabled: row.status !== 'draft' }) }} />
     </Card>
   </Space>
 }

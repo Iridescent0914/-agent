@@ -10,12 +10,14 @@ export function AssignmentListPage() {
   const [data, setData] = useState<AssignmentPage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
   const load = () => {
     setLoading(true); setError(null)
-    apiGet<AssignmentPage>('/assignments?page_size=100')
+    apiGet<AssignmentPage>(`/assignments?page=${page}&page_size=${pageSize}`)
       .then(setData).catch((reason) => setError((reason as Error).message)).finally(() => setLoading(false))
   }
-  useEffect(load, [])
+  useEffect(load, [page, pageSize])
   const deleteAssignment = (assignment: AssignmentListItem) => {
     Modal.confirm({
       title: `删除作业“${assignment.title}”？`,
@@ -52,6 +54,11 @@ export function AssignmentListPage() {
       <Button type="primary" icon={<PlusOutlined />}><Link to="/assignments/new">创建作业</Link></Button>
     </div>
     {error && <Alert type="error" showIcon message="作业加载失败" description={error} action={<Button onClick={load}>重试</Button>} />}
-    <Card className="table-card"><Table rowKey="id" loading={loading} columns={columns} dataSource={data?.items ?? []} pagination={false} scroll={{ x: 760 }} /></Card>
+    <Card className="table-card"><Table rowKey="id" loading={loading} columns={columns} dataSource={data?.items ?? []} pagination={{
+      current: page, pageSize, total: data?.total ?? 0, showSizeChanger: true,
+      showTotal: (total) => `共 ${total} 个作业`,
+    }} onChange={(pagination) => {
+      setPage(pagination.current ?? 1); setPageSize(pagination.pageSize ?? 20)
+    }} scroll={{ x: 760 }} /></Card>
   </Space>
 }

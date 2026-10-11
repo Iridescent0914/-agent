@@ -56,12 +56,6 @@ class StudentArchiveRequest(BaseModel):
         return clean
 
 
-class StudentClassUpdateRequest(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-
-    class_id: uuid.UUID
-
-
 class StudentListItem(BaseModel):
     id: uuid.UUID
     student_code: str

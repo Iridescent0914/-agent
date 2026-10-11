@@ -65,6 +65,7 @@ export interface SubmissionDetail {
   source: string | null
   recognition_run_id: string | null
   recognition_image_url: string | null
+  recognition_image_purged_at: string | null
   recognition_provider: string | null
   recognition_model: string | null
   recognition_prompt_version: string | null

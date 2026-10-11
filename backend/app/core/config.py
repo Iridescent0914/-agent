@@ -20,10 +20,14 @@ class Settings(BaseSettings):
     teacher_asset_dir: Path = Path(__file__).resolve().parents[3] / "data" / "web" / "teacher"
     question_asset_max_upload_bytes: int = 8 * 1024 * 1024
     question_asset_max_pixels: int = 20_000_000
+    teacher_asset_orphan_grace_hours: int = 24
     recognition_upload_dir: Path = Path(__file__).resolve().parents[3] / "data" / "uploads" / "m6"
     recognition_max_upload_bytes: int = 8 * 1024 * 1024
     recognition_max_pixels: int = 20_000_000
     recognition_retention_days: int = 30
+    recognition_unreviewed_max_retention_days: int = 180
+    recognition_processing_timeout_seconds: int = 300
+    maintenance_interval_seconds: int = 3600
     vision_enabled: bool = False
     vision_provider: str = "fake"
     vision_model: str = "fake-m6-v1"

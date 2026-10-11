@@ -1,9 +1,9 @@
-import { BarChartOutlined, DeleteOutlined, PlusOutlined, SwapOutlined } from '@ant-design/icons'
+import { BarChartOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Empty, Form, Input, Modal, Progress, Select, Space, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { apiDelete, apiGet, apiPatch, apiPost, queryString } from '../api/client'
+import { apiDelete, apiGet, apiPost, queryString } from '../api/client'
 import type { ClassSummary, Page, StudentCreateRequest, StudentDetail, StudentSummary } from '../types'
 
 export function StudentListPage() {
@@ -15,20 +15,27 @@ export function StudentListPage() {
   const [creating, setCreating] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedClassId, setSelectedClassId] = useState<string>('all')
-  const [movingStudent, setMovingStudent] = useState<StudentSummary | null>(null)
-  const [targetClassId, setTargetClassId] = useState<string>()
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [keyword, setKeyword] = useState('')
 
   const load = () => {
     setLoading(true); setError(null)
-    Promise.all([
-      apiGet<Page<StudentSummary>>(`/students${queryString({ page: 1, page_size: 100, class_id: selectedClassId === 'all' ? undefined : selectedClassId })}`),
-      apiGet<ClassSummary[]>('/classes'),
-    ])
-      .then(([students, classItems]) => { setData(students); setClasses(classItems) })
+    apiGet<Page<StudentSummary>>(`/students${queryString({
+      page,
+      page_size: pageSize,
+      class_id: selectedClassId === 'all' ? undefined : selectedClassId,
+      keyword,
+    })}`)
+      .then(setData)
       .catch((reason: Error) => setError(reason.message))
       .finally(() => setLoading(false))
   }
-  useEffect(load, [selectedClassId])
+  useEffect(() => {
+    apiGet<ClassSummary[]>('/classes').then(setClasses)
+      .catch((reason: Error) => setError(reason.message))
+  }, [])
+  useEffect(load, [selectedClassId, page, pageSize, keyword])
 
   async function createStudent() {
     const values = await form.validateFields()
@@ -63,25 +70,9 @@ export function StudentListPage() {
     })
   }
 
-  async function moveStudent() {
-    if (!movingStudent || !targetClassId) return
-    setCreating(true); setError(null)
-    try {
-      await apiPatch<StudentDetail>(`/students/${movingStudent.id}/class`, { class_id: targetClassId })
-      message.success('学生班级已调整')
-      setMovingStudent(null)
-      setTargetClassId(undefined)
-      load()
-    } catch (reason) {
-      setError((reason as Error).message)
-    } finally {
-      setCreating(false)
-    }
-  }
-
   const columns: ColumnsType<StudentSummary> = [
     { title: '编号', dataIndex: 'student_code', width: 100, render: (_, row) => <Link to={`/students/${row.id}`}>{row.student_code}</Link> },
-    { title: '虚拟学生', dataIndex: 'display_name', width: 130 },
+    { title: '学生姓名', dataIndex: 'display_name', width: 130 },
     { title: '班级', dataIndex: 'class_name' },
     { title: '证据量', dataIndex: 'attempt_count', width: 100, render: (value) => `${value} 次` },
     {
@@ -102,10 +93,6 @@ export function StudentListPage() {
         <Link to={`/students/${row.id}`}>
           <Button type='primary' icon={<BarChartOutlined />}>查看学生画像</Button>
         </Link>
-        <Button type='text' icon={<SwapOutlined />} onClick={() => {
-          setMovingStudent(row)
-          setTargetClassId(row.class_id ?? undefined)
-        }}>转班</Button>
         <Button danger type='text' icon={<DeleteOutlined />} onClick={() => deleteStudent(row)}>删除</Button>
       </Space>,
     },
@@ -119,10 +106,17 @@ export function StudentListPage() {
           <Typography.Text type='secondary'>新增或删除学生；删除不会破坏历史试卷和作答证据。</Typography.Text>
         </div>
         <Space wrap>
+          <Input.Search
+            aria-label="搜索学生"
+            allowClear
+            placeholder="搜索编号或姓名"
+            onSearch={(value) => { setPage(1); setKeyword(value.trim()) }}
+            style={{ width: 210 }}
+          />
           <Select
             aria-label="按班级筛选学生"
             value={selectedClassId}
-            onChange={setSelectedClassId}
+            onChange={(value) => { setPage(1); setSelectedClassId(value) }}
             style={{ width: 220 }}
             options={[
               { value: 'all', label: '全部班级' },
@@ -135,7 +129,24 @@ export function StudentListPage() {
       </div>
       {error && <Alert type="error" showIcon message="学生数据加载失败" description={error} />}
       <Card className="table-card">
-        <Table rowKey="id" columns={columns} dataSource={data?.items || []} loading={loading} pagination={false} locale={{ emptyText: <Empty description="暂无学生" /> }} />
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={data?.items || []}
+          loading={loading}
+          pagination={{
+            current: page,
+            pageSize,
+            total: data?.total || 0,
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 名学生`,
+          }}
+          onChange={(pagination) => {
+            setPage(pagination.current || 1)
+            setPageSize(pagination.pageSize || 20)
+          }}
+          locale={{ emptyText: <Empty description="暂无学生" /> }}
+        />
       </Card>
       <Modal
         title='添加学生'
@@ -173,26 +184,6 @@ export function StudentListPage() {
             />
           </Form.Item>
         </Form>
-      </Modal>
-      <Modal
-        title={movingStudent ? `调整 ${movingStudent.display_name} 的班级` : '调整班级'}
-        open={Boolean(movingStudent)}
-        okText='确认调整'
-        cancelText='取消'
-        confirmLoading={creating}
-        okButtonProps={{ disabled: !targetClassId || targetClassId === movingStudent?.class_id }}
-        onOk={() => void moveStudent()}
-        onCancel={() => { setMovingStudent(null); setTargetClassId(undefined) }}
-      >
-        <Select
-          value={targetClassId}
-          onChange={setTargetClassId}
-          style={{ width: '100%' }}
-          options={classes.map((item) => ({
-            value: item.id,
-            label: `${item.name}（${item.school_year}）`,
-          }))}
-        />
       </Modal>
     </Space>
   )

@@ -97,7 +97,7 @@ def test_personalized_components_and_review_time_do_not_change_mastery():
     {"review_count": 0}, {"review_count": 31}, {"review_count": 1, "max_exam_point_ratio": 0.5},
     {"review_exam_point_codes": []}, {"new_exam_point_codes": ["exam.a"], "new_count": 1},
     {"question_types": []}, {"base_difficulty": 5, "max_difficulty": 3},
-    {"avoid_recent_days": -1}, {"review_count": True}, {"chapter_code": "other"},
+    {"avoid_recent_days": -1}, {"review_count": True}, {"chapter_code": ""},
 ])
 def test_parameter_validation(changes):
     with pytest.raises(ValidationError):

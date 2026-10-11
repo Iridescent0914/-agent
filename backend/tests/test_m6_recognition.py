@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 import json
 from pathlib import Path
@@ -10,12 +11,18 @@ from fastapi.testclient import TestClient
 from PIL import Image
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.database import SessionLocal, get_db
+from app.core.database import engine, get_db
 from app.main import app
 from app.models import Attempt, RecognitionRun, Student, StudentMastery
-from app.services.recognition_workflow import _expected_vision_item, extract_run
+from app.services.recognition_workflow import (
+    _expected_vision_item,
+    extract_run,
+    purge_expired_recognition_images,
+)
+from app.services.submission_workflow import GradingConflict
 from app.services.vision_service import (
     OpenAICompatibleVisionService,
     VisionServiceError,
@@ -26,11 +33,18 @@ from app.services.vision_service import (
 
 @pytest.fixture
 def db():
-    with SessionLocal() as session:
+    with engine.connect() as connection:
+        transaction = connection.begin()
+        session = Session(
+            bind=connection,
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+        )
         try:
             yield session
         finally:
-            session.rollback()
+            session.close()
+            transaction.rollback()
 
 
 @pytest.fixture
@@ -294,7 +308,30 @@ def test_image_submission_waits_for_teacher_before_mastery(client, db):
         assert mastery_pending == mastery_before
 
         first = submission["items"][0]
+        second = submission["items"][1]
         first_attempt = db.get(Attempt, first["attempt"]["id"])
+        second_attempt = db.get(Attempt, second["attempt"]["id"])
+        first_attempt.recognition_status = "blank"
+        first_attempt.student_answer = None
+        second_attempt.recognition_status = "blank"
+        second_attempt.student_answer = None
+        db.flush()
+        batch_blank = client.post(
+            f"/api/v1/submissions/{submission['submission_id']}/recognition-review",
+            json={
+                "reason": "blank items require individual confirmation",
+                "actor": "m6_test_teacher",
+                "items": [{
+                    "attempt_id": row["attempt"]["id"],
+                    "expected_revision_no": row["attempt"]["revision_no"],
+                    "action": "accept",
+                    "response_status": "blank",
+                    "answer": None,
+                } for row in (first, second)],
+            },
+        )
+        assert batch_blank.status_code == 422
+
         first_attempt.recognition_status = "readable"
         first_attempt.student_answer = "A"
         db.flush()
@@ -389,6 +426,11 @@ def test_upload_idempotency_replays_the_same_run(client, db):
     assert first.status_code == 201, first.text
     assert second.status_code == 201, second.text
     assert second.json()["id"] == first.json()["id"]
+    current = client.get(
+        f"/api/v1/paper-instances/{paper['id']}/recognition-runs/current"
+    )
+    assert current.status_code == 200
+    assert current.json()["id"] == first.json()["id"]
     stored = db.get(RecognitionRun, first.json()["id"])
     (get_settings().recognition_upload_dir / stored.image_storage_key).unlink(
         missing_ok=True
@@ -423,6 +465,184 @@ def test_extract_claims_run_before_calling_provider(client, db):
         (get_settings().recognition_upload_dir / stored.image_storage_key).unlink(
             missing_ok=True
         )
+
+
+def test_stale_processing_run_can_be_recovered(client, db, monkeypatch):
+    _, paper = _published_paper(client, db)
+    upload = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/recognition-runs",
+        data={
+            "instance_code": paper["instance_code"],
+            "idempotency_key": "m6-stale-" + uuid4().hex,
+        },
+        files={"file": ("answers.jpg", _jpeg(), "image/jpeg")},
+    )
+    assert upload.status_code == 201, upload.text
+    stored = db.get(RecognitionRun, upload.json()["id"])
+    stored.status = "processing"
+    stored.started_at = datetime.now(timezone.utc) - timedelta(minutes=10)
+    db.flush()
+
+    class RecoveryService:
+        def extract_answers(self, *, image_bytes, content_type, expected_items):
+            return {"schema_version": "m6-recognition-v2", "answers": []}
+
+    try:
+        recovered = extract_run(db, stored.id, service=RecoveryService())
+        assert recovered.status == "ready_for_review"
+        assert recovered.processing_stale is False
+    finally:
+        (get_settings().recognition_upload_dir / stored.image_storage_key).unlink(
+            missing_ok=True
+        )
+
+
+def test_reclaimed_processing_run_rejects_the_old_worker_result(client, db):
+    _, paper = _published_paper(client, db)
+    upload = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/recognition-runs",
+        data={
+            "instance_code": paper["instance_code"],
+            "idempotency_key": "m6-claim-token-" + uuid4().hex,
+        },
+        files={"file": ("answers.jpg", _jpeg(), "image/jpeg")},
+    )
+    assert upload.status_code == 201, upload.text
+    stored = db.get(RecognitionRun, upload.json()["id"])
+
+    class ReclaimedWhileRunningService:
+        def extract_answers(self, *, image_bytes, content_type, expected_items):
+            stored.processing_token = uuid4()
+            db.flush()
+            return {"schema_version": "m6-recognition-v2", "answers": []}
+
+    try:
+        with pytest.raises(GradingConflict, match="changed while extraction"):
+            extract_run(db, stored.id, service=ReclaimedWhileRunningService())
+    finally:
+        (get_settings().recognition_upload_dir / stored.image_storage_key).unlink(
+            missing_ok=True
+        )
+
+
+def test_expired_recognition_image_is_purged_but_run_remains(client, db):
+    _, paper = _published_paper(client, db)
+    upload = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/recognition-runs",
+        data={
+            "instance_code": paper["instance_code"],
+            "idempotency_key": "m6-retention-" + uuid4().hex,
+        },
+        files={"file": ("answers.jpg", _jpeg(), "image/jpeg")},
+    )
+    assert upload.status_code == 201, upload.text
+    stored = db.get(RecognitionRun, upload.json()["id"])
+    path = get_settings().recognition_upload_dir / stored.image_storage_key
+    stored.retention_until = datetime.now(timezone.utc) - timedelta(seconds=1)
+    db.flush()
+
+    assert purge_expired_recognition_images(db) == 1
+    db.refresh(stored)
+    assert stored.image_purged_at is not None
+    assert not path.exists()
+    detail = client.get(f"/api/v1/recognition-runs/{stored.id}")
+    assert detail.status_code == 200
+    assert detail.json()["image_url"] is None
+
+
+def test_expired_image_is_retained_until_teacher_review_finishes(client, db):
+    _, paper = _published_paper(client, db)
+    upload = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/recognition-runs",
+        data={
+            "instance_code": paper["instance_code"],
+            "idempotency_key": "m6-review-retention-" + uuid4().hex,
+        },
+        files={"file": ("answers.jpg", _jpeg(), "image/jpeg")},
+    )
+    assert upload.status_code == 201, upload.text
+    run_id = upload.json()["id"]
+    assert client.post(f"/api/v1/recognition-runs/{run_id}/extract").status_code == 200
+    committed = client.post(f"/api/v1/recognition-runs/{run_id}/commit")
+    assert committed.status_code == 201, committed.text
+    stored = db.get(RecognitionRun, run_id)
+    path = get_settings().recognition_upload_dir / stored.image_storage_key
+    stored.retention_until = datetime.now(timezone.utc) - timedelta(seconds=1)
+    db.flush()
+
+    try:
+        assert purge_expired_recognition_images(db) == 0
+        assert path.is_file()
+        attempts = list(db.scalars(select(Attempt).where(
+            Attempt.submission_id == stored.submission_id
+        )))
+        assert attempts and all(item.grade_status == "needs_review" for item in attempts)
+        for attempt in attempts:
+            attempt.grade_status = "teacher_confirmed"
+            attempt.is_correct = False
+        db.flush()
+        assert purge_expired_recognition_images(db) == 1
+        assert not path.exists()
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def test_second_active_recognition_run_is_rejected(client, db):
+    _, paper = _published_paper(client, db)
+    first = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/recognition-runs",
+        data={
+            "instance_code": paper["instance_code"],
+            "idempotency_key": "m6-active-first-" + uuid4().hex,
+        },
+        files={"file": ("answers.jpg", _jpeg(), "image/jpeg")},
+    )
+    assert first.status_code == 201, first.text
+    stored = db.get(RecognitionRun, first.json()["id"])
+    try:
+        second = client.post(
+            f"/api/v1/paper-instances/{paper['id']}/recognition-runs",
+            data={
+                "instance_code": paper["instance_code"],
+                "idempotency_key": "m6-active-second-" + uuid4().hex,
+            },
+            files={"file": ("other.jpg", _jpeg(), "image/jpeg")},
+        )
+        assert second.status_code == 409, second.text
+    finally:
+        (get_settings().recognition_upload_dir / stored.image_storage_key).unlink(
+            missing_ok=True
+        )
+
+
+def test_ready_run_uses_absolute_review_retention_ceiling(client, db):
+    _, paper = _published_paper(client, db)
+    upload = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/recognition-runs",
+        data={
+            "instance_code": paper["instance_code"],
+            "idempotency_key": "m6-ready-expiry-" + uuid4().hex,
+        },
+        files={"file": ("answers.jpg", _jpeg(), "image/jpeg")},
+    )
+    assert upload.status_code == 201, upload.text
+    run_id = upload.json()["id"]
+    assert client.post(f"/api/v1/recognition-runs/{run_id}/extract").status_code == 200
+    stored = db.get(RecognitionRun, run_id)
+    path = get_settings().recognition_upload_dir / stored.image_storage_key
+    stored.retention_until = datetime.now(timezone.utc) - timedelta(days=1)
+    stored.created_at = datetime.now(timezone.utc) - timedelta(
+        days=get_settings().recognition_unreviewed_max_retention_days + 1
+    )
+    db.flush()
+    try:
+        assert purge_expired_recognition_images(db) == 1
+        db.refresh(stored)
+        assert stored.status == "discarded"
+        assert stored.error_code == "review_expired"
+        assert not path.exists()
+    finally:
+        path.unlink(missing_ok=True)
 
 
 def test_withdrawn_paper_is_rechecked_before_image_commit(client, db):

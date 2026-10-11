@@ -4,14 +4,14 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models import Attempt, SchoolClass, Student
 from app.schemas.common import Page
 from app.schemas.students import (
-    StudentArchiveRequest, StudentAttemptOut, StudentClassUpdateRequest, StudentCreateRequest,
+    StudentArchiveRequest, StudentAttemptOut, StudentCreateRequest,
     StudentDetail, StudentListItem,
 )
 from app.services.student_profile import attempt_summary, load_context
@@ -110,52 +110,25 @@ def archive_student(
     return {'deleted_id': str(student.id)}
 
 
-@router.patch('/{student_id}/class', response_model=StudentDetail)
-def update_student_class(
-    student_id: uuid.UUID,
-    request: StudentClassUpdateRequest,
-    db: Session = Depends(get_db),
-) -> StudentDetail:
-    student = db.scalar(
-        select(Student).where(
-            Student.id == student_id,
-            Student.archived_at.is_(None),
-        ).with_for_update()
-    )
-    if student is None:
-        raise HTTPException(status_code=404, detail='student not found')
-    school_class = db.get(SchoolClass, request.class_id)
-    if school_class is None:
-        raise HTTPException(status_code=404, detail='班级不存在')
-    student.class_id = school_class.id
-    student.class_name = school_class.name
-    db.flush()
-    stats = _student_stats_subquery()
-    row = db.execute(
-        select(
-            Student,
-            stats.c.attempt_count,
-            stats.c.correct_count,
-            stats.c.latest_answered_at,
-        )
-        .outerjoin(stats, stats.c.student_id == Student.id)
-        .where(Student.id == student.id)
-    ).one()
-    item = _student_item(row.Student, row)
-    return StudentDetail(**item.model_dump(), created_at=student.created_at)
-
-
 @router.get("", response_model=Page[StudentListItem])
 def list_students(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     class_id: uuid.UUID | None = Query(None),
+    keyword: str | None = Query(None, max_length=80),
     db: Session = Depends(get_db),
 ) -> Page[StudentListItem]:
     stats = _student_stats_subquery()
     filters = [Student.archived_at.is_(None)]
     if class_id is not None:
         filters.append(Student.class_id == class_id)
+    if keyword and keyword.strip():
+        escaped = keyword.strip().replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
+        filters.append(or_(
+            Student.student_code.ilike(pattern, escape="\\"),
+            Student.display_name.ilike(pattern, escape="\\"),
+        ))
     total = db.scalar(select(func.count(Student.id)).where(*filters)) or 0
     rows = db.execute(
         select(

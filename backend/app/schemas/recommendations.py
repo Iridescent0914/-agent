@@ -13,7 +13,7 @@ from app.schemas.profile import EvidenceRef
 class RecommendationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    chapter_code: Literal["math.g6.rational"] = "math.g6.rational"
+    chapter_code: str = Field(default="math.g6.rational", min_length=1, max_length=160)
     new_exam_point_codes: list[str] = Field(default_factory=list, max_length=54)
     review_exam_point_codes: list[str] = Field(default_factory=list, max_length=54)
     new_count: int = Field(default=0, ge=0, le=30, strict=True)

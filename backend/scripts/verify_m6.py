@@ -3,6 +3,12 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+from pathlib import Path
+import sys
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 from sqlalchemy import func, select, text
 
@@ -20,8 +26,8 @@ def main() -> int:
     settings = get_settings()
     with SessionLocal() as db:
         migration = db.scalar(text("SELECT version_num FROM alembic_version"))
-        if migration != "0016":
-            errors.append(f"migration is {migration}, expected 0016")
+        if migration != "0019":
+            errors.append(f"migration is {migration}, expected 0019")
         runs = list(db.scalars(select(RecognitionRun)))
         now = datetime.now(timezone.utc)
         run_ids = {run.id for run in runs}
@@ -35,6 +41,11 @@ def main() -> int:
             and run.provider.strip().lower() != "fake"
         ]
         attempts = list(db.scalars(select(Attempt).where(Attempt.submission_id.in_(submission_ids)))) if submission_ids else []
+        pending_submission_ids = {
+            attempt.submission_id
+            for attempt in attempts
+            if attempt.grade_status == "needs_review"
+        }
         duplicate_items = db.execute(
             select(RecognitionItem.recognition_run_id, RecognitionItem.order_no, func.count())
             .group_by(RecognitionItem.recognition_run_id, RecognitionItem.order_no)
@@ -51,7 +62,12 @@ def main() -> int:
             not (settings.recognition_upload_dir / run.image_storage_key).is_file()
             for run in runs
             if run.status != "discarded"
-            and (run.retention_until is None or run.retention_until >= now)
+            and (
+                run.retention_until is None
+                or run.retention_until >= now
+                or run.status == "ready_for_review"
+                or run.submission_id in pending_submission_ids
+            )
         )
         expired_missing_files = sum(
             not (settings.recognition_upload_dir / run.image_storage_key).is_file()
@@ -59,6 +75,8 @@ def main() -> int:
             if run.status != "discarded"
             and run.retention_until is not None
             and run.retention_until < now
+            and run.status != "ready_for_review"
+            and run.submission_id not in pending_submission_ids
         )
         confirmed_without_revision = sum(
             attempt.grade_status == "teacher_confirmed" and attempt.revision_no < 2

@@ -27,6 +27,6 @@ export function AssignmentProgressPanel({ data }: { data: AssignmentAnalytics | 
       <Card size="small"><Statistic title="已完成" value={data.summary.completed_count} suffix="份" /></Card>
     </div>
     <div><Typography.Text>完成率 {data.summary.completed_count}/{data.summary.active_published_count}</Typography.Text><Progress percent={Number(completion.toFixed(1))} status="active" /></div>
-    <Table rowKey="paper_instance_id" columns={columns} dataSource={data.students} pagination={false} scroll={{ x: 660 }} />
+    <Table rowKey="paper_instance_id" columns={columns} dataSource={data.students} pagination={{ pageSize: 50, showSizeChanger: true, pageSizeOptions: [20, 50, 100, 200] }} scroll={{ x: 660 }} />
   </Space>
 }

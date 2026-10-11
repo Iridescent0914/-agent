@@ -325,6 +325,14 @@ class RecognitionRun(TimestampMixin, Base):
             name="ck_recognition_run_dimensions",
         ),
         Index("ix_recognition_runs_paper_status", "paper_instance_id", "status"),
+        Index(
+            "uq_recognition_run_active_per_paper",
+            "paper_instance_id",
+            unique=True,
+            postgresql_where=text(
+                "status IN ('uploaded', 'processing', 'ready_for_review', 'failed')"
+            ),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -353,10 +361,12 @@ class RecognitionRun(TimestampMixin, Base):
     raw_response: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     error_code: Mapped[str | None] = mapped_column(String(80))
     error_message: Mapped[str | None] = mapped_column(Text)
+    processing_token: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     committed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retention_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    image_purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class RecognitionItem(TimestampMixin, Base):

@@ -53,10 +53,16 @@ export interface QuestionCreateRequest {
   options?: string[]
   reference_answer_raw: string
   main_exam_point_code: string
+  related_exam_point_codes: string[]
   solution?: string
   wrong_analysis?: string
+  estimated_score_rate?: string
   operator_name: string
   assets?: Array<{ path: string }>
+}
+
+export interface QuestionUpdateRequest extends QuestionCreateRequest {
+  expected_review_revision: number
 }
 
 export interface AssetInfo {

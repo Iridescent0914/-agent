@@ -144,26 +144,35 @@ def select_recommendations(*, student_id: UUID, candidates: list[Candidate],
     )
 
 
-def preview(db: Session, context: ProfileContext, params: RecommendationRequest,
-            *, as_of: datetime) -> RecommendationOut:
-    allowed = {exam.code for exam in context.catalog if exam.chapter_code == params.chapter_code}
-    if not set(params.new_exam_point_codes + params.review_exam_point_codes) <= allowed:
-        raise ValueError("考点不存在或不属于当前章节")
-    if any(record.problem not in (None, "needs_review") for record in context.records):
-        raise ValueError("存在异常作答证据，请修复后再预览推荐")
+def recommendation_candidates(db: Session, chapter_code: str) -> list[Candidate]:
     rows = db.execute(
         select(Question, ExamPoint)
         .join(QuestionExamPoint, QuestionExamPoint.question_id == Question.id)
         .join(ExamPoint, ExamPoint.id == QuestionExamPoint.exam_point_id)
         .where(
-            Question.chapter_code == params.chapter_code,
+            Question.chapter_code == chapter_code,
             Question.archived_at.is_(None),
             QuestionExamPoint.relation_type == 'main',
         )
     ).all()
-    candidates = [Candidate(q.id, q.original_qid, q.question_type, q.difficulty, exam.id, exam.code, exam.name,
-                             q.grading_readiness == "machine_ready" and q.source_review_status == "reviewed")
-                  for q, exam in rows]
+    return [Candidate(
+        question.id, question.original_qid, question.question_type,
+        question.difficulty, exam.id, exam.code, exam.name,
+        question.grading_readiness == "machine_ready"
+        and question.source_review_status == "reviewed",
+    ) for question, exam in rows]
+
+
+def preview(db: Session, context: ProfileContext, params: RecommendationRequest,
+            *, as_of: datetime,
+            candidates: list[Candidate] | None = None) -> RecommendationOut:
+    allowed = {exam.code for exam in context.catalog if exam.chapter_code == params.chapter_code}
+    if not set(params.new_exam_point_codes + params.review_exam_point_codes) <= allowed:
+        raise ValueError("考点不存在或不属于当前章节")
+    if any(record.problem not in (None, "needs_review") for record in context.records):
+        raise ValueError("存在异常作答证据，请修复后再预览推荐")
+    if candidates is None:
+        candidates = recommendation_candidates(db, params.chapter_code)
     return select_recommendations(student_id=context.student.id, candidates=candidates, results=context.results,
                                   practiced=[(r.attempt.question_id, r.attempt.answered_at) for r in context.records],
                                   params=params, as_of=as_of)

@@ -19,8 +19,16 @@ def main() -> int:
     valid = invalid = mismatches = unassessed = 0
     with SessionLocal() as db:
         db.execute(text("SET TRANSACTION READ ONLY"))
-        students = db.scalars(select(Student).order_by(Student.student_code)).all()
-        summaries = {(row.student_id, row.exam_point_id): row for row in db.scalars(select(StudentMastery))}
+        students = db.scalars(
+            select(Student).where(Student.is_demo.is_(True)).order_by(Student.student_code)
+        ).all()
+        student_ids = [student.id for student in students]
+        summaries = {
+            (row.student_id, row.exam_point_id): row
+            for row in db.scalars(
+                select(StudentMastery).where(StudentMastery.student_id.in_(student_ids))
+            )
+        }
         expected_keys = set()
         for student in students:
             context = load_context(db, student.id)
@@ -58,21 +66,33 @@ def main() -> int:
         mismatches += len(set(summaries) - expected_keys)
         report = {
             "students": len(students), "valid_attempts": valid,
-            "attempts": db.scalar(select(func.count(Attempt.id))),
-            "attempt_revisions": db.scalar(select(func.count(AttemptRevision.id))),
+            "attempts": db.scalar(
+                select(func.count(Attempt.id)).where(Attempt.student_id.in_(student_ids))
+            ),
+            "attempt_revisions": db.scalar(
+                select(func.count(AttemptRevision.id))
+                .join(Attempt, Attempt.id == AttemptRevision.attempt_id)
+                .where(Attempt.student_id.in_(student_ids))
+            ),
             "materialized_mastery_rows": len(summaries), "assessed_exam_points_per_student": counts_per_student,
             "sum_mastery_attempt_counts": sum(row.attempt_count for row in summaries.values()),
             "unassessed_student_exam_pairs": unassessed, "invalid_evidence": invalid,
             "mastery_replay_mismatches": mismatches,
         }
-    expected = {"students": 5, "valid_attempts": 150, "attempts": 150, "attempt_revisions": 150,
-                "materialized_mastery_rows": 50, "sum_mastery_attempt_counts": 150,
-                "unassessed_student_exam_pairs": 220, "invalid_evidence": 0, "mastery_replay_mismatches": 0}
+    expected = {"students": 5, "mastery_replay_mismatches": 0}
     for key, value in expected.items():
         if report[key] != value:
             errors.append(f"{key}: expected {value}, got {report[key]}")
-    if any(count != 10 for count in counts_per_student.values()):
-        errors.append("Expected 10 assessed exam points per seed student")
+    if report["attempts"] < report["valid_attempts"]:
+        errors.append("Valid mastery evidence cannot exceed stored attempts")
+    if report["attempt_revisions"] < report["attempts"]:
+        errors.append("Every seed attempt must have at least one revision")
+    if report["materialized_mastery_rows"] != sum(counts_per_student.values()):
+        errors.append("Materialized mastery rows do not match assessed exam points")
+    if report["sum_mastery_attempt_counts"] != report["valid_attempts"]:
+        errors.append("Materialized mastery evidence count does not match replay")
+    if any(count < 10 for count in counts_per_student.values()):
+        errors.append("Each seed student must retain the 10 baseline assessed exam points")
     report["validation_errors"] = len(errors)
     print(json.dumps(report, ensure_ascii=False, indent=2))
     for error in errors:

@@ -14,9 +14,9 @@ from app.schemas.assignments import (
     AssignmentCreateRequest, AssignmentPlanRequest, AssignmentPreviewOut,
     StudentRecommendationPreview,
 )
-from app.services.paper_snapshots import load_question, new_item, snapshot_payload
-from app.services.recommendations import preview
-from app.services.student_profile import load_context
+from app.services.paper_snapshots import load_questions, new_item, snapshot_payload
+from app.services.recommendations import preview, recommendation_candidates
+from app.services.student_profile import load_contexts
 
 
 def _students(db: Session, student_ids: Iterable[UUID]) -> list[Student]:
@@ -29,6 +29,22 @@ def _students(db: Session, student_ids: Iterable[UUID]) -> list[Student]:
         raise LookupError("one or more students not found")
     by_id = {student.id: student for student in found}
     return [by_id[student_id] for student_id in ids]
+
+
+def _students_for_request(
+    db: Session, request: AssignmentPlanRequest
+) -> list[Student]:
+    if request.student_scope == "selected":
+        return _students(db, request.student_ids)
+    students = list(db.scalars(
+        select(Student).where(
+            Student.class_id == request.class_id,
+            Student.archived_at.is_(None),
+        ).order_by(Student.student_code, Student.id)
+    ))
+    if not students:
+        raise LookupError("class has no active students")
+    return students
 
 
 def _school_class(
@@ -61,12 +77,17 @@ def _school_class(
 def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                        as_of: datetime | None = None) -> AssignmentPreviewOut:
     at = as_of or datetime.now(timezone.utc)
-    students = _students(db, request.student_ids)
+    students = _students_for_request(db, request)
     _school_class(db, students, request.class_id)
+    contexts = load_contexts(db, [student.id for student in students])
+    candidates = recommendation_candidates(
+        db, request.recommendation_parameters.chapter_code
+    )
     results = []
     for student in students:
         recommendation = preview(
-            db, load_context(db, student.id), request.recommendation_parameters, as_of=at
+            db, contexts[student.id], request.recommendation_parameters,
+            as_of=at, candidates=candidates,
         )
         results.append(StudentRecommendationPreview(
             student_id=student.id, student_code=student.student_code,
@@ -98,11 +119,12 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
 
     plan = AssignmentPlanRequest(
         class_id=request.class_id,
+        student_scope=request.student_scope,
         student_ids=request.student_ids,
         recommendation_parameters=request.recommendation_parameters,
     )
     result = preview_assignment(db, plan, as_of=as_of)
-    students = _students(db, request.student_ids)
+    students = _students_for_request(db, request)
     school_class = _school_class(db, students, request.class_id)
     params = request.recommendation_parameters.model_dump(mode="json")
     assignment = Assignment(
@@ -118,13 +140,20 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
             "schema_version": "m3-generation-config-v1",
             "request_fingerprint": fingerprint,
             "as_of": result.as_of.isoformat(),
+            "student_scope": request.student_scope,
             "student_ids": [str(value) for value in request.student_ids],
+            "resolved_student_ids": [str(value.student_id) for value in result.students],
             "recommendation_parameters": params,
         },
         assignment_type="practice",
     )
     db.add(assignment)
     db.flush()
+    questions = load_questions(db, {
+        selected.question_id
+        for student_result in result.students
+        for selected in student_result.recommendation.items
+    })
     for student_result in result.students:
         output = student_result.recommendation
         paper = PaperInstance(
@@ -142,7 +171,7 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
         db.add(paper)
         db.flush()
         for order_no, selected in enumerate(output.items, start=1):
-            question = load_question(db, selected.question_id)
+            question = questions[selected.question_id]
             audit = {
                 "schema_version": "m3-selection-audit-v1",
                 "source": "recommendation",

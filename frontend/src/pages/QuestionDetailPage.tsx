@@ -7,7 +7,9 @@ import { AnswerView } from '../components/AnswerView'
 import { QuestionReviewEditor } from '../components/QuestionReviewEditor'
 import { RichQuestionText } from '../components/RichQuestionText'
 import { QuestionOptions } from '../components/QuestionOptions'
+import { QuestionContentEditor } from '../components/QuestionContentEditor'
 import type { QuestionDetail } from '../types'
+import { answerMatchTypeLabel } from '../utils/gradingLabels'
 
 const typeLabel: Record<string, string> = {
   choice: '选择题',
@@ -67,6 +69,7 @@ export function QuestionDetailPage() {
             {question.grading_readiness === 'machine_ready'
               ? <Tag color="green">自动组卷池</Tag>
               : <Tag color="orange">待入库验证</Tag>}
+            <QuestionContentEditor question={question} onUpdated={setQuestion} />
           </Space>
           {question.grading_readiness !== 'machine_ready' && (
             <Alert
@@ -100,7 +103,7 @@ export function QuestionDetailPage() {
             ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未完成结构化答案" />
             : <AnswerView answer={question.correct_answer} />}
           <Descriptions bordered size="small" column={{ xs: 1, md: 2 }}>
-            <Descriptions.Item label="答案匹配类型">{question.answer_match_type || '待确认'}</Descriptions.Item>
+            <Descriptions.Item label="答案匹配类型">{answerMatchTypeLabel(question.answer_match_type)}</Descriptions.Item>
             <Descriptions.Item label="来源审核状态">{question.source_review_status}</Descriptions.Item>
             <Descriptions.Item label="导入状态">{question.import_status}</Descriptions.Item>
             <Descriptions.Item label="当前待处理项">{question.import_issues.length || '无'}</Descriptions.Item>

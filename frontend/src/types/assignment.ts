@@ -18,6 +18,7 @@ export interface AssignmentPreview {
 
 export interface AssignmentRequest {
   class_id: string
+  student_scope: 'selected' | 'all_class'
   student_ids: string[]
   recommendation_parameters: RecommendationParams
 }

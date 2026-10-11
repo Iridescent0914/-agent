@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+from contextlib import asynccontextmanager, suppress
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
@@ -9,13 +13,40 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.services.maintenance import run_file_maintenance
 
 
 settings = get_settings()
 settings.web_asset_dir.mkdir(parents=True, exist_ok=True)
 settings.teacher_asset_dir.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title=settings.app_name, version="0.1.0")
+logger = logging.getLogger(__name__)
+
+
+async def _maintenance_loop(stop: asyncio.Event) -> None:
+    while not stop.is_set():
+        try:
+            await asyncio.to_thread(run_file_maintenance)
+        except Exception:
+            logger.exception("file maintenance failed")
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(
+                stop.wait(), timeout=max(settings.maintenance_interval_seconds, 60)
+            )
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    stop = asyncio.Event()
+    task = asyncio.create_task(_maintenance_loop(stop))
+    try:
+        yield
+    finally:
+        stop.set()
+        await task
+
+
+app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,

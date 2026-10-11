@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import uuid
+import re
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy import case, distinct, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -22,14 +23,17 @@ from app.schemas.questions import (
     QuestionDetail,
     QuestionListItem,
     QuestionReviewRequest,
+    QuestionUpdateRequest,
     QuestionWithdrawRequest,
     TagOut,
 )
 from app.services.assets import (
     actionable_import_issues,
+    cleanup_orphan_teacher_assets,
+    delete_teacher_asset_if_unreferenced,
+    question_asset_exists,
     resolve_assets,
     store_teacher_asset,
-    teacher_asset_exists,
 )
 from app.services.question_review import (
     QuestionReviewConflict,
@@ -43,6 +47,26 @@ from app.services.question_review import (
 router = APIRouter(prefix="/questions", tags=["questions"])
 
 ALLOWED_QUESTION_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+
+def _question_text_with_assets(
+    question_text: str, assets: list[dict[str, str]]
+) -> str:
+    retained = {asset["path"] for asset in assets}
+
+    def keep_imported_asset(match: re.Match[str]) -> str:
+        path = match.group(1)
+        if path in retained and path.startswith("assets/rational/"):
+            return match.group(0)
+        return ""
+
+    clean = re.sub(r"\[ASSET:([^\]]+)\]", keep_imported_asset, question_text)
+    for path in (
+        asset["path"] for asset in assets
+        if asset["path"].startswith("assets/teacher/")
+    ):
+        clean = f"{clean.rstrip()}\n[ASSET:{path}]"
+    return clean.strip()
 
 
 def _main_exam(question: Question) -> ExamPoint:
@@ -136,7 +160,9 @@ def _review_error(exc: Exception) -> HTTPException:
 
 
 @router.post('/assets', response_model=AssetOut, status_code=201)
-async def upload_question_asset(file: UploadFile = File(...)) -> AssetOut:
+async def upload_question_asset(
+    file: UploadFile = File(...), db: Session = Depends(get_db)
+) -> AssetOut:
     if file.content_type not in ALLOWED_QUESTION_IMAGE_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -150,9 +176,23 @@ async def upload_question_asset(file: UploadFile = File(...)) -> AssetOut:
     if len(payload) > settings.question_asset_max_upload_bytes:
         raise HTTPException(status_code=413, detail='单张图片不能超过 8MB')
     try:
+        cleanup_orphan_teacher_assets(db)
         return AssetOut(**store_teacher_asset(payload))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.delete('/assets/{filename}', status_code=204)
+def delete_question_asset(
+    filename: str, db: Session = Depends(get_db)
+) -> Response:
+    try:
+        delete_teacher_asset_if_unreferenced(db, f"assets/teacher/{filename}")
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return Response(status_code=204)
 
 
 @router.post('', response_model=QuestionDetail, status_code=201)
@@ -167,6 +207,18 @@ def create_question(
     )
     if exam is None:
         raise HTTPException(status_code=422, detail='主考点不存在')
+    related_exams = list(db.scalars(
+        select(ExamPoint)
+        .options(selectinload(ExamPoint.knowledge_point))
+        .where(ExamPoint.code.in_(request.related_exam_point_codes))
+    )) if request.related_exam_point_codes else []
+    if len(related_exams) != len(request.related_exam_point_codes):
+        raise HTTPException(status_code=422, detail='一个或多个关联考点不存在')
+    if any(
+        item.knowledge_point.chapter_code != exam.knowledge_point.chapter_code
+        for item in related_exams
+    ):
+        raise HTTPException(status_code=422, detail='关联考点必须与主考点属于同一章节')
     original_qid = request.original_qid or (
         f'q.{exam.knowledge_point.chapter_code}.teacher.{uuid.uuid4().hex[:12]}'
     )
@@ -174,17 +226,13 @@ def create_question(
         raise HTTPException(status_code=409, detail='题目编号已存在')
 
     missing_assets = [
-        asset.path for asset in request.assets if not teacher_asset_exists(asset.path)
+        asset.path for asset in request.assets if not question_asset_exists(asset.path)
     ]
     if missing_assets:
         raise HTTPException(status_code=422, detail='题目图片不存在或已失效，请重新上传')
 
     asset_records = [asset.model_dump() for asset in request.assets]
-    question_text = request.question_text
-    for asset in asset_records:
-        marker = f"[ASSET:{asset['path']}]"
-        if marker not in question_text:
-            question_text = f"{question_text.rstrip()}\n{marker}"
+    question_text = _question_text_with_assets(request.question_text, asset_records)
 
     source_number = int(db.scalar(
         select(func.max(Question.source_question_number)).where(
@@ -209,7 +257,7 @@ def create_question(
         answer_normalization_rule={},
         solution=request.solution,
         wrong_analysis=request.wrong_analysis,
-        estimated_score_rate=None,
+        estimated_score_rate=request.estimated_score_rate,
         has_image=bool(asset_records),
         has_equation=any(mark in question_text for mark in ('$', '\\(', '\\[')),
         assets=asset_records,
@@ -239,7 +287,128 @@ def create_question(
         exam_point_id=exam.id,
         relation_type='main',
     ))
+    for related_exam in related_exams:
+        db.add(QuestionExamPoint(
+            question_id=question.id,
+            exam_point_id=related_exam.id,
+            relation_type='related',
+        ))
     db.flush()
+    db.expire(question, ['exam_point_links', 'main_knowledge_point'])
+    return _detail(db, question.id)
+
+
+@router.put('/{question_id}', response_model=QuestionDetail)
+def update_question(
+    question_id: uuid.UUID,
+    request: QuestionUpdateRequest,
+    db: Session = Depends(get_db),
+) -> QuestionDetail:
+    question = db.scalar(
+        _base_query().where(Question.id == question_id).with_for_update()
+    )
+    if question is None:
+        raise HTTPException(status_code=404, detail='question not found')
+    if question.review_revision != request.expected_review_revision:
+        raise HTTPException(status_code=409, detail='题目已被其他操作修改，请刷新后重试')
+
+    exam = db.scalar(
+        select(ExamPoint)
+        .options(selectinload(ExamPoint.knowledge_point))
+        .where(ExamPoint.code == request.main_exam_point_code)
+    )
+    if exam is None:
+        raise HTTPException(status_code=422, detail='主考点不存在')
+    related_exams = list(db.scalars(
+        select(ExamPoint)
+        .options(selectinload(ExamPoint.knowledge_point))
+        .where(ExamPoint.code.in_(request.related_exam_point_codes))
+    )) if request.related_exam_point_codes else []
+    if len(related_exams) != len(request.related_exam_point_codes):
+        raise HTTPException(status_code=422, detail='一个或多个关联考点不存在')
+    if any(
+        item.knowledge_point.chapter_code != exam.knowledge_point.chapter_code
+        for item in related_exams
+    ):
+        raise HTTPException(status_code=422, detail='关联考点必须与主考点属于同一章节')
+    original_qid = request.original_qid or question.original_qid
+    duplicate = db.scalar(
+        select(Question.id).where(
+            Question.original_qid == original_qid,
+            Question.id != question.id,
+        )
+    )
+    if duplicate:
+        raise HTTPException(status_code=409, detail='题目编号已存在')
+    missing_assets = [
+        asset.path for asset in request.assets if not question_asset_exists(asset.path)
+    ]
+    if missing_assets:
+        raise HTTPException(status_code=422, detail='题目图片不存在或已失效，请重新上传')
+
+    asset_records = [asset.model_dump() for asset in request.assets]
+    before_revision = question.review_revision
+    now = datetime.now(timezone.utc)
+    question.original_qid = original_qid
+    question.chapter_code = exam.knowledge_point.chapter_code
+    question.chapter_name = exam.knowledge_point.chapter_name
+    question.section = request.section
+    question.question_type = request.question_type
+    question.difficulty = request.difficulty
+    question.main_knowledge_point_id = exam.knowledge_point_id
+    question.question_text = _question_text_with_assets(
+        request.question_text, asset_records
+    )
+    question.options = request.options
+    question.reference_answer_raw = request.reference_answer_raw
+    question.solution = request.solution
+    question.wrong_analysis = request.wrong_analysis
+    question.estimated_score_rate = request.estimated_score_rate
+    question.has_image = bool(asset_records)
+    question.has_equation = any(
+        mark in (question.question_text + (question.solution or ""))
+        for mark in ('$', '\\(', '\\[')
+    )
+    question.assets = asset_records
+    # Content changes invalidate the previously structured answer. Published
+    # papers keep their immutable snapshots and are not affected.
+    question.correct_answer = None
+    question.answer_match_type = None
+    question.answer_normalization_rule = {}
+    question.grading_readiness = 'raw_answer_only'
+    question.source_review_status = 'reviewed'
+    question.import_issues = ['answer_items_not_structured']
+    question.review_revision += 1
+    question.reviewed_by = request.operator_name
+    question.reviewed_at = now
+    question.review_history = [
+        *(question.review_history or []),
+        {
+            'event_id': str(uuid.uuid4()),
+            'type': 'content_updated',
+            'at': now.isoformat(),
+            'reviewer': request.operator_name,
+            'note': '教师编辑题目内容，结构化答案已重置',
+            'before_revision': before_revision,
+            'after_revision': question.review_revision,
+        },
+    ]
+    for link in list(question.exam_point_links):
+        db.delete(link)
+    db.flush()
+    db.add(QuestionExamPoint(
+        question_id=question.id,
+        exam_point_id=exam.id,
+        relation_type='main',
+    ))
+    for related_exam in related_exams:
+        db.add(QuestionExamPoint(
+            question_id=question.id,
+            exam_point_id=related_exam.id,
+            relation_type='related',
+        ))
+    db.flush()
+    db.expire(question, ['exam_point_links', 'main_knowledge_point'])
     return _detail(db, question.id)
 
 

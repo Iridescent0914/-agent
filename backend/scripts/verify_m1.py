@@ -41,9 +41,13 @@ def main() -> int:
         question_asset_count = session.scalar(
             select(func.count(Question.id)).where(func.jsonb_array_length(Question.assets) > 0)
         ) or 0
-        student_count = session.scalar(select(func.count(Student.id))) or 0
+        student_count = session.scalar(
+            select(func.count(Student.id)).where(Student.is_demo.is_(True))
+        ) or 0
         students_with_attempts = session.scalar(
             select(func.count(distinct(Attempt.student_id)))
+            .join(Student, Student.id == Attempt.student_id)
+            .where(Student.is_demo.is_(True))
         ) or 0
         attempt_count = session.scalar(select(func.count(Attempt.id))) or 0
         orphan_attempts = session.scalar(
@@ -80,7 +84,7 @@ def main() -> int:
     failed_assets = int(manifest.get("failed_count", -1))
 
     checks = {
-        'schema_at_head': migration == '0016',
+        'schema_at_head': migration == '0019',
         "questions": question_count,
         "fill_blank": fill_count,
         "choice": choice_count,
@@ -88,8 +92,8 @@ def main() -> int:
         "questions_with_assets": question_asset_count,
         "unique_web_assets": manifest.get("unique_asset_count", 0),
         "missing_web_assets": failed_assets,
-        "students": student_count,
-        "students_with_attempts": students_with_attempts,
+        "seed_students": student_count,
+        "seed_students_with_attempts": students_with_attempts,
         "attempts": attempt_count,
         "orphan_records": orphan_attempts,
         "ownership_mismatches": ownership_mismatches,
@@ -104,8 +108,8 @@ def main() -> int:
         "questions_with_assets": 107,
         "unique_web_assets": 564,
         "missing_web_assets": 0,
-        "students": 5,
-        "students_with_attempts": 5,
+        "seed_students": 5,
+        "seed_students_with_attempts": 5,
         "orphan_records": 0,
         "ownership_mismatches": 0,
     }

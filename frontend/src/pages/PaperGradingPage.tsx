@@ -7,6 +7,7 @@ import { AnswerView } from '../components/AnswerView'
 import { initialDraft, ManualAnswerEditor } from '../components/ManualAnswerEditor'
 import { RichQuestionText } from '../components/RichQuestionText'
 import type { AnswerDraft, AttemptResult, AttemptRevision, SubmissionDetail, SubmissionPaperItem } from '../types/submission'
+import { answerMatchTypeLabel } from '../utils/gradingLabels'
 
 function gradeTag(attempt: AttemptResult) {
   if (attempt.grade_status === 'needs_review') return <Tag color="orange">待复核</Tag>
@@ -110,12 +111,13 @@ export function PaperGradingPage() {
       .filter((attempt): attempt is AttemptResult => Boolean(
         attempt
         && attempt.grade_status === 'needs_review'
-        && ['readable', 'blank'].includes(attempt.recognition_status ?? ''),
+        && attempt.recognition_status === 'readable'
+        && !attempt.grading_details.recognition_reviewed,
       ))
     if (candidates.length === 0) { message.info('没有可批量确认的清晰抄读项'); return }
     Modal.confirm({
       title: `批量确认 ${candidates.length} 道清晰抄读结果？`,
-      content: '系统仍使用确定性规则判分；缺失、模糊和歧义项不会被包含。',
+      content: '系统仍使用确定性规则判分；空白、缺失、模糊和歧义项必须逐题处理。',
       okText: '确认并规则判分', cancelText: '取消',
       onOk: async () => {
         setLoading(true); setError(null)
@@ -126,8 +128,8 @@ export function PaperGradingPage() {
               attempt_id: attempt.id,
               expected_revision_no: attempt.revision_no,
               action: 'accept',
-              response_status: attempt.recognition_status === 'blank' ? 'blank' : 'answered',
-              answer: attempt.recognition_status === 'blank' ? null : attempt.student_answer,
+              response_status: 'answered',
+              answer: attempt.student_answer,
             })),
           })
           setData(result); message.success(`已批量确认 ${candidates.length} 道，画像仅重算一次`)
@@ -180,7 +182,9 @@ export function PaperGradingPage() {
     if (correction.draft.response_status === 'unset') { message.warning('请录入答案或标记整题留空'); return }
     setCorrectionSaving(true); setError(null)
     try {
-      const isPendingImage = data?.source === 'image' && correction.attempt.grade_status === 'needs_review'
+      const isPendingImage = data?.source === 'image'
+        && correction.attempt.grade_status === 'needs_review'
+        && !correction.attempt.grading_details.recognition_reviewed
       const result = isPendingImage && data?.submission_id
         ? await apiPost<SubmissionDetail>(`/submissions/${data.submission_id}/recognition-review`, {
             reason, actor: 'demo_teacher', items: [{
@@ -215,9 +219,10 @@ export function PaperGradingPage() {
       {!data.is_active && <Alert type="warning" showIcon message="历史失效版本" description={data.submission_id ? '已有提交仍可查看和复核，但不能创建新提交。' : '该版本不能创建新提交。'} />}
       {data.answer_key_update_count > 0 && <Alert type="warning" showIcon message="题库标准答案已重新发布" description="当前结果仍按原评分标准保留。请点击“重新评分”，确认后系统才会追加修订并更新画像。" />}
       {data.source === 'image' && data.recognition_image_url && <Card title="答题区原图"><div className="recognition-source-grid"><Image src={apiUrl(data.recognition_image_url)} /><Descriptions size="small" column={1}><Descriptions.Item label="来源">图片识别，教师确认前不进入画像</Descriptions.Item><Descriptions.Item label="模型">{data.recognition_provider} · {data.recognition_model}</Descriptions.Item><Descriptions.Item label="提示版本">{data.recognition_prompt_version}</Descriptions.Item></Descriptions></div></Card>}
+      {data.source === 'image' && !data.recognition_image_url && <Alert type="info" showIcon message="答题原图已清理" description="识别结果、教师修订和评分证据仍保留；原图已按保留策略删除。" />}
       {data.submission_id && <Card><Space size="large" wrap><Statistic title="题目" value={data.summary.total_count} /><Statistic title="正确" value={data.summary.correct_count} valueStyle={{ color: '#389e0d' }} /><Statistic title="错误" value={data.summary.incorrect_count} valueStyle={{ color: '#cf1322' }} /><Statistic title="待复核" value={data.summary.needs_review_count} valueStyle={{ color: '#d46b08' }} />{data.source === 'image' && data.summary.needs_review_count > 0 && <Button type="primary" loading={loading} onClick={confirmAllRecognition}>批量确认清晰抄读项</Button>}<Button><Link to={`/students/${data.student_id}`}>查看最新画像</Link></Button></Space></Card>}
       {data.items.map((item) => <Card key={item.id} title={`第 ${item.order_no} 题 · ${item.question_snapshot.original_qid ?? ''}`} extra={item.attempt && gradeTag(item.attempt)}>
-        <Space wrap><Tag>{item.question_snapshot.question_type === 'choice' ? '选择题' : '填空题'}</Tag><Tag>{item.exam_point_snapshot.main?.name}</Tag><Tag>规则：{item.grading_answer_rule_snapshot.answer_match_type}</Tag>{item.answer_key_update_available && <Tag color="orange">标准答案待更新</Tag>}</Space>
+        <Space wrap><Tag>{item.question_snapshot.question_type === 'choice' ? '选择题' : '填空题'}</Tag><Tag>{item.exam_point_snapshot.main?.name}</Tag><Tag>规则：{answerMatchTypeLabel(item.grading_answer_rule_snapshot.answer_match_type)}</Tag>{item.answer_key_update_available && <Tag color="orange">标准答案待更新</Tag>}</Space>
         <RichQuestionText text={item.question_snapshot.question_text ?? ''} assets={item.assets} />
         {!data.submission_id && <ManualAnswerEditor item={gradingEditorItem(item)} value={drafts[item.id] ?? initialDraft(gradingEditorItem(item))} onChange={(value) => setDrafts((current) => ({ ...current, [item.id]: value }))} />}
         {item.attempt && <Space direction="vertical" className="attempt-result" size="middle">
@@ -234,7 +239,7 @@ export function PaperGradingPage() {
           </Descriptions>
           <Input.TextArea value={reasons[item.attempt.id] ?? ''} onChange={(event) => setReasons((current) => ({ ...current, [item.attempt!.id]: event.target.value }))} placeholder="复核或改判原因（至少 2 个字）" rows={2} />
           <Space wrap>
-            {item.attempt.grade_status === 'needs_review' && (data.source === 'image' ? <>
+            {item.attempt.grade_status === 'needs_review' && (data.source === 'image' && !item.attempt.grading_details.recognition_reviewed ? <>
               {['readable', 'blank'].includes(item.attempt.recognition_status ?? '') && <Button type="primary" icon={<CheckOutlined />} onClick={() => confirmRecognition(item.attempt!)}>确认抄读并规则判分</Button>}
               {!['readable', 'blank'].includes(item.attempt.recognition_status ?? '') && <Tag color="orange">请对照原图修正答案</Tag>}
             </> : <><Button type="primary" icon={<CheckOutlined />} onClick={() => review(item.attempt!, 'confirm', true)}>确认正确</Button><Button danger icon={<CloseOutlined />} onClick={() => review(item.attempt!, 'confirm', false)}>确认错误</Button></>)}
@@ -285,7 +290,7 @@ export function PaperGradingPage() {
           disabled={correctionSaving}
           onChange={(draft) => setCorrection((current) => current ? { ...current, draft } : current)}
         />
-        {!(data?.source === 'image' && correction.attempt.grade_status === 'needs_review') && <RadioCorrect value={correction.isCorrect} onChange={(isCorrect) => setCorrection((current) => current ? { ...current, isCorrect } : current)} />}
+        {!(data?.source === 'image' && correction.attempt.grade_status === 'needs_review' && !correction.attempt.grading_details.recognition_reviewed) && <RadioCorrect value={correction.isCorrect} onChange={(isCorrect) => setCorrection((current) => current ? { ...current, isCorrect } : current)} />}
         <Input.TextArea
           placeholder="修正原因（至少 2 个字）"
           value={correction.reason}

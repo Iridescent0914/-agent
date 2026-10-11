@@ -137,7 +137,7 @@ class BatchPublishTarget(PublishPaperRequest):
 
 class BatchPublishRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    papers: list[BatchPublishTarget] = Field(min_length=1, max_length=100)
+    papers: list[BatchPublishTarget] = Field(min_length=1, max_length=2000)
 
     @model_validator(mode="after")
     def unique_papers(self):

@@ -22,8 +22,11 @@ class QuestionAssetInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     path: str = Field(
-        pattern=r'^assets/teacher/[0-9a-f]{32}\.png$',
-        max_length=80,
+        pattern=(
+            r'^assets/(?:teacher/[0-9a-f]{32}\.png|'
+            r'rational/[A-Za-z0-9._-]+)$'
+        ),
+        max_length=255,
     )
 
 
@@ -76,10 +79,12 @@ class QuestionCreateRequest(BaseModel):
     options: list[str] | None = Field(default=None, min_length=2, max_length=8)
     reference_answer_raw: str = Field(min_length=1, max_length=5000)
     main_exam_point_code: str = Field(min_length=1, max_length=180)
+    related_exam_point_codes: list[str] = Field(default_factory=list, max_length=54)
     solution: str | None = Field(default=None, max_length=10000)
     wrong_analysis: str | None = Field(default=None, max_length=10000)
+    estimated_score_rate: str | None = Field(default=None, max_length=64)
     operator_name: str = Field(min_length=1, max_length=80)
-    assets: list[QuestionAssetInput] = Field(default_factory=list, max_length=8)
+    assets: list[QuestionAssetInput] = Field(default_factory=list, max_length=64)
 
     @field_validator(
         'section', 'question_text', 'reference_answer_raw',
@@ -92,7 +97,7 @@ class QuestionCreateRequest(BaseModel):
             raise ValueError('字段不能为空')
         return clean
 
-    @field_validator('original_qid', 'solution', 'wrong_analysis')
+    @field_validator('original_qid', 'solution', 'wrong_analysis', 'estimated_score_rate')
     @classmethod
     def strip_optional_text(cls, value: str | None) -> str | None:
         return value.strip() or None if value is not None else None
@@ -113,7 +118,19 @@ class QuestionCreateRequest(BaseModel):
         asset_paths = [asset.path for asset in self.assets]
         if len(asset_paths) != len(set(asset_paths)):
             raise ValueError('题目图片不能重复')
+        related = [code.strip() for code in self.related_exam_point_codes]
+        if any(not code for code in related):
+            raise ValueError('关联考点不能为空')
+        if len(related) != len(set(related)):
+            raise ValueError('关联考点不能重复')
+        if self.main_exam_point_code in related:
+            raise ValueError('主考点不能同时作为关联考点')
+        self.related_exam_point_codes = related
         return self
+
+
+class QuestionUpdateRequest(QuestionCreateRequest):
+    expected_review_revision: int = Field(ge=1, strict=True)
 
 
 class QuestionArchiveRequest(BaseModel):

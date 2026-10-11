@@ -82,6 +82,44 @@ def test_preview_create_idempotency_and_audit(client, db):
     assert all(item["answer_rule_snapshot"] for item in paper["items"])
 
 
+def test_assignment_can_expand_an_entire_class_without_student_id_limit(client, db):
+    student = db.scalar(select(Student).where(Student.archived_at.is_(None)))
+    assert student is not None and student.class_id is not None
+    expected_count = int(db.scalar(select(func.count(Student.id)).where(
+        Student.class_id == student.class_id,
+        Student.archived_at.is_(None),
+    )) or 0)
+    body = request_body(db, key="all-class-" + uuid4().hex)
+    body.update({
+        "class_id": str(student.class_id),
+        "student_scope": "all_class",
+        "student_ids": [],
+    })
+    preview_body = {
+        key: value for key, value in body.items()
+        if key not in ("title", "idempotency_key")
+    }
+    preview = client.post("/api/v1/assignments/preview", json=preview_body)
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["student_count"] == expected_count
+
+    created = client.post("/api/v1/assignments", json=body)
+    assert created.status_code == 201, created.text
+    assert created.json()["student_count"] == expected_count
+    assert created.json()["generation_config"]["student_scope"] == "all_class"
+    assert len(created.json()["generation_config"]["resolved_student_ids"]) == expected_count
+
+
+def test_selected_student_scope_accepts_more_than_one_hundred_ids(client, db):
+    recommendation = request_body(db, key="unused")["recommendation_parameters"]
+    response = client.post("/api/v1/assignments/preview", json={
+        "student_scope": "selected",
+        "student_ids": [str(uuid4()) for _ in range(101)],
+        "recommendation_parameters": recommendation,
+    })
+    assert response.status_code == 404, response.text
+
+
 def test_edit_publish_lookup_and_revise(client, db):
     body = request_body(db, key="test-" + uuid4().hex)
     assignment = client.post("/api/v1/assignments", json=body).json()

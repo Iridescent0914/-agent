@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -12,13 +13,21 @@ from app.schemas.recommendations import RecommendationOut, RecommendationRequest
 class AssignmentPlanRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     class_id: UUID | None = None
-    student_ids: list[UUID] = Field(min_length=1, max_length=100)
+    student_scope: Literal["selected", "all_class"] = "selected"
+    student_ids: list[UUID] = Field(default_factory=list, max_length=2000)
     recommendation_parameters: RecommendationRequest
 
     @model_validator(mode="after")
     def unique_students(self):
         if len(set(self.student_ids)) != len(self.student_ids):
             raise ValueError("学生范围不能包含重复项")
+        if self.student_scope == "selected" and not self.student_ids:
+            raise ValueError("请至少选择一名学生")
+        if self.student_scope == "all_class":
+            if self.class_id is None:
+                raise ValueError("选择全班学生时必须指定班级")
+            if self.student_ids:
+                raise ValueError("选择全班学生时不应再提交 student_ids")
         return self
 
 

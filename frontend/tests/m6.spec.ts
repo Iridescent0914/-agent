@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
+const api = process.env.M2_API_URL ?? 'http://localhost:8000/api/v1'
 const paperId = '00000000-0000-4000-8000-000000000061'
 const runId = '00000000-0000-4000-8000-000000000062'
 
@@ -50,6 +51,9 @@ test('image upload shows uncertainty before committing to review', async ({ page
       items: [], mastery_update_stats: null,
     }),
   }))
+  await page.route(`**/api/v1/paper-instances/${paperId}/recognition-runs/current`, (route) => route.fulfill({
+    contentType: 'application/json', body: 'null',
+  }))
   const baseRun = {
     id: runId, paper_instance_id: paperId,
     student_id: '00000000-0000-4000-8000-000000000065', submission_id: null,
@@ -85,6 +89,45 @@ test('image upload shows uncertainty before committing to review', async ({ page
   await page.getByRole('button', { name: '开始提取答案' }).click()
   await expect(page.getByText('无法辨认', { exact: true })).toBeVisible()
   await expect(page.getByText('模型置信度不触发自动确认', { exact: false })).toBeVisible()
-  await expect.poll(() => requestedImageUrl).toBe(`http://localhost:8000/api/v1/recognition-runs/${runId}/image`)
+  await expect.poll(() => requestedImageUrl).toBe(`${api}/recognition-runs/${runId}/image`)
   await noOverflow(page)
+})
+
+test('recognition page restores an unfinished run after reload', async ({ page }) => {
+  await page.route(`**/api/v1/paper-instances/${paperId}/submission`, (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({
+      submission_id: null, paper_instance_id: paperId,
+      assignment_id: '00000000-0000-4000-8000-000000000064',
+      assignment_title: 'M6 有理数练习', instance_code: 'RAT-M600-0001', version_no: 1,
+      paper_status: 'published', is_active: true, can_submit: true,
+      student_id: '00000000-0000-4000-8000-000000000065', student_code: 'S001', student_name: '学生一',
+      source: null, submitted_at: null, replayed: false, unchanged: false,
+      answer_key_update_count: 0, regraded_count: 0,
+      summary: { total_count: 0, correct_count: 0, incorrect_count: 0, needs_review_count: 0 },
+      items: [], mastery_update_stats: null,
+    }),
+  }))
+  await page.route(`**/api/v1/paper-instances/${paperId}/recognition-runs/current`, (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({
+      id: runId, paper_instance_id: paperId,
+      student_id: '00000000-0000-4000-8000-000000000065', submission_id: null,
+      status: 'uploaded', provider: 'fake', model: 'fake-m6-v1', prompt_version: 'm6-answer-reader-v2',
+      original_filename: 'answers.jpg', content_type: 'image/jpeg', byte_size: 4,
+      pixel_width: 10, pixel_height: 10, error_code: null, error_message: null,
+      created_at: new Date().toISOString(), started_at: null, completed_at: null,
+      processing_stale: false, image_purged_at: null,
+      image_url: `/api/v1/recognition-runs/${runId}/image`, items: [],
+    }),
+  }))
+  await page.route(`**/recognition-runs/${runId}/image`, (route) => route.fulfill({
+    status: 200,
+    contentType: 'image/png',
+    body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'),
+  }))
+
+  await page.goto(`/paper-instances/${paperId}/recognize`)
+  await expect(page.getByRole('button', { name: '开始提取答案' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '上传图片' })).toHaveCount(0)
 })

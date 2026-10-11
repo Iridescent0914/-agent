@@ -11,6 +11,7 @@ import { MathTextEditor } from '../components/MathTextEditor'
 
 interface QuestionCreateValues extends Omit<QuestionCreateRequest, 'options'> {
   options_text?: string
+  chapter_code: string
 }
 
 const typeLabel: Record<string, string> = {
@@ -43,6 +44,7 @@ export function QuestionListPage() {
   const page = Number(searchParams.get('page') || 1)
   const pageSize = Number(searchParams.get('page_size') || 20)
   const createType = Form.useWatch('question_type', createForm)
+  const createChapterCode = Form.useWatch('chapter_code', createForm)
   const filterChapterCode = Form.useWatch('chapter_code', filterForm)
   const filterKnowledgePointCode = Form.useWatch('knowledge_point_code', filterForm)
   const filterKnowledgePoints = catalog.find((chapter) => chapter.code === filterChapterCode)?.knowledge_points || []
@@ -70,22 +72,31 @@ export function QuestionListPage() {
   }, [refreshKey])
 
   useEffect(() => {
-    apiGet<ExamPoint[]>('/exam-points?chapter_code=math.g6.rational')
-      .then(setExamPoints)
+    apiGet<QuestionCatalogChapter[]>('/questions/catalog')
+      .then((items) => {
+        setCatalog(items)
+        if (!createForm.getFieldValue('chapter_code') && items[0]) {
+          createForm.setFieldValue('chapter_code', items[0].code)
+        }
+      })
       .catch((reason: Error) => setError(reason.message))
-  }, [])
+  }, [createForm])
 
   useEffect(() => {
-    apiGet<QuestionCatalogChapter[]>('/questions/catalog')
-      .then(setCatalog)
+    if (!createChapterCode) { setExamPoints([]); return }
+    apiGet<ExamPoint[]>(`/exam-points?chapter_code=${encodeURIComponent(createChapterCode)}`)
+      .then(setExamPoints)
       .catch((reason: Error) => setError(reason.message))
-  }, [])
+    createForm.setFieldsValue({ main_exam_point_code: undefined, related_exam_point_codes: [] })
+  }, [createChapterCode, createForm])
 
   async function createQuestion() {
     const values = await createForm.validateFields()
+    const { chapter_code, ...questionValues } = values
+    void chapter_code
     setCreating(true); setError(null)
+    const uploadedAssets: AssetInfo[] = []
     try {
-      const uploadedAssets: AssetInfo[] = []
       for (const image of questionImages) {
         if (!image.originFileObj) throw new Error(`无法读取图片：${image.name}`)
         const formData = new FormData()
@@ -96,7 +107,7 @@ export function QuestionListPage() {
         ? (values.options_text || '').split(/\r?\n/).map((value) => value.trim()).filter(Boolean)
         : undefined
       const created = await apiPost<QuestionDetail>('/questions', {
-        ...values,
+        ...questionValues,
         options,
         options_text: undefined,
         original_qid: values.original_qid?.trim() || undefined,
@@ -111,6 +122,10 @@ export function QuestionListPage() {
       setRefreshKey((value) => value + 1)
       setSearchParams({ page: '1', page_size: String(pageSize), keyword: created.original_qid })
     } catch (reason) {
+      await Promise.allSettled(uploadedAssets.map((asset) => {
+        const filename = asset.path.split('/').pop()
+        return filename ? apiDelete(`/questions/assets/${filename}`) : Promise.resolve()
+      }))
       setError((reason as Error).message)
     } finally {
       setCreating(false)
@@ -210,7 +225,10 @@ export function QuestionListPage() {
           <Typography.Title level={2}>题库</Typography.Title>
           <Typography.Text type='secondary'>可按章节、知识点和主考点逐级筛选；只有结构化答案可靠的题目才进入自动组卷池。</Typography.Text>
         </div>
-        <Button type='primary' icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>上传新题</Button>
+        <Button type='primary' icon={<PlusOutlined />} onClick={() => {
+          if (!createForm.getFieldValue('chapter_code') && catalog[0]) createForm.setFieldValue('chapter_code', catalog[0].code)
+          setCreateOpen(true)
+        }}>上传新题</Button>
       </div>
       <Row gutter={16}>
         <Col xs={24} md={8}><Card><Statistic title="原始题库" value={stats?.total ?? 0} suffix="组" /></Card></Col>
@@ -289,6 +307,7 @@ export function QuestionListPage() {
             difficulty: 3,
             section: '教师新增',
             operator_name: '任课教师',
+            related_exam_point_codes: [],
           }}
         >
           <Row gutter={16}>
@@ -297,9 +316,11 @@ export function QuestionListPage() {
             <Col xs={12} md={6}><Form.Item name='difficulty' label='难度' rules={[{ required: true }]}><Select options={[1, 2, 3, 4, 5].map((value) => ({ value, label: `${value} 星` }))} /></Form.Item></Col>
           </Row>
           <Row gutter={16}>
-            <Col xs={24} md={12}><Form.Item name='main_exam_point_code' label='主考点' rules={[{ required: true }]}><Select showSearch optionFilterProp='label' options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item></Col>
-            <Col xs={24} md={12}><Form.Item name='section' label='小节' rules={[{ required: true }]}><Input maxLength={255} /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name='chapter_code' label='章节' rules={[{ required: true }]}><Select options={catalog.map((chapter) => ({ value: chapter.code, label: chapter.name }))} /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name='main_exam_point_code' label='主考点' rules={[{ required: true }]}><Select showSearch optionFilterProp='label' options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name='section' label='小节' rules={[{ required: true }]}><Input maxLength={255} /></Form.Item></Col>
           </Row>
+          <Form.Item name='related_exam_point_codes' label='关联考点'><Select mode='multiple' showSearch optionFilterProp='label' options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item>
           <Form.Item name='question_text' label='题干' rules={[{ required: true, whitespace: true }]}><MathTextEditor rows={5} maxLength={10000} /></Form.Item>
           <Form.Item
             label='题目图片（可选）'
@@ -332,6 +353,7 @@ export function QuestionListPage() {
           <Form.Item name='reference_answer_raw' label='参考答案' rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={3} maxLength={5000} showCount /></Form.Item>
           <Form.Item name='solution' label='解析（可选）'><Input.TextArea rows={3} maxLength={10000} /></Form.Item>
           <Form.Item name='wrong_analysis' label='易错分析（可选）'><Input.TextArea rows={2} maxLength={10000} /></Form.Item>
+          <Form.Item name='estimated_score_rate' label='预估得分率（可选）'><Input maxLength={64} placeholder='例如 65% 或 0.65' /></Form.Item>
           <Form.Item name='operator_name' label='录入教师' rules={[{ required: true, whitespace: true }]}><Input maxLength={80} /></Form.Item>
         </Form>
       </Modal>

@@ -69,25 +69,10 @@ def exam_point_catalog(db: Session, chapter_code: str | None = None) -> list[Exa
             ).all()]
 
 
-def load_context(db: Session, student_id: UUID) -> ProfileContext:
-    student = db.scalar(select(Student).where(
-        Student.id == student_id,
-        Student.archived_at.is_(None),
-    ))
-    if student is None:
-        raise LookupError("student not found")
-    catalog = exam_point_catalog(db)
+def _context_from_rows(
+    student: Student, catalog: list[ExamPointOut], rows: list[tuple]
+) -> ProfileContext:
     by_code = {exam.code: exam for exam in catalog}
-    rows = db.execute(
-        select(Attempt, PaperInstanceItem, PaperInstance, Submission, AttemptRevision)
-        .outerjoin(PaperInstanceItem, PaperInstanceItem.id == Attempt.paper_instance_item_id)
-        .outerjoin(PaperInstance, PaperInstance.id == PaperInstanceItem.paper_instance_id)
-        .outerjoin(Submission, Submission.id == Attempt.submission_id)
-        .outerjoin(AttemptRevision, (AttemptRevision.attempt_id == Attempt.id)
-                   & (AttemptRevision.revision_no == Attempt.revision_no))
-        .where(Attempt.student_id == student_id)
-        .order_by(Attempt.answered_at, Attempt.id)
-    ).all()
     records = []
     for attempt, item, paper, submission, revision in rows:
         problem = None
@@ -115,7 +100,7 @@ def load_context(db: Session, student_id: UUID) -> ProfileContext:
             problem = "missing_current_revision"
         else:
             evidence = Evidence(
-                attempt_id=attempt.id, student_id=student_id, question_id=attempt.question_id,
+                attempt_id=attempt.id, student_id=student.id, question_id=attempt.question_id,
                 paper_instance_item_id=attempt.paper_instance_item_id,
                 exam_point_id=exam.id, exam_point_code=exam.code, answered_at=attempt.answered_at,
                 revision_no=attempt.revision_no, grade_status=attempt.grade_status,
@@ -127,6 +112,43 @@ def load_context(db: Session, student_id: UUID) -> ProfileContext:
     return ProfileContext(student, catalog, records,
                           replay([record.evidence for record in records
                                   if record.problem is None and record.evidence is not None]))
+
+
+def load_contexts(db: Session, student_ids: list[UUID]) -> dict[UUID, ProfileContext]:
+    ids = list(dict.fromkeys(student_ids))
+    if not ids:
+        return {}
+    students = list(db.scalars(select(Student).where(
+        Student.id.in_(ids), Student.archived_at.is_(None)
+    )))
+    if len(students) != len(ids):
+        raise LookupError("one or more students not found")
+    catalog = exam_point_catalog(db)
+    grouped: dict[UUID, list[tuple]] = {student.id: [] for student in students}
+    rows = db.execute(
+        select(Attempt, PaperInstanceItem, PaperInstance, Submission, AttemptRevision)
+        .outerjoin(PaperInstanceItem, PaperInstanceItem.id == Attempt.paper_instance_item_id)
+        .outerjoin(PaperInstance, PaperInstance.id == PaperInstanceItem.paper_instance_id)
+        .outerjoin(Submission, Submission.id == Attempt.submission_id)
+        .outerjoin(AttemptRevision, (AttemptRevision.attempt_id == Attempt.id)
+                   & (AttemptRevision.revision_no == Attempt.revision_no))
+        .where(Attempt.student_id.in_(ids))
+        .order_by(Attempt.student_id, Attempt.answered_at, Attempt.id)
+    ).all()
+    for row in rows:
+        grouped[row[0].student_id].append(row)
+    by_student = {
+        student.id: _context_from_rows(student, catalog, grouped[student.id])
+        for student in students
+    }
+    return {student_id: by_student[student_id] for student_id in ids}
+
+
+def load_context(db: Session, student_id: UUID) -> ProfileContext:
+    try:
+        return load_contexts(db, [student_id])[student_id]
+    except LookupError as exc:
+        raise LookupError("student not found") from exc
 
 
 def mastery_items(context: ProfileContext, chapter_code: str | None = None) -> list[MasteryOut]:

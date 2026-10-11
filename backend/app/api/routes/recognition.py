@@ -12,7 +12,7 @@ from app.schemas.recognition import PrintViewOut, RecognitionReviewRequest, Reco
 from app.schemas.submissions import SubmissionDetailOut
 from app.services.print_view import build_print_view
 from app.services.recognition_workflow import (
-    commit_run, create_run, discard_run, extract_run, get_run, image_path,
+    commit_run, create_run, discard_run, extract_run, get_current_run, get_run, image_path,
     review_recognition,
 )
 from app.services.submission_workflow import GradingConflict, GradingValidation
@@ -66,10 +66,21 @@ async def upload_recognition(
         raise _error(exc) from exc
 
 
+@router.get(
+    "/paper-instances/{paper_id}/recognition-runs/current",
+    response_model=RecognitionRunOut | None,
+)
+def read_current_run(paper_id: UUID, db: Session = Depends(get_db)):
+    try:
+        return get_current_run(db, paper_id)
+    except LookupError as exc:
+        raise _error(exc) from exc
+
+
 @router.post("/recognition-runs/{run_id}/extract", response_model=RecognitionRunOut)
 def extract(run_id: UUID, db: Session = Depends(get_db)):
     try:
-        return extract_run(db, run_id)
+        return extract_run(db, run_id, release_lock_before_provider=True)
     except (LookupError, ValueError, RuntimeError) as exc:
         raise _error(exc) from exc
 

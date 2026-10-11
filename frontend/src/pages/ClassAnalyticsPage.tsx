@@ -7,17 +7,19 @@ import { apiGet, queryString } from '../api/client'
 import { AssignmentProgressPanel } from '../components/AssignmentProgressPanel'
 import { ClassExamPointChart } from '../components/ClassExamPointChart'
 import { ExamPointStudentDrawer } from '../components/ExamPointStudentDrawer'
+import type { QuestionCatalogChapter } from '../types'
 import type { AssignmentListItem, AssignmentPage } from '../types/assignment'
 import type { AssignmentAnalytics, ClassExamPointAnalytics, ClassFocusPoint, ClassOption, ClassOverview } from '../types/analytics'
 
-const CHAPTER_CODE = 'math.g6.rational'
 const focusLabels = { practice: '重点练习', recent_errors: '近期关注', observe: '补充证据', diagnostic: '安排诊断' }
 
 export function ClassAnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [classes, setClasses] = useState<ClassOption[]>([])
+  const [chapters, setChapters] = useState<QuestionCatalogChapter[]>([])
   const [assignments, setAssignments] = useState<AssignmentListItem[]>([])
   const [className, setClassName] = useState(searchParams.get('class_name') ?? '')
+  const [chapterCode, setChapterCode] = useState(searchParams.get('chapter_code') ?? '')
   const [assignmentId, setAssignmentId] = useState(searchParams.get('assignment_id') ?? '')
   const [overview, setOverview] = useState<ClassOverview | null>(null)
   const [assignment, setAssignment] = useState<AssignmentAnalytics | null>(null)
@@ -30,10 +32,15 @@ export function ClassAnalyticsPage() {
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true); setError(null)
-    apiGet<ClassOption[]>('/analytics/classes', controller.signal).then((classData) => {
+    Promise.all([
+      apiGet<ClassOption[]>('/analytics/classes', controller.signal),
+      apiGet<QuestionCatalogChapter[]>('/questions/catalog', controller.signal),
+    ]).then(([classData, chapterData]) => {
       if (controller.signal.aborted) return
       setClasses(classData)
+      setChapters(chapterData)
       setClassName((current) => classData.some((item) => item.class_name === current) ? current : classData[0]?.class_name ?? '')
+      setChapterCode((current) => chapterData.some((item) => item.code === current) ? current : chapterData[0]?.code ?? '')
     }).catch((reason: Error) => {
       if (!controller.signal.aborted) setError(reason.message)
     }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
@@ -41,29 +48,36 @@ export function ClassAnalyticsPage() {
   }, [refresh])
 
   useEffect(() => {
-    if (!className) { setOverview(null); return }
+    if (!className || !chapterCode) { setOverview(null); return }
     const controller = new AbortController()
     setOverview(null); setError(null)
-    apiGet<ClassOverview>(`/analytics/class-overview${queryString({ class_name: className, chapter_code: CHAPTER_CODE })}`, controller.signal)
+    apiGet<ClassOverview>(`/analytics/class-overview${queryString({ class_name: className, chapter_code: chapterCode })}`, controller.signal)
       .then(setOverview).catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
     return () => controller.abort()
-  }, [className, refresh])
+  }, [className, chapterCode, refresh])
 
   useEffect(() => {
-    if (!className) { setAssignments([]); setAssignmentId(''); return }
+    if (!className || !chapterCode) { setAssignments([]); setAssignmentId(''); return }
     const controller = new AbortController()
     setAssignments([])
     setAssignmentId('')
     setAssignment(null)
-    apiGet<AssignmentPage>(`/assignments${queryString({ page_size: 100, class_name: className })}`, controller.signal)
-      .then((assignmentData) => {
-        const usable = assignmentData.items.filter((item) => item.assignment_type !== 'historical_seed' && item.published_count > 0)
+    const loadAssignments = async () => {
+      const first = await apiGet<AssignmentPage>(`/assignments${queryString({ page: 1, page_size: 100, class_name: className, chapter_code: chapterCode })}`, controller.signal)
+      const pages = Math.ceil(first.total / first.page_size)
+      const rest = pages > 1 ? await Promise.all(Array.from({ length: pages - 1 }, (_, index) =>
+        apiGet<AssignmentPage>(`/assignments${queryString({ page: index + 2, page_size: 100, class_name: className, chapter_code: chapterCode })}`, controller.signal))) : []
+      return [first, ...rest].flatMap((item) => item.items)
+    }
+    loadAssignments()
+      .then((items) => {
+        const usable = items.filter((item) => item.assignment_type !== 'historical_seed' && item.published_count > 0)
         setAssignments(usable)
         setAssignmentId(usable[0]?.id ?? '')
       })
       .catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
     return () => controller.abort()
-  }, [className, refresh])
+  }, [className, chapterCode, refresh])
 
   useEffect(() => {
     if (!assignmentId || !className) { setAssignment(null); return }
@@ -77,9 +91,10 @@ export function ClassAnalyticsPage() {
   useEffect(() => {
     const next = new URLSearchParams()
     if (className) next.set('class_name', className)
+    if (chapterCode) next.set('chapter_code', chapterCode)
     if (assignmentId) next.set('assignment_id', assignmentId)
     setSearchParams(next, { replace: true })
-  }, [className, assignmentId, setSearchParams])
+  }, [className, chapterCode, assignmentId, setSearchParams])
 
   const examColumns: ColumnsType<ClassExamPointAnalytics> = useMemo(() => [
     { title: '考点', dataIndex: 'exam_point_name', render: (value, row) => <Button className="table-link" type="link" onClick={() => setExamPointCode(row.exam_point_code)}>{value}</Button> },
@@ -101,6 +116,7 @@ export function ClassAnalyticsPage() {
       <div><Typography.Title level={2}>班级学情</Typography.Title><Typography.Text type="secondary">从班级概览下钻到学生、作答证据和批改操作</Typography.Text></div>
       <Space wrap>
         <Select aria-label="选择班级" value={className || undefined} placeholder="选择班级" onChange={setClassName} options={classes.map((item) => ({ value: item.class_name, label: `${item.class_name}（${item.student_count}人）` }))} style={{ width: 230 }} />
+        <Select aria-label="选择章节" value={chapterCode || undefined} placeholder="选择章节" onChange={setChapterCode} options={chapters.map((item) => ({ value: item.code, label: item.name }))} style={{ width: 230 }} />
         <Tooltip title="刷新学情"><Button aria-label="刷新学情" icon={<ReloadOutlined />} onClick={() => setRefresh((value) => value + 1)} /></Tooltip>
       </Space>
     </div>
@@ -145,6 +161,6 @@ export function ClassAnalyticsPage() {
       />
       <Typography.Text type="secondary">计算时间：{new Date(overview.computed_at).toLocaleString('zh-CN')} · 规则版本：{overview.rule_version}</Typography.Text>
     </>}
-    <ExamPointStudentDrawer examPointCode={examPointCode} className={className} chapterCode={CHAPTER_CODE} onClose={() => setExamPointCode(null)} />
+    <ExamPointStudentDrawer examPointCode={examPointCode} className={className} chapterCode={chapterCode} onClose={() => setExamPointCode(null)} />
   </Space>
 }

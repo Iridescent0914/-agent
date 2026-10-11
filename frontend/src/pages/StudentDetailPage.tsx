@@ -2,7 +2,7 @@ import { ArrowLeftOutlined, ReloadOutlined } from '@ant-design/icons'
 import { Alert, Button, Select, Skeleton, Space, Statistic, Tabs, Tag, Tooltip, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { apiGet } from '../api/client'
+import { apiGet, queryString } from '../api/client'
 import { AttemptEvidenceDrawer } from '../components/AttemptEvidenceDrawer'
 import { RecommendationPreview } from '../components/RecommendationPreview'
 import { StudentAttemptHistory } from '../components/StudentAttemptHistory'
@@ -25,25 +25,43 @@ function StudentWorkspace({ studentId }: { studentId: string }) {
   const [refresh, setRefresh] = useState(0)
   const [tab, setTab] = useState('profile')
   const [attemptId, setAttemptId] = useState<string | null>(null)
+  const [studentQuery, setStudentQuery] = useState('')
   useEffect(() => {
     const controller = new AbortController()
     setStudent(null); setProfile(null); setError(null); setAttemptId(null)
     Promise.all([
       apiGet<StudentDetail>(`/students/${studentId}`, controller.signal),
       apiGet<Profile>(`/students/${studentId}/profile`, controller.signal),
-      apiGet<ExamPoint[]>('/exam-points?chapter_code=math.g6.rational', controller.signal),
-      apiGet<Page<StudentSummary>>('/students?page_size=100', controller.signal),
-    ]).then(([studentData, profileData, examData, list]) => {
-      if (!controller.signal.aborted) { setStudent(studentData); setProfile(profileData); setCatalog(examData); setStudents(list.items) }
+      apiGet<ExamPoint[]>('/exam-points', controller.signal),
+    ]).then(([studentData, profileData, examData]) => {
+      if (!controller.signal.aborted) { setStudent(studentData); setProfile(profileData); setCatalog(examData) }
     }).catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
     return () => controller.abort()
   }, [studentId, refresh])
+  useEffect(() => {
+    if (!student) return
+    const controller = new AbortController()
+    apiGet<Page<StudentSummary>>(`/students${queryString({
+      page: 1,
+      page_size: 50,
+      class_id: student.class_id,
+      keyword: studentQuery,
+    })}`, controller.signal).then((result) => {
+      if (controller.signal.aborted) return
+      setStudents(result.items.some((item) => item.id === student.id)
+        ? result.items
+        : [student, ...result.items])
+    }).catch((reason: Error) => {
+      if (!controller.signal.aborted) setError(reason.message)
+    })
+    return () => controller.abort()
+  }, [student, studentQuery])
   return <div className="student-workspace">
     <Space wrap><Link to="/students"><Button icon={<ArrowLeftOutlined />}>学生列表</Button></Link>
       <Tooltip title="刷新画像"><Button icon={<ReloadOutlined />} aria-label="刷新画像" onClick={() => setRefresh((value) => value + 1)} /></Tooltip></Space>
     {error ? <Alert type="error" showIcon message="学生详情加载失败" description={error} /> : !student || !profile ? <Skeleton active /> : <>
-      <div className="student-heading"><Space wrap align="center"><Typography.Title level={3}>{student.display_name}</Typography.Title><Tag>{student.student_code}</Tag><Tag color="cyan">演示数据</Tag><Typography.Text type="secondary">{student.class_name}</Typography.Text></Space>
-        <Select aria-label="切换学生" value={studentId} style={{ width: 180 }} onChange={(id) => navigate(`/students/${id}`)}
+      <div className="student-heading"><Space wrap align="center"><Typography.Title level={3}>{student.display_name}</Typography.Title><Tag>{student.student_code}</Tag><Tag color={student.is_demo ? 'purple' : 'blue'}>{student.is_demo ? '演示数据' : '教师添加'}</Tag><Typography.Text type="secondary">{student.class_name}</Typography.Text></Space>
+        <Select aria-label="切换学生" value={studentId} style={{ width: 220 }} showSearch filterOption={false} onSearch={setStudentQuery} onChange={(id) => navigate(`/students/${id}`)}
           options={students.map((item) => ({ value: item.id, label: `${item.student_code} ${item.display_name}` }))} /></div>
       <div className="profile-summary">
         <Statistic title="有效作答" value={profile.summary.valid_attempt_count} suffix="次" />

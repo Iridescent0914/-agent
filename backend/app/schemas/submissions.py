@@ -116,6 +116,7 @@ class SubmissionDetailOut(BaseModel):
     source: str | None
     recognition_run_id: UUID | None = None
     recognition_image_url: str | None = None
+    recognition_image_purged_at: datetime | None = None
     recognition_provider: str | None = None
     recognition_model: str | None = None
     recognition_prompt_version: str | None = None

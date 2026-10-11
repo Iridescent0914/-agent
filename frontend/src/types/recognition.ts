@@ -36,7 +36,10 @@ export interface RecognitionRun {
   pixel_height: number
   error_code: string | null
   error_message: string | null
-  image_url: string
+  started_at: string | null
+  processing_stale: boolean
+  image_purged_at: string | null
+  image_url: string | null
   items: Array<{
     id: string
     paper_instance_item_id: string
