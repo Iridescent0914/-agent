@@ -64,11 +64,11 @@ def _active_students(db: Session, class_name: str) -> list[Student]:
 
 
 def _record_exam_code(record: object) -> str | None:
-    item = getattr(record, "item", None)
-    snapshot = item.exam_point_snapshot if item is not None else None
-    if not isinstance(snapshot, dict):
-        return None
-    main = snapshot.get("main")
+    # Historical paper snapshots are immutable and may still contain the old
+    # Word-derived exam-point ID. load_context has already resolved that ID to
+    # the question's current formal KP tracking node, so aggregation must use
+    # effective_main instead of reading the stale snapshot again.
+    main = getattr(record, "effective_main", None)
     if not isinstance(main, dict):
         return None
     code = main.get("id")
@@ -243,7 +243,7 @@ def build_exam_point_students(
         None,
     )
     if exam is None:
-        raise LookupError("exam point not found in chapter")
+        raise LookupError("knowledge point not found in chapter")
     rows: list[ExamPointStudentAnalytics] = []
     for context in _contexts(db, students):
         item = next(

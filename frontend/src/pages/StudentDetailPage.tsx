@@ -66,8 +66,8 @@ function StudentWorkspace({ studentId }: { studentId: string }) {
       <div className="profile-summary">
         <Statistic title="有效作答" value={profile.summary.valid_attempt_count} suffix="次" />
         <Statistic title="不同题目" value={profile.summary.distinct_question_count} suffix="题" />
-        <Statistic title="已有证据考点" value={profile.summary.assessed_exam_point_count} />
-        <Statistic title="未评估考点" value={profile.summary.unassessed_exam_point_count} />
+        <Statistic title="已有证据知识点" value={profile.summary.assessed_exam_point_count} />
+        <Statistic title="未评估知识点" value={profile.summary.unassessed_exam_point_count} />
         <Statistic title="待复核" value={profile.summary.pending_review_count} />
         <Statistic title="历史作答总数" value={profile.summary.total_attempt_count} />
       </div>

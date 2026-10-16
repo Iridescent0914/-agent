@@ -23,6 +23,7 @@ from app.schemas.submissions import (
 )
 from app.services.assets import resolve_assets
 from app.services.grading import grade_answer
+from app.services.paper_snapshots import current_exam_point_snapshot
 from app.services.student_profile import load_context, persist_mastery
 
 
@@ -241,7 +242,9 @@ def submission_view(db: Session, paper_id: UUID, *, replayed: bool = False,
             grading_answer_rule_snapshot=grading_rule,
             standard_answer_source=answer_source,
             answer_key_update_available=answer_key_update_available,
-            exam_point_snapshot=item.exam_point_snapshot,
+            exam_point_snapshot=current_exam_point_snapshot(
+                db, item.question_id, item.exam_point_snapshot
+            ),
             assets=resolve_assets(item.question_snapshot.get("assets", [])),
             attempt=_attempt_out(attempt, item.order_no) if attempt else None,
         ))

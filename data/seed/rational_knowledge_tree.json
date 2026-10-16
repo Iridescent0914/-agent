@@ -1,291 +1,284 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
+  "taxonomy_source": "上海市五四制初中数学知识图谱.html",
+  "grade": "六年级上册",
   "chapter": {
     "id": "math.g6.rational",
-    "name": "有理数"
+    "name": "第1章 有理数"
+  },
+  "sections": [
+    {
+      "id": "math.g6.rational.sec.1_1",
+      "name": "1.1 有理数的引入",
+      "order_no": 1
+    },
+    {
+      "id": "math.g6.rational.sec.1_2",
+      "name": "1.2 有理数的加法与减法",
+      "order_no": 2
+    },
+    {
+      "id": "math.g6.rational.sec.1_3",
+      "name": "1.3 有理数的乘法与除法",
+      "order_no": 3
+    },
+    {
+      "id": "math.g6.rational.sec.1_4",
+      "name": "1.4 有理数的乘方",
+      "order_no": 4
+    },
+    {
+      "id": "math.g6.rational.sec.1_5",
+      "name": "1.5 有理数的混合运算",
+      "order_no": 5
+    },
+    {
+      "id": "math.g6.rational.sec.reading_negative_numbers",
+      "name": "阅读材料：我国古代对负数的认识",
+      "order_no": 6
+    }
+  ],
+  "semantic_mapping": {
+    "sections": "新版 Word 主属节",
+    "knowledge_points": "新版 Word 节内主属 KP",
+    "exam_points": "画像、推荐与组卷内部跟踪键"
   },
   "knowledge_points": [
     {
-      "id": "math.g6.rational.add_sub",
-      "name": "有理数的加法与减法",
+      "id": "math.g6.rational.kp.01_negative_quantity",
+      "name": "负数与用正负数表示相反意义的量",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "抽象能力",
+        "应用意识"
+      ],
+      "curriculum_basis": "理解负数的意义；会用正数和负数表示具体情境中具有相反意义的量",
       "order_no": 1,
       "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.43c912e5c8",
-          "name": "有理数的概念",
+          "id": "math.g6.rational.tracking.01_negative_quantity",
+          "name": "负数与用正负数表示相反意义的量",
           "order_no": 1
-        },
+        }
+      ]
+    },
+    {
+      "id": "math.g6.rational.kp.02_meaning_classification",
+      "name": "有理数的意义与分类（整数、分数）",
+      "mastery_level": "理解",
+      "core_competencies": [
+        "抽象能力"
+      ],
+      "curriculum_basis": "理解有理数的意义",
+      "order_no": 2,
+      "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.2d5da76283",
-          "name": "有理数的分类",
+          "id": "math.g6.rational.tracking.02_meaning_classification",
+          "name": "有理数的意义与分类（整数、分数）",
           "order_no": 2
-        },
+        }
+      ]
+    },
+    {
+      "id": "math.g6.rational.kp.03_number_line",
+      "name": "数轴与用数轴上的点表示有理数",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "抽象能力",
+        "几何直观"
+      ],
+      "curriculum_basis": "能用数轴上的点表示有理数",
+      "order_no": 3,
+      "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.e962d6ad1d",
-          "name": "有理数的应用",
+          "id": "math.g6.rational.tracking.03_number_line",
+          "name": "数轴与用数轴上的点表示有理数",
           "order_no": 3
-        },
+        }
+      ]
+    },
+    {
+      "id": "math.g6.rational.kp.04_opposite_number",
+      "name": "相反数的意义与求法",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "抽象能力"
+      ],
+      "curriculum_basis": "借助数轴理解相反数的意义，掌握求有理数的相反数的方法",
+      "order_no": 4,
+      "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.55fac4a4df",
-          "name": "有理数的规律探究",
+          "id": "math.g6.rational.tracking.04_opposite_number",
+          "name": "相反数的意义与求法",
           "order_no": 4
-        },
+        }
+      ]
+    },
+    {
+      "id": "math.g6.rational.kp.05_absolute_value",
+      "name": "绝对值的意义与求法",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "抽象能力",
+        "运算能力"
+      ],
+      "curriculum_basis": "借助数轴理解绝对值的意义，掌握求有理数的绝对值的方法",
+      "order_no": 5,
+      "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.cc4a42351c",
-          "name": "数轴的三要素及其性质、数轴上点的移动",
+          "id": "math.g6.rational.tracking.05_absolute_value",
+          "name": "绝对值的意义与求法",
           "order_no": 5
-        },
+        }
+      ]
+    },
+    {
+      "id": "math.g6.rational.kp.06_comparison",
+      "name": "比较有理数的大小",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "抽象能力",
+        "运算能力"
+      ],
+      "curriculum_basis": "能比较有理数的大小",
+      "order_no": 6,
+      "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.fafa36caf7",
-          "name": "数轴上的点与有理数的对应关系、有理数的分类",
+          "id": "math.g6.rational.tracking.06_comparison",
+          "name": "比较有理数的大小",
           "order_no": 6
-        },
+        }
+      ]
+    },
+    {
+      "id": "math.g6.rational.kp.07_add_subtract",
+      "name": "有理数的加法法则与减法法则",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力",
+        "推理能力"
+      ],
+      "curriculum_basis": "掌握有理数的加、减运算；减法统一为加法",
+      "order_no": 7,
+      "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.8d30f9816b",
-          "name": "用数轴上的点表示有理数、有理数的大小比较；",
+          "id": "math.g6.rational.tracking.07_add_subtract",
+          "name": "有理数的加法法则与减法法则",
           "order_no": 7
-        },
+        }
+      ]
+    },
+    {
+      "id": "math.g6.rational.kp.08_multiply_divide",
+      "name": "有理数的乘法法则与除法法则",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力",
+        "推理能力"
+      ],
+      "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法",
+      "order_no": 8,
+      "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.bf3371ead6",
-          "name": "数轴上两点之间的距离；用数轴上的点表示有理数",
+          "id": "math.g6.rational.tracking.08_multiply_divide",
+          "name": "有理数的乘法法则与除法法则",
           "order_no": 8
-        },
+        }
+      ]
+    },
+    {
+      "id": "math.g6.rational.kp.09_operation_laws",
+      "name": "有理数的运算律及其简化运算的作用",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力",
+        "推理能力"
+      ],
+      "curriculum_basis": "理解有理数的运算律，能运用运算律简化运算",
+      "order_no": 9,
+      "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.a7e36d4bcb",
-          "name": "数轴上点的移动、绝对值的几何意义",
+          "id": "math.g6.rational.tracking.09_operation_laws",
+          "name": "有理数的运算律及其简化运算的作用",
           "order_no": 9
-        },
+        }
+      ]
+    },
+    {
+      "id": "math.g6.rational.kp.10_powers",
+      "name": "有理数的乘方",
+      "mastery_level": "理解",
+      "core_competencies": [
+        "抽象能力",
+        "运算能力"
+      ],
+      "curriculum_basis": "理解乘方的意义；会准确进行有理数的乘方运算",
+      "order_no": 10,
+      "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.460849f11e",
-          "name": "绝对值的几何意义、有理数加减法;",
-          "order_no": 10
-        },
-        {
-          "id": "math.g6.rational.exam.local.b8f57cebe7",
-          "name": "相反意义的量；相反数的性质",
-          "order_no": 11
-        },
-        {
-          "id": "math.g6.rational.exam.local.4fc1b2c3d7",
-          "name": "用数轴上的点表示有理数",
-          "order_no": 12
-        },
-        {
-          "id": "math.g6.rational.exam.local.bf064e2031",
-          "name": "数轴上的对称与中点问题、数轴上两点之间的距离；",
-          "order_no": 13
-        },
-        {
-          "id": "math.g6.rational.exam.local.45115cda57",
-          "name": "数轴上的点的规律移动",
-          "order_no": 14
-        },
-        {
-          "id": "math.g6.rational.exam.local.031e6a86df",
-          "name": "绝对值的非负性、绝对值的几何意义、解含有绝对值的方程",
-          "order_no": 15
-        },
-        {
-          "id": "math.g6.rational.exam.local.6adae52d71",
-          "name": "绝对值的化简",
-          "order_no": 16
-        },
-        {
-          "id": "math.g6.rational.exam.local.80a53736ac",
-          "name": "绝对值的非负性、解含有绝对值的方程",
-          "order_no": 17
-        },
-        {
-          "id": "math.g6.rational.exam.local.c2af7c51ef",
-          "name": "绝对值的几何意义",
-          "order_no": 18
-        },
-        {
-          "id": "math.g6.rational.exam.local.cc5a734997",
-          "name": "有理数绝对值的分类讨论",
-          "order_no": 19
-        },
-        {
-          "id": "math.g6.rational.exam.local.8458a01f4b",
-          "name": "有理数的大小比较",
-          "order_no": 20
-        },
-        {
-          "id": "math.g6.rational.exam.local.8c72646615",
-          "name": "解含有绝对值的方程、有理数的大小比较",
-          "order_no": 21
-        },
-        {
-          "id": "math.g6.rational.exam.local.14ea3523fe",
-          "name": "（待合作者补充）",
-          "order_no": 22
-        },
-        {
-          "id": "math.g6.rational.exam.local.346d3dab49",
-          "name": "绝对值的非负性",
-          "order_no": 23
-        },
-        {
-          "id": "math.g6.rational.exam.local.e7067b6a51",
-          "name": "利用奇点偶段求绝对值和的最小值;",
-          "order_no": 24
-        },
-        {
-          "id": "math.g6.rational.exam.local.7a730a388a",
-          "name": "含绝对值的不等式",
-          "order_no": 25
-        },
-        {
-          "id": "math.g6.rational.exam.local.dae9bb3283",
-          "name": "有理数加减法",
-          "order_no": 26
-        },
-        {
-          "id": "math.g6.rational.exam.local.aaee87b9a9",
-          "name": "解含有绝对值的方程、有理数加减法",
-          "order_no": 27
-        },
-        {
-          "id": "math.g6.rational.exam.local.af5cfa271e",
-          "name": "有理数加法在实际问题中的应用（正负数的意义）、求总和",
-          "order_no": 28
-        },
-        {
-          "id": "math.g6.rational.exam.local.7121129eea",
-          "name": "有理数加减法、绝对值的化简",
-          "order_no": 29
-        },
-        {
-          "id": "math.g6.rational.exam.local.7a38de07a8",
-          "name": "有理数的巧算",
-          "order_no": 30
-        },
-        {
-          "id": "math.g6.rational.exam.local.a0b6e4a196",
-          "name": "有理数加减混合运算、找规律分组求和、分数通分运算",
-          "order_no": 31
-        },
-        {
-          "id": "math.g6.rational.exam.local.86b236eba2",
-          "name": "绝对值化简",
-          "order_no": 32
-        },
-        {
-          "id": "math.g6.rational.exam.local.a61b42d3fd",
-          "name": "有理数乘除法",
-          "order_no": 33
-        },
-        {
-          "id": "math.g6.rational.exam.local.39ca8b5a4a",
-          "name": "有理数乘法的符号法则、有理数大小比较",
-          "order_no": 34
-        },
-        {
-          "id": "math.g6.rational.exam.local.baa06ae41c",
-          "name": "有理数加减法、有理数乘除法",
-          "order_no": 35
-        },
-        {
-          "id": "math.g6.rational.exam.local.016fb14a94",
-          "name": "有理数运算有关的新定义问题",
-          "order_no": 36
-        },
-        {
-          "id": "math.g6.rational.exam.local.35c7c7ca5b",
-          "name": "有理数的混合运算;",
-          "order_no": 37
-        },
-        {
-          "id": "math.g6.rational.exam.local.fcb6e319bf",
-          "name": "绝对值的非负性、有理数的乘除法",
-          "order_no": 38
-        },
-        {
-          "id": "math.g6.rational.exam.local.a5cd7fd631",
-          "name": "有理数的乘除法",
-          "order_no": 39
-        },
-        {
-          "id": "math.g6.rational.exam.local.63a86a7068",
-          "name": "有理数乘除法、有理数大小比较",
-          "order_no": 40
-        },
-        {
-          "id": "math.g6.rational.exam.local.a912a3f339",
-          "name": "有理数的混合运算",
-          "order_no": 41
-        },
-        {
-          "id": "math.g6.rational.exam.local.1fc2bebe35",
-          "name": "倒数的定义",
-          "order_no": 42
-        },
-        {
-          "id": "math.g6.rational.exam.local.3ea1de489a",
-          "name": "倒数的定义与性质",
-          "order_no": 43
-        },
-        {
-          "id": "math.g6.rational.exam.local.17d6b1aa75",
-          "name": "倒数的定义与性质、相反数的性质",
-          "order_no": 44
-        },
-        {
-          "id": "math.g6.rational.exam.local.ed885e7dd2",
-          "name": "有理数运算有关的新定义问题;",
-          "order_no": 45
-        },
-        {
-          "id": "math.g6.rational.exam.local.3bec34a9ec",
-          "name": "相反数的性质、倒数的定义与性质",
-          "order_no": 46
-        },
-        {
-          "id": "math.g6.rational.exam.local.c4a20c1200",
-          "name": "有理数的乘方运算",
-          "order_no": 47
-        },
-        {
-          "id": "math.g6.rational.exam.local.ca49ae5288",
-          "name": "有理数的加减法",
-          "order_no": 48
-        },
-        {
-          "id": "math.g6.rational.exam.local.214a6c99ba",
+          "id": "math.g6.rational.tracking.10_powers",
           "name": "有理数的乘方",
-          "order_no": 49
-        },
+          "order_no": 10
+        }
+      ]
+    },
+    {
+      "id": "math.g6.rational.kp.11_mixed_operations",
+      "name": "有理数的混合运算（以三步以内为主）",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力"
+      ],
+      "curriculum_basis": "掌握有理数简单的混合运算，明确运算顺序",
+      "order_no": 11,
+      "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.abdf37931c",
-          "name": "绝对值的非负性、有理数的混合运算",
-          "order_no": 50
-        },
+          "id": "math.g6.rational.tracking.11_mixed_operations",
+          "name": "有理数的混合运算（以三步以内为主）",
+          "order_no": 11
+        }
+      ]
+    },
+    {
+      "id": "math.g6.rational.kp.12_applications",
+      "name": "用有理数的运算解决简单实际问题",
+      "mastery_level": "运用",
+      "core_competencies": [
+        "模型观念",
+        "应用意识"
+      ],
+      "curriculum_basis": "能运用有理数的运算解决简单问题",
+      "order_no": 12,
+      "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.787829c02a",
-          "name": "有理数的乘方、倒数与加法运算",
-          "order_no": 51
-        },
+          "id": "math.g6.rational.tracking.12_applications",
+          "name": "用有理数的运算解决简单实际问题",
+          "order_no": 12
+        }
+      ]
+    },
+    {
+      "id": "math.g6.rational.kp.13_negative_number_culture",
+      "name": "古今对负数的认识（数学文化）",
+      "mastery_level": "了解",
+      "core_competencies": [
+        "创新意识",
+        "应用意识"
+      ],
+      "curriculum_basis": "感悟数学抽象的过程与中华优秀数学文化",
+      "order_no": 13,
+      "exam_points": [
         {
-          "id": "math.g6.rational.exam.local.f7dd5d77b1",
-          "name": "科学记数法",
-          "order_no": 52
-        },
-        {
-          "id": "math.g6.rational.exam.local.2a51903bd0",
-          "name": "有理数的混合运算、有理数的大小比较",
-          "order_no": 53
-        },
-        {
-          "id": "math.g6.rational.exam.local.9f5776b088",
-          "name": "有理数的的应用",
-          "order_no": 54
+          "id": "math.g6.rational.tracking.13_negative_number_culture",
+          "name": "古今对负数的认识（数学文化）",
+          "order_no": 13
         }
       ]
     }
   ],
   "notes": [
-    "层级来自校本审核 DOCX 的主属 KP 与主属考点字段。",
-    "源文件未提供考点 ID 时，使用基于考点名称生成的稳定 local ID；教师确认正式编号后可迁移。",
-    "M0 仅固定首版结构，不代表全部考点已经完成教学专家审核。"
+    "题目的主属节和节内主属 KP 逐题继承新版校本审核 DOCX，不再使用旧版 Word 考点。",
+    "节与知识点采用上海五四制知识图谱的稳定 ID；Word 提供每道题的具体归属。",
+    "exam_points 是兼容既有组卷、画像和推荐模块的一对一内部跟踪键，不作为旧考点展示。"
   ]
 }

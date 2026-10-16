@@ -80,6 +80,7 @@ export function QuestionContentEditor({
       chapter_code: question.chapter.code,
       question_type: question.question_type === 'unknown' ? 'fill_blank' : question.question_type,
       difficulty: question.difficulty,
+      grade: question.grade,
       section: question.section,
       question_text: editableText(question.question_text),
       options_text: optionsText(question.options),
@@ -89,6 +90,8 @@ export function QuestionContentEditor({
       solution: question.solution || undefined,
       wrong_analysis: question.wrong_analysis || undefined,
       estimated_score_rate: question.estimated_score_rate || undefined,
+      core_literacy: question.core_literacy,
+      is_required: question.is_required,
       operator_name: '任课教师',
     })
     setImages(question.assets.map(existingFile))
@@ -175,10 +178,15 @@ export function QuestionContentEditor({
         </Row>
         <Row gutter={16}>
           <Col xs={24} md={8}><Form.Item name="chapter_code" label="章节" rules={[{ required: true }]}><Select options={chapters.map((chapter) => ({ value: chapter.code, label: chapter.name }))} onChange={() => form.setFieldsValue({ main_exam_point_code: undefined, related_exam_point_codes: [] })} /></Form.Item></Col>
-          <Col xs={24} md={8}><Form.Item name="main_exam_point_code" label="主考点" rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item></Col>
-          <Col xs={24} md={8}><Form.Item name="section" label="小节" rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item></Col>
+          <Col xs={24} md={8}><Form.Item name="main_exam_point_code" label="节内主属 KP" rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item></Col>
+          <Col xs={24} md={8}><Form.Item name="section" label="主属节" rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item></Col>
         </Row>
-        <Form.Item name="related_exam_point_codes" label="关联考点"><Select mode="multiple" showSearch optionFilterProp="label" options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item>
+        <Row gutter={16}>
+          <Col xs={24} md={8}><Form.Item name="grade" label="年级" rules={[{ required: true, whitespace: true }]}><Input maxLength={80} /></Form.Item></Col>
+          <Col xs={24} md={10}><Form.Item name="core_literacy" label="核心素养" rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item></Col>
+          <Col xs={24} md={6}><Form.Item name="is_required" label="是否为必做题" rules={[{ required: true }]}><Select options={[{ value: true, label: '是' }, { value: false, label: '否' }]} /></Form.Item></Col>
+        </Row>
+        <Form.Item name="related_exam_point_codes" label="关联知识点（可选）"><Select mode="multiple" showSearch optionFilterProp="label" options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item>
         <Form.Item name="question_text" label="题干" rules={[{ required: true, whitespace: true }]}><MathTextEditor rows={5} maxLength={10000} /></Form.Item>
         <Form.Item label="题目图片">
           <Upload

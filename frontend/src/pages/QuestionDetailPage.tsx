@@ -23,8 +23,8 @@ const typeLabel: Record<string, string> = {
 const importIssueLabel: Record<string, string> = {
   missing_question_text: '题干缺失',
   missing_reference_answer: '参考答案缺失',
-  missing_main_knowledge_point: '知识点缺失',
-  missing_main_exam_point: '主考点缺失',
+  missing_main_knowledge_point: '主属节缺失',
+  missing_main_exam_point: '节内主属 KP 缺失',
   missing_difficulty: '难度缺失',
   multiple_subquestions: '包含多个小题，需要核对答案项',
   question_type_mismatch: '原始题型与题干结构不一致，需要核对',
@@ -66,6 +66,7 @@ export function QuestionDetailPage() {
             <Typography.Title level={3} className="no-margin">{question.original_qid}</Typography.Title>
             <Tag color="geekblue">{typeLabel[question.question_type] || question.question_type}</Tag>
             <Tag color="gold">{'★'.repeat(question.difficulty)}</Tag>
+            {question.is_required && <Tag color="red">必做题</Tag>}
             {question.grading_readiness === 'machine_ready'
               ? <Tag color="green">自动组卷池</Tag>
               : <Tag color="orange">待入库验证</Tag>}
@@ -83,7 +84,7 @@ export function QuestionDetailPage() {
               }
             />
           )}
-          {(question.question_type === 'choice' || question.question_type === 'fill_blank') && (
+          {(question.question_type === 'choice' || question.question_type === 'fill_blank' || question.question_type === 'true_false') && (
               <div className={'question-review-action' + (question.grading_readiness === 'machine_ready' ? ' is-ready' : '')}>
                 <QuestionReviewEditor question={question} onUpdated={setQuestion} />
                 <Typography.Text type="secondary">
@@ -109,9 +110,12 @@ export function QuestionDetailPage() {
             <Descriptions.Item label="当前待处理项">{question.import_issues.length || '无'}</Descriptions.Item>
             <Descriptions.Item label="审核版本">{question.review_revision}</Descriptions.Item>
             <Descriptions.Item label="最近审核人">{question.reviewed_by || '尚未人工审核'}</Descriptions.Item>
-            <Descriptions.Item label="知识点">{question.main_knowledge_point.name}</Descriptions.Item>
-            <Descriptions.Item label="主考点">{question.main_exam_point.name}</Descriptions.Item>
-            <Descriptions.Item label="章节 / 节">{question.chapter.name} / {question.section}</Descriptions.Item>
+            <Descriptions.Item label="年级">{question.grade}</Descriptions.Item>
+            <Descriptions.Item label="章">{question.chapter.name}</Descriptions.Item>
+            <Descriptions.Item label="主属节">{question.section}</Descriptions.Item>
+            <Descriptions.Item label="节内主属 KP">{question.main_knowledge_point.name}</Descriptions.Item>
+            <Descriptions.Item label="核心素养">{question.core_literacy}</Descriptions.Item>
+            <Descriptions.Item label="是否为必做题">{question.is_required ? '是' : '否'}</Descriptions.Item>
             <Descriptions.Item label="原始题号">{question.source_question_number}</Descriptions.Item>
             <Descriptions.Item label="来源文件" span={2}>{question.source_file}</Descriptions.Item>
           </Descriptions>

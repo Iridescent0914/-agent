@@ -28,7 +28,7 @@ export function AttemptEvidenceDrawer({ studentId, attemptId, onClose }: {
       <Descriptions size="small" bordered column={1}>
         <Descriptions.Item label="原作答时间">{new Date(value.answered_at).toLocaleString('zh-CN')}</Descriptions.Item>
         <Descriptions.Item label="试卷编号">{value.instance_code ?? '缺失'}</Descriptions.Item>
-        <Descriptions.Item label="当时主考点">{value.exam_point_snapshot.main?.name ?? '缺失'}</Descriptions.Item>
+        <Descriptions.Item label="当时主知识点">{value.exam_point_snapshot.main?.name ?? '缺失'}</Descriptions.Item>
         <Descriptions.Item label="确认状态">{({ teacher_confirmed: '教师确认', auto_confirmed: '自动确认', needs_review: '待复核' } as Record<string, string>)[value.grade_status] ?? value.grade_status}</Descriptions.Item>
         <Descriptions.Item label="计入画像">{value.used_in_profile ? '是' : `否：${value.exclusion_reason}`}</Descriptions.Item>
       </Descriptions>

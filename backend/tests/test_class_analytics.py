@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
@@ -9,6 +10,7 @@ from sqlalchemy import select
 from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import Student
+from app.services.class_analytics import _record_exam_code
 
 
 @pytest.fixture
@@ -52,8 +54,8 @@ def _published_paper(client: TestClient, db) -> tuple[Student, dict]:
             "student_ids": [str(student.id)],
             "recommendation_parameters": {
                 "review_exam_point_codes": [
-                    "math.g6.rational.exam.local.a61b42d3fd",
-                    "math.g6.rational.exam.local.dae9bb3283",
+                    "math.g6.rational.tracking.08_multiply_divide",
+                    "math.g6.rational.tracking.07_add_subtract",
                 ],
                 "review_count": 2,
                 "avoid_recent_days": 0,
@@ -181,6 +183,21 @@ def test_pending_review_leaves_class_denominator_and_updates_assignment(client, 
     assert summary["completion_rate"] == 0
 
 
+def test_class_analytics_uses_current_knowledge_point_for_legacy_snapshot():
+    record = SimpleNamespace(
+        item=SimpleNamespace(
+            exam_point_snapshot={
+                "main": {"id": "exam.local.legacy-test", "name": "旧版测试考点"}
+            }
+        ),
+        effective_main={
+            "id": "math.g6.rational.tracking.03_number_line",
+            "name": "数轴与用数轴上的点表示有理数",
+        },
+    )
+    assert _record_exam_code(record) == "math.g6.rational.tracking.03_number_line"
+
+
 def test_superseded_version_is_not_a_second_assignment_target(client, db):
     _, paper = _published_paper(client, db)
     revised = client.post(f"/api/v1/paper-instances/{paper['id']}/revise")
@@ -226,7 +243,7 @@ def test_assignment_progress_is_filtered_by_class(client, db):
             "student_ids": [str(other_student.id)],
             "recommendation_parameters": {
                 "review_exam_point_codes": [
-                    "math.g6.rational.exam.local.a61b42d3fd",
+                    "math.g6.rational.tracking.08_multiply_divide",
                 ],
                 "review_count": 1,
                 "avoid_recent_days": 0,
@@ -285,7 +302,7 @@ def test_empty_assignment_can_be_deleted(client, db):
             "class_id": str(student.class_id),
             "student_ids": [str(student.id)],
             "recommendation_parameters": {
-                "review_exam_point_codes": ["math.g6.rational.exam.local.a61b42d3fd"],
+                "review_exam_point_codes": ["math.g6.rational.tracking.08_multiply_divide"],
                 "review_count": 1,
                 "avoid_recent_days": 0,
                 "max_exam_point_ratio": 1,

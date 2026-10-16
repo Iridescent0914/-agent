@@ -130,6 +130,21 @@ def test_choice_answer_must_be_single_option():
         )
 
 
+def test_true_false_review_accepts_only_canonical_answers():
+    validate_review_items(
+        "true_false",
+        [
+            {"item_id": "1", "answer": "正确", "answer_match_type": "exact"},
+            {"item_id": "2", "answer": "错误", "answer_match_type": "exact"},
+        ],
+    )
+    with pytest.raises(QuestionReviewValidation):
+        validate_review_items(
+            "true_false",
+            [{"item_id": "1", "answer": "√", "answer_match_type": "exact"}],
+        )
+
+
 def test_seed_refresh_preserves_teacher_reviewed_answer():
     question = type("ReviewedQuestion", (), {"review_history": [{"type": "draft_saved"}]})()
     values = {

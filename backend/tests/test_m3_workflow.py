@@ -38,8 +38,8 @@ def request_body(db, *, key: str):
         "student_ids": [str(student.id) for student in students],
         "recommendation_parameters": {
             "review_exam_point_codes": [
-                "math.g6.rational.exam.local.a61b42d3fd",
-                "math.g6.rational.exam.local.dae9bb3283",
+                "math.g6.rational.tracking.08_multiply_divide",
+                "math.g6.rational.tracking.07_add_subtract",
             ],
             "review_count": 4,
             "avoid_recent_days": 0,

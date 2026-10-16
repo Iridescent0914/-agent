@@ -31,6 +31,7 @@ class AttemptRecord:
     revision: AttemptRevision | None
     evidence: Evidence | None
     problem: str | None
+    effective_main: dict[str, str]
 
 
 @dataclass
@@ -39,9 +40,20 @@ class ProfileContext:
     catalog: list[ExamPointOut]
     records: list[AttemptRecord]
     results: dict[tuple[UUID, UUID], MasteryResult]
+    exam_code_aliases: dict[str, str]
 
 
 def exam_point_catalog(db: Session, chapter_code: str | None = None) -> list[ExamPointOut]:
+    active = (
+        select(QuestionExamPoint.exam_point_id)
+        .join(Question, Question.id == QuestionExamPoint.question_id)
+        .where(
+            QuestionExamPoint.relation_type == 'main',
+            Question.archived_at.is_(None),
+        )
+        .distinct()
+        .subquery()
+    )
     counts = (
         select(QuestionExamPoint.exam_point_id, func.count(Question.id).label("count"))
         .join(Question, Question.id == QuestionExamPoint.question_id)
@@ -55,6 +67,7 @@ def exam_point_catalog(db: Session, chapter_code: str | None = None) -> list[Exa
     )
     query = (select(ExamPoint, KnowledgePoint.chapter_code, counts.c.count)
              .join(KnowledgePoint, KnowledgePoint.id == ExamPoint.knowledge_point_id)
+             .join(active, active.c.exam_point_id == ExamPoint.id)
              .outerjoin(counts, counts.c.exam_point_id == ExamPoint.id))
     if chapter_code is not None:
         query = query.where(KnowledgePoint.chapter_code == chapter_code)
@@ -70,16 +83,31 @@ def exam_point_catalog(db: Session, chapter_code: str | None = None) -> list[Exa
 
 
 def _context_from_rows(
-    student: Student, catalog: list[ExamPointOut], rows: list[tuple]
+    student: Student,
+    catalog: list[ExamPointOut],
+    rows: list[tuple],
+    current_exam_code_by_question_id: dict[UUID, str],
 ) -> ProfileContext:
     by_code = {exam.code: exam for exam in catalog}
     records = []
+    aliases: dict[str, str] = {}
     for attempt, item, paper, submission, revision in rows:
         problem = None
         evidence = None
         exam_snapshot = item.exam_point_snapshot if item and isinstance(item.exam_point_snapshot, dict) else {}
         main = exam_snapshot.get("main")
+        snapshot_code = main.get("id") if isinstance(main, dict) else None
         exam = by_code.get(main.get("id")) if isinstance(main, dict) and isinstance(main.get("id"), str) else None
+        # Published paper snapshots remain immutable.  When curriculum metadata
+        # is revised for the same stable question ID, replay historical evidence
+        # under the question's current KP instead of reviving an obsolete tag.
+        if exam is None:
+            current_code = current_exam_code_by_question_id.get(attempt.question_id)
+            exam = by_code.get(current_code) if current_code else None
+            if exam is not None:
+                main = {"id": exam.code, "name": exam.name}
+                if isinstance(snapshot_code, str):
+                    aliases[snapshot_code] = exam.code
         snapshot = item.question_snapshot if item else None
         if item is None or paper is None or submission is None:
             problem = "missing_ownership_record"
@@ -92,7 +120,7 @@ def _context_from_rows(
             problem = "unmapped_snapshot_code"
         elif (not isinstance(snapshot, dict) or not isinstance(snapshot.get("question_text"), str)
               or not isinstance(snapshot.get("original_qid"), str)
-              or snapshot.get("question_type") not in {"choice", "fill_blank"}
+              or snapshot.get("question_type") not in {"choice", "fill_blank", "true_false"}
               or type(snapshot.get("difficulty")) is not int
               or not 1 <= snapshot["difficulty"] <= 5 or not isinstance(main.get("name"), str)):
             problem = "invalid_question_snapshot"
@@ -108,10 +136,14 @@ def _context_from_rows(
                 difficulty=snapshot["difficulty"],
             )
             problem = evidence_problem(evidence)
-        records.append(AttemptRecord(attempt, item, paper, submission, revision, evidence, problem))
+        effective_main = main if isinstance(main, dict) else {}
+        records.append(AttemptRecord(
+            attempt, item, paper, submission, revision, evidence, problem, effective_main
+        ))
     return ProfileContext(student, catalog, records,
                           replay([record.evidence for record in records
-                                  if record.problem is None and record.evidence is not None]))
+                                  if record.problem is None and record.evidence is not None]),
+                          aliases)
 
 
 def load_contexts(db: Session, student_ids: list[UUID]) -> dict[UUID, ProfileContext]:
@@ -137,8 +169,22 @@ def load_contexts(db: Session, student_ids: list[UUID]) -> dict[UUID, ProfileCon
     ).all()
     for row in rows:
         grouped[row[0].student_id].append(row)
+    current_exam_code_by_question_id = dict(db.execute(
+        select(QuestionExamPoint.question_id, ExamPoint.code)
+        .join(ExamPoint, ExamPoint.id == QuestionExamPoint.exam_point_id)
+        .join(Question, Question.id == QuestionExamPoint.question_id)
+        .where(
+            QuestionExamPoint.relation_type == "main",
+            Question.archived_at.is_(None),
+        )
+    ).all())
     by_student = {
-        student.id: _context_from_rows(student, catalog, grouped[student.id])
+        student.id: _context_from_rows(
+            student,
+            catalog,
+            grouped[student.id],
+            current_exam_code_by_question_id,
+        )
         for student in students
     }
     return {student_id: by_student[student_id] for student_id in ids}
@@ -199,7 +245,7 @@ def build_profile(context: ProfileContext, *, computed_at: datetime | None = Non
     recent_errors = []
     for record in reversed(valid):
         if record.attempt.is_correct is False:
-            main = record.item.exam_point_snapshot["main"]
+            main = record.effective_main
             recent_errors.append(RecentWrong(
                 attempt_id=record.attempt.id, revision_no=record.attempt.revision_no,
                 answered_at=record.attempt.answered_at, original_qid=record.item.question_snapshot["original_qid"],
@@ -221,6 +267,7 @@ def build_profile(context: ProfileContext, *, computed_at: datetime | None = Non
 
 
 def history_for(context: ProfileContext, exam_point_code: str) -> MasteryHistoryOut:
+    exam_point_code = context.exam_code_aliases.get(exam_point_code, exam_point_code)
     item = next((item for item in mastery_items(context) if item.exam_point_code == exam_point_code), None)
     if item is None:
         raise LookupError("exam point not found")
@@ -232,9 +279,7 @@ def history_for(context: ProfileContext, exam_point_code: str) -> MasteryHistory
 def attempt_summary(record: AttemptRecord) -> StudentAttemptOut:
     attempt, item = record.attempt, record.item
     snapshot = item.question_snapshot if item and isinstance(item.question_snapshot, dict) else {}
-    exam_snapshot = item.exam_point_snapshot if item and isinstance(item.exam_point_snapshot, dict) else {}
-    main = exam_snapshot.get("main", {})
-    main = main if isinstance(main, dict) else {}
+    main = record.effective_main
     return StudentAttemptOut(
         id=attempt.id, answered_at=attempt.answered_at, original_qid=snapshot.get("original_qid", ""),
         question_id=attempt.question_id, question_text=snapshot.get("question_text", ""),

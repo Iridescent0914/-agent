@@ -65,8 +65,8 @@ def _published_paper(client: TestClient, db) -> tuple[Student, dict]:
         "student_ids": [str(student.id)],
         "recommendation_parameters": {
             "review_exam_point_codes": [
-                "math.g6.rational.exam.local.a61b42d3fd",
-                "math.g6.rational.exam.local.dae9bb3283",
+                "math.g6.rational.tracking.08_multiply_divide",
+                "math.g6.rational.tracking.07_add_subtract",
             ],
             "review_count": 2,
             "avoid_recent_days": 0,

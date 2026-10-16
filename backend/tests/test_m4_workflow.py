@@ -44,8 +44,8 @@ def _published_paper(client, db):
         "student_ids": [str(student.id)],
         "recommendation_parameters": {
             "review_exam_point_codes": [
-                "math.g6.rational.exam.local.a61b42d3fd",
-                "math.g6.rational.exam.local.dae9bb3283",
+                "math.g6.rational.tracking.08_multiply_divide",
+                "math.g6.rational.tracking.07_add_subtract",
             ],
             "review_count": 3,
             "avoid_recent_days": 0,
@@ -116,8 +116,12 @@ def test_manual_submission_is_idempotent_and_updates_mastery(client, db):
     )
     assert replayed.status_code == 201 and replayed.json()["replayed"] is True
 
-    changed = body | {"answers": [*body["answers"]]}
-    changed["answers"][0] = changed["answers"][0] | {"answer": "演示不同答案"}
+    changed = deepcopy(body)
+    first_answer = changed["answers"][0]["answer"]
+    if isinstance(first_answer, dict) and first_answer.get("kind") == "group":
+        first_answer["items"][0]["answer"] = "演示不同答案"
+    else:
+        changed["answers"][0]["answer"] = "演示不同答案"
     conflict = client.post(
         f"/api/v1/paper-instances/{paper['id']}/submissions/manual", json=changed,
     )

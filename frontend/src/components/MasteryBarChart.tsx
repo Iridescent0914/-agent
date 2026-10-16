@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import type { Mastery } from '../types/profile'
 import { ProfileChart } from './ProfileChart'
 
-export function MasteryBarChart({ items, onSelect, label = '考点掌握度条形图' }: { items: Mastery[]; onSelect: (code: string) => void; label?: string }) {
+export function MasteryBarChart({ items, onSelect, label = '知识点掌握度条形图' }: { items: Mastery[]; onSelect: (code: string) => void; label?: string }) {
   const assessed = useMemo(() => items.filter((item) => item.mastery !== null), [items])
   const option = useMemo(() => ({
     animation: false,

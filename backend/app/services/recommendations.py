@@ -55,7 +55,7 @@ def score_candidate(candidate: Candidate, result: MasteryResult | None,
             reasons.append("review_interval")
         reasons.extend(["mastery_reference", "recent_results"])
         refs = [EvidenceRef(attempt_id=point.attempt_id, revision_no=point.revision_no) for point in result.history]
-        text = f"该考点最近 {result.recent_attempt_count} 次确认作答错 {result.recent_wrong_count} 次；"
+        text = f"该知识点最近 {result.recent_attempt_count} 次确认作答错 {result.recent_wrong_count} 次；"
     else:
         reasons.append("insufficient_evidence")
         text = "证据不足，按教师基础难度安排诊断练习；"
@@ -168,7 +168,7 @@ def preview(db: Session, context: ProfileContext, params: RecommendationRequest,
             candidates: list[Candidate] | None = None) -> RecommendationOut:
     allowed = {exam.code for exam in context.catalog if exam.chapter_code == params.chapter_code}
     if not set(params.new_exam_point_codes + params.review_exam_point_codes) <= allowed:
-        raise ValueError("考点不存在或不属于当前章节")
+        raise ValueError("知识点不存在或不属于当前章节")
     if any(record.problem not in (None, "needs_review") for record in context.records):
         raise ValueError("存在异常作答证据，请修复后再预览推荐")
     if candidates is None:

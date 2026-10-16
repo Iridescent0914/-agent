@@ -33,7 +33,18 @@ def list_exam_points(chapter_code: str | None = None, db: Session = Depends(get_
 def get_mastery(chapter_code: str | None = None, exam_point_code: str | None = None,
                 context: ProfileContext = Depends(student_context)):
     items = mastery_items(context, chapter_code)
-    return [item for item in items if exam_point_code is None or item.exam_point_code == exam_point_code]
+    # Keep old bookmarked/filter URLs usable after curriculum metadata changes.
+    # New responses and all calculations still use the current KP tracking code.
+    effective_code = (
+        context.exam_code_aliases.get(exam_point_code, exam_point_code)
+        if exam_point_code is not None
+        else None
+    )
+    return [
+        item
+        for item in items
+        if effective_code is None or item.exam_point_code == effective_code
+    ]
 
 
 @router.get("/students/{student_id}/profile", response_model=ProfileOut)

@@ -54,7 +54,9 @@ def main() -> int:
 
     required = {
         "original_qid",
+        "grade",
         "chapter",
+        "section",
         "question_type",
         "difficulty",
         "question_text",
@@ -65,15 +67,33 @@ def main() -> int:
         "assets",
         "main_knowledge_point",
         "main_exam_point",
+        "core_literacy",
+        "is_required",
         "source_file",
         "source_question_number",
         "source_review_status",
         "import_status",
     }
+    for index, record in enumerate(all_records, start=1):
+        missing = sorted(key for key in required if key not in record)
+        require(not missing, f"完整题库第 {index} 项缺字段：{missing}", errors)
+        qid = record.get("original_qid")
+        require(bool(record.get("grade")), f"{qid} 年级为空", errors)
+        require(bool(record.get("chapter", {}).get("name")), f"{qid} 章为空", errors)
+        require(bool(record.get("section")), f"{qid} 主属节为空", errors)
+        require(bool(record.get("main_knowledge_point", {}).get("name")), f"{qid} 节内主属 KP 为空", errors)
+        require(
+            str(record.get("main_knowledge_point", {}).get("id", "")).startswith("math.g6.rational.kp."),
+            f"{qid} 节内主属 KP 未使用正式知识图谱 ID",
+            errors,
+        )
+        require(bool(record.get("core_literacy")), f"{qid} 核心素养为空", errors)
+        require(type(record.get("is_required")) is bool, f"{qid} 必做题标记不是布尔值", errors)
+
     for index, record in enumerate(seed_records, start=1):
         missing = sorted(key for key in required if key not in record)
         require(not missing, f"种子题第 {index} 项缺字段：{missing}", errors)
-        require(record.get("question_type") in {"choice", "fill_blank"}, f"{record.get('original_qid')} 题型不在首批范围", errors)
+        require(record.get("question_type") in {"choice", "fill_blank", "true_false"}, f"{record.get('original_qid')} 题型不在自动判分范围", errors)
         require(record.get("difficulty") in {1, 2, 3, 4, 5}, f"{record.get('original_qid')} 难度无效", errors)
         require(bool(record.get("question_text")), f"{record.get('original_qid')} 缺题干", errors)
         require(bool(record.get("correct_answer")), f"{record.get('original_qid')} 缺参考答案结构", errors)
@@ -102,14 +122,31 @@ def main() -> int:
             require(answer in options, f"{record.get('original_qid')} 答案不在选项中", errors)
 
     exam_ids = {item["main_exam_point"]["id"] for item in seed_records}
-    require(len(exam_ids) == 21, f"自动组卷池应覆盖 21 个考点，实际 {len(exam_ids)}", errors)
+    require(bool(exam_ids), "自动组卷池未覆盖任何节内主属 KP", errors)
+    require(
+        report.get("seed_knowledge_point_count") == len(exam_ids),
+        "报告中的节内主属 KP 数与种子题不一致",
+        errors,
+    )
 
     tree_exam_ids = {
         exam["id"]
         for kp in tree.get("knowledge_points", [])
         for exam in kp.get("exam_points", [])
     }
-    require(exam_ids.issubset(tree_exam_ids), "种子题考点未全部进入知识树", errors)
+    require(exam_ids.issubset(tree_exam_ids), "种子题节内主属 KP 未全部进入知识树", errors)
+    require(len(tree.get("sections", [])) == 6, "知识树应包含 6 个正式节节点", errors)
+    require(len(tree.get("knowledge_points", [])) == 13, "知识树应包含 13 个正式知识点", errors)
+    require(
+        all(kp.get("core_competencies") for kp in tree.get("knowledge_points", [])),
+        "知识树知识点缺少核心素养元数据",
+        errors,
+    )
+    require(
+        tree.get("semantic_mapping", {}).get("knowledge_points") == "新版 Word 节内主属 KP",
+        "知识树缺少新版节内主属 KP 语义映射",
+        errors,
+    )
 
     audit_by_qid = {row["original_qid"]: row for row in audit_rows}
     require(set(seed_qids).issubset(audit_by_qid), "种子题未全部进入核对表", errors)
@@ -120,7 +157,8 @@ def main() -> int:
         "all_questions": len(all_records),
         "seed_questions": len(seed_records),
         "seed_types": dict(Counter(item["question_type"] for item in seed_records)),
-        "seed_exam_points": len(exam_ids),
+        "seed_knowledge_points": len(exam_ids),
+        "required_questions": sum(bool(item.get("is_required")) for item in all_records),
         "machine_ready": sum(item.get("grading_readiness") == "machine_ready" for item in seed_records),
         "raw_answer_only": sum(item.get("grading_readiness") == "raw_answer_only" for item in seed_records),
         "source_reviewed": sum(item.get("source_review_status") == "reviewed" for item in seed_records),

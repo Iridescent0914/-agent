@@ -6,6 +6,7 @@ import {
   Form,
   Input,
   Popconfirm,
+  Radio,
   Select,
   Space,
   Typography,
@@ -144,6 +145,7 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
   }
 
   const isChoice = question.question_type === 'choice'
+  const isTrueFalse = question.question_type === 'true_false'
   const isReady = question.grading_readiness === 'machine_ready' && !withdrawn
 
   async function withdraw() {
@@ -202,14 +204,20 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
             message={
               isReady
                 ? '这道题当前在自动组卷池中'
-                : isChoice ? '选择题使用选项匹配' : '填空题可使用数值、文本或公式匹配'
+                : isChoice
+                  ? '选择题使用选项匹配'
+                  : isTrueFalse
+                    ? '判断题逐小题选择正确或错误'
+                    : '填空题可使用数值、文本或公式匹配'
             }
             description={
               isReady
                 ? '撤回后，新生成的作业不会再选到本题；既有试卷快照不受影响。撤回完成后可立即修改答案。'
                 : isChoice
-                ? '每个小题选择一个 A-H 选项。'
-                : '普通数值优先选择“数值”；含分数、根式等公式时选择“公式（LaTeX 精确匹配）”。第一版暂不判断代数等价。'
+                  ? '每个小题选择一个 A-H 选项。'
+                  : isTrueFalse
+                    ? '每个小题选择“正确”或“错误”。'
+                    : '普通数值优先选择“数值”；含分数、根式等公式时选择“公式（LaTeX 精确匹配）”。第一版暂不判断代数等价。'
             }
           />
           <Form layout="vertical">
@@ -270,10 +278,12 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
                 <Form.Item label="判分方式" required>
                   <Select
                     value={item.answer_match_type}
-                    disabled={isChoice}
+                    disabled={isChoice || isTrueFalse}
                     options={
                       isChoice
                         ? [{ value: 'choice', label: '选项匹配' }]
+                        : isTrueFalse
+                          ? [{ value: 'exact', label: '判断匹配' }]
                         : [
                             { value: 'numeric', label: '数值（整数/小数）' },
                             { value: 'exact', label: '精确文本' },
@@ -294,6 +304,14 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
                     options={'ABCDEFGH'.split('').map((value) => ({ value, label: value }))}
                     onChange={(answer) => updateItem(index, { answer })}
                   />
+                ) : isTrueFalse ? (
+                  <Radio.Group
+                    value={item.answer || undefined}
+                    onChange={(event) => updateItem(index, { answer: event.target.value })}
+                  >
+                    <Radio.Button value="正确">正确</Radio.Button>
+                    <Radio.Button value="错误">错误</Radio.Button>
+                  </Radio.Group>
                 ) : item.answer_match_type === 'latex_exact' ? (
                   <MathAnswerInput
                     value={item.answer}

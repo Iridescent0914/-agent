@@ -21,8 +21,8 @@ from app.schemas.papers import (
 from app.schemas.recommendations import RecommendationRequest
 from app.services.assets import resolve_assets
 from app.services.paper_snapshots import (
-    copy_item, load_question, snapshot_payload, student_safe_question_snapshot,
-    student_safe_value,
+    copy_item, current_exam_point_snapshot, current_selection_audit, load_question,
+    snapshot_payload, student_safe_question_snapshot, student_safe_value,
 )
 from app.services.recommendations import Candidate, score_candidate
 from app.services.student_profile import load_context
@@ -108,13 +108,16 @@ def teacher_view(db: Session, paper_id: UUID) -> PaperInstanceTeacherOut:
     summary = _summary(db, paper, item_count=len(items))
     output = []
     for item in items:
+        current_snapshot = current_exam_point_snapshot(
+            db, item.question_id, item.exam_point_snapshot
+        )
         output.append(PaperItemOut(
             id=item.id, question_id=item.question_id, order_no=item.order_no,
             question_snapshot=item.question_snapshot, options_snapshot=item.options_snapshot,
             answer_snapshot=item.answer_snapshot, answer_rule_snapshot=item.answer_rule_snapshot,
-            exam_point_snapshot=item.exam_point_snapshot,
+            exam_point_snapshot=current_snapshot,
             assets=resolve_assets(item.question_snapshot.get("assets", [])),
-            selection_audit=item.selection_audit,
+            selection_audit=current_selection_audit(item.selection_audit, current_snapshot),
         ))
     return PaperInstanceTeacherOut(
         **summary.model_dump(), recommendation_audit=paper.recommendation_audit,
@@ -127,13 +130,17 @@ def student_view(db: Session, paper_id: UUID) -> PaperInstanceStudentOut:
     student = db.get(Student, paper.student_id)
     if student is None:
         raise LookupError("paper student not found")
-    items = [StudentPaperItemOut(
-        id=item.id, order_no=item.order_no,
-        question_snapshot=student_safe_question_snapshot(item.question_snapshot),
-        options_snapshot=student_safe_value(item.options_snapshot),
-        exam_point_snapshot=item.exam_point_snapshot,
-        assets=resolve_assets(item.question_snapshot.get("assets", [])),
-    ) for item in paper_items(db, paper.id)]
+    items = []
+    for item in paper_items(db, paper.id):
+        items.append(StudentPaperItemOut(
+            id=item.id, order_no=item.order_no,
+            question_snapshot=student_safe_question_snapshot(item.question_snapshot),
+            options_snapshot=student_safe_value(item.options_snapshot),
+            exam_point_snapshot=current_exam_point_snapshot(
+                db, item.question_id, item.exam_point_snapshot
+            ),
+            assets=resolve_assets(item.question_snapshot.get("assets", [])),
+        ))
     return PaperInstanceStudentOut(
         id=paper.id, assignment_id=paper.assignment_id, student_id=paper.student_id,
         student_code=student.student_code, version_no=paper.version_no,
@@ -611,7 +618,13 @@ def revise_paper(db: Session, published_id: UUID) -> PaperInstance:
     db.add(target)
     db.flush()
     for item in paper_items(db, source.id):
-        db.add(copy_item(source=item, paper_id=target.id))
+        db.add(copy_item(
+            source=item,
+            paper_id=target.id,
+            exam_point_snapshot=current_exam_point_snapshot(
+                db, item.question_id, item.exam_point_snapshot
+            ),
+        ))
     db.flush()
     return target
 

@@ -65,7 +65,7 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
   const current = history?.mastery.exam_point_code === selected ? history : null
   const masteryColumns: ColumnsType<Mastery> = [
     {
-      title: '考点',
+      title: '知识点',
       dataIndex: 'exam_point_name',
       width: 250,
       render: (_, item) => <Button type='link' className='table-link' onClick={() => setSelected(item.exam_point_code)}>{item.exam_point_name}</Button>,
@@ -94,7 +94,7 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
   ]
   const priorityColumns: ColumnsType<PriorityRow> = [
     {
-      title: '重点考点',
+      title: '重点知识点',
       dataIndex: ['mastery', 'exam_point_name'],
       width: 220,
       render: (_, item) => <Button type='link' className='table-link' onClick={() => setSelected(item.mastery.exam_point_code)}>{item.mastery.exam_point_name}</Button>,
@@ -124,12 +124,12 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
     <section className='profile-section' aria-labelledby='priority-heading'>
       <div className='section-heading'>
         <div>
-          <Typography.Title id='priority-heading' level={4}>重点考点诊断</Typography.Title>
-          <Typography.Text type='secondary'>按薄弱程度、近期错误和证据充分度，优先展示最多 5 个考点。</Typography.Text>
+          <Typography.Title id='priority-heading' level={4}>重点知识点诊断</Typography.Title>
+          <Typography.Text type='secondary'>按薄弱程度、近期错误和证据充分度，优先展示最多 5 个知识点。</Typography.Text>
         </div>
         <Tag color='blue'>{priorityItems.length} 个重点</Tag>
       </div>
-      <MasteryBarChart items={priorityItems} onSelect={setSelected} label='重点考点掌握度条形图' />
+      <MasteryBarChart items={priorityItems} onSelect={setSelected} label='重点知识点掌握度条形图' />
       <Table
         className='priority-table'
         size='small'
@@ -138,18 +138,18 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
         dataSource={priorityRows}
         pagination={false}
         scroll={{ x: 720 }}
-        locale={{ emptyText: <Empty description='尚无已评估考点' /> }}
+        locale={{ emptyText: <Empty description='尚无已评估知识点' /> }}
       />
     </section>
 
     <section className='profile-section' aria-labelledby='history-heading'>
       <div className='section-heading'>
         <div>
-          <Typography.Title id='history-heading' level={4}>重点考点掌握度变化</Typography.Title>
-          <Typography.Text type='secondary'>点击上方考点或切换选择，只复用这一张趋势图。</Typography.Text>
+          <Typography.Title id='history-heading' level={4}>重点知识点掌握度变化</Typography.Title>
+          <Typography.Text type='secondary'>点击上方知识点或切换选择，只复用这一张趋势图。</Typography.Text>
         </div>
         <Select
-          aria-label='曲线考点'
+          aria-label='曲线知识点'
           className='exam-select'
           value={selected}
           onChange={setSelected}
@@ -158,7 +158,7 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
           options={assessed.map((item) => ({ value: item.exam_point_code, label: item.exam_point_name }))}
         />
       </div>
-      {!selected ? <Empty description='尚无可展示趋势的已评估考点' /> : error ? <Alert type='error' message={error} /> : !current ? <Skeleton active /> : <>
+      {!selected ? <Empty description='尚无可展示趋势的已评估知识点' /> : error ? <Alert type='error' message={error} /> : !current ? <Skeleton active /> : <>
         <Space wrap>
           <Typography.Text strong>{current.mastery.exam_point_name}</Typography.Text>
           <Tag>{current.mastery.attempt_count} 次确认作答</Tag>
@@ -172,7 +172,7 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
           className='profile-history-details'
           items={[{
             key: 'attempts',
-            label: `查看该考点的逐次作答（${current.points.length}）`,
+            label: `查看该知识点的逐次作答（${current.points.length}）`,
             children: <Table
               size='small'
               rowKey='attempt_id'
@@ -196,11 +196,11 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
       className='profile-details-collapse'
       items={[{
         key: 'full-profile',
-        label: <Space wrap><Typography.Text strong>完整画像与作答证据</Typography.Text><Tag>{profile.masteries.length} 个考点</Tag><Tag>{profile.recent_errors.length} 条近期错误</Tag></Space>,
+        label: <Space wrap><Typography.Text strong>完整画像与作答证据</Typography.Text><Tag>{profile.masteries.length} 个知识点</Tag><Tag>{profile.recent_errors.length} 条近期错误</Tag></Space>,
         children: <Space direction='vertical' size='large' className='full-width'>
           <div>
             <div className='section-heading'>
-              <Typography.Title level={5}>全部考点</Typography.Title>
+              <Typography.Title level={5}>全部知识点</Typography.Title>
               <Segmented
                 value={range}
                 onChange={setRange}
@@ -215,8 +215,8 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
               columns={masteryColumns}
               dataSource={items}
               scroll={{ x: 1070 }}
-              pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `共 ${total} 个考点` }}
-              locale={{ emptyText: <Empty description='尚无已评估考点' /> }}
+              pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `共 ${total} 个知识点` }}
+              locale={{ emptyText: <Empty description='尚无已评估知识点' /> }}
             />
           </div>
           <div>
@@ -229,7 +229,7 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
               columns={[
                 { title: '时间', dataIndex: 'answered_at', render: (value: string) => new Date(value).toLocaleString('zh-CN') },
                 { title: '原题编号', dataIndex: 'original_qid', render: (_, point) => <Button type='link' className='table-link' onClick={() => onEvidence(point.attempt_id)}>{point.original_qid}</Button> },
-                { title: '主考点', dataIndex: 'exam_point_name' },
+                { title: '主要知识点', dataIndex: 'exam_point_name' },
                 { title: '修订', dataIndex: 'revision_no' },
               ]}
               locale={{ emptyText: <Empty description='暂无确认错误作答' /> }}

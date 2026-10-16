@@ -94,12 +94,19 @@ export function ManualAnswerEditor({ item, value, onChange, disabled = false }: 
       {groupValue.items.map((part) => <Space key={part.item_id} align="start" className="group-answer-row">
         <Typography.Text strong>小题 {part.item_id}</Typography.Text>
         <div className="manual-answer-field">
-          <AnswerField
-            matchType={expectedTypeById.get(part.item_id)}
-            value={part.answer ?? ''}
+          {item.question_snapshot.question_type === 'true_false' ? <Radio.Group
+            value={part.answer ?? undefined}
             disabled={disabled}
-            onChange={(answer) => setGroupPart(part.item_id, answer)}
-          />
+            onChange={(event) => setGroupPart(part.item_id, event.target.value)}
+          >
+            <Radio.Button value="正确">正确</Radio.Button>
+            <Radio.Button value="错误">错误</Radio.Button>
+          </Radio.Group> : <AnswerField
+              matchType={expectedTypeById.get(part.item_id)}
+              value={part.answer ?? ''}
+              disabled={disabled}
+              onChange={(answer) => setGroupPart(part.item_id, answer)}
+            />}
         </div>
       </Space>)}
     </Space>}

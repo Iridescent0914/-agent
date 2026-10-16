@@ -189,8 +189,8 @@ export function AssignmentCreatePage() {
           <Form.Item label="基础难度" name="base_difficulty"><InputNumber min={1} max={5} /></Form.Item>
           <Form.Item label="难度范围"><Space.Compact><Form.Item name="min_difficulty" noStyle><InputNumber min={1} max={5} /></Form.Item><Form.Item name="max_difficulty" noStyle><InputNumber min={1} max={5} /></Form.Item></Space.Compact></Form.Item>
           <Form.Item label="避免近期重复天数" name="avoid_recent_days"><InputNumber min={0} max={3650} /></Form.Item>
-          <Form.Item label="单考点最大占比" name="max_exam_point_ratio"><InputNumber min={0.05} max={1} step={0.05} /></Form.Item>
-          <Form.Item label="题型" name="question_types"><Checkbox.Group options={[{ label: '选择题', value: 'choice' }, { label: '填空题', value: 'fill_blank' }]} /></Form.Item>
+          <Form.Item label="单知识点最大占比" name="max_exam_point_ratio"><InputNumber min={0.05} max={1} step={0.05} /></Form.Item>
+          <Form.Item label="题型" name="question_types"><Checkbox.Group options={[{ label: '选择题', value: 'choice' }, { label: '填空题', value: 'fill_blank' }, { label: '判断题', value: 'true_false' }]} /></Form.Item>
         </div>
         <Button type="primary" htmlType="submit" loading={loading}>预检全部学生</Button>
       </Form>

@@ -12,7 +12,7 @@ def test_health_and_readiness() -> None:
     assert client.get("/api/v1/health").json() == {"status": "ok"}
     response = client.get("/api/v1/ready")
     assert response.status_code == 200
-    assert response.json()['migration'] == '0019'
+    assert response.json()['migration'] == '0022'
 
 
 def test_question_list_filters_and_detail_assets() -> None:
@@ -23,7 +23,11 @@ def test_question_list_filters_and_detail_assets() -> None:
     assert len(body["items"]) == 100
 
     choice = client.get("/api/v1/questions", params={"question_type": "choice"}).json()
-    assert choice["total"] == 13
+    assert choice["total"] == 11
+    true_false = client.get(
+        "/api/v1/questions", params={"question_type": "true_false"}
+    ).json()
+    assert true_false["total"] == 2
     assert all(item["question_type"] == "choice" for item in choice["items"])
 
     ready = client.get(
@@ -42,6 +46,9 @@ def test_question_list_filters_and_detail_assets() -> None:
     assert detail_response.status_code == 200
     detail = detail_response.json()
     assert detail["main_exam_point"]["code"]
+    assert detail["grade"] == "六年级上册"
+    assert detail["core_literacy"]
+    assert type(detail["is_required"]) is bool
     assert detail["assets"]
     assert all(asset["conversion_status"] == "converted" for asset in detail["assets"])
     assert all(asset["web_url"] for asset in detail["assets"])

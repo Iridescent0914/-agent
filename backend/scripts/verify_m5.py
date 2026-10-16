@@ -15,9 +15,7 @@ CHAPTER_CODE = "math.g6.rational"
 
 
 def _exam_code(record: object) -> str | None:
-    item = getattr(record, "item", None)
-    snapshot = item.exam_point_snapshot if item is not None else None
-    main = snapshot.get("main") if isinstance(snapshot, dict) else None
+    main = getattr(record, "effective_main", None)
     code = main.get("id") if isinstance(main, dict) else None
     return code if isinstance(code, str) else None
 
@@ -27,8 +25,8 @@ def main() -> None:
     warnings: list[str] = []
     with SessionLocal() as db:
         migration = db.scalar(text("SELECT version_num FROM alembic_version"))
-        if migration != "0019":
-            errors.append(f"migration is {migration}, expected 0019")
+        if migration != "0022":
+            errors.append(f"migration is {migration}, expected 0022")
 
         students = list(
             db.scalars(
@@ -147,7 +145,7 @@ def main() -> None:
             "schema_head": migration,
             "class_name": CLASS_NAME,
             "student_count": len(students),
-            "exam_point_count": len(catalog),
+            "knowledge_point_count": len(catalog),
             "confirmed_attempt_count": overview.summary.confirmed_attempt_count,
             "pending_review_count": overview.summary.pending_review_count,
             "invalid_evidence_count": overview.summary.invalid_evidence_count,

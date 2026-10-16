@@ -18,8 +18,8 @@ class RecommendationRequest(BaseModel):
     review_exam_point_codes: list[str] = Field(default_factory=list, max_length=54)
     new_count: int = Field(default=0, ge=0, le=30, strict=True)
     review_count: int = Field(default=0, ge=0, le=30, strict=True)
-    question_types: list[Literal["choice", "fill_blank"]] = Field(
-        default_factory=lambda: ["choice", "fill_blank"], min_length=1, max_length=2)
+    question_types: list[Literal["choice", "fill_blank", "true_false"]] = Field(
+        default_factory=lambda: ["choice", "fill_blank"], min_length=1, max_length=3)
     base_difficulty: int = Field(default=2, ge=1, le=5, strict=True)
     min_difficulty: int = Field(default=1, ge=1, le=5, strict=True)
     max_difficulty: int = Field(default=5, ge=1, le=5, strict=True)
@@ -43,7 +43,7 @@ class RecommendationRequest(BaseModel):
         if not self.min_difficulty <= self.base_difficulty <= self.max_difficulty:
             raise ValueError("基础难度必须位于允许难度范围内")
         if floor(total * self.max_exam_point_ratio) < 1:
-            raise ValueError("单考点允许题数不足 1，请提高考点占比")
+            raise ValueError("单知识点允许题数不足 1，请提高知识点占比")
         return self
 
 

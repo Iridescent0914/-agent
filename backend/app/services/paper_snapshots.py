@@ -15,7 +15,10 @@ _STUDENT_QUESTION_KEYS = {
     "original_qid",
     "chapter_code",
     "chapter_name",
+    "grade",
     "section",
+    "core_literacy",
+    "is_required",
     "question_text",
     "question_type",
     "difficulty",
@@ -98,7 +101,10 @@ def snapshot_payload(question: Question) -> dict[str, Any]:
             "original_qid": question.original_qid,
             "chapter_code": question.chapter_code,
             "chapter_name": question.chapter_name,
+            "grade": question.grade,
             "section": question.section,
+            "core_literacy": question.core_literacy,
+            "is_required": question.is_required,
             "question_text": question.question_text,
             "question_type": question.question_type,
             "difficulty": question.difficulty,
@@ -116,6 +122,35 @@ def snapshot_payload(question: Question) -> dict[str, Any]:
     }
 
 
+def current_exam_point_snapshot(
+    db: Session,
+    question_id: UUID,
+    fallback: Any,
+) -> dict[str, Any]:
+    """Resolve the current KP for teaching views without mutating audit snapshots."""
+    try:
+        question = load_question(db, question_id)
+    except LookupError:
+        return deepcopy(fallback) if isinstance(fallback, dict) else {}
+    return snapshot_payload(question)["exam_point_snapshot"]
+
+
+def current_selection_audit(
+    audit: Any,
+    exam_point_snapshot: dict[str, Any],
+) -> dict[str, Any] | None:
+    if not isinstance(audit, dict):
+        return None
+    value = deepcopy(audit)
+    main = exam_point_snapshot.get("main")
+    if isinstance(main, dict):
+        value["exam_point_code"] = main.get("id")
+        value["exam_point_name"] = main.get("name")
+    if isinstance(value.get("reason_text"), str):
+        value["reason_text"] = value["reason_text"].replace("考点", "知识点")
+    return value
+
+
 def new_item(*, paper_id: UUID, order_no: int, payload: dict[str, Any],
              selection_audit: dict[str, Any] | None) -> PaperInstanceItem:
     return PaperInstanceItem(
@@ -131,8 +166,14 @@ def new_item(*, paper_id: UUID, order_no: int, payload: dict[str, Any],
     )
 
 
-def copy_item(*, source: PaperInstanceItem, paper_id: UUID) -> PaperInstanceItem:
-    audit = deepcopy(source.selection_audit or {})
+def copy_item(
+    *,
+    source: PaperInstanceItem,
+    paper_id: UUID,
+    exam_point_snapshot: dict[str, Any] | None = None,
+) -> PaperInstanceItem:
+    resolved_snapshot = deepcopy(exam_point_snapshot or source.exam_point_snapshot)
+    audit = current_selection_audit(source.selection_audit or {}, resolved_snapshot) or {}
     audit["source"] = "version_copy"
     audit["copied_from_item_id"] = str(source.id)
     return PaperInstanceItem(
@@ -143,7 +184,7 @@ def copy_item(*, source: PaperInstanceItem, paper_id: UUID) -> PaperInstanceItem
         options_snapshot=deepcopy(source.options_snapshot),
         answer_snapshot=deepcopy(source.answer_snapshot),
         answer_rule_snapshot=deepcopy(source.answer_rule_snapshot),
-        exam_point_snapshot=deepcopy(source.exam_point_snapshot),
+        exam_point_snapshot=resolved_snapshot,
         answer_region=deepcopy(source.answer_region),
         selection_audit=audit,
     )

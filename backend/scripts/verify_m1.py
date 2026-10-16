@@ -33,6 +33,9 @@ def main() -> int:
         choice_count = session.scalar(
             select(func.count(Question.id)).where(Question.question_type == "choice")
         ) or 0
+        true_false_count = session.scalar(
+            select(func.count(Question.id)).where(Question.question_type == "true_false")
+        ) or 0
         exam_count = session.scalar(
             select(func.count(distinct(QuestionExamPoint.exam_point_id))).where(
                 QuestionExamPoint.relation_type == "main"
@@ -84,11 +87,12 @@ def main() -> int:
     failed_assets = int(manifest.get("failed_count", -1))
 
     checks = {
-        'schema_at_head': migration == '0019',
+        'schema_at_head': migration == '0022',
         "questions": question_count,
         "fill_blank": fill_count,
         "choice": choice_count,
-        "catalog_exam_points": exam_count,
+        "true_false": true_false_count,
+        "catalog_knowledge_points": exam_count,
         "questions_with_assets": question_asset_count,
         "unique_web_assets": manifest.get("unique_asset_count", 0),
         "missing_web_assets": failed_assets,
@@ -102,9 +106,10 @@ def main() -> int:
     expected = {
         "schema_at_head": True,
         "questions": 139,
-        "fill_blank": 49,
-        "choice": 13,
-        "catalog_exam_points": 54,
+        "fill_blank": 50,
+        "choice": 11,
+        "true_false": 2,
+        "catalog_knowledge_points": 12,
         "questions_with_assets": 107,
         "unique_web_assets": 564,
         "missing_web_assets": 0,

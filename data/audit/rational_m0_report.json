@@ -1,48 +1,39 @@
 {
-  "schema_version": "1.0",
-  "source_file": "六年级_数学_校本审核/rational_有理数_校本审核（黄）.docx",
+  "schema_version": "2.0",
+  "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
   "total_extracted": 139,
-  "seed_candidate_count": 41,
-  "eligible_count_before_limit": 41,
+  "seed_candidate_count": 45,
+  "eligible_count_before_limit": 45,
   "question_type_counts": {
     "calculation": 24,
-    "choice": 13,
-    "fill_blank": 49,
-    "solution": 51,
-    "true_false": 1,
-    "unknown": 1
+    "choice": 11,
+    "fill_blank": 50,
+    "solution": 52,
+    "true_false": 2
   },
   "seed_type_counts": {
-    "choice": 10,
-    "fill_blank": 31
+    "choice": 11,
+    "fill_blank": 32,
+    "true_false": 2
   },
-  "seed_exam_point_count": 21,
-  "seed_exam_point_counts": {
-    "倒数的定义与性质": 3,
-    "倒数的定义与性质、相反数的性质": 1,
-    "数轴上的点的规律移动": 1,
-    "数轴的三要素及其性质、数轴上点的移动": 1,
-    "有理数乘法的符号法则、有理数大小比较": 1,
-    "有理数乘除法": 6,
-    "有理数乘除法、有理数大小比较": 1,
-    "有理数加减法": 6,
-    "有理数的乘方": 1,
-    "有理数的乘方运算": 2,
-    "有理数的乘除法": 1,
-    "有理数的大小比较": 2,
-    "有理数的巧算": 1,
-    "有理数的概念": 2,
-    "有理数的混合运算": 3,
-    "有理数的混合运算、有理数的大小比较": 1,
-    "相反意义的量；相反数的性质": 1,
-    "科学记数法": 4,
-    "绝对值的非负性、有理数的混合运算": 1,
-    "解含有绝对值的方程、有理数加减法": 1,
-    "解含有绝对值的方程、有理数的大小比较": 1
+  "seed_knowledge_point_count": 12,
+  "seed_knowledge_point_counts": {
+    "数轴与用数轴上的点表示有理数": 3,
+    "有理数的乘方": 7,
+    "有理数的乘法法则与除法法则": 15,
+    "有理数的加法法则与减法法则": 5,
+    "有理数的意义与分类（整数、分数）": 1,
+    "有理数的混合运算（以三步以内为主）": 3,
+    "有理数的运算律及其简化运算的作用": 3,
+    "比较有理数的大小": 3,
+    "用有理数的运算解决简单实际问题": 1,
+    "相反数的意义与求法": 1,
+    "绝对值的意义与求法": 2,
+    "负数与用正负数表示相反意义的量": 1
   },
-  "seed_machine_ready_count": 41,
+  "seed_machine_ready_count": 45,
   "seed_raw_answer_only_count": 0,
-  "answer_structure_override_count": 10,
+  "answer_structure_override_count": 12,
   "exported_asset_references": 564,
   "asset_extension_counts": {
     ".jpeg": 1,
@@ -50,14 +41,14 @@
     ".wmf": 529
   },
   "issue_counts": {
-    "answer_items_not_structured": 21,
+    "answer_items_not_structured": 18,
     "asset_needs_web_conversion": 529,
     "asset_relationship_missing": 2,
     "contains_asset": 109,
     "missing_reference_answer": 1,
     "multiple_subquestions": 85,
-    "question_type_mismatch": 30,
+    "question_type_mismatch": 29,
     "source_contains_ai_draft_marker": 4
   },
-  "source_status_note": "校本审核 DOCX 作为权威来源，题目与参考答案默认已审核；import_status 仅描述程序抽取和结构化状态。"
+  "source_status_note": "新版校本审核 DOCX 作为权威来源；年级、章、主属节、节内主属 KP、核心素养和必做题标记均直接继承该文件。"
 }

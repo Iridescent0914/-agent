@@ -190,6 +190,7 @@ def list_student_attempts(
     if is_correct is not None:
         items = [item for item in items if item.is_correct is is_correct]
     if exam_point_code is not None:
-        items = [item for item in items if item.main_exam_point_code == exam_point_code]
+        effective_code = context.exam_code_aliases.get(exam_point_code, exam_point_code)
+        items = [item for item in items if item.main_exam_point_code == effective_code]
     start = (page - 1) * page_size
     return Page(items=items[start:start + page_size], total=len(items), page=page, page_size=page_size)

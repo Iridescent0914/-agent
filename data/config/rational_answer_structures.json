@@ -2,6 +2,44 @@
   "schema_version": "1.0",
   "description": "从校本审核 DOCX 的原始参考答案中拆分出的确定性判分项；不修改题目与答案内容。",
   "questions": {
+    "q.math.g6.rational.school.016": {
+      "items": [
+        {
+          "item_id": "blank_1",
+          "answer": "-2",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "-2"
+        },
+        {
+          "item_id": "blank_2",
+          "answer": "1;3",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "1;3"
+        },
+        {
+          "item_id": "blank_3",
+          "answer": "0或4",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "0或4"
+        }
+      ]
+    },
+    "q.math.g6.rational.school.050": {
+      "items": [
+        {
+          "item_id": "1",
+          "answer": "D",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "D"
+        },
+        {
+          "item_id": "2",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B"
+        }
+      ]
+    },
     "q.math.g6.rational.school.019": {
       "answer": "3037",
       "answer_match_type": "numeric",

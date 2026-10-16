@@ -76,6 +76,21 @@ def test_readiness_type_difficulty_filters_do_not_relax():
     assert sum(stage.removed for stage in output.diagnostics[1].stages) == 3
 
 
+def test_true_false_can_be_selected_when_requested():
+    pool = [replace(candidates()[0], question_type="true_false")]
+    output = select(
+        pool,
+        params(
+            review_exam_point_codes=["exam.a"],
+            review_count=1,
+            question_types=["true_false"],
+            max_exam_point_ratio=1,
+        ),
+    )
+    assert output.selected_count == 1
+    assert output.items[0].question_type == "true_false"
+
+
 def test_personalized_components_and_review_time_do_not_change_mastery():
     items = [evidence(1, False), evidence(2, False), evidence(3)]
     result = next(iter(replay(items).values()))

@@ -75,11 +75,14 @@ def _validate_inputs(
             key
             for key in (
                 "chapter",
+                "grade",
                 "question_type",
                 "difficulty",
                 "question_text",
                 "main_knowledge_point",
                 "main_exam_point",
+                "core_literacy",
+                "is_required",
             )
             if item.get(key) is None
         ]
@@ -119,6 +122,9 @@ def _get_or_create_kp(
     chapter_name: str,
     section: str | None = None,
     sort_order: int = 0,
+    mastery_level: str | None = None,
+    core_competencies: list[str] | None = None,
+    curriculum_basis: str | None = None,
 ) -> KnowledgePoint:
     instance = session.scalar(select(KnowledgePoint).where(KnowledgePoint.code == code))
     values = {
@@ -127,6 +133,9 @@ def _get_or_create_kp(
         "chapter_name": chapter_name,
         "section": section,
         "sort_order": sort_order,
+        "mastery_level": mastery_level,
+        "core_competencies": core_competencies or [],
+        "curriculum_basis": curriculum_basis,
     }
     if instance is None:
         instance = KnowledgePoint(code=code, **values)
@@ -183,6 +192,9 @@ def _import_knowledge_tree(
             chapter_name=chapter["name"],
             section=kp_data.get("section"),
             sort_order=kp_data.get("order_no", 0),
+            mastery_level=kp_data.get("mastery_level"),
+            core_competencies=kp_data.get("core_competencies", []),
+            curriculum_basis=kp_data.get("curriculum_basis"),
         )
         kp_by_code[kp.code] = kp
         for exam_data in kp_data.get("exam_points", []):
@@ -203,6 +215,7 @@ def _question_values(item: dict[str, Any], kp: KnowledgePoint) -> dict[str, Any]
         "schema_version": item["schema_version"],
         "chapter_code": item["chapter"]["id"],
         "chapter_name": item["chapter"]["name"],
+        "grade": item["grade"],
         "section": item["section"],
         "question_type": item["question_type"],
         "difficulty": item["difficulty"],
@@ -216,6 +229,8 @@ def _question_values(item: dict[str, Any], kp: KnowledgePoint) -> dict[str, Any]
         "solution": item.get("solution"),
         "wrong_analysis": item.get("wrong_analysis"),
         "estimated_score_rate": item.get("estimated_score_rate"),
+        "core_literacy": item["core_literacy"],
+        "is_required": item["is_required"],
         "has_image": bool(item.get("has_image")),
         "has_equation": bool(item.get("has_equation")),
         "assets": item.get("assets", []),
@@ -264,6 +279,9 @@ def _import_questions(
                 chapter_code=item["chapter"]["id"],
                 chapter_name=item["chapter"]["name"],
                 section=item["section"],
+                mastery_level=kp_data.get("mastery_level"),
+                core_competencies=kp_data.get("core_competencies", []),
+                curriculum_basis=kp_data.get("curriculum_basis"),
             )
             kp_by_code[kp.code] = kp
 
@@ -466,6 +484,12 @@ def _import_demo_history(
                         "question_text": question.question_text,
                         "question_type": question.question_type,
                         "difficulty": question.difficulty,
+                        "grade": question.grade,
+                        "chapter_code": question.chapter_code,
+                        "chapter_name": question.chapter_name,
+                        "section": question.section,
+                        "core_literacy": question.core_literacy,
+                        "is_required": question.is_required,
                         "assets": question.assets,
                     },
                     options_snapshot=question.options,
@@ -546,11 +570,13 @@ def import_seed_data(
     seed_data = _load_json(questions_path)
     catalog_data = _load_json(catalog_path) if catalog_path is not None else seed_data
     tree_data = _load_json(knowledge_tree_path)
-    _validate_inputs(seed_data, tree_data, expected_count=41)
+    _validate_inputs(seed_data, tree_data)
+    if not 30 <= len(seed_data) <= 50:
+        raise ValueError(f"expected 30-50 seed question groups, got {len(seed_data)}")
     _validate_inputs(
         catalog_data,
         tree_data,
-        expected_count=139 if catalog_path is not None else 41,
+        expected_count=139 if catalog_path is not None else None,
         require_machine_ready=False,
     )
     catalog_qids = {item["original_qid"] for item in catalog_data}

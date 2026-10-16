@@ -88,6 +88,7 @@ def _summary(question: Question) -> QuestionListItem:
         original_qid=question.original_qid,
         question_type=question.question_type,
         difficulty=question.difficulty,
+        grade=question.grade,
         section=question.section,
         question_text=question.question_text,
         main_knowledge_point=TagOut(
@@ -95,6 +96,8 @@ def _summary(question: Question) -> QuestionListItem:
             name=question.main_knowledge_point.name,
         ),
         main_exam_point=TagOut(code=exam.code, name=exam.name),
+        core_literacy=question.core_literacy,
+        is_required=question.is_required,
         has_image=question.has_image,
         has_equation=question.has_equation,
         asset_count=len(question.assets or []),
@@ -206,19 +209,19 @@ def create_question(
         .where(ExamPoint.code == request.main_exam_point_code)
     )
     if exam is None:
-        raise HTTPException(status_code=422, detail='主考点不存在')
+        raise HTTPException(status_code=422, detail='节内主属 KP 不存在')
     related_exams = list(db.scalars(
         select(ExamPoint)
         .options(selectinload(ExamPoint.knowledge_point))
         .where(ExamPoint.code.in_(request.related_exam_point_codes))
     )) if request.related_exam_point_codes else []
     if len(related_exams) != len(request.related_exam_point_codes):
-        raise HTTPException(status_code=422, detail='一个或多个关联考点不存在')
+        raise HTTPException(status_code=422, detail='一个或多个关联知识点不存在')
     if any(
         item.knowledge_point.chapter_code != exam.knowledge_point.chapter_code
         for item in related_exams
     ):
-        raise HTTPException(status_code=422, detail='关联考点必须与主考点属于同一章节')
+        raise HTTPException(status_code=422, detail='关联知识点必须与节内主属 KP 属于同一章')
     original_qid = request.original_qid or (
         f'q.{exam.knowledge_point.chapter_code}.teacher.{uuid.uuid4().hex[:12]}'
     )
@@ -245,6 +248,7 @@ def create_question(
         schema_version='teacher-question-v1',
         chapter_code=exam.knowledge_point.chapter_code,
         chapter_name=exam.knowledge_point.chapter_name,
+        grade=request.grade,
         section=request.section,
         question_type=request.question_type,
         difficulty=request.difficulty,
@@ -258,6 +262,8 @@ def create_question(
         solution=request.solution,
         wrong_analysis=request.wrong_analysis,
         estimated_score_rate=request.estimated_score_rate,
+        core_literacy=request.core_literacy,
+        is_required=request.is_required,
         has_image=bool(asset_records),
         has_equation=any(mark in question_text for mark in ('$', '\\(', '\\[')),
         assets=asset_records,
@@ -318,19 +324,19 @@ def update_question(
         .where(ExamPoint.code == request.main_exam_point_code)
     )
     if exam is None:
-        raise HTTPException(status_code=422, detail='主考点不存在')
+        raise HTTPException(status_code=422, detail='节内主属 KP 不存在')
     related_exams = list(db.scalars(
         select(ExamPoint)
         .options(selectinload(ExamPoint.knowledge_point))
         .where(ExamPoint.code.in_(request.related_exam_point_codes))
     )) if request.related_exam_point_codes else []
     if len(related_exams) != len(request.related_exam_point_codes):
-        raise HTTPException(status_code=422, detail='一个或多个关联考点不存在')
+        raise HTTPException(status_code=422, detail='一个或多个关联知识点不存在')
     if any(
         item.knowledge_point.chapter_code != exam.knowledge_point.chapter_code
         for item in related_exams
     ):
-        raise HTTPException(status_code=422, detail='关联考点必须与主考点属于同一章节')
+        raise HTTPException(status_code=422, detail='关联知识点必须与节内主属 KP 属于同一章')
     original_qid = request.original_qid or question.original_qid
     duplicate = db.scalar(
         select(Question.id).where(
@@ -352,6 +358,7 @@ def update_question(
     question.original_qid = original_qid
     question.chapter_code = exam.knowledge_point.chapter_code
     question.chapter_name = exam.knowledge_point.chapter_name
+    question.grade = request.grade
     question.section = request.section
     question.question_type = request.question_type
     question.difficulty = request.difficulty
@@ -364,6 +371,8 @@ def update_question(
     question.solution = request.solution
     question.wrong_analysis = request.wrong_analysis
     question.estimated_score_rate = request.estimated_score_rate
+    question.core_literacy = request.core_literacy
+    question.is_required = request.is_required
     question.has_image = bool(asset_records)
     question.has_equation = any(
         mark in (question.question_text + (question.solution or ""))
@@ -445,6 +454,7 @@ def list_questions(
     ),
     difficulty: int | None = Query(None, ge=1, le=5),
     chapter_code: str | None = None,
+    section: str | None = Query(None, max_length=255),
     knowledge_point_code: str | None = None,
     exam_point_code: str | None = None,
     keyword: str | None = Query(None, max_length=100),
@@ -459,6 +469,8 @@ def list_questions(
         filters.append(Question.difficulty == difficulty)
     if chapter_code:
         filters.append(Question.chapter_code == chapter_code)
+    if section:
+        filters.append(Question.section == section)
     if knowledge_point_code:
         filters.append(KnowledgePoint.code == knowledge_point_code)
     if exam_point_code:
@@ -537,9 +549,19 @@ def question_catalog_stats(db: Session = Depends(get_db)) -> QuestionCatalogStat
 
 @router.get('/catalog', response_model=list[QuestionCatalogChapter])
 def question_filter_catalog(db: Session = Depends(get_db)) -> list[QuestionCatalogChapter]:
+    active_section_ids = select(Question.main_knowledge_point_id).where(
+        Question.archived_at.is_(None)
+    )
+    active_kp_ids = set(db.scalars(
+        select(QuestionExamPoint.exam_point_id)
+        .join(Question, Question.id == QuestionExamPoint.question_id)
+        .where(Question.archived_at.is_(None))
+        .distinct()
+    ))
     knowledge_points = db.scalars(
         select(KnowledgePoint)
         .options(selectinload(KnowledgePoint.exam_points))
+        .where(KnowledgePoint.id.in_(active_section_ids))
         .order_by(
             KnowledgePoint.chapter_name,
             KnowledgePoint.sort_order,
@@ -553,6 +575,7 @@ def question_filter_catalog(db: Session = Depends(get_db)) -> list[QuestionCatal
             QuestionCatalogChapter(
                 code=knowledge_point.chapter_code,
                 name=knowledge_point.chapter_name,
+                sections=[],
                 knowledge_points=[],
             ),
         )
@@ -562,11 +585,24 @@ def question_filter_catalog(db: Session = Depends(get_db)) -> list[QuestionCatal
             exam_points=[
                 QuestionCatalogExamPoint(code=exam.code, name=exam.name)
                 for exam in sorted(
-                    knowledge_point.exam_points,
+                    (
+                        exam for exam in knowledge_point.exam_points
+                        if exam.id in active_kp_ids
+                    ),
                     key=lambda item: (item.sort_order, item.name),
                 )
             ],
         ))
+    section_rows = db.execute(
+        select(Question.chapter_code, Question.section)
+        .where(Question.archived_at.is_(None))
+        .distinct()
+        .order_by(Question.chapter_code, Question.section)
+    ).all()
+    for chapter_code, section in section_rows:
+        chapter = chapters.get(chapter_code)
+        if chapter is not None and section not in chapter.sections:
+            chapter.sections.append(section)
     return list(chapters.values())
 
 

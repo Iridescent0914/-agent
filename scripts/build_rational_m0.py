@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import json
 import posixpath
 import re
@@ -46,12 +45,59 @@ LABELS = {
     "题目 ID": "original_qid",
     "题型": "question_type_source",
     "难度": "difficulty_source",
-    "主属 KP": "main_kp_source",
-    "关联 KP": "related_kp_source",
-    "主属考点": "main_exam_point_source",
-    "关联考点": "related_exam_point_source",
+    "年级": "grade_source",
+    "章": "chapter_source",
+    "主属节": "main_section_source",
+    "节内主属 KP": "main_kp_source",
+    "核心素养": "core_literacy_source",
     "预估得分率": "estimated_score_rate",
+    "是否为必做题": "is_required_source",
     "分值": "score",
+}
+
+TAXONOMY_SOURCE = "上海市五四制初中数学知识图谱.html"
+
+SECTIONS = [
+    {"id": "math.g6.rational.sec.1_1", "name": "1.1 有理数的引入", "order_no": 1},
+    {"id": "math.g6.rational.sec.1_2", "name": "1.2 有理数的加法与减法", "order_no": 2},
+    {"id": "math.g6.rational.sec.1_3", "name": "1.3 有理数的乘法与除法", "order_no": 3},
+    {"id": "math.g6.rational.sec.1_4", "name": "1.4 有理数的乘方", "order_no": 4},
+    {"id": "math.g6.rational.sec.1_5", "name": "1.5 有理数的混合运算", "order_no": 5},
+    {
+        "id": "math.g6.rational.sec.reading_negative_numbers",
+        "name": "阅读材料：我国古代对负数的认识",
+        "order_no": 6,
+    },
+]
+SECTION_BY_NAME = {item["name"]: item for item in SECTIONS}
+
+KNOWLEDGE_POINTS = [
+    ("01_negative_quantity", "负数与用正负数表示相反意义的量", "掌握", ["抽象能力", "应用意识"], "理解负数的意义；会用正数和负数表示具体情境中具有相反意义的量"),
+    ("02_meaning_classification", "有理数的意义与分类（整数、分数）", "理解", ["抽象能力"], "理解有理数的意义"),
+    ("03_number_line", "数轴与用数轴上的点表示有理数", "掌握", ["抽象能力", "几何直观"], "能用数轴上的点表示有理数"),
+    ("04_opposite_number", "相反数的意义与求法", "掌握", ["抽象能力"], "借助数轴理解相反数的意义，掌握求有理数的相反数的方法"),
+    ("05_absolute_value", "绝对值的意义与求法", "掌握", ["抽象能力", "运算能力"], "借助数轴理解绝对值的意义，掌握求有理数的绝对值的方法"),
+    ("06_comparison", "比较有理数的大小", "掌握", ["抽象能力", "运算能力"], "能比较有理数的大小"),
+    ("07_add_subtract", "有理数的加法法则与减法法则", "掌握", ["运算能力", "推理能力"], "掌握有理数的加、减运算；减法统一为加法"),
+    ("08_multiply_divide", "有理数的乘法法则与除法法则", "掌握", ["运算能力", "推理能力"], "掌握有理数的乘、除运算；除法统一为乘法"),
+    ("09_operation_laws", "有理数的运算律及其简化运算的作用", "掌握", ["运算能力", "推理能力"], "理解有理数的运算律，能运用运算律简化运算"),
+    ("10_powers", "有理数的乘方", "理解", ["抽象能力", "运算能力"], "理解乘方的意义；会准确进行有理数的乘方运算"),
+    ("11_mixed_operations", "有理数的混合运算（以三步以内为主）", "掌握", ["运算能力"], "掌握有理数简单的混合运算，明确运算顺序"),
+    ("12_applications", "用有理数的运算解决简单实际问题", "运用", ["模型观念", "应用意识"], "能运用有理数的运算解决简单问题"),
+    ("13_negative_number_culture", "古今对负数的认识（数学文化）", "了解", ["创新意识", "应用意识"], "感悟数学抽象的过程与中华优秀数学文化"),
+]
+KNOWLEDGE_POINT_BY_NAME = {
+    name: {
+        "id": f"math.g6.rational.kp.{suffix}",
+        "name": name,
+        "mastery_level": mastery_level,
+        "core_competencies": core_competencies,
+        "curriculum_basis": curriculum_basis,
+        "order_no": order_no,
+        "tracking_id": f"math.g6.rational.tracking.{suffix}",
+    }
+    for order_no, (suffix, name, mastery_level, core_competencies, curriculum_basis)
+    in enumerate(KNOWLEDGE_POINTS, start=1)
 }
 
 
@@ -265,6 +311,15 @@ def extract_fill_answer(answer: str) -> str | None:
     return first
 
 
+def extract_true_false_answer(answer: str) -> str | None:
+    cleaned = strip_ai_marker(answer)
+    if "√" in cleaned or re.search(r"(?:^|[：:。；;，,\s])正确(?:$|[（(。；;，,\s])", cleaned):
+        return "正确"
+    if "×" in cleaned or "✕" in cleaned or re.search(r"(?:^|[：:。；;，,\s])错误(?:$|[（(。；;，,\s])", cleaned):
+        return "错误"
+    return None
+
+
 def simple_fill_values(segment: str) -> str | list[str] | None:
     first = re.split(r"[。\n]", strip_ai_marker(segment), maxsplit=1)[0].strip()
     parts = [compact_space(item) for item in re.split(r"[；;]", first) if compact_space(item)]
@@ -287,6 +342,9 @@ def split_answer_items(answer: str, question_type: str, question_text: str = "")
         if question_type == "choice":
             value = extract_choice_answer(raw)
             item_match_type = "choice" if value else None
+        elif question_type == "true_false":
+            value = extract_true_false_answer(raw)
+            item_match_type = "exact" if value else None
         else:
             value = simple_fill_values(raw)
             if isinstance(value, str) and numeric_answer(value):
@@ -345,9 +403,13 @@ def deterministic_answer_structure(correct_answer: object) -> bool:
     return True
 
 
-def stable_exam_id(chapter_id: str, name: str) -> str:
-    digest = hashlib.sha1(name.encode("utf-8")).hexdigest()[:10]
-    return f"{chapter_id}.exam.local.{digest}"
+def parse_required_flag(value: str) -> bool:
+    normalized = compact_space(value)
+    if normalized == "是":
+        return True
+    if normalized == "否":
+        return False
+    raise ValueError(f"是否为必做题必须为‘是’或‘否’，实际为：{value!r}")
 
 
 def normalized_type(source_type: str) -> str:
@@ -361,15 +423,19 @@ def infer_type(source_type: str, question_text: str) -> tuple[str, bool]:
     declared = normalized_type(source_type)
     prefix = compact_space(question_text[:100])
     inferred = None
-    if re.search(r"(?:^|[、：:])\s*选择\s*[：:]", prefix):
+    if re.search(r"(?:^|[、：:])\s*选择题?\s*[：:]", prefix):
         inferred = "choice"
-    elif re.search(r"(?:^|[、：:])\s*填空\s*[：:]", prefix):
+    elif re.search(r"(?:^|[、：:])\s*填空题?\s*[：:]", prefix):
         inferred = "fill_blank"
-    elif re.search(r"(?:^|[、：:])\s*判断\s*[：:]", prefix):
+    elif re.search(r"(?:^|[、：:])\s*判断题?\s*[：:]", prefix):
         inferred = "true_false"
-    elif re.search(r"(?:^|[、：:])\s*计算\s*[：:]", prefix):
+    elif re.search(r"(?:^|[、：:])\s*计算题?\s*[：:]", prefix):
         inferred = "calculation"
-    if inferred is None and len(parse_options(question_text)) >= 2:
+    parsed_option_labels = set(parse_options(question_text))
+    if inferred is None and (
+        declared in {"choice", "unknown"}
+        or parsed_option_labels == {"A", "B", "C", "D"}
+    ) and len(parsed_option_labels) >= 2:
         inferred = "choice"
     if inferred and inferred != declared:
         return inferred, True
@@ -384,11 +450,16 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
     wrong_analysis = "\n".join(parsed.fields.get("wrong_analysis", [])).strip()
     qtype, type_mismatch = infer_type(metadata.get("question_type_source", ""), question_text)
 
-    main_kp_name, main_kp_id = parse_named_id(metadata.get("main_kp_source", ""))
-    main_exam_name, main_exam_id = parse_named_id(metadata.get("main_exam_point_source", ""))
+    section_name, _ = parse_named_id(metadata.get("main_section_source", ""))
+    kp_name, _ = parse_named_id(metadata.get("main_kp_source", ""))
     chapter_id = "math.g6.rational"
-    if main_exam_name and not main_exam_id:
-        main_exam_id = stable_exam_id(chapter_id, main_exam_name)
+    chapter_name = metadata.get("chapter_source", "").strip() or "第1章 有理数"
+    section_spec = SECTION_BY_NAME.get(section_name)
+    kp_spec = KNOWLEDGE_POINT_BY_NAME.get(kp_name)
+    if section_name and section_spec is None:
+        raise ValueError(f"新版 Word 出现未登记的主属节：{section_name}")
+    if kp_name and kp_spec is None:
+        raise ValueError(f"新版 Word 出现未登记的节内主属 KP：{kp_name}")
 
     difficulty = metadata.get("difficulty_source", "").count("★") or None
     multiple = has_subquestions(question_text, reference_answer) or count_blanks(question_text) > 1
@@ -401,7 +472,7 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
     match_type = None
     grading_readiness = "raw_answer_only"
 
-    if multiple and qtype in {"choice", "fill_blank"}:
+    if multiple and qtype in {"choice", "fill_blank", "true_false"}:
         answer_items = split_answer_items(reference_answer, qtype, question_text)
         if not answer_items:
             answer_items = [
@@ -424,6 +495,10 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
         correct_answer = extract_fill_answer(reference_answer)
         match_type = "numeric" if correct_answer and numeric_answer(correct_answer) else "exact"
         grading_readiness = "machine_ready" if correct_answer else "raw_answer_only"
+    elif qtype == "true_false":
+        correct_answer = extract_true_false_answer(reference_answer)
+        match_type = "exact" if correct_answer else None
+        grading_readiness = "machine_ready" if correct_answer else "raw_answer_only"
 
     if grading_readiness == "machine_ready" and not deterministic_answer_structure(correct_answer):
         grading_readiness = "raw_answer_only"
@@ -433,9 +508,9 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
         issues.append("missing_question_text")
     if not reference_answer:
         issues.append("missing_reference_answer")
-    if not main_kp_name:
+    if not section_name:
         issues.append("missing_main_knowledge_point")
-    if not main_exam_name:
+    if not kp_name:
         issues.append("missing_main_exam_point")
     if difficulty is None:
         issues.append("missing_difficulty")
@@ -447,7 +522,7 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
         issues.append("question_type_mismatch")
     if qtype == "choice" and not multiple and len(options) < 2:
         issues.append("options_not_structured")
-    if qtype in {"choice", "fill_blank"} and grading_readiness != "machine_ready":
+    if qtype in {"choice", "fill_blank", "true_false"} and grading_readiness != "machine_ready":
         issues.append("answer_items_not_structured")
     if "【AI 草拟" in reference_answer or "【AI 草拟" in wrong_analysis:
         issues.append("source_contains_ai_draft_marker")
@@ -477,10 +552,12 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
         import_status = "needs_technical_cleanup"
 
     return {
-        "schema_version": "1.2",
+        "schema_version": "2.0",
         "original_qid": metadata.get("original_qid", ""),
-        "chapter": {"id": chapter_id, "name": "有理数"},
-        "section": main_kp_name or None,
+        "grade": metadata.get("grade_source", "").strip(),
+        "chapter": {"id": chapter_id, "name": chapter_name},
+        "section_id": section_spec["id"] if section_spec else None,
+        "section": section_name or None,
         "question_type": qtype,
         "question_type_source": metadata.get("question_type_source", ""),
         "difficulty": difficulty,
@@ -491,10 +568,22 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
         "answer_match_type": match_type,
         "answer_normalization_rule": rules,
         "grading_readiness": grading_readiness,
-        "main_knowledge_point": {"id": main_kp_id, "name": main_kp_name},
-        "related_knowledge_points": split_related(metadata.get("related_kp_source", "")),
-        "main_exam_point": {"id": main_exam_id, "name": main_exam_name},
-        "related_exam_points": split_related(metadata.get("related_exam_point_source", "")),
+        "main_knowledge_point": {
+            key: kp_spec[key]
+            for key in ("id", "name", "mastery_level", "core_competencies", "curriculum_basis")
+        } if kp_spec else {"id": None, "name": kp_name},
+        "related_knowledge_points": [],
+        "main_exam_point": {
+            "id": kp_spec["tracking_id"],
+            "name": kp_spec["name"],
+        } if kp_spec else {"id": None, "name": kp_name},
+        "related_exam_points": [],
+        "mastery_level": kp_spec["mastery_level"] if kp_spec else None,
+        "core_competencies": kp_spec["core_competencies"] if kp_spec else [],
+        "curriculum_basis": kp_spec["curriculum_basis"] if kp_spec else None,
+        "taxonomy_source": TAXONOMY_SOURCE,
+        "core_literacy": metadata.get("core_literacy_source", "").strip(),
+        "is_required": parse_required_flag(metadata.get("is_required_source", "")),
         "solution": solution or None,
         "wrong_analysis": strip_ai_marker(wrong_analysis) or None,
         "estimated_score_rate": metadata.get("estimated_score_rate") or None,
@@ -562,7 +651,7 @@ def eligible_for_seed(record: dict) -> bool:
         "missing_main_exam_point",
         "missing_difficulty",
     }
-    if record["question_type"] not in {"choice", "fill_blank"}:
+    if record["question_type"] not in {"choice", "fill_blank", "true_false"}:
         return False
     if record["grading_readiness"] != "machine_ready":
         return False
@@ -612,35 +701,38 @@ def select_diverse(records: list[dict], limit: int) -> list[dict]:
 
 
 def build_knowledge_tree(records: Iterable[dict]) -> dict:
-    kp_map: dict[str, dict] = {}
-    for record in records:
-        kp = record["main_knowledge_point"]
-        if not kp["name"]:
-            continue
-        kp_id = kp["id"] or f"math.g6.rational.kp.local.{hashlib.sha1(kp['name'].encode('utf-8')).hexdigest()[:10]}"
-        node = kp_map.setdefault(
-            kp_id,
-            {"id": kp_id, "name": kp["name"], "order_no": len(kp_map) + 1, "exam_points": {}},
-        )
-        exam = record["main_exam_point"]
-        if exam["name"]:
-            node["exam_points"].setdefault(
-                exam["id"],
-                {"id": exam["id"], "name": exam["name"], "order_no": len(node["exam_points"]) + 1},
-            )
+    records = list(records)
     knowledge_points = []
-    # Insertion order follows the reviewed source document (teaching order).
-    for node in kp_map.values():
-        node["exam_points"] = list(node["exam_points"].values())
-        knowledge_points.append(node)
+    for spec in KNOWLEDGE_POINT_BY_NAME.values():
+        knowledge_points.append({
+            "id": spec["id"],
+            "name": spec["name"],
+            "mastery_level": spec["mastery_level"],
+            "core_competencies": spec["core_competencies"],
+            "curriculum_basis": spec["curriculum_basis"],
+            "order_no": spec["order_no"],
+            "exam_points": [{
+                "id": spec["tracking_id"],
+                "name": spec["name"],
+                "order_no": spec["order_no"],
+            }],
+        })
     return {
-        "schema_version": "1.0",
-        "chapter": {"id": "math.g6.rational", "name": "有理数"},
+        "schema_version": "2.0",
+        "taxonomy_source": TAXONOMY_SOURCE,
+        "grade": next((record["grade"] for record in records if record.get("grade")), "六年级上册"),
+        "chapter": {"id": "math.g6.rational", "name": "第1章 有理数"},
+        "sections": SECTIONS,
+        "semantic_mapping": {
+            "sections": "新版 Word 主属节",
+            "knowledge_points": "新版 Word 节内主属 KP",
+            "exam_points": "画像、推荐与组卷内部跟踪键",
+        },
         "knowledge_points": knowledge_points,
         "notes": [
-            "层级来自校本审核 DOCX 的主属 KP 与主属考点字段。",
-            "源文件未提供考点 ID 时，使用基于考点名称生成的稳定 local ID；教师确认正式编号后可迁移。",
-            "M0 仅固定首版结构，不代表全部考点已经完成教学专家审核。",
+            "题目的主属节和节内主属 KP 逐题继承新版校本审核 DOCX，不再使用旧版 Word 考点。",
+            "节与知识点采用上海五四制知识图谱的稳定 ID；Word 提供每道题的具体归属。",
+            "exam_points 是兼容既有组卷、画像和推荐模块的一对一内部跟踪键，不作为旧考点展示。",
         ],
     }
 
@@ -745,8 +837,13 @@ def write_audit_csv(path: Path, records: list[dict]) -> None:
         "source_question_number",
         "question_type",
         "difficulty",
+        "grade",
+        "chapter",
+        "section",
         "main_knowledge_point",
         "main_exam_point",
+        "core_literacy",
+        "is_required",
         "question_preview",
         "extracted_answer",
         "answer_match_type",
@@ -771,8 +868,13 @@ def write_audit_csv(path: Path, records: list[dict]) -> None:
                     "source_question_number": record["source_question_number"],
                     "question_type": record["question_type"],
                     "difficulty": record["difficulty"],
+                    "grade": record["grade"],
+                    "chapter": record["chapter"]["name"],
+                    "section": record["section"],
                     "main_knowledge_point": record["main_knowledge_point"]["name"],
                     "main_exam_point": record["main_exam_point"]["name"],
+                    "core_literacy": record["core_literacy"],
+                    "is_required": "yes" if record["is_required"] else "no",
                     "question_preview": record["question_text"].replace("\n", " ")[:160],
                     "extracted_answer": json.dumps(record["correct_answer"], ensure_ascii=False) if record["correct_answer"] is not None else "",
                     "answer_match_type": record["answer_match_type"] or "",
@@ -788,10 +890,12 @@ def write_audit_csv(path: Path, records: list[dict]) -> None:
 
 
 def find_default_source(project_root: Path) -> Path:
+    preferred = project_root / "code" / "六年级_数学_校本审核" / "新" / "rational_有理数.docx"
+    if preferred.is_file():
+        return preferred
     candidates = [
-        path
-        for path in project_root.rglob("rational_*校本审核*.docx")
-        if "__MACOSX" not in path.parts
+        path for path in project_root.rglob("rational_*.docx")
+        if "__MACOSX" not in path.parts and "新" in path.parts
     ]
     if len(candidates) != 1:
         raise FileNotFoundError(f"预期找到 1 个有理数校本审核 DOCX，实际找到 {len(candidates)} 个：{candidates}")
@@ -813,21 +917,21 @@ def build(source: Path, output_root: Path, project_root: Path, limit: int) -> di
     tree = build_knowledge_tree(records)
     issue_counts = Counter(issue for record in records for issue in record["import_issues"])
     report = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "source_file": source.relative_to(project_root).as_posix(),
         "total_extracted": len(records),
         "seed_candidate_count": len(selected),
         "eligible_count_before_limit": sum(eligible_for_seed(record) for record in records),
         "question_type_counts": dict(sorted(Counter(record["question_type"] for record in records).items())),
         "seed_type_counts": dict(sorted(Counter(record["question_type"] for record in selected).items())),
-        "seed_exam_point_count": len({record["main_exam_point"]["id"] for record in selected}),
-        "seed_exam_point_counts": dict(sorted(Counter(record["main_exam_point"]["name"] for record in selected).items())),
+        "seed_knowledge_point_count": len({record["main_exam_point"]["id"] for record in selected}),
+        "seed_knowledge_point_counts": dict(sorted(Counter(record["main_exam_point"]["name"] for record in selected).items())),
         "seed_machine_ready_count": sum(record["grading_readiness"] == "machine_ready" for record in selected),
         "seed_raw_answer_only_count": sum(record["grading_readiness"] == "raw_answer_only" for record in selected),
         "answer_structure_override_count": answer_structure_override_count,
         **asset_report,
         "issue_counts": dict(sorted(issue_counts.items())),
-        "source_status_note": "校本审核 DOCX 作为权威来源，题目与参考答案默认已审核；import_status 仅描述程序抽取和结构化状态。",
+        "source_status_note": "新版校本审核 DOCX 作为权威来源；年级、章、主属节、节内主属 KP、核心素养和必做题标记均直接继承该文件。",
     }
 
     write_json(output_root / "interim" / "rational_all.json", records)

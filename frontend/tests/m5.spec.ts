@@ -12,11 +12,11 @@ test('class analytics explains evidence and drills down to a student', async ({ 
   await expect(page.getByText('在册学生', { exact: true })).toBeVisible()
   await expect(page.getByText('确认作答', { exact: true })).toBeVisible()
   await expect(page.getByText('正确率只统计有效确认作答', { exact: false })).toBeVisible()
-  await expect(page.getByRole('img', { name: '班级考点正确率条形图' })).toBeVisible()
+  await expect(page.getByRole('img', { name: '班级知识点正确率条形图' })).toBeVisible()
   await expect(page.getByRole('table').first()).toBeVisible()
   await noOverflow(page)
 
-  const analyticsCard = page.locator('.ant-card').filter({ has: page.getByText('考点学情', { exact: true }) })
+  const analyticsCard = page.locator('.ant-card').filter({ has: page.getByText('知识点学情', { exact: true }) })
   await analyticsCard.getByRole('button').filter({ hasNotText: /正确率|掌握度/ }).first().click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await expect(page.getByText('未评估不是 0 分', { exact: false })).toBeVisible()
@@ -32,7 +32,7 @@ test('analytics metric can switch and page remains usable on narrow screens', as
   await page.goto('/')
   await expect(page).toHaveURL(/\/analytics/)
   await page.getByText('掌握度参考值', { exact: true }).click()
-  await expect(page.getByRole('img', { name: '班级考点掌握度参考均值条形图' })).toBeVisible()
+  await expect(page.getByRole('img', { name: '班级知识点掌握度参考均值条形图' })).toBeVisible()
   await noOverflow(page)
 })
 

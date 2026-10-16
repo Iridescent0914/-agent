@@ -15,10 +15,13 @@ export interface QuestionSummary {
   original_qid: string
   question_type: 'choice' | 'fill_blank' | 'calculation' | 'solution' | 'true_false' | 'unknown'
   difficulty: number
+  grade: string
   section: string
   question_text: string
   main_knowledge_point: Tag
   main_exam_point: Tag
+  core_literacy: string
+  is_required: boolean
   has_image: boolean
   has_equation: boolean
   asset_count: number
@@ -41,6 +44,7 @@ export interface QuestionCatalogKnowledgePoint extends Tag {
 }
 
 export interface QuestionCatalogChapter extends Tag {
+  sections: string[]
   knowledge_points: QuestionCatalogKnowledgePoint[]
 }
 
@@ -48,6 +52,7 @@ export interface QuestionCreateRequest {
   original_qid?: string
   question_type: 'choice' | 'fill_blank' | 'calculation' | 'solution' | 'true_false'
   difficulty: number
+  grade: string
   section: string
   question_text: string
   options?: string[]
@@ -57,6 +62,8 @@ export interface QuestionCreateRequest {
   solution?: string
   wrong_analysis?: string
   estimated_score_rate?: string
+  core_literacy: string
+  is_required: boolean
   operator_name: string
   assets?: Array<{ path: string }>
 }

@@ -71,7 +71,7 @@ export function ClassExamPointChart({
   return <ProfileChart
     option={option}
     height={Math.max(280, available.length * 42 + 58)}
-    label={metric === 'accuracy' ? '班级考点正确率条形图' : '班级考点掌握度参考均值条形图'}
+    label={metric === 'accuracy' ? '班级知识点正确率条形图' : '班级知识点掌握度参考均值条形图'}
     onPoint={(index) => { if (available[index]) onSelect(available[index].exam_point_code) }}
   />
 }

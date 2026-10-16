@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -15,7 +16,8 @@ from app.models import (
 from app.schemas.recommendations import RecommendationRequest
 from app.services.recommendations import preview
 from app.services.student_profile import (
-    MASTERY_FIELDS, attempt_detail, build_profile, history_for, load_context, persist_mastery,
+    MASTERY_FIELDS, _context_from_rows, attempt_detail, build_profile, history_for,
+    load_context, persist_mastery,
 )
 
 
@@ -53,8 +55,8 @@ def test_profile_history_detail_and_read_only_preview(client, db):
     profile = client.get(f"/api/v1/students/{student.id}/profile").json()
     assert profile["summary"]["valid_attempt_count"] >= 30
     assert profile["summary"]["assessed_exam_point_count"] == 10
-    assert profile["summary"]["unassessed_exam_point_count"] == 44
-    assert len(profile["masteries"]) == 54
+    assert profile["summary"]["unassessed_exam_point_count"] == 2
+    assert len(profile["masteries"]) == 12
     assert all(item["mastery"] is None for item in profile["masteries"] if item["attempt_count"] == 0)
     evaluated = [item for item in profile["masteries"] if item["attempt_count"]]
     for item in evaluated:
@@ -96,7 +98,44 @@ def test_snapshot_source_survives_current_question_changes(client, db):
     response = client.get(f"/api/v1/students/{context.student.id}/attempts",
                           params={"exam_point_code": code, "page_size": 1}).json()
     assert response["total"] == expected.mastery.attempt_count
-    assert response["items"][0]["main_exam_point_code"] == code
+    assert response["items"][0]["main_exam_point_code"] == expected.mastery.exam_point_code
+    mastery = client.get(
+        f"/api/v1/students/{context.student.id}/mastery",
+        params={"exam_point_code": code},
+    ).json()
+    assert [item["exam_point_code"] for item in mastery] == [
+        expected.mastery.exam_point_code
+    ]
+
+
+def test_true_false_snapshot_is_valid_profile_evidence(db):
+    student = first_student(db)
+    context = load_context(db, student.id)
+    record = next(item for item in context.records if item.problem is None)
+    snapshot = dict(record.item.question_snapshot)
+    snapshot["question_type"] = "true_false"
+    fake_item = SimpleNamespace(
+        id=record.item.id,
+        paper_instance_id=record.item.paper_instance_id,
+        question_id=record.item.question_id,
+        question_snapshot=snapshot,
+        exam_point_snapshot=record.item.exam_point_snapshot,
+    )
+    changed = _context_from_rows(
+        student,
+        context.catalog,
+        [(
+            record.attempt,
+            fake_item,
+            record.paper,
+            record.submission,
+            record.revision,
+        )],
+        {record.attempt.question_id: record.evidence.exam_point_code},
+    ).records[0]
+    assert changed.problem is None
+    assert changed.evidence is not None
+    assert changed.evidence.question_type == "true_false"
 
 
 def test_rebuild_idempotence_revision_and_withdrawal(db):

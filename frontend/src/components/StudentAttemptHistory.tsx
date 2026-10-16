@@ -26,7 +26,7 @@ export function StudentAttemptHistory({ studentId, catalog, onEvidence }: { stud
   const columns: ColumnsType<StudentAttempt> = [
     { title: '时间', dataIndex: 'answered_at', width: 170, render: (value: string) => new Date(value).toLocaleString('zh-CN') },
     { title: '题目', dataIndex: 'original_qid', width: 230, render: (_, item) => <Button type="link" className="table-link" onClick={() => onEvidence(item.id)}>{item.original_qid || '快照缺失'}</Button> },
-    { title: '当时主考点', dataIndex: 'main_exam_point_name', width: 210 },
+    { title: '当时主知识点', dataIndex: 'main_exam_point_name', width: 210 },
     { title: '难度', dataIndex: 'difficulty', width: 70, render: (value: number | null) => value ?? '-' },
     { title: '学生答案', dataIndex: 'student_answer', width: 240, render: (value: unknown) => <AnswerView answer={value} /> },
     { title: '结论', dataIndex: 'is_correct', width: 100, render: (value: boolean | null) => <Tag color={value === null ? 'default' : value ? 'success' : 'error'}>{value === null ? '待复核' : value ? '正确' : '错误'}</Tag> },
@@ -35,7 +35,7 @@ export function StudentAttemptHistory({ studentId, catalog, onEvidence }: { stud
   return <section className="profile-section">
     <Space wrap className="section-toolbar">
       <Segmented value={filter} options={[{ label: '全部', value: 'all' }, { label: '正确', value: 'correct' }, { label: '错误', value: 'wrong' }]} onChange={(value) => { setFilter(value); setPage(1) }} />
-      <Select aria-label="历史考点筛选" className="exam-select" value={exam} onChange={(value) => { setExam(value); setPage(1) }} allowClear showSearch optionFilterProp="label" placeholder="全部考点"
+      <Select aria-label="历史知识点筛选" className="exam-select" value={exam} onChange={(value) => { setExam(value); setPage(1) }} allowClear showSearch optionFilterProp="label" placeholder="全部知识点"
         options={catalog.map((item) => ({ value: item.code, label: item.name }))} />
     </Space>
     {error && <Alert message={error} type="error" showIcon />}

@@ -17,7 +17,7 @@ export function MasteryHistoryChart({ history, onEvidence }: { history: MasteryH
     series: [{ type: 'line', name: '掌握度参考值', symbolSize: 12, lineStyle: { color: '#168779', width: 2 },
       data: history.points.map((point) => ({ value: point.mastery_after, itemStyle: { color: point.is_correct ? '#168779' : '#ce6550' } })) }],
   }), [history])
-  if (!history.points.length) return <Empty description="此考点尚无确认作答" />
+  if (!history.points.length) return <Empty description="此知识点尚无确认作答" />
   return <ProfileChart option={option} height={280} label="掌握度变化曲线"
     onPoint={(index) => { if (history.points[index]) onEvidence(history.points[index].attempt_id) }} />
 }

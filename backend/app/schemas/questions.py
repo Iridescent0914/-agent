@@ -35,10 +35,13 @@ class QuestionListItem(BaseModel):
     original_qid: str
     question_type: str
     difficulty: int
+    grade: str
     section: str
     question_text: str
     main_knowledge_point: TagOut
     main_exam_point: TagOut
+    core_literacy: str
+    is_required: bool
     has_image: bool
     has_equation: bool
     asset_count: int
@@ -63,6 +66,7 @@ class QuestionCatalogKnowledgePoint(TagOut):
 
 
 class QuestionCatalogChapter(TagOut):
+    sections: list[str]
     knowledge_points: list[QuestionCatalogKnowledgePoint]
 
 
@@ -74,6 +78,7 @@ class QuestionCreateRequest(BaseModel):
         'choice', 'fill_blank', 'calculation', 'solution', 'true_false'
     ]
     difficulty: int = Field(ge=1, le=5)
+    grade: str = Field(default='六年级上册', min_length=1, max_length=80)
     section: str = Field(default='教师新增', min_length=1, max_length=255)
     question_text: str = Field(min_length=1, max_length=10000)
     options: list[str] | None = Field(default=None, min_length=2, max_length=8)
@@ -83,11 +88,13 @@ class QuestionCreateRequest(BaseModel):
     solution: str | None = Field(default=None, max_length=10000)
     wrong_analysis: str | None = Field(default=None, max_length=10000)
     estimated_score_rate: str | None = Field(default=None, max_length=64)
+    core_literacy: str = Field(default='待标注', min_length=1, max_length=255)
+    is_required: bool = False
     operator_name: str = Field(min_length=1, max_length=80)
     assets: list[QuestionAssetInput] = Field(default_factory=list, max_length=64)
 
     @field_validator(
-        'section', 'question_text', 'reference_answer_raw',
+        'grade', 'section', 'question_text', 'reference_answer_raw', 'core_literacy',
         'main_exam_point_code', 'operator_name',
     )
     @classmethod
@@ -120,11 +127,11 @@ class QuestionCreateRequest(BaseModel):
             raise ValueError('题目图片不能重复')
         related = [code.strip() for code in self.related_exam_point_codes]
         if any(not code for code in related):
-            raise ValueError('关联考点不能为空')
+            raise ValueError('关联知识点不能为空')
         if len(related) != len(set(related)):
-            raise ValueError('关联考点不能重复')
+            raise ValueError('关联知识点不能重复')
         if self.main_exam_point_code in related:
-            raise ValueError('主考点不能同时作为关联考点')
+            raise ValueError('节内主属 KP 不能同时作为关联知识点')
         self.related_exam_point_codes = related
         return self
 

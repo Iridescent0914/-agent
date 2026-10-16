@@ -25,8 +25,8 @@ _NUMERIC_RE = re.compile(r"^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$")
 
 
 def validate_review_items(question_type: str, items: list[dict[str, str]]) -> None:
-    if question_type not in {"choice", "fill_blank"}:
-        raise QuestionReviewValidation("当前仅支持审核选择题和填空题")
+    if question_type not in {"choice", "fill_blank", "true_false"}:
+        raise QuestionReviewValidation("当前仅支持审核选择题、填空题和判断题")
     if not items:
         raise QuestionReviewValidation("至少需要一个答案项")
 
@@ -44,6 +44,9 @@ def validate_review_items(question_type: str, items: list[dict[str, str]]) -> No
                 raise QuestionReviewValidation(
                     f"答案项 {item['item_id']} 必须是 A-H 中的单个选项"
                 )
+        elif question_type == "true_false":
+            if match_type != "exact" or answer not in {"正确", "错误"}:
+                raise QuestionReviewValidation("判断题答案必须是“正确”或“错误”")
         elif match_type not in {"numeric", "exact", "latex_exact"}:
             raise QuestionReviewValidation("填空题匹配类型只能是数值、精确文本或公式")
         elif match_type == "numeric" and not _NUMERIC_RE.fullmatch(answer):
@@ -160,8 +163,8 @@ def withdraw_question(
     question = _locked_question(db, question_id)
     if question.grading_readiness != "machine_ready":
         raise QuestionReviewConflict("该题当前不在自动组卷池中")
-    if question.question_type not in {"choice", "fill_blank"}:
-        raise QuestionReviewValidation("当前仅支持撤回选择题和填空题")
+    if question.question_type not in {"choice", "fill_blank", "true_false"}:
+        raise QuestionReviewValidation("当前仅支持撤回选择题、填空题和判断题")
     if question.review_revision != request.expected_review_revision:
         raise QuestionReviewConflict("题目已被其他人修改，请刷新后再操作")
 

@@ -19,7 +19,7 @@ test('assignment navigation and multi-student preview stay read-only', async ({ 
   await page.getByLabel('回顾范围').click()
   await page.getByRole('combobox', { name: '回顾范围' }).fill(sufficient.name)
   await page.locator('.ant-select-dropdown:visible').getByText(`${sufficient.name}（${sufficient.available_question_count}题）`, { exact: true }).click()
-  await page.getByRole('spinbutton', { name: '单考点最大占比' }).fill('1')
+  await page.getByRole('spinbutton', { name: '单知识点最大占比' }).fill('1')
   await page.getByRole('spinbutton', { name: '避免近期重复天数' }).fill('0')
   await page.getByRole('button', { name: '预检全部学生' }).click()
   await expect(page.getByText(/名学生可完整生成/)).toBeVisible()

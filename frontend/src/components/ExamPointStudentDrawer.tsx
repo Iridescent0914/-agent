@@ -45,7 +45,7 @@ export function ExamPointStudentDrawer({
     open={Boolean(examPointCode)}
     onClose={onClose}
     width={760}
-    title={data ? `${data.exam_point_name} · 学生证据` : '考点学生证据'}
+    title={data ? `${data.exam_point_name} · 学生证据` : '知识点学生证据'}
     className="analytics-drawer"
   >
     <Typography.Paragraph type="secondary">未评估不是 0 分；正确率只统计当前有效的确认作答。</Typography.Paragraph>

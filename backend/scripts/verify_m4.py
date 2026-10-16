@@ -16,8 +16,8 @@ def main() -> None:
     errors: list[str] = []
     with SessionLocal() as db:
         migration = db.scalar(text("SELECT version_num FROM alembic_version"))
-        if migration != "0019":
-            errors.append(f"migration is {migration}, expected 0019")
+        if migration != "0022":
+            errors.append(f"migration is {migration}, expected 0022")
 
         submissions = list(db.scalars(select(Submission)))
         attempts = list(db.scalars(select(Attempt)))

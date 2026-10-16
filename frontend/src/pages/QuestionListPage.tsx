@@ -46,9 +46,8 @@ export function QuestionListPage() {
   const createType = Form.useWatch('question_type', createForm)
   const createChapterCode = Form.useWatch('chapter_code', createForm)
   const filterChapterCode = Form.useWatch('chapter_code', filterForm)
-  const filterKnowledgePointCode = Form.useWatch('knowledge_point_code', filterForm)
   const filterKnowledgePoints = catalog.find((chapter) => chapter.code === filterChapterCode)?.knowledge_points || []
-  const filterExamPoints = filterKnowledgePoints.find((point) => point.code === filterKnowledgePointCode)?.exam_points || []
+  const filterSections = catalog.find((chapter) => chapter.code === filterChapterCode)?.sections || []
 
   useEffect(() => {
     const controller = new AbortController()
@@ -174,15 +173,18 @@ export function QuestionListPage() {
           </Space>,
     },
     { title: '难度', dataIndex: 'difficulty', width: 100, render: (value: number) => '★'.repeat(value) },
-    { title: '知识点', dataIndex: ['main_knowledge_point', 'name'], width: 170 },
-    { title: '主考点', dataIndex: ['main_exam_point', 'name'], width: 180 },
+    { title: '年级', dataIndex: 'grade', width: 110 },
+    { title: '主属节', dataIndex: 'section', width: 180 },
+    { title: '节内主属 KP', dataIndex: ['main_knowledge_point', 'name'], width: 210 },
+    { title: '核心素养', dataIndex: 'core_literacy', width: 150 },
+    { title: '必做', dataIndex: 'is_required', width: 70, render: (value: boolean) => value ? <Tag color="red">是</Tag> : '否' },
     {
       title: '操作',
       key: 'action',
       width: 210,
       fixed: 'right',
       render: (_, record) => {
-        const canEdit = record.question_type === 'choice' || record.question_type === 'fill_blank'
+        const canEdit = record.question_type === 'choice' || record.question_type === 'fill_blank' || record.question_type === 'true_false'
         const isPending = record.grading_readiness === 'raw_answer_only'
         const label = canEdit ? (isPending ? '去审核' : '撤回/编辑') : '查看'
         return <Space>
@@ -223,7 +225,7 @@ export function QuestionListPage() {
       <div className='student-heading'>
         <div>
           <Typography.Title level={2}>题库</Typography.Title>
-          <Typography.Text type='secondary'>可按章节、知识点和主考点逐级筛选；只有结构化答案可靠的题目才进入自动组卷池。</Typography.Text>
+          <Typography.Text type='secondary'>可按章、主属节和节内主属 KP 逐级筛选；只有结构化答案可靠的题目才进入自动组卷池。</Typography.Text>
         </div>
         <Button type='primary' icon={<PlusOutlined />} onClick={() => {
           if (!createForm.getFieldValue('chapter_code') && catalog[0]) createForm.setFieldValue('chapter_code', catalog[0].code)
@@ -248,8 +250,8 @@ export function QuestionListPage() {
           initialValues={{
             keyword: searchParams.get('keyword') || '',
             chapter_code: searchParams.get('chapter_code') || undefined,
+            section: searchParams.get('section') || undefined,
             knowledge_point_code: searchParams.get('knowledge_point_code') || undefined,
-            exam_point_code: searchParams.get('exam_point_code') || undefined,
             question_type: searchParams.get('question_type') || undefined,
             grading_readiness: searchParams.get('grading_readiness') || undefined,
             difficulty: searchParams.get('difficulty') ? Number(searchParams.get('difficulty')) : undefined,
@@ -258,9 +260,9 @@ export function QuestionListPage() {
         >
           <Row gutter={16} align="bottom">
             <Col xs={24} md={6}><Form.Item name="keyword" label="关键词或 qid"><Input allowClear prefix={<SearchOutlined />} /></Form.Item></Col>
-            <Col xs={12} md={4}><Form.Item name="chapter_code" label="章节"><Select allowClear options={catalog.map((chapter) => ({ value: chapter.code, label: chapter.name }))} onChange={() => filterForm.setFieldsValue({ knowledge_point_code: undefined, exam_point_code: undefined })} /></Form.Item></Col>
-            <Col xs={12} md={6}><Form.Item name="knowledge_point_code" label="知识点"><Select allowClear disabled={!filterChapterCode} options={filterKnowledgePoints.map((point) => ({ value: point.code, label: point.name }))} onChange={() => filterForm.setFieldValue('exam_point_code', undefined)} /></Form.Item></Col>
-            <Col xs={24} md={8}><Form.Item name="exam_point_code" label="主考点"><Select allowClear showSearch optionFilterProp="label" disabled={!filterKnowledgePointCode} options={filterExamPoints.map((point) => ({ value: point.code, label: point.name }))} /></Form.Item></Col>
+            <Col xs={12} md={4}><Form.Item name="chapter_code" label="章节"><Select allowClear options={catalog.map((chapter) => ({ value: chapter.code, label: chapter.name }))} onChange={() => filterForm.setFieldsValue({ section: undefined, knowledge_point_code: undefined })} /></Form.Item></Col>
+            <Col xs={12} md={6}><Form.Item name="section" label="主属节"><Select allowClear disabled={!filterChapterCode} options={filterSections.map((value) => ({ value, label: value }))} /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name="knowledge_point_code" label="节内主属 KP"><Select allowClear showSearch optionFilterProp="label" disabled={!filterChapterCode} options={filterKnowledgePoints.map((point) => ({ value: point.code, label: point.name }))} /></Form.Item></Col>
           </Row>
           <Row gutter={16} align="bottom">
             <Col xs={12} md={6}><Form.Item name="grading_readiness" label="题库状态"><Select allowClear options={[{ value: 'machine_ready', label: '自动组卷池' }, { value: 'raw_answer_only', label: '待入库验证' }]} /></Form.Item></Col>
@@ -279,7 +281,7 @@ export function QuestionListPage() {
           loading={loading}
           pagination={pagination}
           locale={{ emptyText: <Empty description="没有符合条件的题目" /> }}
-          scroll={{ x: 1090 }}
+          scroll={{ x: 1650 }}
         />
       </Card>
       <Modal
@@ -305,7 +307,10 @@ export function QuestionListPage() {
           initialValues={{
             question_type: 'fill_blank',
             difficulty: 3,
+            grade: '六年级上册',
             section: '教师新增',
+            core_literacy: '待标注',
+            is_required: false,
             operator_name: '任课教师',
             related_exam_point_codes: [],
           }}
@@ -317,10 +322,15 @@ export function QuestionListPage() {
           </Row>
           <Row gutter={16}>
             <Col xs={24} md={8}><Form.Item name='chapter_code' label='章节' rules={[{ required: true }]}><Select options={catalog.map((chapter) => ({ value: chapter.code, label: chapter.name }))} /></Form.Item></Col>
-            <Col xs={24} md={8}><Form.Item name='main_exam_point_code' label='主考点' rules={[{ required: true }]}><Select showSearch optionFilterProp='label' options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item></Col>
-            <Col xs={24} md={8}><Form.Item name='section' label='小节' rules={[{ required: true }]}><Input maxLength={255} /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name='main_exam_point_code' label='节内主属 KP' rules={[{ required: true }]}><Select showSearch optionFilterProp='label' options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name='section' label='主属节' rules={[{ required: true }]}><Input maxLength={255} /></Form.Item></Col>
           </Row>
-          <Form.Item name='related_exam_point_codes' label='关联考点'><Select mode='multiple' showSearch optionFilterProp='label' options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item>
+          <Row gutter={16}>
+            <Col xs={24} md={8}><Form.Item name='grade' label='年级' rules={[{ required: true, whitespace: true }]}><Input maxLength={80} /></Form.Item></Col>
+            <Col xs={24} md={10}><Form.Item name='core_literacy' label='核心素养' rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item></Col>
+            <Col xs={24} md={6}><Form.Item name='is_required' label='是否为必做题' rules={[{ required: true }]}><Select options={[{ value: true, label: '是' }, { value: false, label: '否' }]} /></Form.Item></Col>
+          </Row>
+          <Form.Item name='related_exam_point_codes' label='关联知识点（可选）'><Select mode='multiple' showSearch optionFilterProp='label' options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item>
           <Form.Item name='question_text' label='题干' rules={[{ required: true, whitespace: true }]}><MathTextEditor rows={5} maxLength={10000} /></Form.Item>
           <Form.Item
             label='题目图片（可选）'
