@@ -11,7 +11,7 @@ from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import (
     Assignment, Attempt, AttemptRevision, PaperInstance, Question,
-    QuestionExamPoint, Student, StudentMastery,
+    Student, StudentMastery,
 )
 from app.schemas.recommendations import RecommendationRequest
 from app.services.recommendations import preview
@@ -54,13 +54,13 @@ def test_profile_history_detail_and_read_only_preview(client, db):
     before = counts(db)
     profile = client.get(f"/api/v1/students/{student.id}/profile").json()
     assert profile["summary"]["valid_attempt_count"] >= 30
-    assert profile["summary"]["assessed_exam_point_count"] == 10
-    assert profile["summary"]["unassessed_exam_point_count"] == 2
+    assert profile["summary"]["assessed_knowledge_point_count"] == 10
+    assert profile["summary"]["unassessed_knowledge_point_count"] == 2
     assert len(profile["masteries"]) == 12
     assert all(item["mastery"] is None for item in profile["masteries"] if item["attempt_count"] == 0)
     evaluated = [item for item in profile["masteries"] if item["attempt_count"]]
     for item in evaluated:
-        history = client.get(f"/api/v1/students/{student.id}/mastery/{item['exam_point_code']}/history").json()
+        history = client.get(f"/api/v1/students/{student.id}/mastery/{item['knowledge_point_code']}/history").json()
         assert history["points"][-1]["mastery_after"] == item["mastery"]
         assert len(history["points"]) == item["attempt_count"]
     attempt_id = history["points"][0]["attempt_id"]
@@ -70,7 +70,7 @@ def test_profile_history_detail_and_read_only_preview(client, db):
     other = db.scalar(select(Student).where(Student.student_code == "S002"))
     assert client.get(f"/api/v1/students/{other.id}/attempts/{attempt_id}").status_code == 404
     response = client.post(f"/api/v1/students/{student.id}/recommendations/preview", json={
-        "review_exam_point_codes": [item["exam_point_code"] for item in evaluated], "review_count": 6,
+        "review_knowledge_point_codes": [item["knowledge_point_code"] for item in evaluated], "review_count": 6,
     })
     assert response.status_code == 200
     output = response.json()
@@ -82,29 +82,26 @@ def test_profile_history_detail_and_read_only_preview(client, db):
 def test_snapshot_source_survives_current_question_changes(client, db):
     context = load_context(db, first_student(db).id)
     record = context.records[0]
-    code = record.item.exam_point_snapshot["main"]["id"]
+    code = record.main_knowledge_point["id"]
     original_text = record.item.question_snapshot["question_text"]
     expected = history_for(context, code)
     question = db.get(Question, record.attempt.question_id)
     question.question_text = "changed current question"
     question.difficulty = 5 if question.difficulty != 5 else 1
-    link = db.scalar(select(QuestionExamPoint).where(QuestionExamPoint.question_id == question.id,
-                                                   QuestionExamPoint.relation_type == "main"))
-    link.relation_type = "related"
     db.flush()
     fresh = load_context(db, context.student.id)
     assert history_for(fresh, code).points == expected.points
     assert attempt_detail(fresh.records[0]).question_snapshot["question_text"] == original_text
     response = client.get(f"/api/v1/students/{context.student.id}/attempts",
-                          params={"exam_point_code": code, "page_size": 1}).json()
+                          params={"knowledge_point_code": code, "page_size": 1}).json()
     assert response["total"] == expected.mastery.attempt_count
-    assert response["items"][0]["main_exam_point_code"] == expected.mastery.exam_point_code
+    assert response["items"][0]["main_knowledge_point_code"] == expected.mastery.knowledge_point_code
     mastery = client.get(
         f"/api/v1/students/{context.student.id}/mastery",
-        params={"exam_point_code": code},
+        params={"knowledge_point_code": code},
     ).json()
-    assert [item["exam_point_code"] for item in mastery] == [
-        expected.mastery.exam_point_code
+    assert [item["knowledge_point_code"] for item in mastery] == [
+        expected.mastery.knowledge_point_code
     ]
 
 
@@ -119,7 +116,7 @@ def test_true_false_snapshot_is_valid_profile_evidence(db):
         paper_instance_id=record.item.paper_instance_id,
         question_id=record.item.question_id,
         question_snapshot=snapshot,
-        exam_point_snapshot=record.item.exam_point_snapshot,
+        knowledge_point_snapshot=record.item.knowledge_point_snapshot,
     )
     changed = _context_from_rows(
         student,
@@ -131,7 +128,10 @@ def test_true_false_snapshot_is_valid_profile_evidence(db):
             record.submission,
             record.revision,
         )],
-        {record.attempt.question_id: record.evidence.exam_point_code},
+        {record.attempt.question_id: (
+            record.evidence.knowledge_point_code,
+            record.main_knowledge_point["name"],
+        )},
     ).records[0]
     assert changed.problem is None
     assert changed.evidence is not None
@@ -144,11 +144,11 @@ def test_rebuild_idempotence_revision_and_withdrawal(db):
     initial_valid_count = build_profile(context).summary.valid_attempt_count
     before_counts = counts(db)[:4]
     persist_mastery(db, context)
-    before = {row.exam_point_id: (tuple(getattr(row, field) for field in MASTERY_FIELDS), row.updated_at)
+    before = {row.knowledge_point_id: (tuple(getattr(row, field) for field in MASTERY_FIELDS), row.updated_at)
               for row in db.scalars(select(StudentMastery).where(StudentMastery.student_id == student.id))}
     second = persist_mastery(db, load_context(db, student.id))
     assert second == {"inserted": 0, "updated": 0, "deleted": 0, "unchanged": 10}
-    after = {row.exam_point_id: (tuple(getattr(row, field) for field in MASTERY_FIELDS), row.updated_at)
+    after = {row.knowledge_point_id: (tuple(getattr(row, field) for field in MASTERY_FIELDS), row.updated_at)
              for row in db.scalars(select(StudentMastery).where(StudentMastery.student_id == student.id))}
     assert before == after and counts(db)[:4] == before_counts
 
@@ -163,18 +163,18 @@ def test_rebuild_idempotence_revision_and_withdrawal(db):
     corrected = load_context(db, student.id)
     persist_mastery(db, corrected)
     assert build_profile(corrected).summary.valid_attempt_count == initial_valid_count
-    code = record.evidence.exam_point_code
+    code = record.evidence.knowledge_point_code
     point = next(point for point in history_for(corrected, code).points if point.attempt_id == attempt.id)
     assert point.revision_no == 2 and point.answered_at == attempt.answered_at
 
     for item in corrected.records:
-        if item.evidence and item.evidence.exam_point_code == code:
+        if item.evidence and item.evidence.knowledge_point_code == code:
             item.attempt.grade_status, item.attempt.is_correct = "needs_review", None
     db.flush()
     withdrawn = load_context(db, student.id)
     persist_mastery(db, withdrawn)
     assert history_for(withdrawn, code).mastery.mastery is None
-    assert db.get(StudentMastery, (student.id, record.evidence.exam_point_id)) is None
+    assert db.get(StudentMastery, (student.id, record.evidence.knowledge_point_id)) is None
 
 
 def test_empty_student_and_invalid_evidence(client, db):
@@ -198,7 +198,7 @@ def test_api_validation_and_cors(client, db):
     student = first_student(db)
     endpoint = f"/api/v1/students/{student.id}/recommendations/preview"
     assert client.post(endpoint, json={}).status_code == 422
-    response = client.post(endpoint, json={"review_exam_point_codes": ["nonexistent"],
+    response = client.post(endpoint, json={"review_knowledge_point_codes": ["nonexistent"],
                                            "review_count": 2})
     assert response.status_code == 422
     assert response.json()["code"] == "http_422"
@@ -216,8 +216,8 @@ def test_api_validation_and_cors(client, db):
 
 def test_fixed_time_recommendations_are_repeatable(db):
     context = load_context(db, first_student(db).id)
-    codes = [exam.code for exam in context.catalog if exam.available_question_count]
-    params = RecommendationRequest(review_exam_point_codes=codes, review_count=6)
+    codes = [point.code for point in context.catalog if point.available_question_count]
+    params = RecommendationRequest(review_knowledge_point_codes=codes, review_count=6)
     at = datetime(2026, 9, 23, tzinfo=timezone.utc)
     first = preview(db, context, params, as_of=at)
     assert first == preview(db, context, params, as_of=at)

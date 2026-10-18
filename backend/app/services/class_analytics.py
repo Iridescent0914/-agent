@@ -13,17 +13,17 @@ from app.schemas.analytics import (
     AssignmentProgressStudent,
     AssignmentProgressSummary,
     ClassAnalyticsSummary,
-    ClassExamPointAnalytics,
+    ClassKnowledgePointAnalytics,
     ClassFocusPoint,
     ClassOption,
     ClassOverviewOut,
-    ExamPointStudentAnalytics,
-    ExamPointStudentListOut,
+    KnowledgePointStudentAnalytics,
+    KnowledgePointStudentListOut,
 )
 from app.services.mastery import RULE_VERSION
 from app.services.student_profile import (
     ProfileContext,
-    exam_point_catalog,
+    knowledge_point_catalog,
     load_context,
     mastery_items,
 )
@@ -63,12 +63,8 @@ def _active_students(db: Session, class_name: str) -> list[Student]:
     )
 
 
-def _record_exam_code(record: object) -> str | None:
-    # Historical paper snapshots are immutable and may still contain the old
-    # Word-derived exam-point ID. load_context has already resolved that ID to
-    # the question's current formal KP tracking node, so aggregation must use
-    # effective_main instead of reading the stale snapshot again.
-    main = getattr(record, "effective_main", None)
+def _record_knowledge_code(record: object) -> str | None:
+    main = getattr(record, "main_knowledge_point", None)
     if not isinstance(main, dict):
         return None
     code = main.get("id")
@@ -98,28 +94,34 @@ def build_class_overview(
     students = _active_students(db, class_name)
     if not students:
         raise LookupError("class not found")
-    catalog = exam_point_catalog(db, chapter_code)
+    catalog = knowledge_point_catalog(db, chapter_code)
     if not catalog:
         raise LookupError("chapter not found")
     catalog_codes = {item.code for item in catalog}
     contexts = _contexts(db, students)
     all_catalog_codes = {item.code for item in contexts[0].catalog}
     mastery_by_student = {
-        context.student.id: {item.exam_point_code: item for item in mastery_items(context, chapter_code)}
+        context.student.id: {
+            item.knowledge_point_code: item
+            for item in mastery_items(context, chapter_code)
+        }
         for context in contexts
     }
 
-    exam_rows: list[ClassExamPointAnalytics] = []
-    for exam in catalog:
-        items = [mastery_by_student[student.id][exam.code] for student in students]
+    knowledge_rows: list[ClassKnowledgePointAnalytics] = []
+    for knowledge_point in catalog:
+        items = [
+            mastery_by_student[student.id][knowledge_point.code]
+            for student in students
+        ]
         evidenced = [item for item in items if item.mastery is not None]
         confirmed = sum(item.attempt_count for item in evidenced)
         correct = sum(item.correct_count for item in evidenced)
-        exam_rows.append(
-            ClassExamPointAnalytics(
-                exam_point_id=exam.id,
-                exam_point_code=exam.code,
-                exam_point_name=exam.name,
+        knowledge_rows.append(
+            ClassKnowledgePointAnalytics(
+                knowledge_point_id=knowledge_point.id,
+                knowledge_point_code=knowledge_point.code,
+                knowledge_point_name=knowledge_point.name,
                 student_count=len(students),
                 evidence_student_count=len(evidenced),
                 stable_student_count=sum(
@@ -134,21 +136,22 @@ def build_class_overview(
                     [item.mastery for item in evidenced if item.mastery is not None]
                 ),
                 recent_wrong_count=sum(item.recent_wrong_count for item in evidenced),
-                available_question_count=exam.available_question_count,
+                available_question_count=knowledge_point.available_question_count,
             )
         )
 
-    confirmed_attempt_count = sum(row.confirmed_attempt_count for row in exam_rows)
+    confirmed_attempt_count = sum(row.confirmed_attempt_count for row in knowledge_rows)
     pending_review_count = 0
     invalid_evidence_count = 0
     evidence_student_count = 0
     for context in contexts:
         if any(
-            (context.student.id, exam.id) in context.results for exam in catalog
+            (context.student.id, knowledge_point.id) in context.results
+            for knowledge_point in catalog
         ):
             evidence_student_count += 1
         for record in context.records:
-            code = _record_exam_code(record)
+            code = _record_knowledge_code(record)
             if record.problem == "needs_review":
                 if code in catalog_codes:
                     pending_review_count += 1
@@ -159,12 +162,12 @@ def build_class_overview(
                     invalid_evidence_count += 1
 
     focus_points: list[ClassFocusPoint] = []
-    for row in exam_rows:
+    for row in knowledge_rows:
         if row.evidence_student_count == 0 and row.available_question_count > 0:
             focus_points.append(
                 ClassFocusPoint(
-                    exam_point_code=row.exam_point_code,
-                    exam_point_name=row.exam_point_name,
+                    knowledge_point_code=row.knowledge_point_code,
+                    knowledge_point_name=row.knowledge_point_name,
                     category="diagnostic",
                     reason=f"全班 {row.student_count} 名学生暂未评估，可安排基础诊断。",
                 )
@@ -172,8 +175,8 @@ def build_class_overview(
         elif row.stable_student_count > 0 and row.average_mastery is not None and row.average_mastery < 0.4:
             focus_points.append(
                 ClassFocusPoint(
-                    exam_point_code=row.exam_point_code,
-                    exam_point_name=row.exam_point_name,
+                    knowledge_point_code=row.knowledge_point_code,
+                    knowledge_point_name=row.knowledge_point_name,
                     category="practice",
                     reason=(
                         f"{row.evidence_student_count}/{row.student_count} 名学生有证据，"
@@ -184,8 +187,8 @@ def build_class_overview(
         elif row.recent_wrong_count > 0:
             focus_points.append(
                 ClassFocusPoint(
-                    exam_point_code=row.exam_point_code,
-                    exam_point_name=row.exam_point_name,
+                    knowledge_point_code=row.knowledge_point_code,
+                    knowledge_point_name=row.knowledge_point_name,
                     category="recent_errors",
                     reason=(
                         f"各学生最近窗口合计 {row.recent_wrong_count} 次错误，"
@@ -196,8 +199,8 @@ def build_class_overview(
         elif row.evidence_student_count > row.stable_student_count:
             focus_points.append(
                 ClassFocusPoint(
-                    exam_point_code=row.exam_point_code,
-                    exam_point_name=row.exam_point_name,
+                    knowledge_point_code=row.knowledge_point_code,
+                    knowledge_point_name=row.knowledge_point_name,
                     category="observe",
                     reason=(
                         f"{row.evidence_student_count} 名学生已有作答，"
@@ -207,8 +210,10 @@ def build_class_overview(
             )
 
     focus_priority = {"practice": 0, "recent_errors": 1, "observe": 2, "diagnostic": 3}
-    focus_points.sort(key=lambda item: (focus_priority[item.category], item.exam_point_code))
-    covered = sum(row.evidence_student_count > 0 for row in exam_rows)
+    focus_points.sort(
+        key=lambda item: (focus_priority[item.category], item.knowledge_point_code)
+    )
+    covered = sum(row.evidence_student_count > 0 for row in knowledge_rows)
     return ClassOverviewOut(
         class_name=class_name,
         chapter_code=chapter_code,
@@ -220,39 +225,42 @@ def build_class_overview(
             confirmed_attempt_count=confirmed_attempt_count,
             pending_review_count=pending_review_count,
             invalid_evidence_count=invalid_evidence_count,
-            covered_exam_point_count=covered,
-            uncovered_exam_point_count=len(exam_rows) - covered,
+            covered_knowledge_point_count=covered,
+            uncovered_knowledge_point_count=len(knowledge_rows) - covered,
         ),
-        exam_points=exam_rows,
+        knowledge_points=knowledge_rows,
         focus_points=focus_points,
     )
 
 
-def build_exam_point_students(
+def build_knowledge_point_students(
     db: Session,
     *,
     class_name: str,
     chapter_code: str,
-    exam_point_code: str,
-) -> ExamPointStudentListOut:
+    knowledge_point_code: str,
+) -> KnowledgePointStudentListOut:
     students = _active_students(db, class_name)
     if not students:
         raise LookupError("class not found")
-    exam = next(
-        (item for item in exam_point_catalog(db, chapter_code) if item.code == exam_point_code),
+    knowledge_point = next(
+        (
+            item for item in knowledge_point_catalog(db, chapter_code)
+            if item.code == knowledge_point_code
+        ),
         None,
     )
-    if exam is None:
+    if knowledge_point is None:
         raise LookupError("knowledge point not found in chapter")
-    rows: list[ExamPointStudentAnalytics] = []
+    rows: list[KnowledgePointStudentAnalytics] = []
     for context in _contexts(db, students):
         item = next(
             value
             for value in mastery_items(context, chapter_code)
-            if value.exam_point_code == exam_point_code
+            if value.knowledge_point_code == knowledge_point_code
         )
         rows.append(
-            ExamPointStudentAnalytics(
+            KnowledgePointStudentAnalytics(
                 student_id=context.student.id,
                 student_code=context.student.student_code,
                 student_name=context.student.display_name,
@@ -273,11 +281,11 @@ def build_exam_point_students(
             item.student_code,
         )
     )
-    return ExamPointStudentListOut(
+    return KnowledgePointStudentListOut(
         class_name=class_name,
         chapter_code=chapter_code,
-        exam_point_code=exam.code,
-        exam_point_name=exam.name,
+        knowledge_point_code=knowledge_point.code,
+        knowledge_point_name=knowledge_point.name,
         computed_at=datetime.now(timezone.utc),
         items=rows,
     )

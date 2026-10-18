@@ -49,14 +49,14 @@ test('profile charts, snapshot evidence, history pagination and student switchin
   await page.locator('.ant-pagination-next button').click()
   await expect(page.locator('.ant-pagination-item-active')).toHaveText('2')
   const attempts = history.items
-  let withAsset: { original_qid: string; main_exam_point_name: string } | undefined
+  let withAsset: { original_qid: string; main_knowledge_point_name: string } | undefined
   for (const attempt of attempts) {
     const detail = await (await page.request.get(`${api}/students/${students[0].id}/attempts/${attempt.id}`)).json()
     if (detail.assets.length) { withAsset = attempt; break }
   }
   expect(withAsset).toBeDefined()
-  const examCatalog = await (await page.request.get(`${api}/exam-points?chapter_code=math.g6.rational`)).json()
-  const currentExam = examCatalog.find((item: { code: string }) => item.code === (withAsset as { main_exam_point_code: string }).main_exam_point_code)
+  const examCatalog = await (await page.request.get(`${api}/knowledge-points?chapter_code=math.g6.rational`)).json()
+  const currentExam = examCatalog.find((item: { code: string }) => item.code === (withAsset as { main_knowledge_point_code: string }).main_knowledge_point_code)
   await page.getByRole('combobox', { name: '历史知识点筛选' }).fill(currentExam.name)
   await page.locator('.ant-select-dropdown:visible').getByText(currentExam.name, { exact: true }).click()
   await page.getByRole('button', { name: withAsset!.original_qid, exact: true }).first().click()
@@ -78,7 +78,7 @@ test('recommendation validation, real preview, reasons and shortages', async ({ 
   await page.getByRole('tab', { name: '推荐练习', exact: true }).click()
   await page.getByRole('button', { name: /预览推荐/ }).click()
   await expect(page.getByText('推荐预览失败', { exact: true })).toBeVisible()
-  const catalog = await (await page.request.get(`${api}/exam-points?chapter_code=math.g6.rational`)).json()
+  const catalog = await (await page.request.get(`${api}/knowledge-points?chapter_code=math.g6.rational`)).json()
   const sufficient = catalog.find((item: { available_question_count: number }) => item.available_question_count >= 6)
   await page.locator('.recommendation-scope-grid .ant-select-selector').nth(1).click()
   await page.getByRole('combobox', { name: '回顾范围', exact: true }).fill(sufficient.name)

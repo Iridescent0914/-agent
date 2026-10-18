@@ -11,8 +11,8 @@ from app.services.mastery import Evidence, confidence_level, evidence_problem, r
 def evidence(index: int, correct: bool | None = True, **changes) -> Evidence:
     item = Evidence(
         attempt_id=UUID(int=index), student_id=UUID(int=100), question_id=UUID(int=index + 200),
-        paper_instance_item_id=UUID(int=index + 300), exam_point_id=UUID(int=400),
-        exam_point_code="exam.a", answered_at=datetime(2026, 9, 1, tzinfo=timezone.utc),
+        paper_instance_item_id=UUID(int=index + 300), knowledge_point_id=UUID(int=400),
+        knowledge_point_code="kp.a", answered_at=datetime(2026, 9, 1, tzinfo=timezone.utc),
         revision_no=1, grade_status="teacher_confirmed", is_correct=correct,
         question_type="fill_blank", difficulty=2,
     )
@@ -80,9 +80,9 @@ def test_recent_window_is_last_five_and_uses_answered_time():
     assert actual.last_practiced_at == items[-1].answered_at
 
 
-def test_separate_students_and_main_exam_points():
+def test_separate_students_and_main_knowledge_points():
     first = evidence(1)
-    second = evidence(2, exam_point_id=UUID(int=401), exam_point_code="exam.b")
+    second = evidence(2, knowledge_point_id=UUID(int=401), knowledge_point_code="kp.b")
     third = evidence(3, student_id=UUID(int=101))
     assert len(replay([first, second, third])) == 3
     assert sum(value.attempt_count for value in replay([first, second, third]).values()) == 3

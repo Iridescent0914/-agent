@@ -133,8 +133,8 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
         class_id=school_class.id,
         chapter_code=request.recommendation_parameters.chapter_code,
         teaching_scope={
-            "new_exam_point_codes": params["new_exam_point_codes"],
-            "review_exam_point_codes": params["review_exam_point_codes"],
+            "new_knowledge_point_codes": params["new_knowledge_point_codes"],
+            "review_knowledge_point_codes": params["review_knowledge_point_codes"],
         },
         generation_config={
             "schema_version": "m3-generation-config-v1",

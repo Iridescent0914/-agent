@@ -24,7 +24,7 @@ def test_m0_seed_contract_is_preserved() -> None:
     assert all(item["grade"] == "六年级上册" for item in questions)
     assert all(item["chapter"]["name"] == "第1章 有理数" for item in questions)
     assert all(item["section"] for item in questions)
-    assert all(item["main_exam_point"]["name"] for item in questions)
+    assert all(item["main_knowledge_point"]["name"] for item in questions)
     assert all(item["core_literacy"] for item in questions)
     assert all(type(item["is_required"]) is bool for item in questions)
     by_qid = {item["original_qid"]: item for item in questions}

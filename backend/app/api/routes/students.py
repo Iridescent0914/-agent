@@ -176,7 +176,7 @@ def list_student_attempts(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     is_correct: bool | None = None,
-    exam_point_code: str | None = None,
+    knowledge_point_code: str | None = None,
     db: Session = Depends(get_db),
 ) -> Page[StudentAttemptOut]:
     if db.scalar(select(Student.id).where(
@@ -189,8 +189,10 @@ def list_student_attempts(
     items = [attempt_summary(record) for record in reversed(context.records)]
     if is_correct is not None:
         items = [item for item in items if item.is_correct is is_correct]
-    if exam_point_code is not None:
-        effective_code = context.exam_code_aliases.get(exam_point_code, exam_point_code)
-        items = [item for item in items if item.main_exam_point_code == effective_code]
+    if knowledge_point_code is not None:
+        items = [
+            item for item in items
+            if item.main_knowledge_point_code == knowledge_point_code
+        ]
     start = (page - 1) * page_size
     return Page(items=items[start:start + page_size], total=len(items), page=page, page_size=page_size)

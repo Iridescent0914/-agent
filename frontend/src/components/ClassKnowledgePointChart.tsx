@@ -1,14 +1,14 @@
 import { Empty } from 'antd'
 import { useMemo } from 'react'
-import type { ClassExamPointAnalytics } from '../types/analytics'
+import type { ClassKnowledgePointAnalytics } from '../types/analytics'
 import { ProfileChart } from './ProfileChart'
 
-export function ClassExamPointChart({
+export function ClassKnowledgePointChart({
   items,
   metric,
   onSelect,
 }: {
-  items: ClassExamPointAnalytics[]
+  items: ClassKnowledgePointAnalytics[]
   metric: 'accuracy' | 'mastery'
   onSelect: (code: string) => void
 }) {
@@ -34,7 +34,7 @@ export function ClassExamPointChart({
           const value = accuracy
             ? `${((row.accuracy ?? 0) * 100).toFixed(1)}%`
             : (row.average_mastery ?? 0).toFixed(4)
-          return `${row.exam_point_name}\n${accuracy ? '正确率' : '掌握度参考均值'}：${value}\n${row.evidence_student_count}/${row.student_count} 名学生有证据 · ${row.confirmed_attempt_count} 次确认作答`
+          return `${row.knowledge_point_name}\n${accuracy ? '正确率' : '掌握度参考均值'}：${value}\n${row.evidence_student_count}/${row.student_count} 名学生有证据 · ${row.confirmed_attempt_count} 次确认作答`
         },
       },
       xAxis: accuracy
@@ -42,7 +42,7 @@ export function ClassExamPointChart({
         : { type: 'value', min: 0, max: 1, interval: 0.2 },
       yAxis: {
         type: 'category', inverse: true,
-        data: available.map((item) => item.exam_point_name),
+        data: available.map((item) => item.knowledge_point_name),
         axisLabel: { width: 150, overflow: 'truncate', fontSize: 12 },
         axisTick: { show: false },
       },
@@ -72,6 +72,6 @@ export function ClassExamPointChart({
     option={option}
     height={Math.max(280, available.length * 42 + 58)}
     label={metric === 'accuracy' ? '班级知识点正确率条形图' : '班级知识点掌握度参考均值条形图'}
-    onPoint={(index) => { if (available[index]) onSelect(available[index].exam_point_code) }}
+    onPoint={(index) => { if (available[index]) onSelect(available[index].knowledge_point_code) }}
   />
 }

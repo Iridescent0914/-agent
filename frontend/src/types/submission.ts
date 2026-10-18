@@ -44,7 +44,7 @@ export interface SubmissionPaperItem {
   grading_answer_rule_snapshot: { answer_match_type?: string; answer_normalization_rule?: Record<string, unknown> }
   standard_answer_source: 'published_snapshot' | 'question_revision'
   answer_key_update_available: boolean
-  exam_point_snapshot: { main?: { id: string; name: string } }
+  knowledge_point_snapshot: { id: string; name: string }
   assets: AssetInfo[]
   attempt: AttemptResult | null
 }

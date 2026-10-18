@@ -12,7 +12,7 @@ def test_health_and_readiness() -> None:
     assert client.get("/api/v1/health").json() == {"status": "ok"}
     response = client.get("/api/v1/ready")
     assert response.status_code == 200
-    assert response.json()['migration'] == '0022'
+    assert response.json()['migration'] == '0023'
 
 
 def test_question_list_filters_and_detail_assets() -> None:
@@ -45,7 +45,7 @@ def test_question_list_filters_and_detail_assets() -> None:
     detail_response = client.get(f"/api/v1/questions/{with_assets['id']}")
     assert detail_response.status_code == 200
     detail = detail_response.json()
-    assert detail["main_exam_point"]["code"]
+    assert detail["main_knowledge_point"]["code"]
     assert detail["grade"] == "六年级上册"
     assert detail["core_literacy"]
     assert type(detail["is_required"]) is bool
@@ -65,8 +65,7 @@ def test_question_catalog_supports_cascading_filters() -> None:
     chapter = chapters[0]
     assert chapter['code'] and chapter['knowledge_points']
     knowledge_point = chapter['knowledge_points'][0]
-    assert knowledge_point['code'] and knowledge_point['exam_points']
-    exam_point = knowledge_point['exam_points'][0]
+    assert knowledge_point['code'] and knowledge_point['name']
 
     by_chapter = client.get('/api/v1/questions', params={
         'chapter_code': chapter['code'],
@@ -84,15 +83,6 @@ def test_question_catalog_supports_cascading_filters() -> None:
         for item in by_knowledge['items']
     )
 
-    by_exam = client.get('/api/v1/questions', params={
-        'exam_point_code': exam_point['code'],
-        'page_size': 100,
-    }).json()
-    assert by_exam['total'] > 0
-    assert all(
-        item['main_exam_point']['code'] == exam_point['code']
-        for item in by_exam['items']
-    )
 
 
 def test_student_history_is_traceable() -> None:

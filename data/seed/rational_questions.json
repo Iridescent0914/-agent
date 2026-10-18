@@ -62,11 +62,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -137,11 +132,6 @@
       "curriculum_basis": "理解乘方的意义；会准确进行有理数的乘方运算"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.10_powers",
-      "name": "有理数的乘方"
-    },
-    "related_exam_points": [],
     "mastery_level": "理解",
     "core_competencies": [
       "抽象能力",
@@ -249,11 +239,6 @@
       "curriculum_basis": "掌握有理数的加、减运算；减法统一为加法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.07_add_subtract",
-      "name": "有理数的加法法则与减法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -365,11 +350,6 @@
       "curriculum_basis": "掌握有理数简单的混合运算，明确运算顺序"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.11_mixed_operations",
-      "name": "有理数的混合运算（以三步以内为主）"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力"
@@ -432,11 +412,6 @@
       "curriculum_basis": "理解有理数的运算律，能运用运算律简化运算"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.09_operation_laws",
-      "name": "有理数的运算律及其简化运算的作用"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -516,11 +491,6 @@
       "curriculum_basis": "能比较有理数的大小"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.06_comparison",
-      "name": "比较有理数的大小"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "抽象能力",
@@ -589,11 +559,6 @@
       "curriculum_basis": "能用数轴上的点表示有理数"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.03_number_line",
-      "name": "数轴与用数轴上的点表示有理数"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "抽象能力",
@@ -653,11 +618,6 @@
       "curriculum_basis": "借助数轴理解绝对值的意义，掌握求有理数的绝对值的方法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.05_absolute_value",
-      "name": "绝对值的意义与求法"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "抽象能力",
@@ -770,11 +730,6 @@
       "curriculum_basis": "能运用有理数的运算解决简单问题"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.12_applications",
-      "name": "用有理数的运算解决简单实际问题"
-    },
-    "related_exam_points": [],
     "mastery_level": "运用",
     "core_competencies": [
       "模型观念",
@@ -899,11 +854,6 @@
       "curriculum_basis": "借助数轴理解相反数的意义，掌握求有理数的相反数的方法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.04_opposite_number",
-      "name": "相反数的意义与求法"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "抽象能力"
@@ -1027,11 +977,6 @@
       "curriculum_basis": "理解有理数的意义"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.02_meaning_classification",
-      "name": "有理数的意义与分类（整数、分数）"
-    },
-    "related_exam_points": [],
     "mastery_level": "理解",
     "core_competencies": [
       "抽象能力"
@@ -1132,11 +1077,6 @@
       "curriculum_basis": "理解负数的意义；会用正数和负数表示具体情境中具有相反意义的量"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.01_negative_quantity",
-      "name": "负数与用正负数表示相反意义的量"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "抽象能力",
@@ -1232,11 +1172,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -1331,11 +1266,6 @@
       "curriculum_basis": "理解乘方的意义；会准确进行有理数的乘方运算"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.10_powers",
-      "name": "有理数的乘方"
-    },
-    "related_exam_points": [],
     "mastery_level": "理解",
     "core_competencies": [
       "抽象能力",
@@ -1473,11 +1403,6 @@
       "curriculum_basis": "掌握有理数的加、减运算；减法统一为加法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.07_add_subtract",
-      "name": "有理数的加法法则与减法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -1540,11 +1465,6 @@
       "curriculum_basis": "掌握有理数简单的混合运算，明确运算顺序"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.11_mixed_operations",
-      "name": "有理数的混合运算（以三步以内为主）"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力"
@@ -1617,11 +1537,6 @@
       "curriculum_basis": "理解有理数的运算律，能运用运算律简化运算"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.09_operation_laws",
-      "name": "有理数的运算律及其简化运算的作用"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -1735,11 +1650,6 @@
       "curriculum_basis": "能比较有理数的大小"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.06_comparison",
-      "name": "比较有理数的大小"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "抽象能力",
@@ -1949,11 +1859,6 @@
       "curriculum_basis": "能用数轴上的点表示有理数"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.03_number_line",
-      "name": "数轴与用数轴上的点表示有理数"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "抽象能力",
@@ -2025,11 +1930,6 @@
       "curriculum_basis": "借助数轴理解绝对值的意义，掌握求有理数的绝对值的方法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.05_absolute_value",
-      "name": "绝对值的意义与求法"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "抽象能力",
@@ -2157,11 +2057,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -2254,11 +2149,6 @@
       "curriculum_basis": "理解乘方的意义；会准确进行有理数的乘方运算"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.10_powers",
-      "name": "有理数的乘方"
-    },
-    "related_exam_points": [],
     "mastery_level": "理解",
     "core_competencies": [
       "抽象能力",
@@ -2408,11 +2298,6 @@
       "curriculum_basis": "掌握有理数的加、减运算；减法统一为加法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.07_add_subtract",
-      "name": "有理数的加法法则与减法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -2496,11 +2381,6 @@
       "curriculum_basis": "掌握有理数简单的混合运算，明确运算顺序"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.11_mixed_operations",
-      "name": "有理数的混合运算（以三步以内为主）"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力"
@@ -2594,11 +2474,6 @@
       "curriculum_basis": "理解有理数的运算律，能运用运算律简化运算"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.09_operation_laws",
-      "name": "有理数的运算律及其简化运算的作用"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -2719,11 +2594,6 @@
       "curriculum_basis": "能比较有理数的大小"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.06_comparison",
-      "name": "比较有理数的大小"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "抽象能力",
@@ -2861,11 +2731,6 @@
       "curriculum_basis": "能用数轴上的点表示有理数"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.03_number_line",
-      "name": "数轴与用数轴上的点表示有理数"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "抽象能力",
@@ -2991,11 +2856,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -3072,11 +2932,6 @@
       "curriculum_basis": "理解乘方的意义；会准确进行有理数的乘方运算"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.10_powers",
-      "name": "有理数的乘方"
-    },
-    "related_exam_points": [],
     "mastery_level": "理解",
     "core_competencies": [
       "抽象能力",
@@ -3190,11 +3045,6 @@
       "curriculum_basis": "掌握有理数的加、减运算；减法统一为加法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.07_add_subtract",
-      "name": "有理数的加法法则与减法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -3290,11 +3140,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -3377,11 +3222,6 @@
       "curriculum_basis": "理解乘方的意义；会准确进行有理数的乘方运算"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.10_powers",
-      "name": "有理数的乘方"
-    },
-    "related_exam_points": [],
     "mastery_level": "理解",
     "core_competencies": [
       "抽象能力",
@@ -3483,11 +3323,6 @@
       "curriculum_basis": "掌握有理数的加、减运算；减法统一为加法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.07_add_subtract",
-      "name": "有理数的加法法则与减法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -3603,11 +3438,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -3769,11 +3599,6 @@
       "curriculum_basis": "理解乘方的意义；会准确进行有理数的乘方运算"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.10_powers",
-      "name": "有理数的乘方"
-    },
-    "related_exam_points": [],
     "mastery_level": "理解",
     "core_competencies": [
       "抽象能力",
@@ -3863,11 +3688,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -3968,11 +3788,6 @@
       "curriculum_basis": "理解乘方的意义；会准确进行有理数的乘方运算"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.10_powers",
-      "name": "有理数的乘方"
-    },
-    "related_exam_points": [],
     "mastery_level": "理解",
     "core_competencies": [
       "抽象能力",
@@ -4079,11 +3894,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -4289,11 +4099,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -4407,11 +4212,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -4542,11 +4342,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -4616,11 +4411,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -4715,11 +4505,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -4870,11 +4655,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",
@@ -5025,11 +4805,6 @@
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
     },
     "related_knowledge_points": [],
-    "main_exam_point": {
-      "id": "math.g6.rational.tracking.08_multiply_divide",
-      "name": "有理数的乘法法则与除法法则"
-    },
-    "related_exam_points": [],
     "mastery_level": "掌握",
     "core_competencies": [
       "运算能力",

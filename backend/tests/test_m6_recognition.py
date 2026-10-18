@@ -64,13 +64,13 @@ def _published_paper(client: TestClient, db) -> tuple[Student, dict]:
         "title": "M6 图片识别测试",
         "student_ids": [str(student.id)],
         "recommendation_parameters": {
-            "review_exam_point_codes": [
-                "math.g6.rational.tracking.08_multiply_divide",
-                "math.g6.rational.tracking.07_add_subtract",
+            "review_knowledge_point_codes": [
+                "math.g6.rational.kp.08_multiply_divide",
+                "math.g6.rational.kp.07_add_subtract",
             ],
             "review_count": 2,
             "avoid_recent_days": 0,
-            "max_exam_point_ratio": 1,
+            "max_knowledge_point_ratio": 1,
         },
     })
     assert response.status_code == 201, response.text
@@ -264,7 +264,7 @@ def test_print_view_never_returns_answer_keys(client, db):
 def test_image_submission_waits_for_teacher_before_mastery(client, db):
     student, paper = _published_paper(client, db)
     mastery_before = {
-        row.exam_point_id: (row.mastery, row.attempt_count)
+        row.knowledge_point_id: (row.mastery, row.attempt_count)
         for row in db.scalars(select(StudentMastery).where(StudentMastery.student_id == student.id))
     }
     upload = client.post(
@@ -302,7 +302,7 @@ def test_image_submission_waits_for_teacher_before_mastery(client, db):
         assert duplicate_upload.status_code == 409
         db.expire_all()
         mastery_pending = {
-            row.exam_point_id: (row.mastery, row.attempt_count)
+            row.knowledge_point_id: (row.mastery, row.attempt_count)
             for row in db.scalars(select(StudentMastery).where(StudentMastery.student_id == student.id))
         }
         assert mastery_pending == mastery_before

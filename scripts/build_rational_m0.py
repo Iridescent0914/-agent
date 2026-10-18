@@ -94,7 +94,6 @@ KNOWLEDGE_POINT_BY_NAME = {
         "core_competencies": core_competencies,
         "curriculum_basis": curriculum_basis,
         "order_no": order_no,
-        "tracking_id": f"math.g6.rational.tracking.{suffix}",
     }
     for order_no, (suffix, name, mastery_level, core_competencies, curriculum_basis)
     in enumerate(KNOWLEDGE_POINTS, start=1)
@@ -509,9 +508,9 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
     if not reference_answer:
         issues.append("missing_reference_answer")
     if not section_name:
-        issues.append("missing_main_knowledge_point")
+        issues.append("missing_section")
     if not kp_name:
-        issues.append("missing_main_exam_point")
+        issues.append("missing_main_knowledge_point")
     if difficulty is None:
         issues.append("missing_difficulty")
     if parsed.has_image:
@@ -573,11 +572,6 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
             for key in ("id", "name", "mastery_level", "core_competencies", "curriculum_basis")
         } if kp_spec else {"id": None, "name": kp_name},
         "related_knowledge_points": [],
-        "main_exam_point": {
-            "id": kp_spec["tracking_id"],
-            "name": kp_spec["name"],
-        } if kp_spec else {"id": None, "name": kp_name},
-        "related_exam_points": [],
         "mastery_level": kp_spec["mastery_level"] if kp_spec else None,
         "core_competencies": kp_spec["core_competencies"] if kp_spec else [],
         "curriculum_basis": kp_spec["curriculum_basis"] if kp_spec else None,
@@ -647,8 +641,8 @@ def eligible_for_seed(record: dict) -> bool:
     blocking = {
         "missing_question_text",
         "missing_reference_answer",
+        "missing_section",
         "missing_main_knowledge_point",
-        "missing_main_exam_point",
         "missing_difficulty",
     }
     if record["question_type"] not in {"choice", "fill_blank", "true_false"}:
@@ -672,7 +666,7 @@ def select_diverse(records: list[dict], limit: int) -> list[dict]:
     groups: dict[str, list[dict]] = defaultdict(list)
     for record in records:
         if eligible_for_seed(record):
-            groups[record["main_exam_point"]["id"]].append(record)
+            groups[record["main_knowledge_point"]["id"]].append(record)
 
     for items in groups.values():
         items.sort(
@@ -711,11 +705,6 @@ def build_knowledge_tree(records: Iterable[dict]) -> dict:
             "core_competencies": spec["core_competencies"],
             "curriculum_basis": spec["curriculum_basis"],
             "order_no": spec["order_no"],
-            "exam_points": [{
-                "id": spec["tracking_id"],
-                "name": spec["name"],
-                "order_no": spec["order_no"],
-            }],
         })
     return {
         "schema_version": "2.0",
@@ -726,13 +715,11 @@ def build_knowledge_tree(records: Iterable[dict]) -> dict:
         "semantic_mapping": {
             "sections": "新版 Word 主属节",
             "knowledge_points": "新版 Word 节内主属 KP",
-            "exam_points": "画像、推荐与组卷内部跟踪键",
         },
         "knowledge_points": knowledge_points,
         "notes": [
-            "题目的主属节和节内主属 KP 逐题继承新版校本审核 DOCX，不再使用旧版 Word 考点。",
+            "题目的主属节和节内主属 KP 逐题继承新版校本审核 DOCX，并作为唯一知识分类来源。",
             "节与知识点采用上海五四制知识图谱的稳定 ID；Word 提供每道题的具体归属。",
-            "exam_points 是兼容既有组卷、画像和推荐模块的一对一内部跟踪键，不作为旧考点展示。",
         ],
     }
 
@@ -841,7 +828,6 @@ def write_audit_csv(path: Path, records: list[dict]) -> None:
         "chapter",
         "section",
         "main_knowledge_point",
-        "main_exam_point",
         "core_literacy",
         "is_required",
         "question_preview",
@@ -872,7 +858,6 @@ def write_audit_csv(path: Path, records: list[dict]) -> None:
                     "chapter": record["chapter"]["name"],
                     "section": record["section"],
                     "main_knowledge_point": record["main_knowledge_point"]["name"],
-                    "main_exam_point": record["main_exam_point"]["name"],
                     "core_literacy": record["core_literacy"],
                     "is_required": "yes" if record["is_required"] else "no",
                     "question_preview": record["question_text"].replace("\n", " ")[:160],
@@ -924,8 +909,8 @@ def build(source: Path, output_root: Path, project_root: Path, limit: int) -> di
         "eligible_count_before_limit": sum(eligible_for_seed(record) for record in records),
         "question_type_counts": dict(sorted(Counter(record["question_type"] for record in records).items())),
         "seed_type_counts": dict(sorted(Counter(record["question_type"] for record in selected).items())),
-        "seed_knowledge_point_count": len({record["main_exam_point"]["id"] for record in selected}),
-        "seed_knowledge_point_counts": dict(sorted(Counter(record["main_exam_point"]["name"] for record in selected).items())),
+        "seed_knowledge_point_count": len({record["main_knowledge_point"]["id"] for record in selected}),
+        "seed_knowledge_point_counts": dict(sorted(Counter(record["main_knowledge_point"]["name"] for record in selected).items())),
         "seed_machine_ready_count": sum(record["grading_readiness"] == "machine_ready" for record in selected),
         "seed_raw_answer_only_count": sum(record["grading_readiness"] == "raw_answer_only" for record in selected),
         "answer_structure_override_count": answer_structure_override_count,

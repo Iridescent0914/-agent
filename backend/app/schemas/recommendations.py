@@ -14,8 +14,8 @@ class RecommendationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     chapter_code: str = Field(default="math.g6.rational", min_length=1, max_length=160)
-    new_exam_point_codes: list[str] = Field(default_factory=list, max_length=54)
-    review_exam_point_codes: list[str] = Field(default_factory=list, max_length=54)
+    new_knowledge_point_codes: list[str] = Field(default_factory=list, max_length=54)
+    review_knowledge_point_codes: list[str] = Field(default_factory=list, max_length=54)
     new_count: int = Field(default=0, ge=0, le=30, strict=True)
     review_count: int = Field(default=0, ge=0, le=30, strict=True)
     question_types: list[Literal["choice", "fill_blank", "true_false"]] = Field(
@@ -24,25 +24,25 @@ class RecommendationRequest(BaseModel):
     min_difficulty: int = Field(default=1, ge=1, le=5, strict=True)
     max_difficulty: int = Field(default=5, ge=1, le=5, strict=True)
     avoid_recent_days: int = Field(default=7, ge=0, le=3650, strict=True)
-    max_exam_point_ratio: float = Field(default=0.5, gt=0, le=1, allow_inf_nan=False)
+    max_knowledge_point_ratio: float = Field(default=0.5, gt=0, le=1, allow_inf_nan=False)
 
     @model_validator(mode="after")
     def validate_scope(self) -> Self:
         total = self.new_count + self.review_count
         if not 1 <= total <= 30:
             raise ValueError("总题量必须在 1 至 30 之间")
-        if self.new_count and not self.new_exam_point_codes:
+        if self.new_count and not self.new_knowledge_point_codes:
             raise ValueError("请指定新知识范围")
-        if self.review_count and not self.review_exam_point_codes:
+        if self.review_count and not self.review_knowledge_point_codes:
             raise ValueError("请指定回顾范围")
-        for values in (self.new_exam_point_codes, self.review_exam_point_codes, self.question_types):
+        for values in (self.new_knowledge_point_codes, self.review_knowledge_point_codes, self.question_types):
             if len(set(values)) != len(values):
                 raise ValueError("范围或题型中不能有重复项")
-        if set(self.new_exam_point_codes) & set(self.review_exam_point_codes):
+        if set(self.new_knowledge_point_codes) & set(self.review_knowledge_point_codes):
             raise ValueError("新知识与回顾范围不能重叠")
         if not self.min_difficulty <= self.base_difficulty <= self.max_difficulty:
             raise ValueError("基础难度必须位于允许难度范围内")
-        if floor(total * self.max_exam_point_ratio) < 1:
+        if floor(total * self.max_knowledge_point_ratio) < 1:
             raise ValueError("单知识点允许题数不足 1，请提高知识点占比")
         return self
 
@@ -59,8 +59,8 @@ class RecommendedQuestion(BaseModel):
     original_qid: str
     question_type: str
     difficulty: int
-    exam_point_code: str
-    exam_point_name: str
+    knowledge_point_code: str
+    knowledge_point_name: str
     bucket: Literal["new", "review"]
     strategy: Literal["diagnostic", "personalized"]
     score: float
@@ -80,13 +80,13 @@ class FilterStage(BaseModel):
 
 class BucketDiagnostic(BaseModel):
     bucket: Literal["new", "review"]
-    exam_point_codes: list[str]
+    knowledge_point_codes: list[str]
     requested_count: int
     selected_count: int
     shortfall: int
     stages: list[FilterStage]
     reason_codes: list[str]
-    capped_exam_point_codes: list[str]
+    capped_knowledge_point_codes: list[str]
 
 
 class RecommendationOut(BaseModel):
@@ -101,7 +101,7 @@ class RecommendationOut(BaseModel):
     shortfall: int
     new_shortfall: int
     review_shortfall: int
-    max_per_exam_point: int
-    selected_per_exam_point: dict[str, int]
+    max_per_knowledge_point: int
+    selected_per_knowledge_point: dict[str, int]
     diagnostics: list[BucketDiagnostic]
     items: list[RecommendedQuestion]

@@ -24,7 +24,7 @@ def main() -> int:
         ).all()
         student_ids = [student.id for student in students]
         summaries = {
-            (row.student_id, row.exam_point_id): row
+            (row.student_id, row.knowledge_point_id): row
             for row in db.scalars(
                 select(StudentMastery).where(StudentMastery.student_id.in_(student_ids))
             )
@@ -35,14 +35,14 @@ def main() -> int:
             profile = build_profile(context)
             valid += profile.summary.valid_attempt_count
             invalid += profile.summary.invalid_evidence_count
-            unassessed += profile.summary.unassessed_exam_point_count
-            counts_per_student[student.student_code] = profile.summary.assessed_exam_point_count
+            unassessed += profile.summary.unassessed_knowledge_point_count
+            counts_per_student[student.student_code] = profile.summary.assessed_knowledge_point_count
             for key, result in context.results.items():
                 expected_keys.add(key)
                 stored = summaries.get(key)
                 if stored is None or any(getattr(stored, field) != getattr(result, field) for field in MASTERY_FIELDS):
                     mismatches += 1
-                points = history_for(context, result.exam_point_code).points
+                points = history_for(context, result.knowledge_point_code).points
                 if len(points) != result.attempt_count or points[-1].mastery_after != float(result.mastery):
                     errors.append(f"{student.student_code}: history mismatch")
                 if not (0 <= result.correct_count <= result.attempt_count
@@ -54,8 +54,13 @@ def main() -> int:
                         errors.append(f"{student.student_code}: invalid evidence reference")
             if any(item.mastery is not None for item in profile.masteries if item.attempt_count == 0):
                 errors.append(f"{student.student_code}: unassessed value must be null")
-            params = RecommendationRequest(review_exam_point_codes=[exam.code for exam in context.catalog
-                                                                    if exam.available_question_count], review_count=6)
+            params = RecommendationRequest(
+                review_knowledge_point_codes=[
+                    point.code for point in context.catalog
+                    if point.available_question_count
+                ],
+                review_count=6,
+            )
             try:
                 at = datetime(2026, 9, 23, tzinfo=timezone.utc)
                 output = preview(db, context, params, as_of=at)
@@ -74,9 +79,9 @@ def main() -> int:
                 .join(Attempt, Attempt.id == AttemptRevision.attempt_id)
                 .where(Attempt.student_id.in_(student_ids))
             ),
-            "materialized_mastery_rows": len(summaries), "assessed_exam_points_per_student": counts_per_student,
+            "materialized_mastery_rows": len(summaries), "assessed_knowledge_points_per_student": counts_per_student,
             "sum_mastery_attempt_counts": sum(row.attempt_count for row in summaries.values()),
-            "unassessed_student_exam_pairs": unassessed, "invalid_evidence": invalid,
+            "unassessed_student_knowledge_pairs": unassessed, "invalid_evidence": invalid,
             "mastery_replay_mismatches": mismatches,
         }
     expected = {"students": 5, "mastery_replay_mismatches": 0}
@@ -88,11 +93,11 @@ def main() -> int:
     if report["attempt_revisions"] < report["attempts"]:
         errors.append("Every seed attempt must have at least one revision")
     if report["materialized_mastery_rows"] != sum(counts_per_student.values()):
-        errors.append("Materialized mastery rows do not match assessed exam points")
+        errors.append("Materialized mastery rows do not match assessed knowledge points")
     if report["sum_mastery_attempt_counts"] != report["valid_attempts"]:
         errors.append("Materialized mastery evidence count does not match replay")
     if any(count < 10 for count in counts_per_student.values()):
-        errors.append("Each seed student must retain the 10 baseline assessed exam points")
+        errors.append("Each seed student must retain the 10 baseline assessed knowledge points")
     report["validation_errors"] = len(errors)
     print(json.dumps(report, ensure_ascii=False, indent=2))
     for error in errors:

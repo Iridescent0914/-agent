@@ -43,13 +43,13 @@ def _published_paper(client, db):
         "title": "M4 批改闭环测试",
         "student_ids": [str(student.id)],
         "recommendation_parameters": {
-            "review_exam_point_codes": [
-                "math.g6.rational.tracking.08_multiply_divide",
-                "math.g6.rational.tracking.07_add_subtract",
+            "review_knowledge_point_codes": [
+                "math.g6.rational.kp.08_multiply_divide",
+                "math.g6.rational.kp.07_add_subtract",
             ],
             "review_count": 3,
             "avoid_recent_days": 0,
-            "max_exam_point_ratio": 0.67,
+            "max_knowledge_point_ratio": 0.67,
         },
     }
     assignment = client.post("/api/v1/assignments", json=request)

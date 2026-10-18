@@ -16,8 +16,8 @@ def main() -> None:
     errors: list[str] = []
     with SessionLocal() as db:
         migration = db.scalar(text("SELECT version_num FROM alembic_version"))
-        if migration != "0022":
-            errors.append(f"migration is {migration}, expected 0022")
+        if migration != "0023":
+            errors.append(f"migration is {migration}, expected 0023")
 
         submissions = list(db.scalars(select(Submission)))
         attempts = list(db.scalars(select(Attempt)))
@@ -68,18 +68,21 @@ def main() -> None:
                 continue
             students_checked += 1
             stored = {
-                row.exam_point_id: row for row in db.scalars(
+                row.knowledge_point_id: row for row in db.scalars(
                     select(StudentMastery).where(StudentMastery.student_id == student.id)
                 )
             }
-            expected = {exam_id: result for (_, exam_id), result in context.results.items()}
+            expected = {
+                knowledge_point_id: result
+                for (_, knowledge_point_id), result in context.results.items()
+            }
             if set(stored) != set(expected):
                 mastery_mismatches += 1
                 continue
             if any(
-                any(getattr(stored[exam_id], field) != getattr(result, field)
+                any(getattr(stored[knowledge_point_id], field) != getattr(result, field)
                     for field in MASTERY_FIELDS)
-                for exam_id, result in expected.items()
+                for knowledge_point_id, result in expected.items()
             ):
                 mastery_mismatches += 1
 

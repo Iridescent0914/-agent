@@ -22,8 +22,8 @@ class Evidence:
     student_id: UUID
     question_id: UUID
     paper_instance_item_id: UUID
-    exam_point_id: UUID
-    exam_point_code: str
+    knowledge_point_id: UUID
+    knowledge_point_code: str
     answered_at: datetime
     revision_no: int
     grade_status: str
@@ -47,8 +47,8 @@ class HistoryPoint:
 @dataclass(frozen=True)
 class MasteryResult:
     student_id: UUID
-    exam_point_id: UUID
-    exam_point_code: str
+    knowledge_point_id: UUID
+    knowledge_point_code: str
     mastery: Decimal
     confidence_level: str
     attempt_count: int
@@ -91,7 +91,7 @@ def replay(evidence: list[Evidence]) -> dict[tuple[UUID, UUID], MasteryResult]:
             continue
         seen[item.attempt_id] = item
         if evidence_problem(item) is None:
-            groups.setdefault((item.student_id, item.exam_point_id), []).append(item)
+            groups.setdefault((item.student_id, item.knowledge_point_id), []).append(item)
 
     results = {}
     for key, items in groups.items():
@@ -110,7 +110,8 @@ def replay(evidence: list[Evidence]) -> dict[tuple[UUID, UUID], MasteryResult]:
             ))
         recent = items[-RECENT_WINDOW_SIZE:]
         results[key] = MasteryResult(
-            student_id=key[0], exam_point_id=key[1], exam_point_code=items[0].exam_point_code,
+            student_id=key[0], knowledge_point_id=key[1],
+            knowledge_point_code=items[0].knowledge_point_code,
             mastery=quantize(mastery), confidence_level=confidence_level(len(items)),
             attempt_count=len(items), correct_count=sum(item.is_correct is True for item in items),
             distinct_question_count=len({item.question_id for item in items}),

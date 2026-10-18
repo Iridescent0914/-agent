@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import ExamPoint, Question, QuestionExamPoint
+from app.models import KnowledgePoint, Question
 from app.schemas.profile import EvidenceRef
 from app.schemas.recommendations import (
     BucketDiagnostic, FilterStage, RecommendationOut, RecommendationRequest,
@@ -31,9 +31,9 @@ class Candidate:
     original_qid: str
     question_type: str
     difficulty: int
-    exam_point_id: UUID
-    exam_point_code: str
-    exam_point_name: str
+    knowledge_point_id: UUID
+    knowledge_point_code: str
+    knowledge_point_name: str
     ready: bool = True
 
 
@@ -65,7 +65,8 @@ def score_candidate(candidate: Candidate, result: MasteryResult | None,
     return RecommendedQuestion(
         question_id=candidate.question_id, original_qid=candidate.original_qid,
         question_type=candidate.question_type, difficulty=candidate.difficulty,
-        exam_point_code=candidate.exam_point_code, exam_point_name=candidate.exam_point_name,
+        knowledge_point_code=candidate.knowledge_point_code,
+        knowledge_point_name=candidate.knowledge_point_name,
         bucket=bucket, strategy="personalized" if personalized else "diagnostic",
         score=float(sum(contributions.values())), components=ScoreParts(**{k: float(v) for k, v in parts.items()}),
         contributions=ScoreParts(**contributions), target_difficulty=target,
@@ -81,20 +82,22 @@ def select_recommendations(*, student_id: UUID, candidates: list[Candidate],
     if as_of.tzinfo is None or as_of.utcoffset() is None:
         raise ValueError("as_of must include a timezone")
     total = params.new_count + params.review_count
-    cap = floor(total * params.max_exam_point_ratio)
+    cap = floor(total * params.max_knowledge_point_ratio)
     excluded = {qid for qid, at in practiced
                 if params.avoid_recent_days and as_of - timedelta(days=params.avoid_recent_days) <= at <= as_of}
     selected = []
     seen: set[UUID] = set()
-    per_exam: Counter[str] = Counter()
+    per_knowledge: Counter[str] = Counter()
     diagnostics = []
-    for bucket, codes, requested in (("new", params.new_exam_point_codes, params.new_count),
-                                      ("review", params.review_exam_point_codes, params.review_count)):
+    for bucket, codes, requested in (
+        ("new", params.new_knowledge_point_codes, params.new_count),
+        ("review", params.review_knowledge_point_codes, params.review_count),
+    ):
         pool = list({candidate.question_id: candidate for candidate in candidates}.values())
         stages = [FilterStage(code="chapter", remaining=len(pool), removed=0)]
         filters = [
             ("grading_readiness", lambda c: c.ready),
-            ("no_questions_in_scope", lambda c: c.exam_point_code in codes),
+            ("no_questions_in_scope", lambda c: c.knowledge_point_code in codes),
             ("question_type_filter", lambda c: c.question_type in params.question_types),
             ("difficulty_filter", lambda c: params.min_difficulty <= c.difficulty <= params.max_difficulty),
             ("recently_practiced", lambda c: c.question_id not in excluded),
@@ -103,7 +106,16 @@ def select_recommendations(*, student_id: UUID, candidates: list[Candidate],
             before = len(pool)
             pool = [candidate for candidate in pool if predicate(candidate)]
             stages.append(FilterStage(code=code, remaining=len(pool), removed=before - len(pool)))
-        ranked = [score_candidate(c, results.get((student_id, c.exam_point_id)), params, bucket, as_of) for c in pool]
+        ranked = [
+            score_candidate(
+                candidate,
+                results.get((student_id, candidate.knowledge_point_id)),
+                params,
+                bucket,
+                as_of,
+            )
+            for candidate in pool
+        ]
         ranked.sort(key=lambda item: (-item.score, item.original_qid, item.question_id.int))
         bucket_selected = []
         capped = set()
@@ -112,62 +124,72 @@ def select_recommendations(*, student_id: UUID, candidates: list[Candidate],
                 break
             if item.question_id in seen:
                 continue
-            if per_exam[item.exam_point_code] >= cap:
-                capped.add(item.exam_point_code)
+            if per_knowledge[item.knowledge_point_code] >= cap:
+                capped.add(item.knowledge_point_code)
                 continue
             bucket_selected.append(item)
             seen.add(item.question_id)
-            per_exam[item.exam_point_code] += 1
+            per_knowledge[item.knowledge_point_code] += 1
         selected.extend(bucket_selected)
         shortfall = requested - len(bucket_selected)
         reasons = []
         if shortfall:
-            if not any(candidate.exam_point_code in codes for candidate in candidates):
+            if not any(candidate.knowledge_point_code in codes for candidate in candidates):
                 reasons.append("no_questions_in_scope")
             reasons.extend(stage.code for stage in stages
                            if stage.removed and stage.code not in ("chapter", "no_questions_in_scope"))
             if capped:
-                reasons.append("exam_point_cap")
+                reasons.append("knowledge_point_cap")
             if not reasons:
                 reasons.append("insufficient_scope_inventory")
         diagnostics.append(BucketDiagnostic(
-            bucket=bucket, exam_point_codes=codes, requested_count=requested,
+            bucket=bucket, knowledge_point_codes=codes, requested_count=requested,
             selected_count=len(bucket_selected), shortfall=shortfall, stages=stages,
-            reason_codes=reasons, capped_exam_point_codes=sorted(capped),
+            reason_codes=reasons, capped_knowledge_point_codes=sorted(capped),
         ))
     return RecommendationOut(
         student_id=student_id, as_of=as_of, rule_version=RULE_VERSION, parameters=params,
         weights=ScoreParts(**WEIGHTS), status="ready" if len(selected) == total else "insufficient_candidates",
         requested_count=total, selected_count=len(selected), shortfall=total - len(selected),
         new_shortfall=diagnostics[0].shortfall, review_shortfall=diagnostics[1].shortfall,
-        max_per_exam_point=cap, selected_per_exam_point=dict(per_exam), diagnostics=diagnostics, items=selected,
+        max_per_knowledge_point=cap,
+        selected_per_knowledge_point=dict(per_knowledge),
+        diagnostics=diagnostics,
+        items=selected,
     )
 
 
 def recommendation_candidates(db: Session, chapter_code: str) -> list[Candidate]:
     rows = db.execute(
-        select(Question, ExamPoint)
-        .join(QuestionExamPoint, QuestionExamPoint.question_id == Question.id)
-        .join(ExamPoint, ExamPoint.id == QuestionExamPoint.exam_point_id)
+        select(Question, KnowledgePoint)
+        .join(KnowledgePoint, KnowledgePoint.id == Question.main_knowledge_point_id)
         .where(
             Question.chapter_code == chapter_code,
             Question.archived_at.is_(None),
-            QuestionExamPoint.relation_type == 'main',
         )
     ).all()
     return [Candidate(
         question.id, question.original_qid, question.question_type,
-        question.difficulty, exam.id, exam.code, exam.name,
+        question.difficulty,
+        knowledge_point.id,
+        knowledge_point.code,
+        knowledge_point.name,
         question.grading_readiness == "machine_ready"
         and question.source_review_status == "reviewed",
-    ) for question, exam in rows]
+    ) for question, knowledge_point in rows]
 
 
 def preview(db: Session, context: ProfileContext, params: RecommendationRequest,
             *, as_of: datetime,
             candidates: list[Candidate] | None = None) -> RecommendationOut:
-    allowed = {exam.code for exam in context.catalog if exam.chapter_code == params.chapter_code}
-    if not set(params.new_exam_point_codes + params.review_exam_point_codes) <= allowed:
+    allowed = {
+        knowledge_point.code
+        for knowledge_point in context.catalog
+        if knowledge_point.chapter_code == params.chapter_code
+    }
+    if not set(
+        params.new_knowledge_point_codes + params.review_knowledge_point_codes
+    ) <= allowed:
         raise ValueError("知识点不存在或不属于当前章节")
     if any(record.problem not in (None, "needs_review") for record in context.records):
         raise ValueError("存在异常作答证据，请修复后再预览推荐")

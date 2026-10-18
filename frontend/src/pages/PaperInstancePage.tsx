@@ -117,14 +117,14 @@ export function PaperInstancePage() {
       <Button aria-label={`下移第${item.order_no}题`} icon={<ArrowDownOutlined />} disabled={index === paper.items.length - 1} onClick={() => move(item, 1)} />
       <Button onClick={() => openAlternatives(item)}>换题</Button><Button danger icon={<DeleteOutlined />} onClick={() => remove(item)}>删除</Button>
     </Space>}>
-      <Space wrap><Tag>{item.question_snapshot.question_type === 'choice' ? '选择题' : item.question_snapshot.question_type === 'true_false' ? '判断题' : '填空题'}</Tag><Tag>难度 {item.question_snapshot.difficulty}</Tag><Tag color={item.selection_audit?.bucket === 'new' ? 'cyan' : 'gold'}>{item.selection_audit?.bucket === 'new' ? '新知识' : '回顾'}</Tag><Tag>{item.exam_point_snapshot.main?.name}</Tag></Space>
+      <Space wrap><Tag>{item.question_snapshot.question_type === 'choice' ? '选择题' : item.question_snapshot.question_type === 'true_false' ? '判断题' : '填空题'}</Tag><Tag>难度 {item.question_snapshot.difficulty}</Tag><Tag color={item.selection_audit?.bucket === 'new' ? 'cyan' : 'gold'}>{item.selection_audit?.bucket === 'new' ? '新知识' : '回顾'}</Tag><Tag>{item.knowledge_point_snapshot.name}</Tag></Space>
       <RichQuestionText text={item.question_snapshot.question_text ?? ''} assets={item.assets} />
       {item.options_snapshot != null && <QuestionOptions options={item.options_snapshot} assets={item.assets} />}
       <Typography.Paragraph type="secondary">推荐理由：{item.selection_audit?.reason_text ?? '来自历史版本快照'}</Typography.Paragraph>
       <details><summary>教师答案与判分规则</summary><AnswerView answer={item.answer_snapshot} /><pre className="json-block">{JSON.stringify(item.answer_rule_snapshot, null, 2)}</pre></details>
     </Card>)}
     <Drawer title={`替换第 ${target?.order_no ?? ''} 题`} width={720} open={Boolean(target)} onClose={() => { setTarget(null); setAlternatives(null) }}>
-      <List loading={!alternatives} dataSource={alternatives?.items ?? []} locale={{ emptyText: '当前约束下没有可替换题目' }} renderItem={(item) => <List.Item actions={[<Button key="select" type="primary" onClick={() => replace(item.question_id)}>选用</Button>]}><List.Item.Meta title={`${item.original_qid} · 难度 ${item.difficulty}`} description={<><div>{item.exam_point_name}</div><div>{item.reason_text}</div></>} /></List.Item>} />
+      <List loading={!alternatives} dataSource={alternatives?.items ?? []} locale={{ emptyText: '当前约束下没有可替换题目' }} renderItem={(item) => <List.Item actions={[<Button key="select" type="primary" onClick={() => replace(item.question_id)}>选用</Button>]}><List.Item.Meta title={`${item.original_qid} · 难度 ${item.difficulty}`} description={<><div>{item.knowledge_point_name}</div><div>{item.reason_text}</div></>} /></List.Item>} />
     </Drawer>
   </Space>
 }

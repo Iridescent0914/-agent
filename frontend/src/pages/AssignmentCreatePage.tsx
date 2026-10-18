@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, queryString } from '../api/client'
 import type { ClassSummary, Page, QuestionCatalogChapter, StudentSummary } from '../types'
 import type { AssignmentDetail, AssignmentPreview, AssignmentPreviewStudent, AssignmentRequest } from '../types/assignment'
-import type { ExamPoint, RecommendationParams } from '../types/profile'
+import type { KnowledgePoint, RecommendationParams } from '../types/profile'
 
 interface FormValues extends RecommendationParams {
   title: string
@@ -16,9 +16,9 @@ interface FormValues extends RecommendationParams {
 
 const defaults: Partial<FormValues> = {
   title: '个性化数学练习', chapter_code: '', student_scope: 'all_class', student_ids: [],
-  new_exam_point_codes: [], review_exam_point_codes: [], new_count: 0, review_count: 6,
+  new_knowledge_point_codes: [], review_knowledge_point_codes: [], new_count: 0, review_count: 6,
   question_types: ['choice', 'fill_blank'], base_difficulty: 2, min_difficulty: 1,
-  max_difficulty: 5, avoid_recent_days: 7, max_exam_point_ratio: 0.5,
+  max_difficulty: 5, avoid_recent_days: 7, max_knowledge_point_ratio: 0.5,
 }
 
 export function AssignmentCreatePage() {
@@ -29,7 +29,7 @@ export function AssignmentCreatePage() {
   const [studentPageSize, setStudentPageSize] = useState(20)
   const [classes, setClasses] = useState<ClassSummary[]>([])
   const [chapters, setChapters] = useState<QuestionCatalogChapter[]>([])
-  const [catalog, setCatalog] = useState<ExamPoint[]>([])
+  const [catalog, setCatalog] = useState<KnowledgePoint[]>([])
   const [preview, setPreview] = useState<AssignmentPreview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -54,10 +54,10 @@ export function AssignmentCreatePage() {
   useEffect(() => {
     if (!selectedChapterCode) { setCatalog([]); return }
     const controller = new AbortController()
-    apiGet<ExamPoint[]>(`/exam-points?chapter_code=${encodeURIComponent(selectedChapterCode)}`, controller.signal)
+    apiGet<KnowledgePoint[]>(`/knowledge-points?chapter_code=${encodeURIComponent(selectedChapterCode)}`, controller.signal)
       .then(setCatalog)
       .catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
-    form.setFieldsValue({ new_exam_point_codes: [], review_exam_point_codes: [] })
+    form.setFieldsValue({ new_knowledge_point_codes: [], review_knowledge_point_codes: [] })
     return () => controller.abort()
   }, [form, selectedChapterCode])
   useEffect(() => {
@@ -85,18 +85,18 @@ export function AssignmentCreatePage() {
     return () => controller.abort()
   }, [selectedClassId, studentPage, studentPageSize, studentScope])
   const selectedClass = classes.find((item) => item.id === selectedClassId)
-  const available = useMemo(() => catalog.filter((exam) => exam.available_question_count > 0), [catalog])
+  const available = useMemo(() => catalog.filter((point) => point.available_question_count > 0), [catalog])
   const build = (values: FormValues): AssignmentRequest => ({
     class_id: values.class_id,
     student_scope: values.student_scope,
     student_ids: values.student_scope === 'selected' ? values.student_ids : [],
     recommendation_parameters: {
-      chapter_code: values.chapter_code, new_exam_point_codes: values.new_exam_point_codes,
-      review_exam_point_codes: values.review_exam_point_codes, new_count: values.new_count,
+      chapter_code: values.chapter_code, new_knowledge_point_codes: values.new_knowledge_point_codes,
+      review_knowledge_point_codes: values.review_knowledge_point_codes, new_count: values.new_count,
       review_count: values.review_count, question_types: values.question_types,
       base_difficulty: values.base_difficulty, min_difficulty: values.min_difficulty,
       max_difficulty: values.max_difficulty, avoid_recent_days: values.avoid_recent_days,
-      max_exam_point_ratio: values.max_exam_point_ratio,
+      max_knowledge_point_ratio: values.max_knowledge_point_ratio,
     },
   })
   const runPreview = async (values: FormValues) => {
@@ -122,7 +122,7 @@ export function AssignmentCreatePage() {
     } catch (reason) { setError((reason as Error).message) }
     finally { setLoading(false) }
   }
-  const examOptions = available.map((exam) => ({ value: exam.code, label: `${exam.name}（${exam.available_question_count}题）` }))
+  const knowledgePointOptions = available.map((point) => ({ value: point.code, label: `${point.name}（${point.available_question_count}题）` }))
   const columns: ColumnsType<AssignmentPreviewStudent> = [
     { title: '学生', render: (_, row) => `${row.student_code} · ${row.student_name}` },
     { title: '结果', render: (_, row) => <Tag color={row.recommendation.shortfall ? 'orange' : 'green'}>{row.recommendation.selected_count} / {row.recommendation.requested_count} 题</Tag> },
@@ -156,8 +156,8 @@ export function AssignmentCreatePage() {
             />
           </Form.Item>
           <Form.Item name="student_ids" hidden><Input /></Form.Item>
-          <Form.Item label="新知识范围" name="new_exam_point_codes"><Select mode="multiple" showSearch optionFilterProp="label" options={examOptions} /></Form.Item>
-          <Form.Item label="回顾范围" name="review_exam_point_codes"><Select mode="multiple" showSearch optionFilterProp="label" options={examOptions} /></Form.Item>
+          <Form.Item label="新知识范围" name="new_knowledge_point_codes"><Select mode="multiple" showSearch optionFilterProp="label" options={knowledgePointOptions} /></Form.Item>
+          <Form.Item label="回顾范围" name="review_knowledge_point_codes"><Select mode="multiple" showSearch optionFilterProp="label" options={knowledgePointOptions} /></Form.Item>
         </div>
         {studentScope === 'selected' && <Card size="small" title={`选择学生（已选 ${selectedStudentIds.length} 人）`}>
           <Table
@@ -189,7 +189,7 @@ export function AssignmentCreatePage() {
           <Form.Item label="基础难度" name="base_difficulty"><InputNumber min={1} max={5} /></Form.Item>
           <Form.Item label="难度范围"><Space.Compact><Form.Item name="min_difficulty" noStyle><InputNumber min={1} max={5} /></Form.Item><Form.Item name="max_difficulty" noStyle><InputNumber min={1} max={5} /></Form.Item></Space.Compact></Form.Item>
           <Form.Item label="避免近期重复天数" name="avoid_recent_days"><InputNumber min={0} max={3650} /></Form.Item>
-          <Form.Item label="单知识点最大占比" name="max_exam_point_ratio"><InputNumber min={0.05} max={1} step={0.05} /></Form.Item>
+          <Form.Item label="单知识点最大占比" name="max_knowledge_point_ratio"><InputNumber min={0.05} max={1} step={0.05} /></Form.Item>
           <Form.Item label="题型" name="question_types"><Checkbox.Group options={[{ label: '选择题', value: 'choice' }, { label: '填空题', value: 'fill_blank' }, { label: '判断题', value: 'true_false' }]} /></Form.Item>
         </div>
         <Button type="primary" htmlType="submit" loading={loading}>预检全部学生</Button>

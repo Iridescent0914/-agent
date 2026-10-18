@@ -88,7 +88,7 @@ class SubmissionPaperItemOut(BaseModel):
     grading_answer_rule_snapshot: dict[str, Any]
     standard_answer_source: Literal["published_snapshot", "question_revision"]
     answer_key_update_available: bool
-    exam_point_snapshot: dict[str, Any]
+    knowledge_point_snapshot: dict[str, Any]
     assets: list[AssetOut]
     attempt: AttemptOut | None
 

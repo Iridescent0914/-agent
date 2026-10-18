@@ -66,7 +66,6 @@ def main() -> int:
         "grading_readiness",
         "assets",
         "main_knowledge_point",
-        "main_exam_point",
         "core_literacy",
         "is_required",
         "source_file",
@@ -121,20 +120,16 @@ def main() -> int:
             require(len(options) >= 2, f"{record.get('original_qid')} 选择题选项不足", errors)
             require(answer in options, f"{record.get('original_qid')} 答案不在选项中", errors)
 
-    exam_ids = {item["main_exam_point"]["id"] for item in seed_records}
-    require(bool(exam_ids), "自动组卷池未覆盖任何节内主属 KP", errors)
+    knowledge_ids = {item["main_knowledge_point"]["id"] for item in seed_records}
+    require(bool(knowledge_ids), "自动组卷池未覆盖任何节内主属 KP", errors)
     require(
-        report.get("seed_knowledge_point_count") == len(exam_ids),
+        report.get("seed_knowledge_point_count") == len(knowledge_ids),
         "报告中的节内主属 KP 数与种子题不一致",
         errors,
     )
 
-    tree_exam_ids = {
-        exam["id"]
-        for kp in tree.get("knowledge_points", [])
-        for exam in kp.get("exam_points", [])
-    }
-    require(exam_ids.issubset(tree_exam_ids), "种子题节内主属 KP 未全部进入知识树", errors)
+    tree_knowledge_ids = {kp["id"] for kp in tree.get("knowledge_points", [])}
+    require(knowledge_ids.issubset(tree_knowledge_ids), "种子题节内主属 KP 未全部进入知识树", errors)
     require(len(tree.get("sections", [])) == 6, "知识树应包含 6 个正式节节点", errors)
     require(len(tree.get("knowledge_points", [])) == 13, "知识树应包含 13 个正式知识点", errors)
     require(
@@ -157,7 +152,7 @@ def main() -> int:
         "all_questions": len(all_records),
         "seed_questions": len(seed_records),
         "seed_types": dict(Counter(item["question_type"] for item in seed_records)),
-        "seed_knowledge_points": len(exam_ids),
+        "seed_knowledge_points": len(knowledge_ids),
         "required_questions": sum(bool(item.get("is_required")) for item in all_records),
         "machine_ready": sum(item.get("grading_readiness") == "machine_ready" for item in seed_records),
         "raw_answer_only": sum(item.get("grading_readiness") == "raw_answer_only" for item in seed_records),

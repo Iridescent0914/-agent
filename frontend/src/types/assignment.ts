@@ -81,7 +81,7 @@ export interface PaperItem {
   options_snapshot: unknown
   answer_snapshot: unknown
   answer_rule_snapshot: Record<string, unknown>
-  exam_point_snapshot: { main?: { id: string; name: string }; related?: Array<{ id: string; name: string }> }
+  knowledge_point_snapshot: { id: string; name: string }
   assets: AssetInfo[]
   selection_audit: (RecommendedQuestion & { source?: string }) | null
 }

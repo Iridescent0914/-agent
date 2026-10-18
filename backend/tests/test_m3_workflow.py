@@ -37,13 +37,13 @@ def request_body(db, *, key: str):
         "title": "M3 事务测试作业",
         "student_ids": [str(student.id) for student in students],
         "recommendation_parameters": {
-            "review_exam_point_codes": [
-                "math.g6.rational.tracking.08_multiply_divide",
-                "math.g6.rational.tracking.07_add_subtract",
+            "review_knowledge_point_codes": [
+                "math.g6.rational.kp.08_multiply_divide",
+                "math.g6.rational.kp.07_add_subtract",
             ],
             "review_count": 4,
             "avoid_recent_days": 0,
-            "max_exam_point_ratio": 0.5,
+            "max_knowledge_point_ratio": 0.5,
         },
     }
 

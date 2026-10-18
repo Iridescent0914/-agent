@@ -14,8 +14,8 @@ from sqlalchemy.pool import NullPool
 from app.core.database import Base, engine, get_db
 from app.main import app
 from app.models import (
-    Assignment, Attempt, AttemptRevision, ExamPoint, KnowledgePoint,
-    PaperInstance, PaperInstanceItem, Question, QuestionExamPoint, Student,
+    Assignment, Attempt, AttemptRevision, KnowledgePoint,
+    PaperInstance, PaperInstanceItem, Question, Student,
     StudentMastery, Submission,
 )
 from app.schemas.submissions import ManualSubmissionRequest
@@ -51,19 +51,18 @@ def _create_published_single_item_paper(factory):
     suffix = uuid4().hex
     now = datetime.now(timezone.utc)
     knowledge_point_id = uuid4()
-    exam_point_id = uuid4()
     question_id = uuid4()
     student_id = uuid4()
     assignment_id = uuid4()
     paper_id = uuid4()
     item_id = uuid4()
-    exam_code = f"test.m4.exam.{suffix}"
+    knowledge_code = f"test.m4.knowledge.{suffix}"
 
     with factory() as db:
         db.add_all([
             KnowledgePoint(
                 id=knowledge_point_id,
-                code=f"test.m4.knowledge.{suffix}",
+                code=knowledge_code,
                 name="M4 事务测试知识点",
                 chapter_code="test.m4",
                 chapter_name="M4 测试",
@@ -87,14 +86,6 @@ def _create_published_single_item_paper(factory):
                 assignment_type="practice",
             ),
         ])
-        db.flush()
-        db.add(ExamPoint(
-            id=exam_point_id,
-            code=exam_code,
-            name="M4 事务测试考点",
-            sort_order=1,
-            knowledge_point_id=knowledge_point_id,
-        ))
         db.flush()
         db.add(Question(
             id=question_id,
@@ -128,12 +119,6 @@ def _create_published_single_item_paper(factory):
             review_history=[],
             reviewed_by="test",
             reviewed_at=now,
-        ))
-        db.flush()
-        db.add(QuestionExamPoint(
-            question_id=question_id,
-            exam_point_id=exam_point_id,
-            relation_type="main",
         ))
         db.flush()
         db.add(PaperInstance(
@@ -176,9 +161,9 @@ def _create_published_single_item_paper(factory):
                     "uppercase": True,
                 },
             },
-            exam_point_snapshot={
-                "main": {"id": exam_code, "name": "M4 事务测试考点"},
-                "related": [],
+            knowledge_point_snapshot={
+                "id": knowledge_code,
+                "name": "M4 事务测试知识点",
             },
             selection_audit={"source": "transaction_test"},
         ))

@@ -49,7 +49,8 @@ def main() -> None:
                 duplicate_questions += 1
             incomplete += sum(
                 not item.question_snapshot or not item.answer_rule_snapshot or
-                not (item.exam_point_snapshot or {}).get("main") for item in current
+                not (item.knowledge_point_snapshot or {}).get("id") or
+                not (item.knowledge_point_snapshot or {}).get("name") for item in current
             )
             missing_selection += sum(item.selection_audit is None for item in current)
             if paper.supersedes_instance_id:

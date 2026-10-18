@@ -334,7 +334,6 @@ python .\scripts\validate_m0.py
 稳定身份键：
 
 - `KnowledgePoint.code`；
-- `ExamPoint.code`；
 - `Question.original_qid`；
 - `Student.student_code`；
 - `Assignment.seed_key`；
@@ -364,7 +363,7 @@ Assignment
 - 45 组自动组卷题全部为 `machine_ready`、`source_review_status=reviewed`；
 - 自动校验错误：0。
 
-全量数据来自 `data/interim/rational_all.json`，其中 `machine_ready` 题可参加推荐组卷，`raw_answer_only` 题只进入展示层。正式知识点使用新版校本资料中的出现顺序，不再按名称排序；内部 `tracking.*` 键仅用于兼容既有画像、推荐和组卷接口。
+全量数据来自 `data/interim/rational_all.json`，其中 `machine_ready` 题可参加推荐组卷，`raw_answer_only` 题只进入展示层。正式知识点使用新版校本资料中的出现顺序，不再按名称排序；题库、画像、推荐和组卷统一直接使用 `KnowledgePoint.code`。
 
 待入库的选择题和填空题可从题目详情页点击“审核答案并进入组卷池”。老师可先保存审核草稿，再执行“校验并确认入池”。已入池题目可执行“撤回并重新编辑”，撤回后不再参与新组卷，修改并重新校验后可再次入池。每次保存、入池和撤回都会记录操作人、版本和前后答案。数值只接收整数或小数，分数、根式等请选择公式输入。当前公式采用 LaTeX 精确匹配，暂不承诺不同代数写法的等价判定。
 

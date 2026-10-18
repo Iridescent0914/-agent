@@ -17,13 +17,13 @@ async function ensureUnsubmittedPaper(page: import('@playwright/test').Page) {
     title: 'M4 E2E 未提交试卷',
     student_ids: [students.items[0].id],
     recommendation_parameters: {
-      review_exam_point_codes: [
-        'math.g6.rational.tracking.08_multiply_divide',
-        'math.g6.rational.tracking.07_add_subtract',
+      review_knowledge_point_codes: [
+        'math.g6.rational.kp.08_multiply_divide',
+        'math.g6.rational.kp.07_add_subtract',
       ],
       review_count: 2,
       avoid_recent_days: 0,
-      max_exam_point_ratio: 1,
+      max_knowledge_point_ratio: 1,
     },
   } })
   expect(created.status()).toBe(201)
@@ -39,9 +39,34 @@ async function ensureUnsubmittedPaper(page: import('@playwright/test').Page) {
 test('grading queue opens an existing submission with traceable results', async ({ page }) => {
   await page.goto('/grading')
   await expect(page.getByRole('heading', { name: '作业批改', exact: true })).toBeVisible()
-  const link = page.getByRole('link', { name: '查看批改', exact: true }).first()
-  await expect(link).toBeVisible()
-  await link.click()
+  const queue = await (await page.request.get(`${api}/grading/queue`)).json()
+  let selectedPaperId: string | undefined
+  let formulaItemIndex = -1
+  for (const row of queue.items as Array<{ paper_instance_id: string; grading_status: string }>) {
+    if (row.grading_status === 'unsubmitted') continue
+    const candidate = await (await page.request.get(
+      `${api}/paper-instances/${row.paper_instance_id}/submission`,
+    )).json()
+    const candidateIndex = candidate.items.findIndex((item: {
+      grading_answer_snapshot: unknown
+      grading_answer_rule_snapshot: { answer_match_type?: string }
+    }) => {
+      const snapshot = item.grading_answer_snapshot as {
+        kind?: string
+        items?: Array<{ answer_match_type?: string }>
+      }
+      return item.grading_answer_rule_snapshot.answer_match_type === 'numeric'
+        || item.grading_answer_rule_snapshot.answer_match_type === 'latex_exact'
+        || snapshot.items?.some((part) => part.answer_match_type === 'numeric' || part.answer_match_type === 'latex_exact')
+    })
+    if (candidateIndex >= 0) {
+      selectedPaperId = row.paper_instance_id
+      formulaItemIndex = candidateIndex
+      break
+    }
+  }
+  expect(selectedPaperId).toBeTruthy()
+  await page.goto(`/paper-instances/${selectedPaperId}/grading`)
   await expect(page.getByText('归一化结果', { exact: true }).first()).toBeVisible()
   await expect(page.getByText(/^(规则自动确认|教师已确认)$/).first()).toBeVisible()
   await expect(page.getByText('画像证据', { exact: true }).first()).toBeVisible()
@@ -49,21 +74,6 @@ test('grading queue opens an existing submission with traceable results', async 
   await expect(page.getByRole('button', { name: '确认正确', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: '确认错误', exact: true })).toHaveCount(0)
   await expect(page.getByText('修订历史', { exact: true }).first()).toBeVisible()
-  const paperId = page.url().match(/paper-instances\/([^/]+)\/grading/)?.[1]
-  expect(paperId).toBeTruthy()
-  const detail = await (await page.request.get(`${api}/paper-instances/${paperId}/submission`)).json()
-  const formulaItemIndex = detail.items.findIndex((item: {
-    answer_snapshot: unknown
-    answer_rule_snapshot: { answer_match_type?: string }
-  }) => {
-    const snapshot = item.answer_snapshot as {
-      kind?: string
-      items?: Array<{ answer_match_type?: string }>
-    }
-    return item.answer_rule_snapshot.answer_match_type === 'numeric'
-      || item.answer_rule_snapshot.answer_match_type === 'latex_exact'
-      || snapshot.items?.some((part) => part.answer_match_type === 'numeric' || part.answer_match_type === 'latex_exact')
-  })
   expect(formulaItemIndex).toBeGreaterThanOrEqual(0)
   await page.getByRole('button', { name: '修正学生答案', exact: true }).nth(formulaItemIndex).click()
   await expect(page.getByRole('dialog')).toContainText('公式可直接使用公式键盘')

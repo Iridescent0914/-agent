@@ -19,7 +19,6 @@ export interface QuestionSummary {
   section: string
   question_text: string
   main_knowledge_point: Tag
-  main_exam_point: Tag
   core_literacy: string
   is_required: boolean
   has_image: boolean
@@ -37,10 +36,10 @@ export interface QuestionCatalogStats {
   type_counts: Record<string, number>
 }
 
-export interface QuestionCatalogExamPoint extends Tag {}
-
 export interface QuestionCatalogKnowledgePoint extends Tag {
-  exam_points: QuestionCatalogExamPoint[]
+  section: string | null
+  mastery_level: string | null
+  core_competencies: string[]
 }
 
 export interface QuestionCatalogChapter extends Tag {
@@ -57,8 +56,7 @@ export interface QuestionCreateRequest {
   question_text: string
   options?: string[]
   reference_answer_raw: string
-  main_exam_point_code: string
-  related_exam_point_codes: string[]
+  main_knowledge_point_code: string
   solution?: string
   wrong_analysis?: string
   estimated_score_rate?: string
@@ -85,7 +83,6 @@ export interface QuestionDetail extends QuestionSummary {
   reference_answer_raw: string
   answer_match_type: string | null
   answer_normalization_rule: Record<string, unknown>
-  related_exam_points: Tag[]
   solution: string | null
   wrong_analysis: string | null
   estimated_score_rate: string | null
@@ -172,8 +169,8 @@ export interface StudentAttempt {
   question_id: string
   question_text: string
   difficulty: number | null
-  main_exam_point_code: string
-  main_exam_point_name: string
+  main_knowledge_point_code: string
+  main_knowledge_point_name: string
   student_answer: unknown
   grade_status: string
   is_correct: boolean | null

@@ -10,7 +10,7 @@ from sqlalchemy import select
 from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import Student
-from app.services.class_analytics import _record_exam_code
+from app.services.class_analytics import _record_knowledge_code
 
 
 @pytest.fixture
@@ -53,13 +53,13 @@ def _published_paper(client: TestClient, db) -> tuple[Student, dict]:
             "title": "M5 学情聚合测试",
             "student_ids": [str(student.id)],
             "recommendation_parameters": {
-                "review_exam_point_codes": [
-                    "math.g6.rational.tracking.08_multiply_divide",
-                    "math.g6.rational.tracking.07_add_subtract",
+                "review_knowledge_point_codes": [
+                    "math.g6.rational.kp.08_multiply_divide",
+                    "math.g6.rational.kp.07_add_subtract",
                 ],
                 "review_count": 2,
                 "avoid_recent_days": 0,
-                "max_exam_point_ratio": 1,
+                "max_knowledge_point_ratio": 1,
             },
         },
     )
@@ -82,12 +82,12 @@ def test_class_overview_contract_and_drilldown(client):
     body = _overview(client)
     assert body["summary"]["student_count"] == 5
     assert body["summary"]["confirmed_attempt_count"] == sum(
-        item["confirmed_attempt_count"] for item in body["exam_points"]
+        item["confirmed_attempt_count"] for item in body["knowledge_points"]
     )
-    assert body["summary"]["covered_exam_point_count"] + body["summary"][
-        "uncovered_exam_point_count"
-    ] == len(body["exam_points"])
-    for item in body["exam_points"]:
+    assert body["summary"]["covered_knowledge_point_count"] + body["summary"][
+        "uncovered_knowledge_point_count"
+    ] == len(body["knowledge_points"])
+    for item in body["knowledge_points"]:
         assert item["correct_attempt_count"] + item["incorrect_attempt_count"] == item[
             "confirmed_attempt_count"
         ]
@@ -95,9 +95,9 @@ def test_class_overview_contract_and_drilldown(client):
         assert (item["accuracy"] is None) == (item["confirmed_attempt_count"] == 0)
         assert (item["average_mastery"] is None) == (item["evidence_student_count"] == 0)
 
-    target = body["exam_points"][0]
+    target = body["knowledge_points"][0]
     drilldown = client.get(
-        f"/api/v1/analytics/classes/exam-points/{target['exam_point_code']}/students",
+        f"/api/v1/analytics/classes/knowledge-points/{target['knowledge_point_code']}/students",
         params={
             "class_name": "六年级 Demo 班",
             "chapter_code": "math.g6.rational",
@@ -122,9 +122,9 @@ def test_unassessed_student_does_not_lower_class_mastery(client, db):
     db.flush()
     after = _overview(client)
     assert after["summary"]["student_count"] == before["summary"]["student_count"] + 1
-    before_rows = {item["exam_point_code"]: item for item in before["exam_points"]}
-    for row in after["exam_points"]:
-        previous = before_rows[row["exam_point_code"]]
+    before_rows = {item["knowledge_point_code"]: item for item in before["knowledge_points"]}
+    for row in after["knowledge_points"]:
+        previous = before_rows[row["knowledge_point_code"]]
         assert row["average_mastery"] == previous["average_mastery"]
         assert row["evidence_student_count"] == previous["evidence_student_count"]
         assert row["unassessed_student_count"] == previous["unassessed_student_count"] + 1
@@ -183,19 +183,14 @@ def test_pending_review_leaves_class_denominator_and_updates_assignment(client, 
     assert summary["completion_rate"] == 0
 
 
-def test_class_analytics_uses_current_knowledge_point_for_legacy_snapshot():
+def test_class_analytics_uses_direct_knowledge_point():
     record = SimpleNamespace(
-        item=SimpleNamespace(
-            exam_point_snapshot={
-                "main": {"id": "exam.local.legacy-test", "name": "旧版测试考点"}
-            }
-        ),
-        effective_main={
-            "id": "math.g6.rational.tracking.03_number_line",
+        main_knowledge_point={
+            "id": "math.g6.rational.kp.03_number_line",
             "name": "数轴与用数轴上的点表示有理数",
         },
     )
-    assert _record_exam_code(record) == "math.g6.rational.tracking.03_number_line"
+    assert _record_knowledge_code(record) == "math.g6.rational.kp.03_number_line"
 
 
 def test_superseded_version_is_not_a_second_assignment_target(client, db):
@@ -242,12 +237,12 @@ def test_assignment_progress_is_filtered_by_class(client, db):
             "class_id": other_class["id"],
             "student_ids": [str(other_student.id)],
             "recommendation_parameters": {
-                "review_exam_point_codes": [
-                    "math.g6.rational.tracking.08_multiply_divide",
+                "review_knowledge_point_codes": [
+                    "math.g6.rational.kp.08_multiply_divide",
                 ],
                 "review_count": 1,
                 "avoid_recent_days": 0,
-                "max_exam_point_ratio": 1,
+                "max_knowledge_point_ratio": 1,
             },
         },
     )
@@ -302,10 +297,10 @@ def test_empty_assignment_can_be_deleted(client, db):
             "class_id": str(student.class_id),
             "student_ids": [str(student.id)],
             "recommendation_parameters": {
-                "review_exam_point_codes": ["math.g6.rational.tracking.08_multiply_divide"],
+                "review_knowledge_point_codes": ["math.g6.rational.kp.08_multiply_divide"],
                 "review_count": 1,
                 "avoid_recent_days": 0,
-                "max_exam_point_ratio": 1,
+                "max_knowledge_point_ratio": 1,
             },
         },
     )

@@ -12,7 +12,6 @@ from app.models import (
     PaperInstance,
     PaperInstanceItem,
     Question,
-    QuestionExamPoint,
     Student,
     Submission,
 )
@@ -36,10 +35,8 @@ def main() -> int:
         true_false_count = session.scalar(
             select(func.count(Question.id)).where(Question.question_type == "true_false")
         ) or 0
-        exam_count = session.scalar(
-            select(func.count(distinct(QuestionExamPoint.exam_point_id))).where(
-                QuestionExamPoint.relation_type == "main"
-            )
+        knowledge_point_count = session.scalar(
+            select(func.count(distinct(Question.main_knowledge_point_id)))
         ) or 0
         question_asset_count = session.scalar(
             select(func.count(Question.id)).where(func.jsonb_array_length(Question.assets) > 0)
@@ -87,12 +84,12 @@ def main() -> int:
     failed_assets = int(manifest.get("failed_count", -1))
 
     checks = {
-        'schema_at_head': migration == '0022',
+        'schema_at_head': migration == '0023',
         "questions": question_count,
         "fill_blank": fill_count,
         "choice": choice_count,
         "true_false": true_false_count,
-        "catalog_knowledge_points": exam_count,
+        "catalog_knowledge_points": knowledge_point_count,
         "questions_with_assets": question_asset_count,
         "unique_web_assets": manifest.get("unique_asset_count", 0),
         "missing_web_assets": failed_assets,

@@ -10,7 +10,7 @@ export function MasteryBarChart({ items, onSelect, label = '知识点掌握度�
     grid: { left: 156, right: 46, top: 16, bottom: 32 },
     tooltip: { trigger: 'axis', renderMode: 'richText', confine: true },
     xAxis: { type: 'value', min: 0, max: 1, interval: 0.2 },
-    yAxis: { type: 'category', inverse: true, data: assessed.map((item) => item.exam_point_name),
+    yAxis: { type: 'category', inverse: true, data: assessed.map((item) => item.knowledge_point_name),
       axisLabel: { width: 136, overflow: 'truncate', fontSize: 12 }, axisTick: { show: false } },
     series: [{ name: '掌握度参考值', type: 'bar', barMaxWidth: 20,
       label: { show: true, position: 'right', formatter: '{c}' },
@@ -19,5 +19,5 @@ export function MasteryBarChart({ items, onSelect, label = '知识点掌握度�
   }), [assessed])
   if (!assessed.length) return <Empty description="暂无已确认的作答证据" />
   return <ProfileChart option={option} height={Math.max(240, assessed.length * 42 + 48)} label={label}
-    onPoint={(index) => { if (assessed[index]) onSelect(assessed[index].exam_point_code) }} />
+    onPoint={(index) => { if (assessed[index]) onSelect(assessed[index].knowledge_point_code) }} />
 }

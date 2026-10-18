@@ -6,12 +6,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.analytics import AssignmentAnalyticsOut, ClassOption, ClassOverviewOut, ExamPointStudentListOut
+from app.schemas.analytics import (
+    AssignmentAnalyticsOut, ClassOption, ClassOverviewOut,
+    KnowledgePointStudentListOut,
+)
 from app.services.class_analytics import (
     AnalyticsDataError,
     build_assignment_overview,
     build_class_overview,
-    build_exam_point_students,
+    build_knowledge_point_students,
     list_classes,
 )
 
@@ -35,17 +38,20 @@ def get_class_overview(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.get("/classes/exam-points/{exam_point_code}/students", response_model=ExamPointStudentListOut)
-def get_exam_point_students(
-    exam_point_code: str,
+@router.get(
+    "/classes/knowledge-points/{knowledge_point_code}/students",
+    response_model=KnowledgePointStudentListOut,
+)
+def get_knowledge_point_students(
+    knowledge_point_code: str,
     class_name: str = Query(min_length=1, max_length=120),
     chapter_code: str = Query(min_length=1, max_length=160),
     db: Session = Depends(get_db),
 ):
     try:
-        return build_exam_point_students(
+        return build_knowledge_point_students(
             db, class_name=class_name, chapter_code=chapter_code,
-            exam_point_code=exam_point_code,
+            knowledge_point_code=knowledge_point_code,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

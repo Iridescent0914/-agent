@@ -5,11 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.profile import AttemptEvidenceOut, ExamPointOut, MasteryHistoryOut, MasteryOut, ProfileOut
+from app.schemas.profile import (
+    AttemptEvidenceOut, KnowledgePointOut, MasteryHistoryOut, MasteryOut, ProfileOut,
+)
 from app.schemas.recommendations import RecommendationOut, RecommendationRequest
 from app.services.recommendations import preview
 from app.services.student_profile import (
-    ProfileContext, attempt_detail, build_profile, exam_point_catalog,
+    ProfileContext, attempt_detail, build_profile, knowledge_point_catalog,
     history_for, load_context, mastery_items,
 )
 
@@ -24,26 +26,24 @@ def student_context(student_id: UUID, db: Session = Depends(get_db)) -> ProfileC
         raise HTTPException(404, str(exc)) from exc
 
 
-@router.get("/exam-points", response_model=list[ExamPointOut])
-def list_exam_points(chapter_code: str | None = None, db: Session = Depends(get_db)):
-    return exam_point_catalog(db, chapter_code)
+@router.get("/knowledge-points", response_model=list[KnowledgePointOut])
+def list_knowledge_points(
+    chapter_code: str | None = None,
+    db: Session = Depends(get_db),
+):
+    return knowledge_point_catalog(db, chapter_code)
 
 
 @router.get("/students/{student_id}/mastery", response_model=list[MasteryOut])
-def get_mastery(chapter_code: str | None = None, exam_point_code: str | None = None,
+def get_mastery(chapter_code: str | None = None,
+                knowledge_point_code: str | None = None,
                 context: ProfileContext = Depends(student_context)):
     items = mastery_items(context, chapter_code)
-    # Keep old bookmarked/filter URLs usable after curriculum metadata changes.
-    # New responses and all calculations still use the current KP tracking code.
-    effective_code = (
-        context.exam_code_aliases.get(exam_point_code, exam_point_code)
-        if exam_point_code is not None
-        else None
-    )
     return [
         item
         for item in items
-        if effective_code is None or item.exam_point_code == effective_code
+        if knowledge_point_code is None
+        or item.knowledge_point_code == knowledge_point_code
     ]
 
 
@@ -52,10 +52,11 @@ def get_profile(context: ProfileContext = Depends(student_context)):
     return build_profile(context)
 
 
-@router.get("/students/{student_id}/mastery/{exam_point_code}/history", response_model=MasteryHistoryOut)
-def get_history(exam_point_code: str, context: ProfileContext = Depends(student_context)):
+@router.get("/students/{student_id}/mastery/{knowledge_point_code}/history", response_model=MasteryHistoryOut)
+def get_history(knowledge_point_code: str,
+                context: ProfileContext = Depends(student_context)):
     try:
-        return history_for(context, exam_point_code)
+        return history_for(context, knowledge_point_code)
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
 

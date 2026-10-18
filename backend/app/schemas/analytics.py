@@ -18,14 +18,14 @@ class ClassAnalyticsSummary(BaseModel):
     confirmed_attempt_count: int
     pending_review_count: int
     invalid_evidence_count: int
-    covered_exam_point_count: int
-    uncovered_exam_point_count: int
+    covered_knowledge_point_count: int
+    uncovered_knowledge_point_count: int
 
 
-class ClassExamPointAnalytics(BaseModel):
-    exam_point_id: UUID
-    exam_point_code: str
-    exam_point_name: str
+class ClassKnowledgePointAnalytics(BaseModel):
+    knowledge_point_id: UUID
+    knowledge_point_code: str
+    knowledge_point_name: str
     student_count: int
     evidence_student_count: int
     stable_student_count: int
@@ -40,8 +40,8 @@ class ClassExamPointAnalytics(BaseModel):
 
 
 class ClassFocusPoint(BaseModel):
-    exam_point_code: str
-    exam_point_name: str
+    knowledge_point_code: str
+    knowledge_point_name: str
     category: Literal["practice", "recent_errors", "observe", "diagnostic"]
     reason: str
 
@@ -52,7 +52,7 @@ class ClassOverviewOut(BaseModel):
     computed_at: datetime
     rule_version: str
     summary: ClassAnalyticsSummary
-    exam_points: list[ClassExamPointAnalytics]
+    knowledge_points: list[ClassKnowledgePointAnalytics]
     focus_points: list[ClassFocusPoint]
     evidence_note: str = (
         "正确率只统计有效确认作答；待复核不算错误；"
@@ -60,7 +60,7 @@ class ClassOverviewOut(BaseModel):
     )
 
 
-class ExamPointStudentAnalytics(BaseModel):
+class KnowledgePointStudentAnalytics(BaseModel):
     student_id: UUID
     student_code: str
     student_name: str
@@ -73,13 +73,13 @@ class ExamPointStudentAnalytics(BaseModel):
     last_practiced_at: datetime | None
 
 
-class ExamPointStudentListOut(BaseModel):
+class KnowledgePointStudentListOut(BaseModel):
     class_name: str
     chapter_code: str
-    exam_point_code: str
-    exam_point_name: str
+    knowledge_point_code: str
+    knowledge_point_name: str
     computed_at: datetime
-    items: list[ExamPointStudentAnalytics]
+    items: list[KnowledgePointStudentAnalytics]
 
 
 class AssignmentProgressSummary(BaseModel):

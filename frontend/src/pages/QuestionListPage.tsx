@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { apiDelete, apiGet, apiPost, apiPostForm } from '../api/client'
 import type { AssetInfo, Page, QuestionCatalogChapter, QuestionCatalogStats, QuestionCreateRequest, QuestionDetail, QuestionSummary } from '../types'
-import type { ExamPoint } from '../types/profile'
+import type { KnowledgePoint } from '../types/profile'
 import { MathTextEditor } from '../components/MathTextEditor'
 
 interface QuestionCreateValues extends Omit<QuestionCreateRequest, 'options'> {
@@ -37,7 +37,7 @@ export function QuestionListPage() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [examPoints, setExamPoints] = useState<ExamPoint[]>([])
+  const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([])
   const [catalog, setCatalog] = useState<QuestionCatalogChapter[]>([])
   const [questionImages, setQuestionImages] = useState<UploadFile[]>([])
   const [refreshKey, setRefreshKey] = useState(0)
@@ -82,11 +82,11 @@ export function QuestionListPage() {
   }, [createForm])
 
   useEffect(() => {
-    if (!createChapterCode) { setExamPoints([]); return }
-    apiGet<ExamPoint[]>(`/exam-points?chapter_code=${encodeURIComponent(createChapterCode)}`)
-      .then(setExamPoints)
+    if (!createChapterCode) { setKnowledgePoints([]); return }
+    apiGet<KnowledgePoint[]>(`/knowledge-points?chapter_code=${encodeURIComponent(createChapterCode)}`)
+      .then(setKnowledgePoints)
       .catch((reason: Error) => setError(reason.message))
-    createForm.setFieldsValue({ main_exam_point_code: undefined, related_exam_point_codes: [] })
+    createForm.setFieldsValue({ main_knowledge_point_code: undefined })
   }, [createChapterCode, createForm])
 
   async function createQuestion() {
@@ -312,7 +312,6 @@ export function QuestionListPage() {
             core_literacy: '待标注',
             is_required: false,
             operator_name: '任课教师',
-            related_exam_point_codes: [],
           }}
         >
           <Row gutter={16}>
@@ -322,7 +321,7 @@ export function QuestionListPage() {
           </Row>
           <Row gutter={16}>
             <Col xs={24} md={8}><Form.Item name='chapter_code' label='章节' rules={[{ required: true }]}><Select options={catalog.map((chapter) => ({ value: chapter.code, label: chapter.name }))} /></Form.Item></Col>
-            <Col xs={24} md={8}><Form.Item name='main_exam_point_code' label='节内主属 KP' rules={[{ required: true }]}><Select showSearch optionFilterProp='label' options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name='main_knowledge_point_code' label='节内主属 KP' rules={[{ required: true }]}><Select showSearch optionFilterProp='label' options={knowledgePoints.map((point) => ({ value: point.code, label: `${point.name} · ${point.code}` }))} /></Form.Item></Col>
             <Col xs={24} md={8}><Form.Item name='section' label='主属节' rules={[{ required: true }]}><Input maxLength={255} /></Form.Item></Col>
           </Row>
           <Row gutter={16}>
@@ -330,7 +329,6 @@ export function QuestionListPage() {
             <Col xs={24} md={10}><Form.Item name='core_literacy' label='核心素养' rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item></Col>
             <Col xs={24} md={6}><Form.Item name='is_required' label='是否为必做题' rules={[{ required: true }]}><Select options={[{ value: true, label: '是' }, { value: false, label: '否' }]} /></Form.Item></Col>
           </Row>
-          <Form.Item name='related_exam_point_codes' label='关联知识点（可选）'><Select mode='multiple' showSearch optionFilterProp='label' options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item>
           <Form.Item name='question_text' label='题干' rules={[{ required: true, whitespace: true }]}><MathTextEditor rows={5} maxLength={10000} /></Form.Item>
           <Form.Item
             label='题目图片（可选）'

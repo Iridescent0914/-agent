@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import PaperInstanceItem, Question, QuestionExamPoint
+from app.models import PaperInstanceItem, Question
 
 
 _STUDENT_QUESTION_KEYS = {
@@ -62,7 +62,7 @@ def student_safe_question_snapshot(snapshot: Any) -> dict[str, Any]:
 def load_question(db: Session, question_id: UUID) -> Question:
     question = db.scalar(
         select(Question)
-        .options(selectinload(Question.exam_point_links).selectinload(QuestionExamPoint.exam_point))
+        .options(selectinload(Question.main_knowledge_point))
         .where(Question.id == question_id, Question.archived_at.is_(None))
     )
     if question is None:
@@ -75,7 +75,7 @@ def load_questions(db: Session, question_ids: set[UUID]) -> dict[UUID, Question]
         return {}
     questions = list(db.scalars(
         select(Question)
-        .options(selectinload(Question.exam_point_links).selectinload(QuestionExamPoint.exam_point))
+        .options(selectinload(Question.main_knowledge_point))
         .where(Question.id.in_(question_ids), Question.archived_at.is_(None))
     ).unique())
     if len(questions) != len(question_ids):
@@ -84,16 +84,9 @@ def load_questions(db: Session, question_ids: set[UUID]) -> dict[UUID, Question]
 
 
 def snapshot_payload(question: Question) -> dict[str, Any]:
-    main = None
-    related = []
-    for link in question.exam_point_links:
-        value = {"id": link.exam_point.code, "name": link.exam_point.name}
-        if link.relation_type == "main":
-            main = value
-        else:
-            related.append(value)
-    if main is None:
-        raise ValueError(f"question {question.original_qid} has no main exam point")
+    knowledge_point = question.main_knowledge_point
+    if knowledge_point is None:
+        raise ValueError(f"question {question.original_qid} has no knowledge point")
     return {
         "question_id": question.id,
         "question_snapshot": {
@@ -118,11 +111,14 @@ def snapshot_payload(question: Question) -> dict[str, Any]:
             "answer_match_type": question.answer_match_type,
             "answer_normalization_rule": deepcopy(question.answer_normalization_rule),
         },
-        "exam_point_snapshot": {"main": main, "related": sorted(related, key=lambda item: item["id"])},
+        "knowledge_point_snapshot": {
+            "id": knowledge_point.code,
+            "name": knowledge_point.name,
+        },
     }
 
 
-def current_exam_point_snapshot(
+def current_knowledge_point_snapshot(
     db: Session,
     question_id: UUID,
     fallback: Any,
@@ -132,22 +128,18 @@ def current_exam_point_snapshot(
         question = load_question(db, question_id)
     except LookupError:
         return deepcopy(fallback) if isinstance(fallback, dict) else {}
-    return snapshot_payload(question)["exam_point_snapshot"]
+    return snapshot_payload(question)["knowledge_point_snapshot"]
 
 
 def current_selection_audit(
     audit: Any,
-    exam_point_snapshot: dict[str, Any],
+    knowledge_point_snapshot: dict[str, Any],
 ) -> dict[str, Any] | None:
     if not isinstance(audit, dict):
         return None
     value = deepcopy(audit)
-    main = exam_point_snapshot.get("main")
-    if isinstance(main, dict):
-        value["exam_point_code"] = main.get("id")
-        value["exam_point_name"] = main.get("name")
-    if isinstance(value.get("reason_text"), str):
-        value["reason_text"] = value["reason_text"].replace("考点", "知识点")
+    value["knowledge_point_code"] = knowledge_point_snapshot.get("id")
+    value["knowledge_point_name"] = knowledge_point_snapshot.get("name")
     return value
 
 
@@ -161,7 +153,7 @@ def new_item(*, paper_id: UUID, order_no: int, payload: dict[str, Any],
         options_snapshot=deepcopy(payload["options_snapshot"]),
         answer_snapshot=deepcopy(payload["answer_snapshot"]),
         answer_rule_snapshot=deepcopy(payload["answer_rule_snapshot"]),
-        exam_point_snapshot=deepcopy(payload["exam_point_snapshot"]),
+        knowledge_point_snapshot=deepcopy(payload["knowledge_point_snapshot"]),
         selection_audit=deepcopy(selection_audit),
     )
 
@@ -170,9 +162,11 @@ def copy_item(
     *,
     source: PaperInstanceItem,
     paper_id: UUID,
-    exam_point_snapshot: dict[str, Any] | None = None,
+    knowledge_point_snapshot: dict[str, Any] | None = None,
 ) -> PaperInstanceItem:
-    resolved_snapshot = deepcopy(exam_point_snapshot or source.exam_point_snapshot)
+    resolved_snapshot = deepcopy(
+        knowledge_point_snapshot or source.knowledge_point_snapshot
+    )
     audit = current_selection_audit(source.selection_audit or {}, resolved_snapshot) or {}
     audit["source"] = "version_copy"
     audit["copied_from_item_id"] = str(source.id)
@@ -184,7 +178,7 @@ def copy_item(
         options_snapshot=deepcopy(source.options_snapshot),
         answer_snapshot=deepcopy(source.answer_snapshot),
         answer_rule_snapshot=deepcopy(source.answer_rule_snapshot),
-        exam_point_snapshot=resolved_snapshot,
+        knowledge_point_snapshot=resolved_snapshot,
         answer_region=deepcopy(source.answer_region),
         selection_audit=audit,
     )

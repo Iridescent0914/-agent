@@ -40,8 +40,7 @@
   ],
   "semantic_mapping": {
     "sections": "新版 Word 主属节",
-    "knowledge_points": "新版 Word 节内主属 KP",
-    "exam_points": "画像、推荐与组卷内部跟踪键"
+    "knowledge_points": "新版 Word 节内主属 KP"
   },
   "knowledge_points": [
     {
@@ -53,14 +52,7 @@
         "应用意识"
       ],
       "curriculum_basis": "理解负数的意义；会用正数和负数表示具体情境中具有相反意义的量",
-      "order_no": 1,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.01_negative_quantity",
-          "name": "负数与用正负数表示相反意义的量",
-          "order_no": 1
-        }
-      ]
+      "order_no": 1
     },
     {
       "id": "math.g6.rational.kp.02_meaning_classification",
@@ -70,14 +62,7 @@
         "抽象能力"
       ],
       "curriculum_basis": "理解有理数的意义",
-      "order_no": 2,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.02_meaning_classification",
-          "name": "有理数的意义与分类（整数、分数）",
-          "order_no": 2
-        }
-      ]
+      "order_no": 2
     },
     {
       "id": "math.g6.rational.kp.03_number_line",
@@ -88,14 +73,7 @@
         "几何直观"
       ],
       "curriculum_basis": "能用数轴上的点表示有理数",
-      "order_no": 3,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.03_number_line",
-          "name": "数轴与用数轴上的点表示有理数",
-          "order_no": 3
-        }
-      ]
+      "order_no": 3
     },
     {
       "id": "math.g6.rational.kp.04_opposite_number",
@@ -105,14 +83,7 @@
         "抽象能力"
       ],
       "curriculum_basis": "借助数轴理解相反数的意义，掌握求有理数的相反数的方法",
-      "order_no": 4,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.04_opposite_number",
-          "name": "相反数的意义与求法",
-          "order_no": 4
-        }
-      ]
+      "order_no": 4
     },
     {
       "id": "math.g6.rational.kp.05_absolute_value",
@@ -123,14 +94,7 @@
         "运算能力"
       ],
       "curriculum_basis": "借助数轴理解绝对值的意义，掌握求有理数的绝对值的方法",
-      "order_no": 5,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.05_absolute_value",
-          "name": "绝对值的意义与求法",
-          "order_no": 5
-        }
-      ]
+      "order_no": 5
     },
     {
       "id": "math.g6.rational.kp.06_comparison",
@@ -141,14 +105,7 @@
         "运算能力"
       ],
       "curriculum_basis": "能比较有理数的大小",
-      "order_no": 6,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.06_comparison",
-          "name": "比较有理数的大小",
-          "order_no": 6
-        }
-      ]
+      "order_no": 6
     },
     {
       "id": "math.g6.rational.kp.07_add_subtract",
@@ -159,14 +116,7 @@
         "推理能力"
       ],
       "curriculum_basis": "掌握有理数的加、减运算；减法统一为加法",
-      "order_no": 7,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.07_add_subtract",
-          "name": "有理数的加法法则与减法法则",
-          "order_no": 7
-        }
-      ]
+      "order_no": 7
     },
     {
       "id": "math.g6.rational.kp.08_multiply_divide",
@@ -177,14 +127,7 @@
         "推理能力"
       ],
       "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法",
-      "order_no": 8,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.08_multiply_divide",
-          "name": "有理数的乘法法则与除法法则",
-          "order_no": 8
-        }
-      ]
+      "order_no": 8
     },
     {
       "id": "math.g6.rational.kp.09_operation_laws",
@@ -195,14 +138,7 @@
         "推理能力"
       ],
       "curriculum_basis": "理解有理数的运算律，能运用运算律简化运算",
-      "order_no": 9,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.09_operation_laws",
-          "name": "有理数的运算律及其简化运算的作用",
-          "order_no": 9
-        }
-      ]
+      "order_no": 9
     },
     {
       "id": "math.g6.rational.kp.10_powers",
@@ -213,14 +149,7 @@
         "运算能力"
       ],
       "curriculum_basis": "理解乘方的意义；会准确进行有理数的乘方运算",
-      "order_no": 10,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.10_powers",
-          "name": "有理数的乘方",
-          "order_no": 10
-        }
-      ]
+      "order_no": 10
     },
     {
       "id": "math.g6.rational.kp.11_mixed_operations",
@@ -230,14 +159,7 @@
         "运算能力"
       ],
       "curriculum_basis": "掌握有理数简单的混合运算，明确运算顺序",
-      "order_no": 11,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.11_mixed_operations",
-          "name": "有理数的混合运算（以三步以内为主）",
-          "order_no": 11
-        }
-      ]
+      "order_no": 11
     },
     {
       "id": "math.g6.rational.kp.12_applications",
@@ -248,14 +170,7 @@
         "应用意识"
       ],
       "curriculum_basis": "能运用有理数的运算解决简单问题",
-      "order_no": 12,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.12_applications",
-          "name": "用有理数的运算解决简单实际问题",
-          "order_no": 12
-        }
-      ]
+      "order_no": 12
     },
     {
       "id": "math.g6.rational.kp.13_negative_number_culture",
@@ -266,19 +181,11 @@
         "应用意识"
       ],
       "curriculum_basis": "感悟数学抽象的过程与中华优秀数学文化",
-      "order_no": 13,
-      "exam_points": [
-        {
-          "id": "math.g6.rational.tracking.13_negative_number_culture",
-          "name": "古今对负数的认识（数学文化）",
-          "order_no": 13
-        }
-      ]
+      "order_no": 13
     }
   ],
   "notes": [
-    "题目的主属节和节内主属 KP 逐题继承新版校本审核 DOCX，不再使用旧版 Word 考点。",
-    "节与知识点采用上海五四制知识图谱的稳定 ID；Word 提供每道题的具体归属。",
-    "exam_points 是兼容既有组卷、画像和推荐模块的一对一内部跟踪键，不作为旧考点展示。"
+    "题目的主属节和节内主属 KP 逐题继承新版校本审核 DOCX，并作为唯一知识分类来源。",
+    "节与知识点采用上海五四制知识图谱的稳定 ID；Word 提供每道题的具体归属。"
   ]
 }

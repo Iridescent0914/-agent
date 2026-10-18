@@ -18,7 +18,7 @@ class PaperItemOut(BaseModel):
     options_snapshot: Any | None
     answer_snapshot: Any
     answer_rule_snapshot: dict[str, Any]
-    exam_point_snapshot: dict[str, Any]
+    knowledge_point_snapshot: dict[str, Any]
     assets: list[AssetOut]
     selection_audit: dict[str, Any] | None
 
@@ -28,7 +28,7 @@ class StudentPaperItemOut(BaseModel):
     order_no: int
     question_snapshot: dict[str, Any]
     options_snapshot: Any | None
-    exam_point_snapshot: dict[str, Any]
+    knowledge_point_snapshot: dict[str, Any]
     assets: list[AssetOut]
 
 

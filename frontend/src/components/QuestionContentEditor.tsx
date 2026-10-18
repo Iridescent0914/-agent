@@ -4,7 +4,7 @@ import type { UploadFile } from 'antd/es/upload/interface'
 import { useEffect, useState } from 'react'
 import { apiDelete, apiGet, apiPostForm, apiPut } from '../api/client'
 import type { AssetInfo, QuestionCatalogChapter, QuestionDetail, QuestionUpdateRequest } from '../types'
-import type { ExamPoint } from '../types/profile'
+import type { KnowledgePoint } from '../types/profile'
 import { MathTextEditor } from './MathTextEditor'
 
 interface EditValues extends Omit<QuestionUpdateRequest, 'options' | 'expected_review_revision'> {
@@ -56,7 +56,7 @@ export function QuestionContentEditor({
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [images, setImages] = useState<UploadFile[]>([])
-  const [examPoints, setExamPoints] = useState<ExamPoint[]>([])
+  const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([])
   const [chapters, setChapters] = useState<QuestionCatalogChapter[]>([])
   const questionType = Form.useWatch('question_type', form)
   const chapterCode = Form.useWatch('chapter_code', form)
@@ -69,8 +69,8 @@ export function QuestionContentEditor({
 
   useEffect(() => {
     if (!chapterCode) return
-    apiGet<ExamPoint[]>(`/exam-points?chapter_code=${encodeURIComponent(chapterCode)}`)
-      .then(setExamPoints)
+    apiGet<KnowledgePoint[]>(`/knowledge-points?chapter_code=${encodeURIComponent(chapterCode)}`)
+      .then(setKnowledgePoints)
       .catch(() => undefined)
   }, [chapterCode])
 
@@ -85,8 +85,7 @@ export function QuestionContentEditor({
       question_text: editableText(question.question_text),
       options_text: optionsText(question.options),
       reference_answer_raw: question.reference_answer_raw,
-      main_exam_point_code: question.main_exam_point.code,
-      related_exam_point_codes: question.related_exam_points.map((exam) => exam.code),
+      main_knowledge_point_code: question.main_knowledge_point.code,
       solution: question.solution || undefined,
       wrong_analysis: question.wrong_analysis || undefined,
       estimated_score_rate: question.estimated_score_rate || undefined,
@@ -177,8 +176,8 @@ export function QuestionContentEditor({
           <Col xs={12} md={6}><Form.Item name="difficulty" label="难度" rules={[{ required: true }]}><Select options={[1, 2, 3, 4, 5].map((value) => ({ value, label: `${value} 星` }))} /></Form.Item></Col>
         </Row>
         <Row gutter={16}>
-          <Col xs={24} md={8}><Form.Item name="chapter_code" label="章节" rules={[{ required: true }]}><Select options={chapters.map((chapter) => ({ value: chapter.code, label: chapter.name }))} onChange={() => form.setFieldsValue({ main_exam_point_code: undefined, related_exam_point_codes: [] })} /></Form.Item></Col>
-          <Col xs={24} md={8}><Form.Item name="main_exam_point_code" label="节内主属 KP" rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item></Col>
+          <Col xs={24} md={8}><Form.Item name="chapter_code" label="章节" rules={[{ required: true }]}><Select options={chapters.map((chapter) => ({ value: chapter.code, label: chapter.name }))} onChange={() => form.setFieldsValue({ main_knowledge_point_code: undefined })} /></Form.Item></Col>
+          <Col xs={24} md={8}><Form.Item name="main_knowledge_point_code" label="节内主属 KP" rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={knowledgePoints.map((point) => ({ value: point.code, label: `${point.name} · ${point.code}` }))} /></Form.Item></Col>
           <Col xs={24} md={8}><Form.Item name="section" label="主属节" rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item></Col>
         </Row>
         <Row gutter={16}>
@@ -186,7 +185,6 @@ export function QuestionContentEditor({
           <Col xs={24} md={10}><Form.Item name="core_literacy" label="核心素养" rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item></Col>
           <Col xs={24} md={6}><Form.Item name="is_required" label="是否为必做题" rules={[{ required: true }]}><Select options={[{ value: true, label: '是' }, { value: false, label: '否' }]} /></Form.Item></Col>
         </Row>
-        <Form.Item name="related_exam_point_codes" label="关联知识点（可选）"><Select mode="multiple" showSearch optionFilterProp="label" options={examPoints.map((exam) => ({ value: exam.code, label: `${exam.name} · ${exam.code}` }))} /></Form.Item>
         <Form.Item name="question_text" label="题干" rules={[{ required: true, whitespace: true }]}><MathTextEditor rows={5} maxLength={10000} /></Form.Item>
         <Form.Item label="题目图片">
           <Upload

@@ -16,7 +16,7 @@ class ExcludedEvidence(EvidenceRef):
     reason: str
 
 
-class ExamPointOut(BaseModel):
+class KnowledgePointOut(BaseModel):
     id: UUID
     code: str
     name: str
@@ -25,9 +25,9 @@ class ExamPointOut(BaseModel):
 
 
 class MasteryOut(BaseModel):
-    exam_point_id: UUID
-    exam_point_code: str
-    exam_point_name: str
+    knowledge_point_id: UUID
+    knowledge_point_code: str
+    knowledge_point_name: str
     assessment_status: Literal["unassessed", "insufficient", "assessed"]
     mastery: float | None
     confidence_level: Literal["low", "medium", "high"]
@@ -59,8 +59,8 @@ class MasteryHistoryOut(BaseModel):
 
 
 class FocusPoint(BaseModel):
-    exam_point_code: str
-    exam_point_name: str
+    knowledge_point_code: str
+    knowledge_point_name: str
     category: Literal["practice", "recent_errors", "observe", "diagnostic"]
     reason: str
     evidence: list[EvidenceRef]
@@ -72,15 +72,15 @@ class ProfileSummary(BaseModel):
     pending_review_count: int
     invalid_evidence_count: int
     distinct_question_count: int
-    assessed_exam_point_count: int
-    unassessed_exam_point_count: int
+    assessed_knowledge_point_count: int
+    unassessed_knowledge_point_count: int
 
 
 class RecentWrong(EvidenceRef):
     answered_at: datetime
     original_qid: str
-    exam_point_code: str
-    exam_point_name: str
+    knowledge_point_code: str
+    knowledge_point_name: str
 
 
 class ProfileOut(BaseModel):
@@ -108,7 +108,7 @@ class AttemptEvidenceOut(BaseModel):
     options_snapshot: Any | None
     answer_snapshot: Any | None
     answer_rule_snapshot: dict[str, Any]
-    exam_point_snapshot: dict[str, Any]
+    knowledge_point_snapshot: dict[str, Any]
     assets: list[dict[str, Any]]
     student_answer: Any | None
     grade_status: str

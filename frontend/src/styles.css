@@ -168,7 +168,7 @@ a { color: inherit; }
 .profile-details-collapse > .ant-collapse-item > .ant-collapse-header { align-items: center; }
 .profile-details-collapse .section-heading { margin-bottom: 14px; }
 .profile-chart { width: 100%; min-width: 0; }
-.exam-select { width: 300px; max-width: 100%; }
+.knowledge-point-select { width: 300px; max-width: 100%; }
 .table-link.ant-btn { height: auto; padding: 0; white-space: normal; text-align: left; line-height: 1.6; }
 .section-toolbar { margin-bottom: 18px; }
 .compact-divider { margin-block: 8px; }
@@ -232,7 +232,7 @@ a { color: inherit; }
 @media (max-width: 560px) {
   .recommendation-scope-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .profile-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .section-heading .exam-select { width: 100%; }
+  .section-heading .knowledge-point-select { width: 100%; }
   .student-heading { align-items: flex-start; }
   .assignment-form-grid { grid-template-columns: minmax(0, 1fr); }
   .paper-workspace .ant-card-head { align-items: flex-start; }

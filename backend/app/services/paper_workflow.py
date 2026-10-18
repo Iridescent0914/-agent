@@ -10,8 +10,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Assignment, ExamPoint, PaperInstance, PaperInstanceItem, Question,
-    QuestionExamPoint, SchoolClass, Student,
+    Assignment, KnowledgePoint, PaperInstance, PaperInstanceItem, Question,
+    SchoolClass, Student,
 )
 from app.schemas.assignments import AssignmentDetailOut, AssignmentListItem
 from app.schemas.papers import (
@@ -21,7 +21,7 @@ from app.schemas.papers import (
 from app.schemas.recommendations import RecommendationRequest
 from app.services.assets import resolve_assets
 from app.services.paper_snapshots import (
-    copy_item, current_exam_point_snapshot, current_selection_audit, load_question,
+    copy_item, current_knowledge_point_snapshot, current_selection_audit, load_question,
     snapshot_payload, student_safe_question_snapshot, student_safe_value,
 )
 from app.services.recommendations import Candidate, score_candidate
@@ -108,14 +108,14 @@ def teacher_view(db: Session, paper_id: UUID) -> PaperInstanceTeacherOut:
     summary = _summary(db, paper, item_count=len(items))
     output = []
     for item in items:
-        current_snapshot = current_exam_point_snapshot(
-            db, item.question_id, item.exam_point_snapshot
+        current_snapshot = current_knowledge_point_snapshot(
+            db, item.question_id, item.knowledge_point_snapshot
         )
         output.append(PaperItemOut(
             id=item.id, question_id=item.question_id, order_no=item.order_no,
             question_snapshot=item.question_snapshot, options_snapshot=item.options_snapshot,
             answer_snapshot=item.answer_snapshot, answer_rule_snapshot=item.answer_rule_snapshot,
-            exam_point_snapshot=current_snapshot,
+            knowledge_point_snapshot=current_snapshot,
             assets=resolve_assets(item.question_snapshot.get("assets", [])),
             selection_audit=current_selection_audit(item.selection_audit, current_snapshot),
         ))
@@ -136,8 +136,8 @@ def student_view(db: Session, paper_id: UUID) -> PaperInstanceStudentOut:
             id=item.id, order_no=item.order_no,
             question_snapshot=student_safe_question_snapshot(item.question_snapshot),
             options_snapshot=student_safe_value(item.options_snapshot),
-            exam_point_snapshot=current_exam_point_snapshot(
-                db, item.question_id, item.exam_point_snapshot
+            knowledge_point_snapshot=current_knowledge_point_snapshot(
+                db, item.question_id, item.knowledge_point_snapshot
             ),
             assets=resolve_assets(item.question_snapshot.get("assets", [])),
         ))
@@ -323,44 +323,59 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
         raise PaperValidation("paper item has no recommendation bucket")
     params, as_of = _parameters(db, paper)
     context = load_context(db, paper.student_id)
-    allowed_codes = params.new_exam_point_codes if bucket == "new" else params.review_exam_point_codes
+    allowed_codes = (
+        params.new_knowledge_point_codes
+        if bucket == "new"
+        else params.review_knowledge_point_codes
+    )
     existing_ids = {item.question_id for item in items}
-    per_exam = Counter(
-        (item.exam_point_snapshot.get("main") or {}).get("id")
+    per_knowledge = Counter(
+        item.knowledge_point_snapshot.get("id")
         for item in items if item.id != target.id
     )
     practiced = {record.attempt.question_id for record in context.records
                  if params.avoid_recent_days and
                  as_of - timedelta(days=params.avoid_recent_days) <= record.attempt.answered_at <= as_of}
     rows = db.execute(
-        select(Question, ExamPoint)
-        .join(QuestionExamPoint, QuestionExamPoint.question_id == Question.id)
-        .join(ExamPoint, ExamPoint.id == QuestionExamPoint.exam_point_id)
+        select(Question, KnowledgePoint)
+        .join(KnowledgePoint, KnowledgePoint.id == Question.main_knowledge_point_id)
         .where(
             Question.chapter_code == params.chapter_code,
             Question.archived_at.is_(None),
-            QuestionExamPoint.relation_type == 'main',
         )
     ).all()
     ranked = []
-    cap = max(1, int((params.new_count + params.review_count) * params.max_exam_point_ratio))
-    for question, exam in rows:
+    cap = max(
+        1,
+        int(
+            (params.new_count + params.review_count)
+            * params.max_knowledge_point_ratio
+        ),
+    )
+    for question, knowledge_point in rows:
         if question.id in existing_ids or question.id in practiced:
             continue
-        if exam.code not in allowed_codes or question.question_type not in params.question_types:
+        if (
+            knowledge_point.code not in allowed_codes
+            or question.question_type not in params.question_types
+        ):
             continue
         if not params.min_difficulty <= question.difficulty <= params.max_difficulty:
             continue
         if question.grading_readiness != "machine_ready" or question.source_review_status != "reviewed":
             continue
-        if per_exam[exam.code] >= cap:
+        if per_knowledge[knowledge_point.code] >= cap:
             continue
         candidate = Candidate(
             question.id, question.original_qid, question.question_type, question.difficulty,
-            exam.id, exam.code, exam.name,
+            knowledge_point.id, knowledge_point.code, knowledge_point.name,
         )
         ranked.append(score_candidate(
-            candidate, context.results.get((paper.student_id, exam.id)), params, bucket, as_of
+            candidate,
+            context.results.get((paper.student_id, knowledge_point.id)),
+            params,
+            bucket,
+            as_of,
         ))
     ranked.sort(key=lambda item: (-item.score, item.original_qid, item.question_id.int))
     return AlternativeOut(items=ranked[:20])
@@ -385,7 +400,7 @@ def replace_item(db: Session, paper_id: UUID, item_id: UUID, *, replacement_id: 
     item.options_snapshot = payload["options_snapshot"]
     item.answer_snapshot = payload["answer_snapshot"]
     item.answer_rule_snapshot = payload["answer_rule_snapshot"]
-    item.exam_point_snapshot = payload["exam_point_snapshot"]
+    item.knowledge_point_snapshot = payload["knowledge_point_snapshot"]
     item.answer_region = None
     item.selection_audit = {
         "schema_version": "m3-selection-audit-v1", "source": "teacher_replacement",
@@ -556,7 +571,7 @@ def publish_paper(db: Session, paper_id: UUID, *, expected_revision: int,
     if len({item.question_id for item in items}) != len(items):
         raise PaperValidation("paper contains duplicate questions")
     if any(not item.question_snapshot or not item.answer_rule_snapshot or
-           not item.exam_point_snapshot.get("main") for item in items):
+           not item.knowledge_point_snapshot.get("id") for item in items):
         raise PaperValidation("paper contains incomplete snapshots")
     requested = (paper.recommendation_audit or {}).get("requested_count", len(items))
     if len(items) < requested:
@@ -621,8 +636,8 @@ def revise_paper(db: Session, published_id: UUID) -> PaperInstance:
         db.add(copy_item(
             source=item,
             paper_id=target.id,
-            exam_point_snapshot=current_exam_point_snapshot(
-                db, item.question_id, item.exam_point_snapshot
+            knowledge_point_snapshot=current_knowledge_point_snapshot(
+                db, item.question_id, item.knowledge_point_snapshot
             ),
         ))
     db.flush()

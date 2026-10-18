@@ -23,8 +23,8 @@ const typeLabel: Record<string, string> = {
 const importIssueLabel: Record<string, string> = {
   missing_question_text: '题干缺失',
   missing_reference_answer: '参考答案缺失',
-  missing_main_knowledge_point: '主属节缺失',
-  missing_main_exam_point: '节内主属 KP 缺失',
+  missing_section: '主属节缺失',
+  missing_main_knowledge_point: '节内主属 KP 缺失',
   missing_difficulty: '难度缺失',
   multiple_subquestions: '包含多个小题，需要核对答案项',
   question_type_mismatch: '原始题型与题干结构不一致，需要核对',

@@ -29,23 +29,23 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
   const [range, setRange] = useState('assessed')
   const assessed = useMemo(() => profile.masteries.filter((item) => item.mastery !== null), [profile.masteries])
   const focusByCode = useMemo(
-    () => new Map(profile.focus_points.map((item) => [item.exam_point_code, item])),
+    () => new Map(profile.focus_points.map((item) => [item.knowledge_point_code, item])),
     [profile.focus_points],
   )
   const priorityRows = useMemo<PriorityRow[]>(() => assessed
-    .map((mastery) => ({ mastery, focus: focusByCode.get(mastery.exam_point_code) }))
+    .map((mastery) => ({ mastery, focus: focusByCode.get(mastery.knowledge_point_code) }))
     .sort((left, right) => {
       const leftCategory = left.focus?.category ?? 'tracking'
       const rightCategory = right.focus?.category ?? 'tracking'
       return focusRank[leftCategory] - focusRank[rightCategory]
         || recentWrongRate(right.mastery) - recentWrongRate(left.mastery)
         || (left.mastery.mastery ?? 1) - (right.mastery.mastery ?? 1)
-        || left.mastery.exam_point_code.localeCompare(right.mastery.exam_point_code)
+        || left.mastery.knowledge_point_code.localeCompare(right.mastery.knowledge_point_code)
     })
     .slice(0, 5), [assessed, focusByCode])
   const priorityItems = priorityRows.map((item) => item.mastery)
   const [selected, setSelected] = useState(
-    priorityItems[0]?.exam_point_code ?? assessed[0]?.exam_point_code,
+    priorityItems[0]?.knowledge_point_code ?? assessed[0]?.knowledge_point_code,
   )
   const [history, setHistory] = useState<MasteryHistory | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -62,13 +62,13 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
   }, [profile.student_id, selected])
 
   const items = profile.masteries.filter((item) => range === 'all' || item.attempt_count > 0)
-  const current = history?.mastery.exam_point_code === selected ? history : null
+  const current = history?.mastery.knowledge_point_code === selected ? history : null
   const masteryColumns: ColumnsType<Mastery> = [
     {
       title: '知识点',
-      dataIndex: 'exam_point_name',
+      dataIndex: 'knowledge_point_name',
       width: 250,
-      render: (_, item) => <Button type='link' className='table-link' onClick={() => setSelected(item.exam_point_code)}>{item.exam_point_name}</Button>,
+      render: (_, item) => <Button type='link' className='table-link' onClick={() => setSelected(item.knowledge_point_code)}>{item.knowledge_point_name}</Button>,
     },
     {
       title: '掌握度参考值',
@@ -95,9 +95,9 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
   const priorityColumns: ColumnsType<PriorityRow> = [
     {
       title: '重点知识点',
-      dataIndex: ['mastery', 'exam_point_name'],
+      dataIndex: ['mastery', 'knowledge_point_name'],
       width: 220,
-      render: (_, item) => <Button type='link' className='table-link' onClick={() => setSelected(item.mastery.exam_point_code)}>{item.mastery.exam_point_name}</Button>,
+      render: (_, item) => <Button type='link' className='table-link' onClick={() => setSelected(item.mastery.knowledge_point_code)}>{item.mastery.knowledge_point_name}</Button>,
     },
     {
       title: '诊断',
@@ -133,7 +133,7 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
       <Table
         className='priority-table'
         size='small'
-        rowKey={(item) => item.mastery.exam_point_code}
+        rowKey={(item) => item.mastery.knowledge_point_code}
         columns={priorityColumns}
         dataSource={priorityRows}
         pagination={false}
@@ -150,17 +150,17 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
         </div>
         <Select
           aria-label='曲线知识点'
-          className='exam-select'
+          className='knowledge-point-select'
           value={selected}
           onChange={setSelected}
           showSearch
           optionFilterProp='label'
-          options={assessed.map((item) => ({ value: item.exam_point_code, label: item.exam_point_name }))}
+          options={assessed.map((item) => ({ value: item.knowledge_point_code, label: item.knowledge_point_name }))}
         />
       </div>
       {!selected ? <Empty description='尚无可展示趋势的已评估知识点' /> : error ? <Alert type='error' message={error} /> : !current ? <Skeleton active /> : <>
         <Space wrap>
-          <Typography.Text strong>{current.mastery.exam_point_name}</Typography.Text>
+          <Typography.Text strong>{current.mastery.knowledge_point_name}</Typography.Text>
           <Tag>{current.mastery.attempt_count} 次确认作答</Tag>
           <Tag>{current.mastery.distinct_question_count} 道不同题</Tag>
           <Typography.Text type='secondary'>题型：{current.mastery.practiced_question_types.map((type) => type === 'choice' ? '选择' : '填空').join('、') || '未评估'}</Typography.Text>
@@ -211,7 +211,7 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
               />
             </div>
             <Table
-              rowKey='exam_point_code'
+              rowKey='knowledge_point_code'
               columns={masteryColumns}
               dataSource={items}
               scroll={{ x: 1070 }}
@@ -229,7 +229,7 @@ export function StudentProfileOverview({ profile, onEvidence }: { profile: Profi
               columns={[
                 { title: '时间', dataIndex: 'answered_at', render: (value: string) => new Date(value).toLocaleString('zh-CN') },
                 { title: '原题编号', dataIndex: 'original_qid', render: (_, point) => <Button type='link' className='table-link' onClick={() => onEvidence(point.attempt_id)}>{point.original_qid}</Button> },
-                { title: '主要知识点', dataIndex: 'exam_point_name' },
+                { title: '主要知识点', dataIndex: 'knowledge_point_name' },
                 { title: '修订', dataIndex: 'revision_no' },
               ]}
               locale={{ emptyText: <Empty description='暂无确认错误作答' /> }}

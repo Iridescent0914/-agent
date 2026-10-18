@@ -50,23 +50,6 @@ class KnowledgePoint(Base):
         UUID(as_uuid=True), ForeignKey("knowledge_points.id", ondelete="SET NULL")
     )
 
-    exam_points: Mapped[list[ExamPoint]] = relationship(back_populates="knowledge_point")
-
-
-class ExamPoint(Base):
-    __tablename__ = "exam_points"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    code: Mapped[str] = mapped_column(String(180), unique=True, nullable=False)
-    name: Mapped[str] = mapped_column(String(500), nullable=False)
-    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    knowledge_point_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("knowledge_points.id", ondelete="RESTRICT"), nullable=False
-    )
-
-    knowledge_point: Mapped[KnowledgePoint] = relationship(back_populates="exam_points")
-
-
 class Question(TimestampMixin, Base):
     __tablename__ = "questions"
     __table_args__ = (
@@ -126,34 +109,6 @@ class Question(TimestampMixin, Base):
     )
 
     main_knowledge_point: Mapped[KnowledgePoint] = relationship()
-    exam_point_links: Mapped[list[QuestionExamPoint]] = relationship(
-        back_populates="question", cascade="all, delete-orphan"
-    )
-
-
-class QuestionExamPoint(Base):
-    __tablename__ = "question_exam_points"
-    __table_args__ = (
-        CheckConstraint("relation_type IN ('main', 'related')", name="ck_qep_relation_type"),
-        Index(
-            "uq_question_one_main_exam_point",
-            "question_id",
-            unique=True,
-            postgresql_where=text("relation_type = 'main'"),
-        ),
-        Index("ix_qep_exam_question", "exam_point_id", "question_id"),
-    )
-
-    question_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("questions.id", ondelete="CASCADE"), primary_key=True
-    )
-    exam_point_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("exam_points.id", ondelete="RESTRICT"), primary_key=True
-    )
-    relation_type: Mapped[str] = mapped_column(String(16), nullable=False)
-
-    question: Mapped[Question] = relationship(back_populates="exam_point_links")
-    exam_point: Mapped[ExamPoint] = relationship()
 
 
 class SchoolClass(TimestampMixin, Base):
@@ -204,8 +159,8 @@ class StudentMastery(Base):
     student_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE"), primary_key=True
     )
-    exam_point_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("exam_points.id", ondelete="CASCADE"), primary_key=True
+    knowledge_point_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("knowledge_points.id", ondelete="CASCADE"), primary_key=True
     )
     mastery: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
     confidence_level: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -292,7 +247,7 @@ class PaperInstanceItem(TimestampMixin, Base):
     options_snapshot: Mapped[Any | None] = mapped_column(JSONB)
     answer_snapshot: Mapped[Any] = mapped_column(JSONB, nullable=False)
     answer_rule_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    exam_point_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    knowledge_point_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     answer_region: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     selection_audit: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 

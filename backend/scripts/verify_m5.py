@@ -7,15 +7,15 @@ from sqlalchemy import func, select, text
 from app.core.database import SessionLocal
 from app.models import Assignment, PaperInstance, Student, StudentMastery
 from app.services.class_analytics import build_assignment_overview, build_class_overview
-from app.services.student_profile import MASTERY_FIELDS, exam_point_catalog, load_context
+from app.services.student_profile import MASTERY_FIELDS, knowledge_point_catalog, load_context
 
 
 CLASS_NAME = "六年级 Demo 班"
 CHAPTER_CODE = "math.g6.rational"
 
 
-def _exam_code(record: object) -> str | None:
-    main = getattr(record, "effective_main", None)
+def _knowledge_code(record: object) -> str | None:
+    main = getattr(record, "main_knowledge_point", None)
     code = main.get("id") if isinstance(main, dict) else None
     return code if isinstance(code, str) else None
 
@@ -25,8 +25,8 @@ def main() -> None:
     warnings: list[str] = []
     with SessionLocal() as db:
         migration = db.scalar(text("SELECT version_num FROM alembic_version"))
-        if migration != "0022":
-            errors.append(f"migration is {migration}, expected 0022")
+        if migration != "0023":
+            errors.append(f"migration is {migration}, expected 0023")
 
         students = list(
             db.scalars(
@@ -38,7 +38,7 @@ def main() -> None:
         )
         if len(students) != 5:
             errors.append(f"demo class has {len(students)} active students, expected 5")
-        catalog = exam_point_catalog(db, CHAPTER_CODE)
+        catalog = knowledge_point_catalog(db, CHAPTER_CODE)
         codes = {item.code for item in catalog}
         overview = build_class_overview(
             db, class_name=CLASS_NAME, chapter_code=CHAPTER_CODE
@@ -46,16 +46,16 @@ def main() -> None:
 
         aggregate_mismatches = 0
         if overview.summary.confirmed_attempt_count != sum(
-            row.confirmed_attempt_count for row in overview.exam_points
+            row.confirmed_attempt_count for row in overview.knowledge_points
         ):
             aggregate_mismatches += 1
         if (
-            overview.summary.covered_exam_point_count
-            + overview.summary.uncovered_exam_point_count
-            != len(overview.exam_points)
+            overview.summary.covered_knowledge_point_count
+            + overview.summary.uncovered_knowledge_point_count
+            != len(overview.knowledge_points)
         ):
             aggregate_mismatches += 1
-        for row in overview.exam_points:
+        for row in overview.knowledge_points:
             if row.correct_attempt_count + row.incorrect_attempt_count != row.confirmed_attempt_count:
                 aggregate_mismatches += 1
             if row.evidence_student_count + row.unassessed_student_count != len(students):
@@ -74,30 +74,33 @@ def main() -> None:
             valid = [
                 record
                 for record in context.records
-                if record.problem is None and _exam_code(record) in codes
+                if record.problem is None and _knowledge_code(record) in codes
             ]
             pending = [
                 record
                 for record in context.records
-                if record.problem == "needs_review" and _exam_code(record) in codes
+                if record.problem == "needs_review" and _knowledge_code(record) in codes
             ]
             independent_confirmed += len(valid)
             independent_pending += len(pending)
             evidence_students += bool(valid)
             stored = {
-                row.exam_point_id: row
+                row.knowledge_point_id: row
                 for row in db.scalars(
                     select(StudentMastery).where(StudentMastery.student_id == student.id)
                 )
             }
-            expected = {exam_id: result for (_, exam_id), result in context.results.items()}
+            expected = {
+                knowledge_point_id: result
+                for (_, knowledge_point_id), result in context.results.items()
+            }
             if set(stored) != set(expected) or any(
                 any(
-                    getattr(stored[exam_id], field) != getattr(result, field)
+                    getattr(stored[knowledge_point_id], field) != getattr(result, field)
                     for field in MASTERY_FIELDS
                 )
-                for exam_id, result in expected.items()
-                if exam_id in stored
+                for knowledge_point_id, result in expected.items()
+                if knowledge_point_id in stored
             ):
                 mastery_mismatches += 1
         if independent_confirmed != overview.summary.confirmed_attempt_count:

@@ -5,11 +5,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { apiGet, queryString } from '../api/client'
 import { AssignmentProgressPanel } from '../components/AssignmentProgressPanel'
-import { ClassExamPointChart } from '../components/ClassExamPointChart'
-import { ExamPointStudentDrawer } from '../components/ExamPointStudentDrawer'
+import { ClassKnowledgePointChart } from '../components/ClassKnowledgePointChart'
+import { KnowledgePointStudentDrawer } from '../components/KnowledgePointStudentDrawer'
 import type { QuestionCatalogChapter } from '../types'
 import type { AssignmentListItem, AssignmentPage } from '../types/assignment'
-import type { AssignmentAnalytics, ClassExamPointAnalytics, ClassFocusPoint, ClassOption, ClassOverview } from '../types/analytics'
+import type { AssignmentAnalytics, ClassKnowledgePointAnalytics, ClassFocusPoint, ClassOption, ClassOverview } from '../types/analytics'
 
 const focusLabels = { practice: '重点练习', recent_errors: '近期关注', observe: '补充证据', diagnostic: '安排诊断' }
 
@@ -23,7 +23,7 @@ export function ClassAnalyticsPage() {
   const [assignmentId, setAssignmentId] = useState(searchParams.get('assignment_id') ?? '')
   const [overview, setOverview] = useState<ClassOverview | null>(null)
   const [assignment, setAssignment] = useState<AssignmentAnalytics | null>(null)
-  const [examPointCode, setExamPointCode] = useState<string | null>(null)
+  const [knowledgePointCode, setKnowledgePointCode] = useState<string | null>(null)
   const [metric, setMetric] = useState<'accuracy' | 'mastery'>('accuracy')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -96,8 +96,8 @@ export function ClassAnalyticsPage() {
     setSearchParams(next, { replace: true })
   }, [className, chapterCode, assignmentId, setSearchParams])
 
-  const examColumns: ColumnsType<ClassExamPointAnalytics> = useMemo(() => [
-    { title: '知识点', dataIndex: 'exam_point_name', render: (value, row) => <Button className="table-link" type="link" onClick={() => setExamPointCode(row.exam_point_code)}>{value}</Button> },
+  const examColumns: ColumnsType<ClassKnowledgePointAnalytics> = useMemo(() => [
+    { title: '知识点', dataIndex: 'knowledge_point_name', render: (value, row) => <Button className="table-link" type="link" onClick={() => setKnowledgePointCode(row.knowledge_point_code)}>{value}</Button> },
     { title: '证据覆盖', width: 150, render: (_, row) => `${row.evidence_student_count}/${row.student_count} 名学生` },
     { title: '证据状态', width: 120, render: (_, row) => row.evidence_student_count === 0 ? <Tag color="blue">未评估</Tag> : row.stable_student_count < row.evidence_student_count ? <Tag>证据较少</Tag> : <Tag color="green">较稳定</Tag> },
     { title: '正确率', width: 150, render: (_, row) => row.accuracy === null ? '—' : `${(row.accuracy * 100).toFixed(1)}%（${row.correct_attempt_count}/${row.confirmed_attempt_count}）` },
@@ -106,7 +106,7 @@ export function ClassAnalyticsPage() {
   ], [])
 
   const focusColumns: ColumnsType<ClassFocusPoint> = [
-    { title: '知识点', dataIndex: 'exam_point_name', render: (value, row) => <Button className="table-link" type="link" onClick={() => setExamPointCode(row.exam_point_code)}>{value}</Button> },
+    { title: '知识点', dataIndex: 'knowledge_point_name', render: (value, row) => <Button className="table-link" type="link" onClick={() => setKnowledgePointCode(row.knowledge_point_code)}>{value}</Button> },
     { title: '建议', width: 110, render: (_, row) => <Tag color={row.category === 'practice' ? 'red' : row.category === 'recent_errors' ? 'orange' : row.category === 'diagnostic' ? 'blue' : 'default'}>{focusLabels[row.category]}</Tag> },
     { title: '依据', dataIndex: 'reason' },
   ]
@@ -127,16 +127,16 @@ export function ClassAnalyticsPage() {
         <Card size="small"><Statistic title="有有效证据" value={overview.summary.evidence_student_count} suffix="人" /></Card>
         <Card size="small"><Statistic title="确认作答" value={overview.summary.confirmed_attempt_count} suffix="次" /></Card>
         <Card size="small"><Statistic title="待复核" value={overview.summary.pending_review_count} suffix="题" valueStyle={overview.summary.pending_review_count ? { color: '#b45309' } : undefined} /></Card>
-        <Card size="small"><Statistic title="已覆盖知识点" value={overview.summary.covered_exam_point_count} suffix={`/ ${overview.summary.covered_exam_point_count + overview.summary.uncovered_exam_point_count}`} /></Card>
+        <Card size="small"><Statistic title="已覆盖知识点" value={overview.summary.covered_knowledge_point_count} suffix={`/ ${overview.summary.covered_knowledge_point_count + overview.summary.uncovered_knowledge_point_count}`} /></Card>
         <Card size="small"><Statistic title="异常证据" value={overview.summary.invalid_evidence_count} suffix="条" valueStyle={overview.summary.invalid_evidence_count ? { color: '#b42318' } : undefined} /></Card>
       </div>
       {(overview.summary.pending_review_count > 0 || assignment?.summary.unsubmitted_count) && <Alert type="warning" showIcon message="有待处理事项" description={<Space wrap>{overview.summary.pending_review_count > 0 && <Link to="/grading?status=needs_review">处理 {overview.summary.pending_review_count} 道待复核题</Link>}{Boolean(assignment?.summary.unsubmitted_count) && <Link to="/grading?status=unsubmitted">查看 {assignment?.summary.unsubmitted_count} 份未提交试卷</Link>}</Space>} />}
       <Card title="知识点学情" extra={<Radio.Group value={metric} onChange={(event) => setMetric(event.target.value)} options={[{ label: '正确率', value: 'accuracy' }, { label: '掌握度参考值', value: 'mastery' }]} optionType="button" />}>
-        <ClassExamPointChart items={overview.exam_points} metric={metric} onSelect={setExamPointCode} />
+        <ClassKnowledgePointChart items={overview.knowledge_points} metric={metric} onSelect={setKnowledgePointCode} />
         <Typography.Paragraph type="secondary">{overview.evidence_note} 图表中的灰色表示证据较少，不表示能力弱。</Typography.Paragraph>
-        <Table rowKey="exam_point_code" columns={examColumns} dataSource={overview.exam_points} pagination={false} scroll={{ x: 900 }} size="small" />
+        <Table rowKey="knowledge_point_code" columns={examColumns} dataSource={overview.knowledge_points} pagination={false} scroll={{ x: 900 }} size="small" />
       </Card>
-      <Card title="需关注知识点"><Table rowKey="exam_point_code" columns={focusColumns} dataSource={overview.focus_points} pagination={{ pageSize: 6, hideOnSinglePage: true }} /></Card>
+      <Card title="需关注知识点"><Table rowKey="knowledge_point_code" columns={focusColumns} dataSource={overview.focus_points} pagination={{ pageSize: 6, hideOnSinglePage: true }} /></Card>
       <Card title={`${className} · 作业进度`} extra={assignments.length > 0 && <Select aria-label="选择作业" value={assignmentId || undefined} onChange={setAssignmentId} options={assignments.map((item) => ({ value: item.id, label: item.title }))} style={{ width: 280, maxWidth: '70vw' }} />}>
         <AssignmentProgressPanel data={assignment} />
       </Card>
@@ -161,6 +161,6 @@ export function ClassAnalyticsPage() {
       />
       <Typography.Text type="secondary">计算时间：{new Date(overview.computed_at).toLocaleString('zh-CN')} · 规则版本：{overview.rule_version}</Typography.Text>
     </>}
-    <ExamPointStudentDrawer examPointCode={examPointCode} className={className} chapterCode={chapterCode} onClose={() => setExamPointCode(null)} />
+    <KnowledgePointStudentDrawer knowledgePointCode={knowledgePointCode} className={className} chapterCode={chapterCode} onClose={() => setKnowledgePointCode(null)} />
   </Space>
 }

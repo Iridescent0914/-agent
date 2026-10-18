@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from app.core.config import get_settings
 from app.core.database import SessionLocal, get_db
 from app.main import app
-from app.models import ExamPoint, PaperInstance, PaperInstanceItem, Question, Student
+from app.models import KnowledgePoint, PaperInstance, PaperInstanceItem, Question, Student
 from app.services.assets import cleanup_orphan_teacher_assets
 
 
@@ -37,7 +37,7 @@ def client(db):
 
 
 def test_teacher_can_create_review_and_archive_question(client, db):
-    exam = db.scalar(select(ExamPoint).order_by(ExamPoint.code))
+    knowledge_point = db.scalar(select(KnowledgePoint).order_by(KnowledgePoint.code))
     qid = f'q.teacher.test.{uuid4().hex[:12]}'
     before = int(db.scalar(
         select(func.count(Question.id)).where(Question.archived_at.is_(None))
@@ -49,7 +49,7 @@ def test_teacher_can_create_review_and_archive_question(client, db):
         'section': '教师测试',
         'question_text': '计算：1+1=____。',
         'reference_answer_raw': '2',
-        'main_exam_point_code': exam.code,
+        'main_knowledge_point_code': knowledge_point.code,
         'solution': '直接计算。',
         'operator_name': '测试教师',
     })
@@ -69,10 +69,10 @@ def test_teacher_can_create_review_and_archive_question(client, db):
     assert promoted.json()['grading_readiness'] == 'machine_ready'
     assert client.get('/api/v1/questions', params={'keyword': qid}).json()['total'] == 1
 
-    related_exam = next(
-        item for item in db.scalars(select(ExamPoint).order_by(ExamPoint.code))
-        if item.id != exam.id
-        and item.knowledge_point.chapter_code == exam.knowledge_point.chapter_code
+    alternative_knowledge_point = next(
+        item for item in db.scalars(select(KnowledgePoint).order_by(KnowledgePoint.code))
+        if item.id != knowledge_point.id
+        and item.chapter_code == knowledge_point.chapter_code
     )
     updated = client.put(f'/api/v1/questions/{question_id}', json={
         'expected_review_revision': promoted.json()['review_revision'],
@@ -82,8 +82,7 @@ def test_teacher_can_create_review_and_archive_question(client, db):
         'section': '教师编辑测试',
         'question_text': '计算：1+2=____。',
         'reference_answer_raw': '3',
-        'main_exam_point_code': exam.code,
-        'related_exam_point_codes': [related_exam.code],
+        'main_knowledge_point_code': alternative_knowledge_point.code,
         'solution': '直接计算得到 3。',
         'wrong_analysis': '注意加法符号。',
         'estimated_score_rate': '65%',
@@ -96,7 +95,7 @@ def test_teacher_can_create_review_and_archive_question(client, db):
     assert edited['question_text'] == '计算：1+2=____。'
     assert edited['grading_readiness'] == 'raw_answer_only'
     assert edited['correct_answer'] is None
-    assert [item['code'] for item in edited['related_exam_points']] == [related_exam.code]
+    assert edited['main_knowledge_point']['code'] == alternative_knowledge_point.code
     assert edited['estimated_score_rate'] == '65%'
     assert edited['review_history'][-1]['type'] == 'content_updated'
 
@@ -136,14 +135,14 @@ def test_teacher_can_upload_images_when_creating_question(client, db, tmp_path, 
     assert asset['path'].endswith('.png')
     assert (tmp_path / asset['path'].split('/')[-1]).is_file()
 
-    exam = db.scalar(select(ExamPoint).order_by(ExamPoint.code))
+    knowledge_point = db.scalar(select(KnowledgePoint).order_by(KnowledgePoint.code))
     created = client.post('/api/v1/questions', json={
         'question_type': 'fill_blank',
         'difficulty': 3,
         'section': '图片题测试',
         'question_text': '观察下图并填空。',
         'reference_answer_raw': '1',
-        'main_exam_point_code': exam.code,
+        'main_knowledge_point_code': knowledge_point.code,
         'operator_name': '测试教师',
         'assets': [{'path': asset['path']}],
     })
@@ -211,7 +210,7 @@ def test_imported_question_images_survive_content_edit(client, db):
         'section': before['section'],
         'question_text': before['question_text'],
         'reference_answer_raw': before['reference_answer_raw'],
-        'main_exam_point_code': before['main_exam_point']['code'],
+        'main_knowledge_point_code': before['main_knowledge_point']['code'],
         'solution': before['solution'],
         'wrong_analysis': before['wrong_analysis'],
         'operator_name': '测试教师',

@@ -8,7 +8,7 @@ import { RecommendationPreview } from '../components/RecommendationPreview'
 import { StudentAttemptHistory } from '../components/StudentAttemptHistory'
 import { StudentProfileOverview } from '../components/StudentProfileOverview'
 import type { Page, StudentDetail, StudentSummary } from '../types'
-import type { ExamPoint, Profile } from '../types/profile'
+import type { KnowledgePoint, Profile } from '../types/profile'
 
 export function StudentDetailPage() {
   const { studentId } = useParams()
@@ -20,7 +20,7 @@ function StudentWorkspace({ studentId }: { studentId: string }) {
   const [student, setStudent] = useState<StudentDetail | null>(null)
   const [students, setStudents] = useState<StudentSummary[]>([])
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [catalog, setCatalog] = useState<ExamPoint[]>([])
+  const [catalog, setCatalog] = useState<KnowledgePoint[]>([])
   const [error, setError] = useState<string | null>(null)
   const [refresh, setRefresh] = useState(0)
   const [tab, setTab] = useState('profile')
@@ -32,7 +32,7 @@ function StudentWorkspace({ studentId }: { studentId: string }) {
     Promise.all([
       apiGet<StudentDetail>(`/students/${studentId}`, controller.signal),
       apiGet<Profile>(`/students/${studentId}/profile`, controller.signal),
-      apiGet<ExamPoint[]>('/exam-points', controller.signal),
+      apiGet<KnowledgePoint[]>('/knowledge-points', controller.signal),
     ]).then(([studentData, profileData, examData]) => {
       if (!controller.signal.aborted) { setStudent(studentData); setProfile(profileData); setCatalog(examData) }
     }).catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
@@ -66,8 +66,8 @@ function StudentWorkspace({ studentId }: { studentId: string }) {
       <div className="profile-summary">
         <Statistic title="有效作答" value={profile.summary.valid_attempt_count} suffix="次" />
         <Statistic title="不同题目" value={profile.summary.distinct_question_count} suffix="题" />
-        <Statistic title="已有证据知识点" value={profile.summary.assessed_exam_point_count} />
-        <Statistic title="未评估知识点" value={profile.summary.unassessed_exam_point_count} />
+        <Statistic title="已有证据知识点" value={profile.summary.assessed_knowledge_point_count} />
+        <Statistic title="未评估知识点" value={profile.summary.unassessed_knowledge_point_count} />
         <Statistic title="待复核" value={profile.summary.pending_review_count} />
         <Statistic title="历史作答总数" value={profile.summary.total_attempt_count} />
       </div>

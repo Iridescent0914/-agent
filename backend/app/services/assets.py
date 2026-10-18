@@ -88,7 +88,6 @@ def actionable_import_issues(
             "asset_unavailable",
             "missing_question_text",
             "missing_main_knowledge_point",
-            "missing_main_exam_point",
             "missing_difficulty",
         }
         result = [issue for issue in result if issue in current_technical_issues]

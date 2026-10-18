@@ -17,12 +17,12 @@ STUDENT = UUID(int=100)
 
 def candidates():
     return [Candidate(UUID(int=i), f"q.{i:03}", "choice", 2, UUID(int=400 + (i > 3)),
-                       "exam.a" if i <= 3 else "exam.b", "考点 A" if i <= 3 else "考点 B")
+                       "kp.a" if i <= 3 else "kp.b", "知识点 A" if i <= 3 else "知识点 B")
             for i in range(1, 7)]
 
 
 def params(**changes):
-    return RecommendationRequest(**({"review_exam_point_codes": ["exam.a", "exam.b"],
+    return RecommendationRequest(**({"review_knowledge_point_codes": ["kp.a", "kp.b"],
                                      "review_count": 4} | changes))
 
 
@@ -35,7 +35,7 @@ def test_constraints_determinism_and_diagnostic_difficulty():
     output = select()
     assert output == select(list(reversed(candidates())))
     assert output.selected_count == 4
-    assert output.selected_per_exam_point == {"exam.a": 2, "exam.b": 2}
+    assert output.selected_per_knowledge_point == {"kp.a": 2, "kp.b": 2}
     assert len({item.question_id for item in output.items}) == 4
     for item in output.items:
         assert item.strategy == "diagnostic" and item.target_difficulty == 2
@@ -55,14 +55,14 @@ def test_recent_window_includes_boundary_and_pending_contact():
 
 
 def test_no_cross_bucket_fill_and_cap_shortage():
-    output = select(settings=params(new_exam_point_codes=["exam.empty"], new_count=2,
-                                    review_exam_point_codes=["exam.a"], review_count=4))
+    output = select(settings=params(new_knowledge_point_codes=["kp.empty"], new_count=2,
+                                    review_knowledge_point_codes=["kp.a"], review_count=4))
     assert output.new_shortfall == 2 and output.review_shortfall == 1
     assert output.selected_count == 3
     assert "no_questions_in_scope" in output.diagnostics[0].reason_codes
-    cap = select(settings=params(review_exam_point_codes=["exam.a"], review_count=4))
+    cap = select(settings=params(review_knowledge_point_codes=["kp.a"], review_count=4))
     assert cap.selected_count == 2
-    assert "exam_point_cap" in cap.diagnostics[1].reason_codes
+    assert "knowledge_point_cap" in cap.diagnostics[1].reason_codes
 
 
 def test_readiness_type_difficulty_filters_do_not_relax():
@@ -81,10 +81,10 @@ def test_true_false_can_be_selected_when_requested():
     output = select(
         pool,
         params(
-            review_exam_point_codes=["exam.a"],
+            review_knowledge_point_codes=["kp.a"],
             review_count=1,
             question_types=["true_false"],
-            max_exam_point_ratio=1,
+            max_knowledge_point_ratio=1,
         ),
     )
     assert output.selected_count == 1
@@ -109,8 +109,8 @@ def test_personalized_components_and_review_time_do_not_change_mastery():
 
 
 @pytest.mark.parametrize("changes", [
-    {"review_count": 0}, {"review_count": 31}, {"review_count": 1, "max_exam_point_ratio": 0.5},
-    {"review_exam_point_codes": []}, {"new_exam_point_codes": ["exam.a"], "new_count": 1},
+    {"review_count": 0}, {"review_count": 31}, {"review_count": 1, "max_knowledge_point_ratio": 0.5},
+    {"review_knowledge_point_codes": []}, {"new_knowledge_point_codes": ["kp.a"], "new_count": 1},
     {"question_types": []}, {"base_difficulty": 5, "max_difficulty": 3},
     {"avoid_recent_days": -1}, {"review_count": True}, {"chapter_code": ""},
 ])

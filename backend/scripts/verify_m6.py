@@ -26,8 +26,8 @@ def main() -> int:
     settings = get_settings()
     with SessionLocal() as db:
         migration = db.scalar(text("SELECT version_num FROM alembic_version"))
-        if migration != "0022":
-            errors.append(f"migration is {migration}, expected 0022")
+        if migration != "0023":
+            errors.append(f"migration is {migration}, expected 0023")
         runs = list(db.scalars(select(RecognitionRun)))
         now = datetime.now(timezone.utc)
         run_ids = {run.id for run in runs}

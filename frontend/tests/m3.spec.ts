@@ -14,7 +14,7 @@ test('assignment navigation and multi-student preview stay read-only', async ({ 
   await expect(page.getByRole('heading', { name: '创建个性化作业', exact: true })).toBeVisible()
   await expect(page.getByRole('radio', { name: '全班学生' })).toBeChecked()
 
-  const catalog = await (await page.request.get(`${api}/exam-points?chapter_code=math.g6.rational`)).json()
+  const catalog = await (await page.request.get(`${api}/knowledge-points?chapter_code=math.g6.rational`)).json()
   const sufficient = catalog.find((item: { available_question_count: number }) => item.available_question_count >= 6)
   await page.getByLabel('回顾范围').click()
   await page.getByRole('combobox', { name: '回顾范围' }).fill(sufficient.name)

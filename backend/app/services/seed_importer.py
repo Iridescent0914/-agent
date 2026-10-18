@@ -7,19 +7,17 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import (
     Assignment,
     Attempt,
     AttemptRevision,
-    ExamPoint,
     KnowledgePoint,
     PaperInstance,
     PaperInstanceItem,
     Question,
-    QuestionExamPoint,
     SchoolClass,
     Student,
     Submission,
@@ -80,7 +78,6 @@ def _validate_inputs(
                 "difficulty",
                 "question_text",
                 "main_knowledge_point",
-                "main_exam_point",
                 "core_literacy",
                 "is_required",
             )
@@ -149,39 +146,11 @@ def _get_or_create_kp(
     return instance
 
 
-def _get_or_create_exam(
-    session: Session,
-    stats: ImportStats,
-    *,
-    code: str,
-    name: str,
-    knowledge_point: KnowledgePoint,
-    sort_order: int = 0,
-) -> ExamPoint:
-    instance = session.scalar(select(ExamPoint).where(ExamPoint.code == code))
-    values = {
-        "name": name,
-        "knowledge_point_id": knowledge_point.id,
-        "sort_order": sort_order,
-    }
-    if instance is None:
-        instance = ExamPoint(code=code, **values)
-        session.add(instance)
-        session.flush()
-        stats.bump("inserted", "exam_points")
-    elif _set_fields(instance, values):
-        stats.bump("updated", "exam_points")
-    else:
-        stats.bump("unchanged", "exam_points")
-    return instance
-
-
 def _import_knowledge_tree(
     session: Session, stats: ImportStats, tree: dict[str, Any]
-) -> tuple[dict[str, KnowledgePoint], dict[str, ExamPoint]]:
+) -> dict[str, KnowledgePoint]:
     chapter = tree["chapter"]
     kp_by_code: dict[str, KnowledgePoint] = {}
-    exam_by_code: dict[str, ExamPoint] = {}
     for kp_data in tree["knowledge_points"]:
         kp = _get_or_create_kp(
             session,
@@ -197,17 +166,7 @@ def _import_knowledge_tree(
             curriculum_basis=kp_data.get("curriculum_basis"),
         )
         kp_by_code[kp.code] = kp
-        for exam_data in kp_data.get("exam_points", []):
-            exam = _get_or_create_exam(
-                session,
-                stats,
-                code=exam_data["id"],
-                name=exam_data["name"],
-                knowledge_point=kp,
-                sort_order=exam_data.get("order_no", 0),
-            )
-            exam_by_code[exam.code] = exam
-    return kp_by_code, exam_by_code
+    return kp_by_code
 
 
 def _question_values(item: dict[str, Any], kp: KnowledgePoint) -> dict[str, Any]:
@@ -264,7 +223,6 @@ def _import_questions(
     stats: ImportStats,
     questions: list[dict[str, Any]],
     kp_by_code: dict[str, KnowledgePoint],
-    exam_by_code: dict[str, ExamPoint],
 ) -> list[Question]:
     imported: list[Question] = []
     for item in questions:
@@ -301,48 +259,6 @@ def _import_questions(
         else:
             stats.bump("unchanged", "questions")
 
-        session.execute(
-            delete(QuestionExamPoint).where(QuestionExamPoint.question_id == question.id)
-        )
-        exam_specs = [(item["main_exam_point"], "main")]
-        exam_specs.extend((value, "related") for value in item.get("related_exam_points", []))
-        seen: set[str] = set()
-        for exam_data, relation_type in exam_specs:
-            exam_code = exam_data.get("id")
-            exam = exam_by_code.get(exam_code) if exam_code else next(
-                (
-                    candidate
-                    for candidate in exam_by_code.values()
-                    if candidate.name == exam_data.get("name")
-                ),
-                None,
-            )
-            # Some source rows contain percentages or other metadata in the
-            # related-exam-point cell.  Keep that text in the source catalog,
-            # but do not manufacture a selectable exam point without an ID.
-            if relation_type == "related" and exam_code is None and exam is None:
-                continue
-            if exam is not None:
-                exam_code = exam.code
-            if exam_code in seen:
-                continue
-            seen.add(exam_code)
-            if exam is None:
-                exam = _get_or_create_exam(
-                    session,
-                    stats,
-                    code=exam_code,
-                    name=exam_data["name"],
-                    knowledge_point=kp,
-                )
-                exam_by_code[exam.code] = exam
-            session.add(
-                QuestionExamPoint(
-                    question_id=question.id,
-                    exam_point_id=exam.id,
-                    relation_type=relation_type,
-                )
-            )
         imported.append(question)
     session.flush()
     return imported
@@ -376,13 +292,10 @@ def _import_students(session: Session, stats: ImportStats) -> list[Student]:
     return result
 
 
-def _main_exam_snapshot(session: Session, question: Question) -> dict[str, Any]:
+def _knowledge_point_snapshot(session: Session, question: Question) -> dict[str, Any]:
     row = session.execute(
-        select(ExamPoint.code, ExamPoint.name)
-        .join(QuestionExamPoint, QuestionExamPoint.exam_point_id == ExamPoint.id)
-        .where(
-            QuestionExamPoint.question_id == question.id,
-            QuestionExamPoint.relation_type == "main",
+        select(KnowledgePoint.code, KnowledgePoint.name).where(
+            KnowledgePoint.id == question.main_knowledge_point_id
         )
     ).one()
     return {"id": row.code, "name": row.name}
@@ -403,20 +316,20 @@ def _answer_for_result(answer: Any, is_correct: bool) -> Any:
 
 
 def _demo_correctness(student_code: str, question: Question, batch_index: int) -> bool:
-    exam_name = ""
-    # The caller places the main exam name in this transient attribute.
-    if hasattr(question, "_seed_exam_name"):
-        exam_name = str(question._seed_exam_name)
+    knowledge_name = ""
+    # The caller places the main knowledge-point name in this transient attribute.
+    if hasattr(question, "_seed_knowledge_name"):
+        knowledge_name = str(question._seed_knowledge_name)
     if student_code == "S001":
-        return not any(token in exam_name for token in ("概念", "数轴", "相反数"))
+        return not any(token in knowledge_name for token in ("概念", "数轴", "相反数"))
     if student_code == "S002":
-        return not any(token in exam_name for token in ("加减", "乘除", "混合", "乘方"))
+        return not any(token in knowledge_name for token in ("加减", "乘除", "混合", "乘方"))
     if student_code == "S003":
         return (question.source_question_number + batch_index) % 5 != 0
     if student_code == "S004":
         return question.difficulty < 4 or question.source_question_number % 4 != 0
     # S005 shows a recent decline in calculation-related review topics.
-    if batch_index == 2 and any(token in exam_name for token in ("加减", "乘除", "混合")):
+    if batch_index == 2 and any(token in knowledge_name for token in ("加减", "乘除", "混合")):
         return False
     return (question.source_question_number + batch_index) % 6 != 0
 
@@ -473,8 +386,8 @@ def _import_demo_history(
 
             item_pairs: list[tuple[PaperInstanceItem, Question, dict[str, Any]]] = []
             for order_no, question in enumerate(chunk, start=1):
-                exam_snapshot = _main_exam_snapshot(session, question)
-                question._seed_exam_name = exam_snapshot["name"]
+                knowledge_snapshot = _knowledge_point_snapshot(session, question)
+                question._seed_knowledge_name = knowledge_snapshot["name"]
                 paper_item = PaperInstanceItem(
                     paper_instance_id=paper.id,
                     question_id=question.id,
@@ -498,11 +411,11 @@ def _import_demo_history(
                         "answer_match_type": question.answer_match_type,
                         "answer_normalization_rule": question.answer_normalization_rule,
                     },
-                    exam_point_snapshot={"main": exam_snapshot, "related": []},
+                    knowledge_point_snapshot=knowledge_snapshot,
                 )
                 session.add(paper_item)
                 session.flush()
-                item_pairs.append((paper_item, question, exam_snapshot))
+                item_pairs.append((paper_item, question, knowledge_snapshot))
 
             paper.status = "published"
             paper.published_at = answered_at - timedelta(hours=2)
@@ -588,9 +501,9 @@ def import_seed_data(
         raise ValueError(f"catalog is missing seed questions: {missing_seed_qids}")
     stats = ImportStats()
     try:
-        kp_by_code, exam_by_code = _import_knowledge_tree(session, stats, tree_data)
+        kp_by_code = _import_knowledge_tree(session, stats, tree_data)
         catalog_questions = _import_questions(
-            session, stats, catalog_data, kp_by_code, exam_by_code
+            session, stats, catalog_data, kp_by_code
         )
         by_qid = {question.original_qid: question for question in catalog_questions}
         questions = [by_qid[item["original_qid"]] for item in seed_data]

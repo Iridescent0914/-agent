@@ -3,10 +3,10 @@ export interface ClassOption {
   student_count: number
 }
 
-export interface ClassExamPointAnalytics {
-  exam_point_id: string
-  exam_point_code: string
-  exam_point_name: string
+export interface ClassKnowledgePointAnalytics {
+  knowledge_point_id: string
+  knowledge_point_code: string
+  knowledge_point_name: string
   student_count: number
   evidence_student_count: number
   stable_student_count: number
@@ -21,8 +21,8 @@ export interface ClassExamPointAnalytics {
 }
 
 export interface ClassFocusPoint {
-  exam_point_code: string
-  exam_point_name: string
+  knowledge_point_code: string
+  knowledge_point_name: string
   category: 'practice' | 'recent_errors' | 'observe' | 'diagnostic'
   reason: string
 }
@@ -38,15 +38,15 @@ export interface ClassOverview {
     confirmed_attempt_count: number
     pending_review_count: number
     invalid_evidence_count: number
-    covered_exam_point_count: number
-    uncovered_exam_point_count: number
+    covered_knowledge_point_count: number
+    uncovered_knowledge_point_count: number
   }
-  exam_points: ClassExamPointAnalytics[]
+  knowledge_points: ClassKnowledgePointAnalytics[]
   focus_points: ClassFocusPoint[]
   evidence_note: string
 }
 
-export interface ExamPointStudentAnalytics {
+export interface KnowledgePointStudentAnalytics {
   student_id: string
   student_code: string
   student_name: string
@@ -59,13 +59,13 @@ export interface ExamPointStudentAnalytics {
   last_practiced_at: string | null
 }
 
-export interface ExamPointStudentList {
+export interface KnowledgePointStudentList {
   class_name: string
   chapter_code: string
-  exam_point_code: string
-  exam_point_name: string
+  knowledge_point_code: string
+  knowledge_point_name: string
   computed_at: string
-  items: ExamPointStudentAnalytics[]
+  items: KnowledgePointStudentAnalytics[]
 }
 
 export type AssignmentGradingStatus = 'unsubmitted' | 'needs_review' | 'completed'

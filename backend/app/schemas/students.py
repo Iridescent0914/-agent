@@ -80,8 +80,8 @@ class StudentAttemptOut(BaseModel):
     question_id: uuid.UUID
     question_text: str
     difficulty: int | None
-    main_exam_point_code: str
-    main_exam_point_name: str
+    main_knowledge_point_code: str
+    main_knowledge_point_name: str
     student_answer: Any | None
     grade_status: str
     is_correct: bool | None

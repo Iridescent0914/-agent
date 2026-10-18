@@ -28,10 +28,10 @@ def test_published_paper_items_cannot_be_mutated(operation: str) -> None:
                 """INSERT INTO paper_instance_items (
                     id, paper_instance_id, question_id, order_no, question_snapshot,
                     options_snapshot, answer_snapshot, answer_rule_snapshot,
-                    exam_point_snapshot, created_at
+                    knowledge_point_snapshot, created_at
                 ) SELECT gen_random_uuid(), paper_instance_id, question_id, 9999,
                     question_snapshot, options_snapshot, answer_snapshot,
-                    answer_rule_snapshot, exam_point_snapshot, now()
+                    answer_rule_snapshot, knowledge_point_snapshot, now()
                   FROM paper_instance_items WHERE id = :id""",
                 {"id": item.id},
             ),

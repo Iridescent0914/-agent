@@ -3,12 +3,12 @@ import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { apiGet, queryString } from '../api/client'
 import type { Page, StudentAttempt } from '../types'
-import type { ExamPoint } from '../types/profile'
+import type { KnowledgePoint } from '../types/profile'
 import { AnswerView } from './AnswerView'
 
-export function StudentAttemptHistory({ studentId, catalog, onEvidence }: { studentId: string; catalog: ExamPoint[]; onEvidence: (id: string) => void }) {
+export function StudentAttemptHistory({ studentId, catalog, onEvidence }: { studentId: string; catalog: KnowledgePoint[]; onEvidence: (id: string) => void }) {
   const [filter, setFilter] = useState('all')
-  const [exam, setExam] = useState<string | undefined>()
+  const [knowledgePoint, setKnowledgePoint] = useState<string | undefined>()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [attempts, setAttempts] = useState<Page<StudentAttempt> | null>(null)
@@ -17,16 +17,16 @@ export function StudentAttemptHistory({ studentId, catalog, onEvidence }: { stud
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true); setError(null); setAttempts(null)
-    apiGet<Page<StudentAttempt>>(`/students/${studentId}/attempts${queryString({ page, page_size: pageSize, exam_point_code: exam, is_correct: filter === 'all' ? undefined : filter === 'correct' })}`, controller.signal)
+    apiGet<Page<StudentAttempt>>(`/students/${studentId}/attempts${queryString({ page, page_size: pageSize, knowledge_point_code: knowledgePoint, is_correct: filter === 'all' ? undefined : filter === 'correct' })}`, controller.signal)
       .then((data) => { if (!controller.signal.aborted) setAttempts(data) })
       .catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [studentId, filter, exam, page, pageSize])
+  }, [studentId, filter, knowledgePoint, page, pageSize])
   const columns: ColumnsType<StudentAttempt> = [
     { title: '时间', dataIndex: 'answered_at', width: 170, render: (value: string) => new Date(value).toLocaleString('zh-CN') },
     { title: '题目', dataIndex: 'original_qid', width: 230, render: (_, item) => <Button type="link" className="table-link" onClick={() => onEvidence(item.id)}>{item.original_qid || '快照缺失'}</Button> },
-    { title: '当时主知识点', dataIndex: 'main_exam_point_name', width: 210 },
+    { title: '当时主知识点', dataIndex: 'main_knowledge_point_name', width: 210 },
     { title: '难度', dataIndex: 'difficulty', width: 70, render: (value: number | null) => value ?? '-' },
     { title: '学生答案', dataIndex: 'student_answer', width: 240, render: (value: unknown) => <AnswerView answer={value} /> },
     { title: '结论', dataIndex: 'is_correct', width: 100, render: (value: boolean | null) => <Tag color={value === null ? 'default' : value ? 'success' : 'error'}>{value === null ? '待复核' : value ? '正确' : '错误'}</Tag> },
@@ -35,7 +35,7 @@ export function StudentAttemptHistory({ studentId, catalog, onEvidence }: { stud
   return <section className="profile-section">
     <Space wrap className="section-toolbar">
       <Segmented value={filter} options={[{ label: '全部', value: 'all' }, { label: '正确', value: 'correct' }, { label: '错误', value: 'wrong' }]} onChange={(value) => { setFilter(value); setPage(1) }} />
-      <Select aria-label="历史知识点筛选" className="exam-select" value={exam} onChange={(value) => { setExam(value); setPage(1) }} allowClear showSearch optionFilterProp="label" placeholder="全部知识点"
+      <Select aria-label="历史知识点筛选" className="knowledge-point-select" value={knowledgePoint} onChange={(value) => { setKnowledgePoint(value); setPage(1) }} allowClear showSearch optionFilterProp="label" placeholder="全部知识点"
         options={catalog.map((item) => ({ value: item.code, label: item.name }))} />
     </Space>
     {error && <Alert message={error} type="error" showIcon />}
