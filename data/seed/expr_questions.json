@@ -1,0 +1,1515 @@
+[
+  {
+    "schema_version": "2.0",
+    "original_qid": "q.math.g6.expr.school.022",
+    "grade": "六年级上册",
+    "chapter": {
+      "id": "math.g6.expr",
+      "name": "第2章 简单的代数式"
+    },
+    "section_id": "math.g6.expr.sec.2_3",
+    "section": "2.3 一次式",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 3,
+    "question_text": "1、填空：\n（1）在一次式中，______________相同的项叫一次式的同类项.\n（2）若[ASSET:assets/rational/q.math.g6.expr.school.022_rId278.wmf]是同类项，则a=________________.\n（3）若[ASSET:assets/rational/q.math.g6.expr.school.022_rId280.wmf]是同类项，则a=________________.\n[ASSET:assets/rational/q.math.g6.expr.school.022_rId281.png]（4）若[ASSET:assets/rational/q.math.g6.expr.school.022_rId283.wmf]是同类项，则a=________________.\n（5）若一次式[ASSET:assets/rational/q.math.g6.expr.school.022_rId285.wmf]是同类项，则a=____________[ASSET:assets/rational/q.math.g6.expr.school.022_rId287.wmf]=_________\n（6）如图，某小区有一块长为[ASSET:assets/rational/q.math.g6.expr.school.022_rId289.wmf]米，宽为[ASSET:assets/rational/q.math.g6.expr.school.022_rId291.wmf]米的长方形地块，物业公司计划在小区内修一条平行四边形小路，小路的宽为[ASSET:assets/rational/q.math.g6.expr.school.022_rId293.wmf]米.若将图中阴影部分建成绿化带，则绿化带的面积[ASSET:assets/rational/q.math.g6.expr.school.022_rId295.wmf]________平方米（用含有a、b的代数式表示）；当[ASSET:assets/rational/q.math.g6.expr.school.022_rId297.wmf]，[ASSET:assets/rational/q.math.g6.expr.school.022_rId299.wmf]时，绿化带的面积[ASSET:assets/rational/q.math.g6.expr.school.022_rId301.wmf]________平方米.",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "1",
+          "answer": "字母",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "字母"
+        },
+        {
+          "item_id": "2",
+          "answer": "1",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "1"
+        },
+        {
+          "item_id": "3",
+          "answer": "0或2",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "0或2"
+        },
+        {
+          "item_id": "4",
+          "answer": "0或-2",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "0或-2"
+        },
+        {
+          "item_id": "5",
+          "answer": "0或2，-1或-3",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "0或2，-1或-3"
+        },
+        {
+          "item_id": "6",
+          "answer": "2(2a+b)(a-b)，22",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "2(2a+b)(a-b)，22"
+        }
+      ]
+    },
+    "reference_answer_raw": "（1）字母；（2）1；（3）0或2；（4）0或-2；（5）0或2，-1或-3；（6）2(2a+b)(a-b)，22",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.expr.kp.06_combine_like_terms",
+      "name": "合并同类项",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力",
+        "推理能力"
+      ],
+      "curriculum_basis": "掌握合并同类项的法则"
+    },
+    "related_knowledge_points": [],
+    "mastery_level": "掌握",
+    "core_competencies": [
+      "运算能力",
+      "推理能力"
+    ],
+    "curriculum_basis": "掌握合并同类项的法则",
+    "taxonomy_source": "上海市五四制初中数学知识图谱.html",
+    "core_literacy": "运算能力、推理能力",
+    "is_required": true,
+    "solution": null,
+    "wrong_analysis": "绝对值方程漏解；忽略“一次式”隐含条件；同类项概念模糊；分类讨论意识薄弱；\n23. ★★· 选择题",
+    "estimated_score_rate": "68%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId278",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId278.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId280",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId280.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId281",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId281.png",
+        "extension": ".png"
+      },
+      {
+        "relationship_id": "rId283",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId283.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId285",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId285.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId287",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId287.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId289",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId289.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId291",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId291.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId293",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId293.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId295",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId295.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId297",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId297.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId299",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId299.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId301",
+        "path": "assets/rational/q.math.g6.expr.school.022_rId301.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/新/expr_简单的代数式.docx",
+    "source_question_number": 22,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "2.0",
+    "original_qid": "q.math.g6.expr.school.041",
+    "grade": "六年级上册",
+    "chapter": {
+      "id": "math.g6.expr",
+      "name": "第2章 简单的代数式"
+    },
+    "section_id": "math.g6.expr.sec.2_2",
+    "section": "2.2 代数式与代数式的值",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 5,
+    "question_text": "7、我们可以用符号f(a)表示代数式．当a是正整数时，我们规定如果a为偶数，f(a)＝0.5a；如果a为奇数，f(a)＝5a＋1．例如：f(20)＝10，f(5)＝26．设a1＝6，a2＝f(a1)，a3＝f(a2)…依此规律进行下去，得到一列数：a1，a2，a3，a4…an（n为正整数），则2a1－a2＋a3－a4＋a5－a6＋…＋a2023－a2024＝_________．",
+    "options": null,
+    "correct_answer": "14",
+    "reference_answer_raw": "14。a₁＝6 起按规则得到周期为 7 的循环：6, 3, 16, 8, 4, 2, 1, 6, 3, …（即 a₇₊ₙ＝aₙ）。原式首项是 2a₁，其余按奇加偶减交替；计算得 2a₁－a₂＋a₃－a₄＋…＋a₂₀₂₃－a₂₀₂₄ ＝ 14。",
+    "answer_match_type": "numeric",
+    "answer_normalization_rule": {
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "allow_fraction_decimal_equivalence": false,
+      "allow_equivalent_fraction": false,
+      "require_simplified_fraction": false,
+      "require_unit": false
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.expr.kp.04_expression_value",
+      "name": "求代数式的值",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力"
+      ],
+      "curriculum_basis": "会把具体数代入代数式进行计算，会选择适当的方法求代数式的值"
+    },
+    "related_knowledge_points": [],
+    "mastery_level": "掌握",
+    "core_competencies": [
+      "运算能力"
+    ],
+    "curriculum_basis": "会把具体数代入代数式进行计算，会选择适当的方法求代数式的值",
+    "taxonomy_source": "上海市五四制初中数学知识图谱.html",
+    "core_literacy": "运算能力",
+    "is_required": false,
+    "solution": null,
+    "wrong_analysis": "1. 规则用反：a 为偶数用 f(a)＝0.5a，a 为奇数用 f(a)＝5a＋1；如 a₂＝f(6)＝3、a₃＝f(3)＝16，别把奇偶判断弄反。\n2. 注意首项系数是 2a₁ 而非 a₁，与后面 a₂ 起的交替符号规律不同，容易漏掉这个“2”。\n3. 找到周期 7 后要数清符号：从 a₂ 到 a₂₀₂₄ 共按 (奇项＋、偶项－) 配对，下标对应的正负号不要错位。",
+    "estimated_score_rate": "35%",
+    "has_image": false,
+    "has_equation": false,
+    "assets": [],
+    "source_file": "六年级_数学_校本审核/新/expr_简单的代数式.docx",
+    "source_question_number": 41,
+    "source_review_status": "reviewed",
+    "import_status": "parsed",
+    "import_issues": [],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "2.0",
+    "original_qid": "q.math.g6.expr.school.002",
+    "grade": "六年级上册",
+    "chapter": {
+      "id": "math.g6.expr",
+      "name": "第2章 简单的代数式"
+    },
+    "section_id": "math.g6.expr.sec.2_2",
+    "section": "2.2 代数式与代数式的值",
+    "question_type": "choice",
+    "question_type_source": "选择题",
+    "difficulty": 3,
+    "question_text": "2、选择题：\n（1）小华每分钟走a米，小明每分钟走b米，2分钟后，他们一共走了（ ）米．\nA．2(a－b )； B．2(a＋b )； C．2ab ； D．[ASSET:assets/rational/q.math.g6.expr.school.002_rId31.wmf]；\n（2）一台电视机的成本价是a元，销售价比成本价增加[ASSET:assets/rational/q.math.g6.expr.school.002_rId33.wmf]，则每台实际售价为（ ）.\nA．[ASSET:assets/rational/q.math.g6.expr.school.002_rId33.wmf]a元； B．(1＋[ASSET:assets/rational/q.math.g6.expr.school.002_rId33.wmf])a元； C．(a＋[ASSET:assets/rational/q.math.g6.expr.school.002_rId33.wmf])元； D．以上均不对；\n（3）小强购买绿，橙两种颜色的珠子串成一条手链，已知绿色珠子a个，每个2元，橙色珠子b个，每个5元，那么小强购买珠子需花费（ ）.\nA．(2a＋5b )元； B．(5a＋2b )元； C．2( a＋5b )元； D．5(2a＋b )元；\n（4）数轴上点A位于原点的右侧，所对应的数为a（a＜3），则位于原点左侧，与A点距离为3的点B所对应的数为（ ）.\nA．3－a； B．a－3； C．a＋3； D．－3；\n（5）某教学楼阶梯教室第一排有m个座位，后面每一排都比前面一排多4个座位，则第20排座位数是（ ）.\nA．m＋86； B．m＋76； C．m＋84； D．m＋80；\n（6）若k袋苹果重m千克，则x袋苹果重（ ）千克．\nA．[ASSET:assets/rational/q.math.g6.expr.school.002_rId38.wmf]； B．[ASSET:assets/rational/q.math.g6.expr.school.002_rId40.wmf]； C．[ASSET:assets/rational/q.math.g6.expr.school.002_rId42.wmf]； D．[ASSET:assets/rational/q.math.g6.expr.school.002_rId44.wmf]；\n（7）已知一个数为三位数，十位数字是a，个位数字比a小2，百位数字是a的2倍，则这个三位数可表示为（ ）.\nA．3a－2； B．21a－2； C．200a－2； D．211a－2；",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "1",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B，"
+        },
+        {
+          "item_id": "2",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B，"
+        },
+        {
+          "item_id": "3",
+          "answer": "A",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "A，"
+        },
+        {
+          "item_id": "4",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B，"
+        },
+        {
+          "item_id": "5",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B，"
+        },
+        {
+          "item_id": "6",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B，"
+        },
+        {
+          "item_id": "7",
+          "answer": "D",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "D"
+        }
+      ]
+    },
+    "reference_answer_raw": "（1）B，（2）B，（3）A，（4）B，（5）B，（6）B，（7）D",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.expr.kp.03_expression_quantity",
+      "name": "用代数式表示具体问题中的简单数量关系",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "抽象能力",
+        "模型观念"
+      ],
+      "curriculum_basis": "能分析具体问题中的简单数量关系，并用代数式表示"
+    },
+    "related_knowledge_points": [],
+    "mastery_level": "掌握",
+    "core_competencies": [
+      "抽象能力",
+      "模型观念"
+    ],
+    "curriculum_basis": "能分析具体问题中的简单数量关系，并用代数式表示",
+    "taxonomy_source": "上海市五四制初中数学知识图谱.html",
+    "core_literacy": "抽象能力、模型观念",
+    "is_required": true,
+    "solution": null,
+    "wrong_analysis": "本题易错点主要有第（2）题带分数、百分数/分数的“增加”增加[ASSET:assets/rational/q.math.g6.expr.school.002_rId46.wmf]，必须写[ASSET:assets/rational/q.math.g6.expr.school.002_rId48.wmf] ，不能写成[ASSET:assets/rational/q.math.g6.expr.school.002_rId50.wmf]（两者单位/意义不同）；第（3）题审题不仔细，易将单价和数量匹配错误；第（4）第n排比第1排多(n−1)个公差，不是n个，这是数列题最经典的“掉坑点”，第（6）“谁除以谁”搞反\n3. ★★★· 解答题",
+    "estimated_score_rate": "78%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId31",
+        "path": "assets/rational/q.math.g6.expr.school.002_rId31.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId33",
+        "path": "assets/rational/q.math.g6.expr.school.002_rId33.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId38",
+        "path": "assets/rational/q.math.g6.expr.school.002_rId38.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId40",
+        "path": "assets/rational/q.math.g6.expr.school.002_rId40.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId42",
+        "path": "assets/rational/q.math.g6.expr.school.002_rId42.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId44",
+        "path": "assets/rational/q.math.g6.expr.school.002_rId44.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId46",
+        "path": "assets/rational/q.math.g6.expr.school.002_rId46.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId48",
+        "path": "assets/rational/q.math.g6.expr.school.002_rId48.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId50",
+        "path": "assets/rational/q.math.g6.expr.school.002_rId50.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/新/expr_简单的代数式.docx",
+    "source_question_number": 2,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "2.0",
+    "original_qid": "q.math.g6.expr.school.028",
+    "grade": "六年级上册",
+    "chapter": {
+      "id": "math.g6.expr",
+      "name": "第2章 简单的代数式"
+    },
+    "section_id": "math.g6.expr.sec.2_3",
+    "section": "2.3 一次式",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 2,
+    "question_text": "1、填空：\n（1）[ASSET:assets/rational/q.math.g6.expr.school.028_rId369.wmf]=________________.\n（2）去括号[ASSET:assets/rational/q.math.g6.expr.school.028_rId371.wmf]=_________；[ASSET:assets/rational/q.math.g6.expr.school.028_rId373.wmf]=_________；\n[ASSET:assets/rational/q.math.g6.expr.school.028_rId375.wmf]=_________；[ASSET:assets/rational/q.math.g6.expr.school.028_rId377.wmf]=_________.\n（3）[ASSET:assets/rational/q.math.g6.expr.school.028_rId379.wmf]减去[ASSET:assets/rational/q.math.g6.expr.school.028_rId381.wmf]的差是_____________________.\n（4）[ASSET:assets/rational/q.math.g6.expr.school.028_rId383.wmf]比[ASSET:assets/rational/q.math.g6.expr.school.028_rId385.wmf]大_______________.\n（5）[ASSET:assets/rational/q.math.g6.expr.school.028_rId387.wmf]比[ASSET:assets/rational/q.math.g6.expr.school.028_rId389.wmf]小_______________.\n（6）[ASSET:assets/rational/q.math.g6.expr.school.028_rId391.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.028_rId393.wmf]的和减去[ASSET:assets/rational/q.math.g6.expr.school.028_rId395.wmf]的差是_______________.\n（7）A=[ASSET:assets/rational/q.math.g6.expr.school.028_rId397.wmf]，B=[ASSET:assets/rational/q.math.g6.expr.school.028_rId399.wmf]，则[ASSET:assets/rational/q.math.g6.expr.school.028_rId401.wmf]=_______________.\n（8）若x-2y=3，则[ASSET:assets/rational/q.math.g6.expr.school.028_rId403.wmf]的值是________.\n（9）下列各组式子：①[ASSET:assets/rational/q.math.g6.expr.school.028_rId405.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.028_rId407.wmf]，②[ASSET:assets/rational/q.math.g6.expr.school.028_rId409.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.028_rId411.wmf]，③[ASSET:assets/rational/q.math.g6.expr.school.028_rId413.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.028_rId415.wmf]，④[ASSET:assets/rational/q.math.g6.expr.school.028_rId417.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.028_rId419.wmf]，其中互为相反数的有________.\n（10）西部某地第一个月植树[ASSET:assets/rational/q.math.g6.expr.school.028_rId421.wmf]课，第二个月植树的数目比第一个月2倍多15棵，第三个月植树的数目是第一月的3倍少20棵，则三个月一共植树__________棵.",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "2",
+          "answer": [
+            "-a-1",
+            "-a+1",
+            "a-1",
+            "a+1"
+          ],
+          "answer_match_type": "exact",
+          "reference_answer_raw": "-a-1;-a+1;a-1;a+1"
+        },
+        {
+          "item_id": "3",
+          "answer": "8a",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "8a"
+        },
+        {
+          "item_id": "4",
+          "answer": "-2a-3",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "-2a-3"
+        },
+        {
+          "item_id": "5",
+          "answer": "4a-2",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "4a-2"
+        },
+        {
+          "item_id": "6",
+          "answer": "6a-5",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "6a-5"
+        },
+        {
+          "item_id": "7",
+          "answer": "3x+4y-3",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "3x+4y-3"
+        },
+        {
+          "item_id": "8",
+          "answer": "-8",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "-8"
+        },
+        {
+          "item_id": "9",
+          "answer": "6x-5",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "6x-5"
+        }
+      ]
+    },
+    "reference_answer_raw": "a+2；（2）-a-1;-a+1;a-1;a+1；（3）8a；（4）-2a-3；（5）4a-2；（6）6a-5；\n（7）3x+4y-3；（8）-8；（9）6x-5",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.expr.kp.07_remove_parentheses",
+      "name": "去括号法则（数与一次式相乘）",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力",
+        "推理能力"
+      ],
+      "curriculum_basis": "掌握去括号的法则并会进行相应的化简"
+    },
+    "related_knowledge_points": [],
+    "mastery_level": "掌握",
+    "core_competencies": [
+      "运算能力",
+      "推理能力"
+    ],
+    "curriculum_basis": "掌握去括号的法则并会进行相应的化简",
+    "taxonomy_source": "上海市五四制初中数学知识图谱.html",
+    "core_literacy": "运算能力、推理能力",
+    "is_required": true,
+    "solution": null,
+    "wrong_analysis": "去括号时，括号前是负号要把括号内每一项都变号；“A比B大多少”要列A-B；相反数的判断可看两个式子的和是否为0\n29. ★★· 选择题",
+    "estimated_score_rate": "85%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId369",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId369.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId371",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId371.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId373",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId373.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId375",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId375.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId377",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId377.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId379",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId379.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId381",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId381.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId383",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId383.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId385",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId385.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId387",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId387.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId389",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId389.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId391",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId391.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId393",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId393.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId395",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId395.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId397",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId397.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId399",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId399.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId401",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId401.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId403",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId403.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId405",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId405.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId407",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId407.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId409",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId409.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId411",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId411.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId413",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId413.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId415",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId415.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId417",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId417.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId419",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId419.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId421",
+        "path": "assets/rational/q.math.g6.expr.school.028_rId421.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/新/expr_简单的代数式.docx",
+    "source_question_number": 28,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "2.0",
+    "original_qid": "q.math.g6.expr.school.001",
+    "grade": "六年级上册",
+    "chapter": {
+      "id": "math.g6.expr",
+      "name": "第2章 简单的代数式"
+    },
+    "section_id": "math.g6.expr.sec.2_1",
+    "section": "2.1 用字母表示数",
+    "question_type": "fill_blank",
+    "question_type_source": "填空题",
+    "difficulty": 3,
+    "question_text": "1、填空：\n（1）用字母可以表示任何________．\n（2）用字母表示数的书写要求：数字（或字母）与字母相乘时，乘号“×”一般写作“·”或省略不写；带分数与字母相乘时，要把带分数写成________，再相乘；除法运算时，应写成________形式；和或差形式的式子，如果后面有单位，必须用________把式子括起来．\n（3）下列用字母表示数的式子中，符合书写要求的有________个.\n[ASSET:assets/rational/q.math.g6.expr.school.001_rId7.wmf]、[ASSET:assets/rational/q.math.g6.expr.school.001_rId9.wmf]、[ASSET:assets/rational/q.math.g6.expr.school.001_rId11.wmf]、[ASSET:assets/rational/q.math.g6.expr.school.001_rId13.wmf]、[ASSET:assets/rational/q.math.g6.expr.school.001_rId15.wmf]、[ASSET:assets/rational/q.math.g6.expr.school.001_rId17.wmf].\n（4）如果长方形的长为a，宽为b，那么该长方形的周长为_________，面积为_________．\n（5）如果正方体的棱长是a－1，那么正方体的体积是_________，表面积是_________．\n（6）[ASSET:assets/rational/q.math.g6.expr.school.001_rId19.wmf]表示一个两位数，[ASSET:assets/rational/q.math.g6.expr.school.001_rId21.wmf]表示一个三位数，若将[ASSET:assets/rational/q.math.g6.expr.school.001_rId23.wmf]放在[ASSET:assets/rational/q.math.g6.expr.school.001_rId25.wmf]的左边组成一个五位数，则这个五位数为________.\n（7）若[ASSET:assets/rational/q.math.g6.expr.school.001_rId27.wmf]为自然数，能同时被2和5整除的自然数可表示成[ASSET:assets/rational/q.math.g6.expr.school.001_rId29.wmf]，则能同时被4和6整除的自然数可表示为________.",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "1",
+          "answer": "数（或任意数）",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "数（或任意数）"
+        },
+        {
+          "item_id": "2",
+          "answer": "假分数，分数，括号",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "假分数，分数，括号"
+        },
+        {
+          "item_id": "3",
+          "answer": "1",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "1"
+        },
+        {
+          "item_id": "4",
+          "answer": "2(a+b)或2a+2b，ab",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "2(a+b)或2a+2b，ab"
+        },
+        {
+          "item_id": "5",
+          "answer": "(a-1)3，6(a-1)2",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "(a-1)3，6(a-1)2"
+        },
+        {
+          "item_id": "6",
+          "answer": "1000x+y",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "1000x+y"
+        },
+        {
+          "item_id": "7",
+          "answer": "12n",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "12n"
+        }
+      ]
+    },
+    "reference_answer_raw": "（1）数（或任意数）；（2）假分数，分数，括号；（3）1；（4）2(a+b)或2a+2b，ab；（5）(a-1)3，6(a-1)2；（6）1000x+y；（7）12n",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.expr.kp.01_literal_relations",
+      "name": "用字母表示数与数量关系",
+      "mastery_level": "理解",
+      "core_competencies": [
+        "抽象能力"
+      ],
+      "curriculum_basis": "进一步理解用字母表示数的意义，体验用数学符号表达数量关系的过程"
+    },
+    "related_knowledge_points": [],
+    "mastery_level": "理解",
+    "core_competencies": [
+      "抽象能力"
+    ],
+    "curriculum_basis": "进一步理解用字母表示数的意义，体验用数学符号表达数量关系的过程",
+    "taxonomy_source": "上海市五四制初中数学知识图谱.html",
+    "core_literacy": "抽象能力",
+    "is_required": true,
+    "solution": null,
+    "wrong_analysis": "本题易错点主要是概念不清；对代数式书写规则掌握不牢，带分数忘化假分数、除法仍写“÷”、含单位时忘加括号；第（6）题数位意义理解不清：x 是两位数，放在三位数 y左边，应扩大1000倍，不是100倍\n2. ★★★· 选择题",
+    "estimated_score_rate": "70%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId11",
+        "path": "assets/rational/q.math.g6.expr.school.001_rId11.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId13",
+        "path": "assets/rational/q.math.g6.expr.school.001_rId13.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId15",
+        "path": "assets/rational/q.math.g6.expr.school.001_rId15.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId17",
+        "path": "assets/rational/q.math.g6.expr.school.001_rId17.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId19",
+        "path": "assets/rational/q.math.g6.expr.school.001_rId19.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId21",
+        "path": "assets/rational/q.math.g6.expr.school.001_rId21.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId23",
+        "path": "assets/rational/q.math.g6.expr.school.001_rId23.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId25",
+        "path": "assets/rational/q.math.g6.expr.school.001_rId25.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId27",
+        "path": "assets/rational/q.math.g6.expr.school.001_rId27.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId29",
+        "path": "assets/rational/q.math.g6.expr.school.001_rId29.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId7",
+        "path": "assets/rational/q.math.g6.expr.school.001_rId7.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId9",
+        "path": "assets/rational/q.math.g6.expr.school.001_rId9.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/新/expr_简单的代数式.docx",
+    "source_question_number": 1,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "2.0",
+    "original_qid": "q.math.g6.expr.school.023",
+    "grade": "六年级上册",
+    "chapter": {
+      "id": "math.g6.expr",
+      "name": "第2章 简单的代数式"
+    },
+    "section_id": "math.g6.expr.sec.2_3",
+    "section": "2.3 一次式",
+    "question_type": "choice",
+    "question_type_source": "选择题",
+    "difficulty": 2,
+    "question_text": "2、选择题：\n（1）下列与[ASSET:assets/rational/q.math.g6.expr.school.023_rId303.wmf]是同类项的是（ ）\nA.2xy； B.2[ASSET:assets/rational/q.math.g6.expr.school.023_rId305.wmf]； C.[ASSET:assets/rational/q.math.g6.expr.school.023_rId307.wmf]； D.2；\n（2）下列代数式中，[ASSET:assets/rational/q.math.g6.expr.school.023_rId309.wmf]的同类项是（ ）.\n（A）[ASSET:assets/rational/q.math.g6.expr.school.023_rId311.wmf] （B）[ASSET:assets/rational/q.math.g6.expr.school.023_rId313.wmf] （C）[ASSET:assets/rational/q.math.g6.expr.school.023_rId315.wmf] （D）[ASSET:assets/rational/q.math.g6.expr.school.023_rId317.wmf]\n（3）若一次式[ASSET:assets/rational/q.math.g6.expr.school.023_rId319.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.023_rId321.wmf]是同类，则[ASSET:assets/rational/q.math.g6.expr.school.023_rId323.wmf]（ ）.\n（A）1 （B）2 （C）0 （D）[ASSET:assets/rational/q.math.g6.expr.school.023_rId325.wmf]\n（4）若一次式[ASSET:assets/rational/q.math.g6.expr.school.023_rId327.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.023_rId329.wmf]是同类项，则m的值为（ ）\nA.2； B.[ASSET:assets/rational/q.math.g6.expr.school.023_rId331.wmf]； C.[ASSET:assets/rational/q.math.g6.expr.school.023_rId333.wmf]； D.0；",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "1",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B"
+        },
+        {
+          "item_id": "2",
+          "answer": "A",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "A"
+        },
+        {
+          "item_id": "3",
+          "answer": "C",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "C"
+        },
+        {
+          "item_id": "4",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B"
+        }
+      ]
+    },
+    "reference_answer_raw": "（1）B；（2）A；（3）C；（4）B",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.expr.kp.06_combine_like_terms",
+      "name": "合并同类项",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力",
+        "推理能力"
+      ],
+      "curriculum_basis": "掌握合并同类项的法则"
+    },
+    "related_knowledge_points": [],
+    "mastery_level": "掌握",
+    "core_competencies": [
+      "运算能力",
+      "推理能力"
+    ],
+    "curriculum_basis": "掌握合并同类项的法则",
+    "taxonomy_source": "上海市五四制初中数学知识图谱.html",
+    "core_literacy": "运算能力、推理能力",
+    "is_required": true,
+    "solution": null,
+    "wrong_analysis": "判断同类项时先比较字母和指数；含参数时还要注意系数不能为0，否则该项会消失。\n24. ★★· 解答题",
+    "estimated_score_rate": "89%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId303",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId303.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId305",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId305.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId307",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId307.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId309",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId309.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId311",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId311.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId313",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId313.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId315",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId315.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId317",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId317.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId319",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId319.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId321",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId321.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId323",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId323.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId325",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId325.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId327",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId327.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId329",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId329.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId331",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId331.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId333",
+        "path": "assets/rational/q.math.g6.expr.school.023_rId333.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/新/expr_简单的代数式.docx",
+    "source_question_number": 23,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "2.0",
+    "original_qid": "q.math.g6.expr.school.013",
+    "grade": "六年级上册",
+    "chapter": {
+      "id": "math.g6.expr",
+      "name": "第2章 简单的代数式"
+    },
+    "section_id": "math.g6.expr.sec.2_2",
+    "section": "2.2 代数式与代数式的值",
+    "question_type": "choice",
+    "question_type_source": "选择题",
+    "difficulty": 3,
+    "question_text": "2、选择题：\n（1）已知[ASSET:assets/rational/q.math.g6.expr.school.013_rId210.wmf]＝0，则代数式[ASSET:assets/rational/q.math.g6.expr.school.013_rId212.wmf]的值为（ ）\nA．26； B．16； C．2； D．－6；\n（2）若a，b互为相反数，c，d互为倒数，则 [ASSET:assets/rational/q.math.g6.expr.school.013_rId214.wmf]的值是（ ）\nA．[ASSET:assets/rational/q.math.g6.expr.school.013_rId216.wmf]； B．－1； C．[ASSET:assets/rational/q.math.g6.expr.school.013_rId218.wmf]； D．1；\n（3）当[ASSET:assets/rational/q.math.g6.expr.school.013_rId220.wmf]，[ASSET:assets/rational/q.math.g6.expr.school.013_rId222.wmf]时，[ASSET:assets/rational/q.math.g6.expr.school.013_rId224.wmf]的值是（ ）.\n（A）7 （B）-7 （C）1 （D）-1\n（4）在代数式[ASSET:assets/rational/q.math.g6.expr.school.013_rId226.wmf]中，当[ASSET:assets/rational/q.math.g6.expr.school.013_rId228.wmf]的取值分别为[ASSET:assets/rational/q.math.g6.expr.school.013_rId230.wmf]、0、1、2时，代数式对应的值如下表：\n则[ASSET:assets/rational/q.math.g6.expr.school.013_rId232.wmf]的值为（ ）.\n（A）-1 （B）2 （C）-3 （D）-5",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "1",
+          "answer": "A",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "A，26。由-a+2b+8=0得-a+2b=-8，所以2a-4b=16，2a-4b+10=26"
+        },
+        {
+          "item_id": "2",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B，-1。a、b互为相反数，所以a+b=0；c、d互为倒数，所以cd=1，原式=0-1=-1"
+        },
+        {
+          "item_id": "3",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B，-7。因为a-b=3，c+d=4，所以(b-c)-(a+d)=b-a-c-d=-(a-b)-(c+d)=-3-4=-7"
+        },
+        {
+          "item_id": "4",
+          "answer": "D",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "D，-5。由表格知，当x=2时，2k+b=5，所以-2k-b=-（2k+b）=-5"
+        }
+      ]
+    },
+    "reference_answer_raw": "A，26。由-a+2b+8=0得-a+2b=-8，所以2a-4b=16，2a-4b+10=26。\nB，-1。a、b互为相反数，所以a+b=0；c、d互为倒数，所以cd=1，原式=0-1=-1。\nB，-7。因为a-b=3，c+d=4，所以(b-c)-(a+d)=b-a-c-d=-(a-b)-(c+d)=-3-4=-7。\nD，-5。由表格知，当x=2时，2k+b=5，所以-2k-b=-（2k+b）=-5。",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.expr.kp.04_expression_value",
+      "name": "求代数式的值",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力"
+      ],
+      "curriculum_basis": "会把具体数代入代数式进行计算，会选择适当的方法求代数式的值"
+    },
+    "related_knowledge_points": [],
+    "mastery_level": "掌握",
+    "core_competencies": [
+      "运算能力"
+    ],
+    "curriculum_basis": "会把具体数代入代数式进行计算，会选择适当的方法求代数式的值",
+    "taxonomy_source": "上海市五四制初中数学知识图谱.html",
+    "core_literacy": "运算能力",
+    "is_required": true,
+    "solution": null,
+    "wrong_analysis": "整体代入的灵活变形。需要从−a+2b推导出2a−4b，这里需要对原式整体乘以-2，会误以为直接乘以2或忘记变形；\n相反数和倒数的性质双双混淆，相反数（和为0）、倒数（积为1）的定义记忆不牢，或运算时粗心漏乘系数；\n去括号和添括号时丢失负号。b−a=−(a−b)的变形也是高频遗忘点\n表格读数错误，没有正确从表格中提取k和b的对应关系。\n14. ★★· 解答题",
+    "estimated_score_rate": "75%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId210",
+        "path": "assets/rational/q.math.g6.expr.school.013_rId210.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId212",
+        "path": "assets/rational/q.math.g6.expr.school.013_rId212.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId214",
+        "path": "assets/rational/q.math.g6.expr.school.013_rId214.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId216",
+        "path": "assets/rational/q.math.g6.expr.school.013_rId216.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId218",
+        "path": "assets/rational/q.math.g6.expr.school.013_rId218.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId220",
+        "path": "assets/rational/q.math.g6.expr.school.013_rId220.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId222",
+        "path": "assets/rational/q.math.g6.expr.school.013_rId222.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId224",
+        "path": "assets/rational/q.math.g6.expr.school.013_rId224.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId226",
+        "path": "assets/rational/q.math.g6.expr.school.013_rId226.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId228",
+        "path": "assets/rational/q.math.g6.expr.school.013_rId228.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId230",
+        "path": "assets/rational/q.math.g6.expr.school.013_rId230.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId232",
+        "path": "assets/rational/q.math.g6.expr.school.013_rId232.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/新/expr_简单的代数式.docx",
+    "source_question_number": 13,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "2.0",
+    "original_qid": "q.math.g6.expr.school.010",
+    "grade": "六年级上册",
+    "chapter": {
+      "id": "math.g6.expr",
+      "name": "第2章 简单的代数式"
+    },
+    "section_id": "math.g6.expr.sec.2_2",
+    "section": "2.2 代数式与代数式的值",
+    "question_type": "choice",
+    "question_type_source": "选择题",
+    "difficulty": 2,
+    "question_text": "2、选择题：\n（1）下列式子中，不属于代数式的是（ ）.\nA．a－1； B．3xy； C．[ASSET:assets/rational/q.math.g6.expr.school.010_rId153.wmf]； D．a≤－5；\n（2）如果从一卷粗细均匀的电线上截取3米长的电线，称得它的质量为a克，再称得剩余电线的质量为b克，那么原来这卷电线的总长度是（ ）米\nA．[ASSET:assets/rational/q.math.g6.expr.school.010_rId155.wmf]； B．[ASSET:assets/rational/q.math.g6.expr.school.010_rId157.wmf]； C．[ASSET:assets/rational/q.math.g6.expr.school.010_rId159.wmf]； D．[ASSET:assets/rational/q.math.g6.expr.school.010_rId161.wmf]；\n（3）设某数为[ASSET:assets/rational/q.math.g6.expr.school.010_rId163.wmf]，那么代数式[ASSET:assets/rational/q.math.g6.expr.school.010_rId165.wmf]表示（ ）.\n（A）某数的3倍的平方减去5除以2 （B）某数平方的3倍与5的差的一半\n（C）某数的3倍减5的一半 （D）某数与5的差的3倍除以2\n（4）下列说法中，正确的是（ ）.\n（A）[ASSET:assets/rational/q.math.g6.expr.school.010_rId167.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.010_rId169.wmf]两数和的[ASSET:assets/rational/q.math.g6.expr.school.010_rId171.wmf]是[ASSET:assets/rational/q.math.g6.expr.school.010_rId173.wmf]\n（B）三个连续整数中，若[ASSET:assets/rational/q.math.g6.expr.school.010_rId175.wmf]是最小的一个，则这三个数的和为[ASSET:assets/rational/q.math.g6.expr.school.010_rId177.wmf]\n（C）如果一个两位数的十位数字是[ASSET:assets/rational/q.math.g6.expr.school.010_rId179.wmf]，个位数字是[ASSET:assets/rational/q.math.g6.expr.school.010_rId181.wmf]那么这个两位数可以表示为[ASSET:assets/rational/q.math.g6.expr.school.010_rId183.wmf]\n（D）m的2倍与[ASSET:assets/rational/q.math.g6.expr.school.010_rId185.wmf]的3倍的和是[ASSET:assets/rational/q.math.g6.expr.school.010_rId187.wmf]",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "1",
+          "answer": "D",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "D"
+        },
+        {
+          "item_id": "2",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B"
+        },
+        {
+          "item_id": "3",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B"
+        },
+        {
+          "item_id": "4",
+          "answer": "D",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "D"
+        }
+      ]
+    },
+    "reference_answer_raw": "（1）D；（2）B；（3）B；（4）D",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.expr.kp.03_expression_quantity",
+      "name": "用代数式表示具体问题中的简单数量关系",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "抽象能力",
+        "模型观念"
+      ],
+      "curriculum_basis": "能分析具体问题中的简单数量关系，并用代数式表示"
+    },
+    "related_knowledge_points": [],
+    "mastery_level": "掌握",
+    "core_competencies": [
+      "抽象能力",
+      "模型观念"
+    ],
+    "curriculum_basis": "能分析具体问题中的简单数量关系，并用代数式表示",
+    "taxonomy_source": "上海市五四制初中数学知识图谱.html",
+    "core_literacy": "抽象能力、模型观念",
+    "is_required": true,
+    "solution": null,
+    "wrong_analysis": "1.说明对代数式概念理解不牢固；\n2.把长度和质量混在一起加减，完全没有理解“质量÷单位长度质量=长度”的归一逻辑。把a当成了“每米质量”，即误以为3米重a克就是1米重a克，忘记先除以3求单位长度质量。\n3.连续整数求和公式记错；\n4.代数式与中文表述互译时“运算顺序”颠倒\n11. ★★★★· 解答题",
+    "estimated_score_rate": "82%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId153",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId153.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId155",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId155.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId157",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId157.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId159",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId159.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId161",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId161.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId163",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId163.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId165",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId165.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId167",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId167.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId169",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId169.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId171",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId171.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId173",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId173.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId175",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId175.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId177",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId177.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId179",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId179.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId181",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId181.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId183",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId183.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId185",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId185.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId187",
+        "path": "assets/rational/q.math.g6.expr.school.010_rId187.wmf",
+        "extension": ".wmf"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/新/expr_简单的代数式.docx",
+    "source_question_number": 10,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  },
+  {
+    "schema_version": "2.0",
+    "original_qid": "q.math.g6.expr.school.029",
+    "grade": "六年级上册",
+    "chapter": {
+      "id": "math.g6.expr",
+      "name": "第2章 简单的代数式"
+    },
+    "section_id": "math.g6.expr.sec.2_3",
+    "section": "2.3 一次式",
+    "question_type": "choice",
+    "question_type_source": "选择题",
+    "difficulty": 2,
+    "question_text": "2、选择题\n（1）一次式[ASSET:assets/rational/q.math.g6.expr.school.029_rId423.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.029_rId425.wmf]相减，结果是一次式，则下列结果正确的是（ ）\nA.[ASSET:assets/rational/q.math.g6.expr.school.029_rId427.wmf]； B.[ASSET:assets/rational/q.math.g6.expr.school.029_rId429.wmf]； C.[ASSET:assets/rational/q.math.g6.expr.school.029_rId431.wmf]； D.[ASSET:assets/rational/q.math.g6.expr.school.029_rId433.wmf]；\n（2）如图在一个大长方形内，放置了8个完全相同的小长方形，则大长方形的长和宽分别是（ ）\n[ASSET:assets/rational/q.math.g6.expr.school.029_rId434.png]A.6a和2b； B.3a+b和b+2a； C.6a和4a； D.2b和3b；",
+    "options": null,
+    "correct_answer": {
+      "kind": "group",
+      "items": [
+        {
+          "item_id": "1",
+          "answer": "D",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "D"
+        },
+        {
+          "item_id": "2",
+          "answer": "B",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "B；。图中小长方形的短边为a、长边为b。大长方形横向长度为左侧3个小长方形的宽加右侧1个小长方形的长，即3a+b；纵向高度为上面1个横放小长方形的宽加下面2个竖放小长方形的宽，即b+2a"
+        }
+      ]
+    },
+    "reference_answer_raw": "（1）D；（2）B；。图中小长方形的短边为a、长边为b。大长方形横向长度为左侧3个小长方形的宽加右侧1个小长方形的长，即3a+b；纵向高度为上面1个横放小长方形的宽加下面2个竖放小长方形的宽，即b+2a。",
+    "answer_match_type": "group",
+    "answer_normalization_rule": {
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": true
+    },
+    "grading_readiness": "machine_ready",
+    "main_knowledge_point": {
+      "id": "math.g6.expr.kp.06_combine_like_terms",
+      "name": "合并同类项",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力",
+        "推理能力"
+      ],
+      "curriculum_basis": "掌握合并同类项的法则"
+    },
+    "related_knowledge_points": [],
+    "mastery_level": "掌握",
+    "core_competencies": [
+      "运算能力",
+      "推理能力"
+    ],
+    "curriculum_basis": "掌握合并同类项的法则",
+    "taxonomy_source": "上海市五四制初中数学知识图谱.html",
+    "core_literacy": "运算能力、推理能力",
+    "is_required": true,
+    "solution": null,
+    "wrong_analysis": "看拼图时要先确定每个小长方形的长、宽，再沿同一方向分段相加；不能把不同方向上的a、b混为一谈\n30. ★★★· 解答题",
+    "estimated_score_rate": "87%",
+    "has_image": true,
+    "has_equation": false,
+    "assets": [
+      {
+        "relationship_id": "rId423",
+        "path": "assets/rational/q.math.g6.expr.school.029_rId423.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId425",
+        "path": "assets/rational/q.math.g6.expr.school.029_rId425.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId427",
+        "path": "assets/rational/q.math.g6.expr.school.029_rId427.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId429",
+        "path": "assets/rational/q.math.g6.expr.school.029_rId429.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId431",
+        "path": "assets/rational/q.math.g6.expr.school.029_rId431.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId433",
+        "path": "assets/rational/q.math.g6.expr.school.029_rId433.wmf",
+        "extension": ".wmf"
+      },
+      {
+        "relationship_id": "rId434",
+        "path": "assets/rational/q.math.g6.expr.school.029_rId434.png",
+        "extension": ".png"
+      }
+    ],
+    "source_file": "六年级_数学_校本审核/新/expr_简单的代数式.docx",
+    "source_question_number": 29,
+    "source_review_status": "reviewed",
+    "import_status": "needs_technical_cleanup",
+    "import_issues": [
+      "contains_asset",
+      "multiple_subquestions",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion",
+      "asset_needs_web_conversion"
+    ],
+    "is_seed_candidate": true
+  }
+]

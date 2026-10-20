@@ -1,0 +1,125 @@
+{
+  "schema_version": "2.0",
+  "taxonomy_source": "上海市五四制初中数学知识图谱.html",
+  "grade": "六年级上册",
+  "chapter": {
+    "id": "math.g6.expr",
+    "name": "第2章 简单的代数式"
+  },
+  "sections": [
+    {
+      "id": "math.g6.expr.sec.2_1",
+      "name": "2.1 用字母表示数",
+      "order_no": 1
+    },
+    {
+      "id": "math.g6.expr.sec.2_2",
+      "name": "2.2 代数式与代数式的值",
+      "order_no": 2
+    },
+    {
+      "id": "math.g6.expr.sec.2_3",
+      "name": "2.3 一次式",
+      "order_no": 3
+    },
+    {
+      "id": "math.g6.expr.sec.reading_divisibility",
+      "name": "阅读材料：能被 3、5、9 整除的数的特征",
+      "order_no": 4
+    }
+  ],
+  "semantic_mapping": {
+    "sections": "新版 Word 主属节",
+    "knowledge_points": "新版 Word 节内主属 KP"
+  },
+  "knowledge_points": [
+    {
+      "id": "math.g6.expr.kp.01_literal_relations",
+      "name": "用字母表示数与数量关系",
+      "mastery_level": "理解",
+      "core_competencies": [
+        "抽象能力"
+      ],
+      "curriculum_basis": "进一步理解用字母表示数的意义，体验用数学符号表达数量关系的过程",
+      "order_no": 1
+    },
+    {
+      "id": "math.g6.expr.kp.02_expression_concept",
+      "name": "代数式的概念",
+      "mastery_level": "理解",
+      "core_competencies": [
+        "抽象能力"
+      ],
+      "curriculum_basis": "借助现实情境了解代数式",
+      "order_no": 2
+    },
+    {
+      "id": "math.g6.expr.kp.03_expression_quantity",
+      "name": "用代数式表示具体问题中的简单数量关系",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "抽象能力",
+        "模型观念"
+      ],
+      "curriculum_basis": "能分析具体问题中的简单数量关系，并用代数式表示",
+      "order_no": 3
+    },
+    {
+      "id": "math.g6.expr.kp.04_expression_value",
+      "name": "求代数式的值",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力"
+      ],
+      "curriculum_basis": "会把具体数代入代数式进行计算，会选择适当的方法求代数式的值",
+      "order_no": 4
+    },
+    {
+      "id": "math.g6.expr.kp.05_linear_term",
+      "name": "一次式及其项、系数、常数项",
+      "mastery_level": "理解",
+      "core_competencies": [
+        "抽象能力"
+      ],
+      "curriculum_basis": "理解一次式相关概念，为整式运算作准备",
+      "order_no": 5
+    },
+    {
+      "id": "math.g6.expr.kp.06_combine_like_terms",
+      "name": "合并同类项",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力",
+        "推理能力"
+      ],
+      "curriculum_basis": "掌握合并同类项的法则",
+      "order_no": 6
+    },
+    {
+      "id": "math.g6.expr.kp.07_remove_parentheses",
+      "name": "去括号法则（数与一次式相乘）",
+      "mastery_level": "掌握",
+      "core_competencies": [
+        "运算能力",
+        "推理能力"
+      ],
+      "curriculum_basis": "掌握去括号的法则并会进行相应的化简",
+      "order_no": 7
+    },
+    {
+      "id": "math.g6.expr.kp.08_divisibility_patterns",
+      "name": "能被 3、5、9 整除的数的特征（拓展）",
+      "mastery_level": "了解",
+      "core_competencies": [
+        "推理能力",
+        "创新意识"
+      ],
+      "curriculum_basis": "经历用字母与推理发现数字规律的过程",
+      "order_no": 8
+    }
+  ],
+  "notes": [
+    "题目的主属节和节内主属 KP 逐题继承新版校本审核 DOCX，并作为唯一知识分类来源。",
+    "节与知识点采用上海五四制知识图谱的稳定 ID；Word 提供每道题的具体归属。"
+  ]
+}

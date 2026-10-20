@@ -57,6 +57,13 @@ LABELS = {
 
 TAXONOMY_SOURCE = "上海市五四制初中数学知识图谱.html"
 
+# The original M0 builder defaults to the rational-number chapter. These
+# values allow chapter-specific wrappers to reuse the same parser.
+CHAPTER_CODE = "math.g6.rational"
+CHAPTER_NAME = "第1章 有理数"
+ASSET_DIR_NAME = "rational"
+OUTPUT_PREFIX = "rational"
+
 SECTIONS = [
     {"id": "math.g6.rational.sec.1_1", "name": "1.1 有理数的引入", "order_no": 1},
     {"id": "math.g6.rational.sec.1_2", "name": "1.2 有理数的加法与减法", "order_no": 2},
@@ -451,8 +458,8 @@ def to_record(parsed: ParsedQuestion, source: Path, project_root: Path) -> dict:
 
     section_name, _ = parse_named_id(metadata.get("main_section_source", ""))
     kp_name, _ = parse_named_id(metadata.get("main_kp_source", ""))
-    chapter_id = "math.g6.rational"
-    chapter_name = metadata.get("chapter_source", "").strip() or "第1章 有理数"
+    chapter_id = CHAPTER_CODE
+    chapter_name = metadata.get("chapter_source", "").strip() or CHAPTER_NAME
     section_spec = SECTION_BY_NAME.get(section_name)
     kp_spec = KNOWLEDGE_POINT_BY_NAME.get(kp_name)
     if section_name and section_spec is None:
@@ -710,7 +717,7 @@ def build_knowledge_tree(records: Iterable[dict]) -> dict:
         "schema_version": "2.0",
         "taxonomy_source": TAXONOMY_SOURCE,
         "grade": next((record["grade"] for record in records if record.get("grade")), "六年级上册"),
-        "chapter": {"id": "math.g6.rational", "name": "第1章 有理数"},
+        "chapter": {"id": CHAPTER_CODE, "name": CHAPTER_NAME},
         "sections": SECTIONS,
         "semantic_mapping": {
             "sections": "新版 Word 主属节",
@@ -742,7 +749,7 @@ def replace_asset_markers(value, replacements: dict[str, str]):
 
 
 def export_assets(source: Path, output_root: Path, records: list[dict]) -> dict:
-    asset_root = output_root / "assets" / "rational"
+    asset_root = output_root / "assets" / ASSET_DIR_NAME
     asset_root.mkdir(parents=True, exist_ok=True)
     extension_counts: Counter[str] = Counter()
     exported = 0
@@ -890,7 +897,7 @@ def find_default_source(project_root: Path) -> Path:
 def build(source: Path, output_root: Path, project_root: Path, limit: int) -> dict:
     parsed = parse_review_docx(source)
     records = [to_record(item, source, project_root) for item in parsed]
-    structure_path = output_root / "config" / "rational_answer_structures.json"
+    structure_path = output_root / "config" / f"{OUTPUT_PREFIX}_answer_structures.json"
     answer_structure_override_count = apply_answer_structures(records, structure_path)
     qids = [record["original_qid"] for record in records]
     duplicate_qids = sorted(qid for qid, count in Counter(qids).items() if count > 1)
@@ -919,11 +926,11 @@ def build(source: Path, output_root: Path, project_root: Path, limit: int) -> di
         "source_status_note": "新版校本审核 DOCX 作为权威来源；年级、章、主属节、节内主属 KP、核心素养和必做题标记均直接继承该文件。",
     }
 
-    write_json(output_root / "interim" / "rational_all.json", records)
-    write_json(output_root / "seed" / "rational_questions.json", selected)
-    write_json(output_root / "seed" / "rational_knowledge_tree.json", tree)
-    write_audit_csv(output_root / "audit" / "rational_import_audit.csv", records)
-    write_json(output_root / "audit" / "rational_m0_report.json", report)
+    write_json(output_root / "interim" / f"{OUTPUT_PREFIX}_all.json", records)
+    write_json(output_root / "seed" / f"{OUTPUT_PREFIX}_questions.json", selected)
+    write_json(output_root / "seed" / f"{OUTPUT_PREFIX}_knowledge_tree.json", tree)
+    write_audit_csv(output_root / "audit" / f"{OUTPUT_PREFIX}_import_audit.csv", records)
+    write_json(output_root / "audit" / f"{OUTPUT_PREFIX}_m0_report.json", report)
     return report
 
 

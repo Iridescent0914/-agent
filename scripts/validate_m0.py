@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import json
+import argparse
 from collections import Counter
 from pathlib import Path
 
@@ -20,13 +21,23 @@ def require(condition: bool, message: str, errors: list[str]) -> None:
 
 def main() -> int:
     code_root = Path(__file__).resolve().parents[1]
-    project_root = code_root.parent
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--prefix", default="rational", help="题库产物前缀，默认 rational")
+    parser.add_argument("--source-root", type=Path, help="用于校验 source_file 的项目根目录")
+    parser.add_argument("--chapter-code", default="math.g6.rational")
+    parser.add_argument("--min-seed", type=int, default=30)
+    parser.add_argument("--max-seed", type=int, default=50)
+    parser.add_argument("--expected-sections", type=int, default=6)
+    parser.add_argument("--expected-knowledge-points", type=int, default=13)
+    args = parser.parse_args()
+    project_root = args.source_root.resolve() if args.source_root else code_root.parent
     data_root = code_root / "data"
-    all_path = data_root / "interim" / "rational_all.json"
-    seed_path = data_root / "seed" / "rational_questions.json"
-    tree_path = data_root / "seed" / "rational_knowledge_tree.json"
-    audit_path = data_root / "audit" / "rational_import_audit.csv"
-    report_path = data_root / "audit" / "rational_m0_report.json"
+    prefix = args.prefix
+    all_path = data_root / "interim" / f"{prefix}_all.json"
+    seed_path = data_root / "seed" / f"{prefix}_questions.json"
+    tree_path = data_root / "seed" / f"{prefix}_knowledge_tree.json"
+    audit_path = data_root / "audit" / f"{prefix}_import_audit.csv"
+    report_path = data_root / "audit" / f"{prefix}_m0_report.json"
 
     errors: list[str] = []
     for path in [all_path, seed_path, tree_path, audit_path, report_path]:
@@ -47,7 +58,7 @@ def main() -> int:
     require(len(all_qids) == len(set(all_qids)), "完整抽取数据中题目 ID 不唯一", errors)
     require(len(seed_qids) == len(set(seed_qids)), "种子数据中题目 ID 不唯一", errors)
     require(set(seed_qids).issubset(set(all_qids)), "种子题目无法在完整抽取数据中追溯", errors)
-    require(30 <= len(seed_records) <= 50, f"种子题数量应为 30–50，实际 {len(seed_records)}", errors)
+    require(args.min_seed <= len(seed_records) <= args.max_seed, f"种子题数量应为 {args.min_seed}–{args.max_seed}，实际 {len(seed_records)}", errors)
     require(len(audit_rows) == len(all_records), "核对表行数与完整抽取题数不一致", errors)
     require(report.get("total_extracted") == len(all_records), "报告抽取数与数据不一致", errors)
     require(report.get("seed_candidate_count") == len(seed_records), "报告候选数与数据不一致", errors)
@@ -82,7 +93,7 @@ def main() -> int:
         require(bool(record.get("section")), f"{qid} 主属节为空", errors)
         require(bool(record.get("main_knowledge_point", {}).get("name")), f"{qid} 节内主属 KP 为空", errors)
         require(
-            str(record.get("main_knowledge_point", {}).get("id", "")).startswith("math.g6.rational.kp."),
+            str(record.get("main_knowledge_point", {}).get("id", "")).startswith(f"{args.chapter_code}.kp."),
             f"{qid} 节内主属 KP 未使用正式知识图谱 ID",
             errors,
         )
@@ -102,6 +113,10 @@ def main() -> int:
         require(record.get("import_status") in {"parsed", "needs_technical_cleanup", "excluded"}, f"{record.get('original_qid')} 导入状态无效", errors)
         require("[ASSET:unknown]" not in json.dumps(record, ensure_ascii=False), f"{record.get('original_qid')} 存在未关联资源", errors)
         source = project_root / record.get("source_file", "")
+        if not source.is_file() and str(record.get("source_file", "")).startswith("code/"):
+            # Historical Chapter 1 artifacts used a parent workspace whose
+            # source paths began with code/. Also support the current layout.
+            source = code_root / str(record.get("source_file", "")).removeprefix("code/")
         require(source.is_file(), f"{record.get('original_qid')} 源文件不存在：{source}", errors)
         for asset in record.get("assets", []):
             asset_path = data_root / asset.get("path", "")
@@ -130,8 +145,8 @@ def main() -> int:
 
     tree_knowledge_ids = {kp["id"] for kp in tree.get("knowledge_points", [])}
     require(knowledge_ids.issubset(tree_knowledge_ids), "种子题节内主属 KP 未全部进入知识树", errors)
-    require(len(tree.get("sections", [])) == 6, "知识树应包含 6 个正式节节点", errors)
-    require(len(tree.get("knowledge_points", [])) == 13, "知识树应包含 13 个正式知识点", errors)
+    require(len(tree.get("sections", [])) == args.expected_sections, f"知识树应包含 {args.expected_sections} 个正式节节点", errors)
+    require(len(tree.get("knowledge_points", [])) == args.expected_knowledge_points, f"知识树应包含 {args.expected_knowledge_points} 个正式知识点", errors)
     require(
         all(kp.get("core_competencies") for kp in tree.get("knowledge_points", [])),
         "知识树知识点缺少核心素养元数据",

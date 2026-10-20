@@ -16,7 +16,8 @@
 - 画像默认聚焦最多 5 个薄弱、近期错误或低证据知识点，用一张联动柱状图和一张复用趋势图解释诊断；完整知识点、逐次作答和最近错误按需展开；
 - 每个画像点和推荐理由可回溯到历史 Attempt、修订号与发布试卷快照；
 - 教师可设置新知识 / 回顾范围、题量、题型、难度、近期去重和单知识点占比，预览规则推荐及候选缺口；
-- 564 个唯一公式/图片资源转换为浏览器可显示格式；
+- 860 个唯一公式/图片资源转换为浏览器可显示格式（第一章 564 个，第二章新增 296 个）；
+- 第二章“简单的代数式”已按同一 M0 流程生成 41 组完整题库、9 组可自动判分候选题和 8 个知识点；
 - 多学生只读预检与原子生成，每名学生拥有独立 draft PaperInstance；
 - 草稿支持规则一致的备选换题、删题、连续调序和乐观锁冲突保护；
 - 单份 / 批量发布、全局唯一实例码、按码精确查询和发布后复制新版本；
@@ -290,7 +291,7 @@ npm run dev
 
 ## 资源转换
 
-已生成的 Web 资源位于 `data/web/rational/`。重新构建 M0 数据后执行：
+已生成的 Web 资源位于 `data/web/rational/`。当前共享资源清单同时包含第一章和第二章题目引用的图片/公式资源。重新构建任一章节数据后执行：
 
 ```powershell
 python .\scripts\convert_seed_assets.py
@@ -368,6 +369,39 @@ Assignment
 待入库的选择题和填空题可从题目详情页点击“审核答案并进入组卷池”。老师可先保存审核草稿，再执行“校验并确认入池”。已入池题目可执行“撤回并重新编辑”，撤回后不再参与新组卷，修改并重新校验后可再次入池。每次保存、入池和撤回都会记录操作人、版本和前后答案。数值只接收整数或小数，分数、根式等请选择公式输入。当前公式采用 LaTeX 精确匹配，暂不承诺不同代数写法的等价判定。
 
 已经保存过教师审核记录的答案属于业务数据；以后再次执行 `seed_database` 时会保留其答案、判分规则、审核版本和入池状态。
+
+### 第二章“简单的代数式”
+
+第二章使用新版 `六年级_数学_校本审核/新/expr_简单的代数式.docx`，构建命令为：
+
+```powershell
+python .\scripts\build_expr_m0.py
+python .\scripts\validate_m0.py --prefix expr --source-root . --chapter-code math.g6.expr --min-seed 1 --max-seed 50 --expected-sections 4 --expected-knowledge-points 8
+python .\scripts\convert_seed_assets.py
+```
+
+产物为：
+
+- `data/interim/expr_all.json`：41 组完整题目；
+- `data/seed/expr_questions.json`：9 组 `machine_ready` 题目；
+- `data/seed/expr_knowledge_tree.json`：第 2 章 4 个节、8 个正式知识点；
+- `data/audit/expr_import_audit.csv` 和 `data/audit/expr_m0_report.json`：审计结果。
+
+题库导入支持按章节执行。第一章默认行为不变；第二章导入使用独立命令，不会创建第二套历史演示作业：
+
+```powershell
+cd backend
+python -m scripts.seed_database --chapter expr
+python -m scripts.verify_expr
+```
+
+也可以在空库或需要同时重导两个章节时执行：
+
+```powershell
+python -m scripts.seed_database --chapter all
+```
+
+第二章完整题库中 25 组解答题和部分复杂填空题保留在题库展示层，当前不进入自动组卷池；这与第一章的“完整题库 / 自动组卷池”分层规则一致。
 
 ## M2 画像重算
 

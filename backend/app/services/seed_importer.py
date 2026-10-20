@@ -479,17 +479,25 @@ def import_seed_data(
     questions_path: Path,
     knowledge_tree_path: Path,
     catalog_path: Path | None = None,
+    *,
+    min_seed_questions: int = 30,
+    max_seed_questions: int = 50,
+    expected_catalog_count: int | None = None,
+    include_demo_history: bool = True,
 ) -> ImportStats:
     seed_data = _load_json(questions_path)
     catalog_data = _load_json(catalog_path) if catalog_path is not None else seed_data
     tree_data = _load_json(knowledge_tree_path)
     _validate_inputs(seed_data, tree_data)
-    if not 30 <= len(seed_data) <= 50:
-        raise ValueError(f"expected 30-50 seed question groups, got {len(seed_data)}")
+    if not min_seed_questions <= len(seed_data) <= max_seed_questions:
+        raise ValueError(
+            f"expected {min_seed_questions}-{max_seed_questions} seed question groups, "
+            f"got {len(seed_data)}"
+        )
     _validate_inputs(
         catalog_data,
         tree_data,
-        expected_count=139 if catalog_path is not None else None,
+        expected_count=expected_catalog_count,
         require_machine_ready=False,
     )
     catalog_qids = {item["original_qid"] for item in catalog_data}
@@ -508,7 +516,8 @@ def import_seed_data(
         by_qid = {question.original_qid: question for question in catalog_questions}
         questions = [by_qid[item["original_qid"]] for item in seed_data]
         students = _import_students(session, stats)
-        _import_demo_history(session, stats, students, questions)
+        if include_demo_history:
+            _import_demo_history(session, stats, students, questions)
         session.commit()
     except Exception:
         session.rollback()

@@ -1,0 +1,40 @@
+{
+  "schema_version": "2.0",
+  "source_file": "六年级_数学_校本审核/新/expr_简单的代数式.docx",
+  "total_extracted": 41,
+  "seed_candidate_count": 9,
+  "eligible_count_before_limit": 9,
+  "question_type_counts": {
+    "choice": 6,
+    "fill_blank": 10,
+    "solution": 25
+  },
+  "seed_type_counts": {
+    "choice": 5,
+    "fill_blank": 4
+  },
+  "seed_knowledge_point_count": 5,
+  "seed_knowledge_point_counts": {
+    "去括号法则（数与一次式相乘）": 1,
+    "合并同类项": 3,
+    "求代数式的值": 2,
+    "用代数式表示具体问题中的简单数量关系": 2,
+    "用字母表示数与数量关系": 1
+  },
+  "seed_machine_ready_count": 9,
+  "seed_raw_answer_only_count": 0,
+  "answer_structure_override_count": 0,
+  "exported_asset_references": 296,
+  "asset_extension_counts": {
+    ".png": 11,
+    ".wmf": 285
+  },
+  "issue_counts": {
+    "answer_items_not_structured": 7,
+    "asset_needs_web_conversion": 285,
+    "asset_relationship_missing": 1,
+    "contains_asset": 37,
+    "multiple_subquestions": 22
+  },
+  "source_status_note": "新版校本审核 DOCX 作为权威来源；年级、章、主属节、节内主属 KP、核心素养和必做题标记均直接继承该文件。"
+}

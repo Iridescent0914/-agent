@@ -16,7 +16,13 @@ CODE_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = CODE_ROOT / "data"
 # Convert the complete catalog so pending questions are still reviewable.
 # Automatic assignment eligibility is controlled separately by grading_readiness.
-QUESTIONS_PATH = DATA_DIR / "interim" / "rational_all.json"
+# The public backend currently exposes one immutable asset route/manifest.
+# Keep both chapter catalogs in that manifest so Chapter 2 question images are
+# available without changing the existing Chapter 1 URLs.
+QUESTIONS_PATHS = [
+    DATA_DIR / "interim" / "rational_all.json",
+    DATA_DIR / "interim" / "expr_all.json",
+]
 OUTPUT_DIR = DATA_DIR / "web" / "rational"
 MANIFEST_PATH = OUTPUT_DIR / "asset_manifest.json"
 POWERSHELL_CONVERTER = CODE_ROOT / "scripts" / "convert_wmf_to_png.ps1"
@@ -110,8 +116,12 @@ def convert_asset(source: Path, destination: Path) -> tuple[bool, str]:
 
 
 def main() -> int:
-    with QUESTIONS_PATH.open("r", encoding="utf-8") as handle:
-        questions = json.load(handle)
+    questions: list[dict[str, Any]] = []
+    for questions_path in QUESTIONS_PATHS:
+        if not questions_path.is_file():
+            continue
+        with questions_path.open("r", encoding="utf-8") as handle:
+            questions.extend(json.load(handle))
     all_references = collect_references(questions)
     unresolved_references = [value for value in all_references if value == "unknown"]
     references = [value for value in all_references if value != "unknown"]
@@ -184,9 +194,9 @@ def main() -> int:
         "unresolved_reference_count": len(unresolved_references),
         "assets": entries,
     }
-    with MANIFEST_PATH.open("w", encoding="utf-8") as handle:
-        json.dump(manifest, handle, ensure_ascii=False, indent=2)
-        handle.write("\n")
+    MANIFEST_PATH.write_bytes(
+        (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    )
     print(json.dumps({key: value for key, value in manifest.items() if key != "assets"}, ensure_ascii=False, indent=2))
     return 1 if failures else 0
 
