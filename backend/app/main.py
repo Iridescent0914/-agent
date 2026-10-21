@@ -18,6 +18,8 @@ from app.services.maintenance import run_file_maintenance
 
 settings = get_settings()
 settings.web_asset_dir.mkdir(parents=True, exist_ok=True)
+for chapter in ("rational", "expr"):
+    (settings.web_asset_dir / chapter).mkdir(parents=True, exist_ok=True)
 settings.teacher_asset_dir.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
@@ -55,7 +57,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(api_router, prefix=settings.api_v1_prefix)
-app.mount("/assets/rational", StaticFiles(directory=settings.web_asset_dir), name="assets")
+for chapter in ("rational", "expr"):
+    app.mount(
+        f"/assets/{chapter}",
+        StaticFiles(directory=settings.web_asset_dir / chapter),
+        name=f"assets-{chapter}",
+    )
 app.mount(
     "/assets/teacher",
     StaticFiles(directory=settings.teacher_asset_dir),

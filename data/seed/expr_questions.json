@@ -12,7 +12,7 @@
     "question_type": "fill_blank",
     "question_type_source": "填空题",
     "difficulty": 3,
-    "question_text": "1、填空：\n（1）在一次式中，______________相同的项叫一次式的同类项.\n（2）若[ASSET:assets/rational/q.math.g6.expr.school.022_rId278.wmf]是同类项，则a=________________.\n（3）若[ASSET:assets/rational/q.math.g6.expr.school.022_rId280.wmf]是同类项，则a=________________.\n[ASSET:assets/rational/q.math.g6.expr.school.022_rId281.png]（4）若[ASSET:assets/rational/q.math.g6.expr.school.022_rId283.wmf]是同类项，则a=________________.\n（5）若一次式[ASSET:assets/rational/q.math.g6.expr.school.022_rId285.wmf]是同类项，则a=____________[ASSET:assets/rational/q.math.g6.expr.school.022_rId287.wmf]=_________\n（6）如图，某小区有一块长为[ASSET:assets/rational/q.math.g6.expr.school.022_rId289.wmf]米，宽为[ASSET:assets/rational/q.math.g6.expr.school.022_rId291.wmf]米的长方形地块，物业公司计划在小区内修一条平行四边形小路，小路的宽为[ASSET:assets/rational/q.math.g6.expr.school.022_rId293.wmf]米.若将图中阴影部分建成绿化带，则绿化带的面积[ASSET:assets/rational/q.math.g6.expr.school.022_rId295.wmf]________平方米（用含有a、b的代数式表示）；当[ASSET:assets/rational/q.math.g6.expr.school.022_rId297.wmf]，[ASSET:assets/rational/q.math.g6.expr.school.022_rId299.wmf]时，绿化带的面积[ASSET:assets/rational/q.math.g6.expr.school.022_rId301.wmf]________平方米.",
+    "question_text": "1、填空：\n（1）在一次式中，______________相同的项叫一次式的同类项.\n（2）若[ASSET:assets/expr/q.math.g6.expr.school.022_rId278.wmf]是同类项，则a=________________.\n（3）若[ASSET:assets/expr/q.math.g6.expr.school.022_rId280.wmf]是同类项，则a=________________.\n[ASSET:assets/expr/q.math.g6.expr.school.022_rId281.png]（4）若[ASSET:assets/expr/q.math.g6.expr.school.022_rId283.wmf]是同类项，则a=________________.\n（5）若一次式[ASSET:assets/expr/q.math.g6.expr.school.022_rId285.wmf]是同类项，则a=____________[ASSET:assets/expr/q.math.g6.expr.school.022_rId287.wmf]=_________\n（6）如图，某小区有一块长为[ASSET:assets/expr/q.math.g6.expr.school.022_rId289.wmf]米，宽为[ASSET:assets/expr/q.math.g6.expr.school.022_rId291.wmf]米的长方形地块，物业公司计划在小区内修一条平行四边形小路，小路的宽为[ASSET:assets/expr/q.math.g6.expr.school.022_rId293.wmf]米.若将图中阴影部分建成绿化带，则绿化带的面积[ASSET:assets/expr/q.math.g6.expr.school.022_rId295.wmf]________平方米（用含有a、b的代数式表示）；当[ASSET:assets/expr/q.math.g6.expr.school.022_rId297.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.022_rId299.wmf]时，绿化带的面积[ASSET:assets/expr/q.math.g6.expr.school.022_rId301.wmf]________平方米.",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -91,67 +91,67 @@
     "assets": [
       {
         "relationship_id": "rId278",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId278.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId278.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId280",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId280.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId280.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId281",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId281.png",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId281.png",
         "extension": ".png"
       },
       {
         "relationship_id": "rId283",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId283.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId283.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId285",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId285.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId285.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId287",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId287.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId287.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId289",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId289.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId289.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId291",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId291.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId291.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId293",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId293.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId293.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId295",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId295.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId295.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId297",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId297.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId297.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId299",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId299.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId299.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId301",
-        "path": "assets/rational/q.math.g6.expr.school.022_rId301.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.022_rId301.wmf",
         "extension": ".wmf"
       }
     ],
@@ -248,7 +248,7 @@
     "question_type": "choice",
     "question_type_source": "选择题",
     "difficulty": 3,
-    "question_text": "2、选择题：\n（1）小华每分钟走a米，小明每分钟走b米，2分钟后，他们一共走了（ ）米．\nA．2(a－b )； B．2(a＋b )； C．2ab ； D．[ASSET:assets/rational/q.math.g6.expr.school.002_rId31.wmf]；\n（2）一台电视机的成本价是a元，销售价比成本价增加[ASSET:assets/rational/q.math.g6.expr.school.002_rId33.wmf]，则每台实际售价为（ ）.\nA．[ASSET:assets/rational/q.math.g6.expr.school.002_rId33.wmf]a元； B．(1＋[ASSET:assets/rational/q.math.g6.expr.school.002_rId33.wmf])a元； C．(a＋[ASSET:assets/rational/q.math.g6.expr.school.002_rId33.wmf])元； D．以上均不对；\n（3）小强购买绿，橙两种颜色的珠子串成一条手链，已知绿色珠子a个，每个2元，橙色珠子b个，每个5元，那么小强购买珠子需花费（ ）.\nA．(2a＋5b )元； B．(5a＋2b )元； C．2( a＋5b )元； D．5(2a＋b )元；\n（4）数轴上点A位于原点的右侧，所对应的数为a（a＜3），则位于原点左侧，与A点距离为3的点B所对应的数为（ ）.\nA．3－a； B．a－3； C．a＋3； D．－3；\n（5）某教学楼阶梯教室第一排有m个座位，后面每一排都比前面一排多4个座位，则第20排座位数是（ ）.\nA．m＋86； B．m＋76； C．m＋84； D．m＋80；\n（6）若k袋苹果重m千克，则x袋苹果重（ ）千克．\nA．[ASSET:assets/rational/q.math.g6.expr.school.002_rId38.wmf]； B．[ASSET:assets/rational/q.math.g6.expr.school.002_rId40.wmf]； C．[ASSET:assets/rational/q.math.g6.expr.school.002_rId42.wmf]； D．[ASSET:assets/rational/q.math.g6.expr.school.002_rId44.wmf]；\n（7）已知一个数为三位数，十位数字是a，个位数字比a小2，百位数字是a的2倍，则这个三位数可表示为（ ）.\nA．3a－2； B．21a－2； C．200a－2； D．211a－2；",
+    "question_text": "2、选择题：\n（1）小华每分钟走a米，小明每分钟走b米，2分钟后，他们一共走了（ ）米．\nA．2(a－b )； B．2(a＋b )； C．2ab ； D．[ASSET:assets/expr/q.math.g6.expr.school.002_rId31.wmf]；\n（2）一台电视机的成本价是a元，销售价比成本价增加[ASSET:assets/expr/q.math.g6.expr.school.002_rId33.wmf]，则每台实际售价为（ ）.\nA．[ASSET:assets/expr/q.math.g6.expr.school.002_rId33.wmf]a元； B．(1＋[ASSET:assets/expr/q.math.g6.expr.school.002_rId33.wmf])a元； C．(a＋[ASSET:assets/expr/q.math.g6.expr.school.002_rId33.wmf])元； D．以上均不对；\n（3）小强购买绿，橙两种颜色的珠子串成一条手链，已知绿色珠子a个，每个2元，橙色珠子b个，每个5元，那么小强购买珠子需花费（ ）.\nA．(2a＋5b )元； B．(5a＋2b )元； C．2( a＋5b )元； D．5(2a＋b )元；\n（4）数轴上点A位于原点的右侧，所对应的数为a（a＜3），则位于原点左侧，与A点距离为3的点B所对应的数为（ ）.\nA．3－a； B．a－3； C．a＋3； D．－3；\n（5）某教学楼阶梯教室第一排有m个座位，后面每一排都比前面一排多4个座位，则第20排座位数是（ ）.\nA．m＋86； B．m＋76； C．m＋84； D．m＋80；\n（6）若k袋苹果重m千克，则x袋苹果重（ ）千克．\nA．[ASSET:assets/expr/q.math.g6.expr.school.002_rId38.wmf]； B．[ASSET:assets/expr/q.math.g6.expr.school.002_rId40.wmf]； C．[ASSET:assets/expr/q.math.g6.expr.school.002_rId42.wmf]； D．[ASSET:assets/expr/q.math.g6.expr.school.002_rId44.wmf]；\n（7）已知一个数为三位数，十位数字是a，个位数字比a小2，百位数字是a的2倍，则这个三位数可表示为（ ）.\nA．3a－2； B．21a－2； C．200a－2； D．211a－2；",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -326,54 +326,54 @@
     "core_literacy": "抽象能力、模型观念",
     "is_required": true,
     "solution": null,
-    "wrong_analysis": "本题易错点主要有第（2）题带分数、百分数/分数的“增加”增加[ASSET:assets/rational/q.math.g6.expr.school.002_rId46.wmf]，必须写[ASSET:assets/rational/q.math.g6.expr.school.002_rId48.wmf] ，不能写成[ASSET:assets/rational/q.math.g6.expr.school.002_rId50.wmf]（两者单位/意义不同）；第（3）题审题不仔细，易将单价和数量匹配错误；第（4）第n排比第1排多(n−1)个公差，不是n个，这是数列题最经典的“掉坑点”，第（6）“谁除以谁”搞反\n3. ★★★· 解答题",
+    "wrong_analysis": "本题易错点主要有第（2）题带分数、百分数/分数的“增加”增加[ASSET:assets/expr/q.math.g6.expr.school.002_rId46.wmf]，必须写[ASSET:assets/expr/q.math.g6.expr.school.002_rId48.wmf] ，不能写成[ASSET:assets/expr/q.math.g6.expr.school.002_rId50.wmf]（两者单位/意义不同）；第（3）题审题不仔细，易将单价和数量匹配错误；第（4）第n排比第1排多(n−1)个公差，不是n个，这是数列题最经典的“掉坑点”，第（6）“谁除以谁”搞反\n3. ★★★· 解答题",
     "estimated_score_rate": "78%",
     "has_image": true,
     "has_equation": false,
     "assets": [
       {
         "relationship_id": "rId31",
-        "path": "assets/rational/q.math.g6.expr.school.002_rId31.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.002_rId31.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId33",
-        "path": "assets/rational/q.math.g6.expr.school.002_rId33.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.002_rId33.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId38",
-        "path": "assets/rational/q.math.g6.expr.school.002_rId38.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.002_rId38.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId40",
-        "path": "assets/rational/q.math.g6.expr.school.002_rId40.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.002_rId40.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId42",
-        "path": "assets/rational/q.math.g6.expr.school.002_rId42.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.002_rId42.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId44",
-        "path": "assets/rational/q.math.g6.expr.school.002_rId44.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.002_rId44.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId46",
-        "path": "assets/rational/q.math.g6.expr.school.002_rId46.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.002_rId46.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId48",
-        "path": "assets/rational/q.math.g6.expr.school.002_rId48.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.002_rId48.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId50",
-        "path": "assets/rational/q.math.g6.expr.school.002_rId50.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.002_rId50.wmf",
         "extension": ".wmf"
       }
     ],
@@ -409,7 +409,7 @@
     "question_type": "fill_blank",
     "question_type_source": "填空题",
     "difficulty": 2,
-    "question_text": "1、填空：\n（1）[ASSET:assets/rational/q.math.g6.expr.school.028_rId369.wmf]=________________.\n（2）去括号[ASSET:assets/rational/q.math.g6.expr.school.028_rId371.wmf]=_________；[ASSET:assets/rational/q.math.g6.expr.school.028_rId373.wmf]=_________；\n[ASSET:assets/rational/q.math.g6.expr.school.028_rId375.wmf]=_________；[ASSET:assets/rational/q.math.g6.expr.school.028_rId377.wmf]=_________.\n（3）[ASSET:assets/rational/q.math.g6.expr.school.028_rId379.wmf]减去[ASSET:assets/rational/q.math.g6.expr.school.028_rId381.wmf]的差是_____________________.\n（4）[ASSET:assets/rational/q.math.g6.expr.school.028_rId383.wmf]比[ASSET:assets/rational/q.math.g6.expr.school.028_rId385.wmf]大_______________.\n（5）[ASSET:assets/rational/q.math.g6.expr.school.028_rId387.wmf]比[ASSET:assets/rational/q.math.g6.expr.school.028_rId389.wmf]小_______________.\n（6）[ASSET:assets/rational/q.math.g6.expr.school.028_rId391.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.028_rId393.wmf]的和减去[ASSET:assets/rational/q.math.g6.expr.school.028_rId395.wmf]的差是_______________.\n（7）A=[ASSET:assets/rational/q.math.g6.expr.school.028_rId397.wmf]，B=[ASSET:assets/rational/q.math.g6.expr.school.028_rId399.wmf]，则[ASSET:assets/rational/q.math.g6.expr.school.028_rId401.wmf]=_______________.\n（8）若x-2y=3，则[ASSET:assets/rational/q.math.g6.expr.school.028_rId403.wmf]的值是________.\n（9）下列各组式子：①[ASSET:assets/rational/q.math.g6.expr.school.028_rId405.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.028_rId407.wmf]，②[ASSET:assets/rational/q.math.g6.expr.school.028_rId409.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.028_rId411.wmf]，③[ASSET:assets/rational/q.math.g6.expr.school.028_rId413.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.028_rId415.wmf]，④[ASSET:assets/rational/q.math.g6.expr.school.028_rId417.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.028_rId419.wmf]，其中互为相反数的有________.\n（10）西部某地第一个月植树[ASSET:assets/rational/q.math.g6.expr.school.028_rId421.wmf]课，第二个月植树的数目比第一个月2倍多15棵，第三个月植树的数目是第一月的3倍少20棵，则三个月一共植树__________棵.",
+    "question_text": "1、填空：\n（1）[ASSET:assets/expr/q.math.g6.expr.school.028_rId369.wmf]=________________.\n（2）去括号[ASSET:assets/expr/q.math.g6.expr.school.028_rId371.wmf]=_________；[ASSET:assets/expr/q.math.g6.expr.school.028_rId373.wmf]=_________；\n[ASSET:assets/expr/q.math.g6.expr.school.028_rId375.wmf]=_________；[ASSET:assets/expr/q.math.g6.expr.school.028_rId377.wmf]=_________.\n（3）[ASSET:assets/expr/q.math.g6.expr.school.028_rId379.wmf]减去[ASSET:assets/expr/q.math.g6.expr.school.028_rId381.wmf]的差是_____________________.\n（4）[ASSET:assets/expr/q.math.g6.expr.school.028_rId383.wmf]比[ASSET:assets/expr/q.math.g6.expr.school.028_rId385.wmf]大_______________.\n（5）[ASSET:assets/expr/q.math.g6.expr.school.028_rId387.wmf]比[ASSET:assets/expr/q.math.g6.expr.school.028_rId389.wmf]小_______________.\n（6）[ASSET:assets/expr/q.math.g6.expr.school.028_rId391.wmf]与[ASSET:assets/expr/q.math.g6.expr.school.028_rId393.wmf]的和减去[ASSET:assets/expr/q.math.g6.expr.school.028_rId395.wmf]的差是_______________.\n（7）A=[ASSET:assets/expr/q.math.g6.expr.school.028_rId397.wmf]，B=[ASSET:assets/expr/q.math.g6.expr.school.028_rId399.wmf]，则[ASSET:assets/expr/q.math.g6.expr.school.028_rId401.wmf]=_______________.\n（8）若x-2y=3，则[ASSET:assets/expr/q.math.g6.expr.school.028_rId403.wmf]的值是________.\n（9）下列各组式子：①[ASSET:assets/expr/q.math.g6.expr.school.028_rId405.wmf]与[ASSET:assets/expr/q.math.g6.expr.school.028_rId407.wmf]，②[ASSET:assets/expr/q.math.g6.expr.school.028_rId409.wmf]与[ASSET:assets/expr/q.math.g6.expr.school.028_rId411.wmf]，③[ASSET:assets/expr/q.math.g6.expr.school.028_rId413.wmf]与[ASSET:assets/expr/q.math.g6.expr.school.028_rId415.wmf]，④[ASSET:assets/expr/q.math.g6.expr.school.028_rId417.wmf]与[ASSET:assets/expr/q.math.g6.expr.school.028_rId419.wmf]，其中互为相反数的有________.\n（10）西部某地第一个月植树[ASSET:assets/expr/q.math.g6.expr.school.028_rId421.wmf]课，第二个月植树的数目比第一个月2倍多15棵，第三个月植树的数目是第一月的3倍少20棵，则三个月一共植树__________棵.",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -505,137 +505,137 @@
     "assets": [
       {
         "relationship_id": "rId369",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId369.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId369.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId371",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId371.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId371.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId373",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId373.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId373.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId375",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId375.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId375.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId377",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId377.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId377.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId379",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId379.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId379.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId381",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId381.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId381.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId383",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId383.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId383.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId385",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId385.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId385.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId387",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId387.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId387.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId389",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId389.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId389.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId391",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId391.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId391.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId393",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId393.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId393.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId395",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId395.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId395.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId397",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId397.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId397.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId399",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId399.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId399.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId401",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId401.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId401.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId403",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId403.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId403.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId405",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId405.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId405.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId407",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId407.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId407.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId409",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId409.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId409.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId411",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId411.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId411.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId413",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId413.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId413.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId415",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId415.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId415.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId417",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId417.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId417.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId419",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId419.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId419.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId421",
-        "path": "assets/rational/q.math.g6.expr.school.028_rId421.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.028_rId421.wmf",
         "extension": ".wmf"
       }
     ],
@@ -689,7 +689,7 @@
     "question_type": "fill_blank",
     "question_type_source": "填空题",
     "difficulty": 3,
-    "question_text": "1、填空：\n（1）用字母可以表示任何________．\n（2）用字母表示数的书写要求：数字（或字母）与字母相乘时，乘号“×”一般写作“·”或省略不写；带分数与字母相乘时，要把带分数写成________，再相乘；除法运算时，应写成________形式；和或差形式的式子，如果后面有单位，必须用________把式子括起来．\n（3）下列用字母表示数的式子中，符合书写要求的有________个.\n[ASSET:assets/rational/q.math.g6.expr.school.001_rId7.wmf]、[ASSET:assets/rational/q.math.g6.expr.school.001_rId9.wmf]、[ASSET:assets/rational/q.math.g6.expr.school.001_rId11.wmf]、[ASSET:assets/rational/q.math.g6.expr.school.001_rId13.wmf]、[ASSET:assets/rational/q.math.g6.expr.school.001_rId15.wmf]、[ASSET:assets/rational/q.math.g6.expr.school.001_rId17.wmf].\n（4）如果长方形的长为a，宽为b，那么该长方形的周长为_________，面积为_________．\n（5）如果正方体的棱长是a－1，那么正方体的体积是_________，表面积是_________．\n（6）[ASSET:assets/rational/q.math.g6.expr.school.001_rId19.wmf]表示一个两位数，[ASSET:assets/rational/q.math.g6.expr.school.001_rId21.wmf]表示一个三位数，若将[ASSET:assets/rational/q.math.g6.expr.school.001_rId23.wmf]放在[ASSET:assets/rational/q.math.g6.expr.school.001_rId25.wmf]的左边组成一个五位数，则这个五位数为________.\n（7）若[ASSET:assets/rational/q.math.g6.expr.school.001_rId27.wmf]为自然数，能同时被2和5整除的自然数可表示成[ASSET:assets/rational/q.math.g6.expr.school.001_rId29.wmf]，则能同时被4和6整除的自然数可表示为________.",
+    "question_text": "1、填空：\n（1）用字母可以表示任何________．\n（2）用字母表示数的书写要求：数字（或字母）与字母相乘时，乘号“×”一般写作“·”或省略不写；带分数与字母相乘时，要把带分数写成________，再相乘；除法运算时，应写成________形式；和或差形式的式子，如果后面有单位，必须用________把式子括起来．\n（3）下列用字母表示数的式子中，符合书写要求的有________个.\n[ASSET:assets/expr/q.math.g6.expr.school.001_rId7.wmf]、[ASSET:assets/expr/q.math.g6.expr.school.001_rId9.wmf]、[ASSET:assets/expr/q.math.g6.expr.school.001_rId11.wmf]、[ASSET:assets/expr/q.math.g6.expr.school.001_rId13.wmf]、[ASSET:assets/expr/q.math.g6.expr.school.001_rId15.wmf]、[ASSET:assets/expr/q.math.g6.expr.school.001_rId17.wmf].\n（4）如果长方形的长为a，宽为b，那么该长方形的周长为_________，面积为_________．\n（5）如果正方体的棱长是a－1，那么正方体的体积是_________，表面积是_________．\n（6）[ASSET:assets/expr/q.math.g6.expr.school.001_rId19.wmf]表示一个两位数，[ASSET:assets/expr/q.math.g6.expr.school.001_rId21.wmf]表示一个三位数，若将[ASSET:assets/expr/q.math.g6.expr.school.001_rId23.wmf]放在[ASSET:assets/expr/q.math.g6.expr.school.001_rId25.wmf]的左边组成一个五位数，则这个五位数为________.\n（7）若[ASSET:assets/expr/q.math.g6.expr.school.001_rId27.wmf]为自然数，能同时被2和5整除的自然数可表示成[ASSET:assets/expr/q.math.g6.expr.school.001_rId29.wmf]，则能同时被4和6整除的自然数可表示为________.",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -772,62 +772,62 @@
     "assets": [
       {
         "relationship_id": "rId11",
-        "path": "assets/rational/q.math.g6.expr.school.001_rId11.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.001_rId11.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId13",
-        "path": "assets/rational/q.math.g6.expr.school.001_rId13.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.001_rId13.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId15",
-        "path": "assets/rational/q.math.g6.expr.school.001_rId15.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.001_rId15.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId17",
-        "path": "assets/rational/q.math.g6.expr.school.001_rId17.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.001_rId17.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId19",
-        "path": "assets/rational/q.math.g6.expr.school.001_rId19.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.001_rId19.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId21",
-        "path": "assets/rational/q.math.g6.expr.school.001_rId21.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.001_rId21.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId23",
-        "path": "assets/rational/q.math.g6.expr.school.001_rId23.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.001_rId23.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId25",
-        "path": "assets/rational/q.math.g6.expr.school.001_rId25.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.001_rId25.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId27",
-        "path": "assets/rational/q.math.g6.expr.school.001_rId27.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.001_rId27.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId29",
-        "path": "assets/rational/q.math.g6.expr.school.001_rId29.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.001_rId29.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId7",
-        "path": "assets/rational/q.math.g6.expr.school.001_rId7.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.001_rId7.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId9",
-        "path": "assets/rational/q.math.g6.expr.school.001_rId9.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.001_rId9.wmf",
         "extension": ".wmf"
       }
     ],
@@ -866,7 +866,7 @@
     "question_type": "choice",
     "question_type_source": "选择题",
     "difficulty": 2,
-    "question_text": "2、选择题：\n（1）下列与[ASSET:assets/rational/q.math.g6.expr.school.023_rId303.wmf]是同类项的是（ ）\nA.2xy； B.2[ASSET:assets/rational/q.math.g6.expr.school.023_rId305.wmf]； C.[ASSET:assets/rational/q.math.g6.expr.school.023_rId307.wmf]； D.2；\n（2）下列代数式中，[ASSET:assets/rational/q.math.g6.expr.school.023_rId309.wmf]的同类项是（ ）.\n（A）[ASSET:assets/rational/q.math.g6.expr.school.023_rId311.wmf] （B）[ASSET:assets/rational/q.math.g6.expr.school.023_rId313.wmf] （C）[ASSET:assets/rational/q.math.g6.expr.school.023_rId315.wmf] （D）[ASSET:assets/rational/q.math.g6.expr.school.023_rId317.wmf]\n（3）若一次式[ASSET:assets/rational/q.math.g6.expr.school.023_rId319.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.023_rId321.wmf]是同类，则[ASSET:assets/rational/q.math.g6.expr.school.023_rId323.wmf]（ ）.\n（A）1 （B）2 （C）0 （D）[ASSET:assets/rational/q.math.g6.expr.school.023_rId325.wmf]\n（4）若一次式[ASSET:assets/rational/q.math.g6.expr.school.023_rId327.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.023_rId329.wmf]是同类项，则m的值为（ ）\nA.2； B.[ASSET:assets/rational/q.math.g6.expr.school.023_rId331.wmf]； C.[ASSET:assets/rational/q.math.g6.expr.school.023_rId333.wmf]； D.0；",
+    "question_text": "2、选择题：\n（1）下列与[ASSET:assets/expr/q.math.g6.expr.school.023_rId303.wmf]是同类项的是（ ）\nA.2xy； B.2[ASSET:assets/expr/q.math.g6.expr.school.023_rId305.wmf]； C.[ASSET:assets/expr/q.math.g6.expr.school.023_rId307.wmf]； D.2；\n（2）下列代数式中，[ASSET:assets/expr/q.math.g6.expr.school.023_rId309.wmf]的同类项是（ ）.\n（A）[ASSET:assets/expr/q.math.g6.expr.school.023_rId311.wmf] （B）[ASSET:assets/expr/q.math.g6.expr.school.023_rId313.wmf] （C）[ASSET:assets/expr/q.math.g6.expr.school.023_rId315.wmf] （D）[ASSET:assets/expr/q.math.g6.expr.school.023_rId317.wmf]\n（3）若一次式[ASSET:assets/expr/q.math.g6.expr.school.023_rId319.wmf]与[ASSET:assets/expr/q.math.g6.expr.school.023_rId321.wmf]是同类，则[ASSET:assets/expr/q.math.g6.expr.school.023_rId323.wmf]（ ）.\n（A）1 （B）2 （C）0 （D）[ASSET:assets/expr/q.math.g6.expr.school.023_rId325.wmf]\n（4）若一次式[ASSET:assets/expr/q.math.g6.expr.school.023_rId327.wmf]与[ASSET:assets/expr/q.math.g6.expr.school.023_rId329.wmf]是同类项，则m的值为（ ）\nA.2； B.[ASSET:assets/expr/q.math.g6.expr.school.023_rId331.wmf]； C.[ASSET:assets/expr/q.math.g6.expr.school.023_rId333.wmf]； D.0；",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -933,82 +933,82 @@
     "assets": [
       {
         "relationship_id": "rId303",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId303.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId303.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId305",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId305.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId305.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId307",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId307.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId307.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId309",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId309.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId309.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId311",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId311.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId311.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId313",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId313.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId313.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId315",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId315.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId315.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId317",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId317.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId317.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId319",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId319.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId319.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId321",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId321.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId321.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId323",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId323.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId323.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId325",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId325.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId325.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId327",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId327.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId327.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId329",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId329.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId329.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId331",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId331.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId331.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId333",
-        "path": "assets/rational/q.math.g6.expr.school.023_rId333.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.023_rId333.wmf",
         "extension": ".wmf"
       }
     ],
@@ -1051,7 +1051,7 @@
     "question_type": "choice",
     "question_type_source": "选择题",
     "difficulty": 3,
-    "question_text": "2、选择题：\n（1）已知[ASSET:assets/rational/q.math.g6.expr.school.013_rId210.wmf]＝0，则代数式[ASSET:assets/rational/q.math.g6.expr.school.013_rId212.wmf]的值为（ ）\nA．26； B．16； C．2； D．－6；\n（2）若a，b互为相反数，c，d互为倒数，则 [ASSET:assets/rational/q.math.g6.expr.school.013_rId214.wmf]的值是（ ）\nA．[ASSET:assets/rational/q.math.g6.expr.school.013_rId216.wmf]； B．－1； C．[ASSET:assets/rational/q.math.g6.expr.school.013_rId218.wmf]； D．1；\n（3）当[ASSET:assets/rational/q.math.g6.expr.school.013_rId220.wmf]，[ASSET:assets/rational/q.math.g6.expr.school.013_rId222.wmf]时，[ASSET:assets/rational/q.math.g6.expr.school.013_rId224.wmf]的值是（ ）.\n（A）7 （B）-7 （C）1 （D）-1\n（4）在代数式[ASSET:assets/rational/q.math.g6.expr.school.013_rId226.wmf]中，当[ASSET:assets/rational/q.math.g6.expr.school.013_rId228.wmf]的取值分别为[ASSET:assets/rational/q.math.g6.expr.school.013_rId230.wmf]、0、1、2时，代数式对应的值如下表：\n则[ASSET:assets/rational/q.math.g6.expr.school.013_rId232.wmf]的值为（ ）.\n（A）-1 （B）2 （C）-3 （D）-5",
+    "question_text": "2、选择题：\n（1）已知[ASSET:assets/expr/q.math.g6.expr.school.013_rId210.wmf]＝0，则代数式[ASSET:assets/expr/q.math.g6.expr.school.013_rId212.wmf]的值为（ ）\nA．26； B．16； C．2； D．－6；\n（2）若a，b互为相反数，c，d互为倒数，则 [ASSET:assets/expr/q.math.g6.expr.school.013_rId214.wmf]的值是（ ）\nA．[ASSET:assets/expr/q.math.g6.expr.school.013_rId216.wmf]； B．－1； C．[ASSET:assets/expr/q.math.g6.expr.school.013_rId218.wmf]； D．1；\n（3）当[ASSET:assets/expr/q.math.g6.expr.school.013_rId220.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.013_rId222.wmf]时，[ASSET:assets/expr/q.math.g6.expr.school.013_rId224.wmf]的值是（ ）.\n（A）7 （B）-7 （C）1 （D）-1\n（4）在代数式[ASSET:assets/expr/q.math.g6.expr.school.013_rId226.wmf]中，当[ASSET:assets/expr/q.math.g6.expr.school.013_rId228.wmf]的取值分别为[ASSET:assets/expr/q.math.g6.expr.school.013_rId230.wmf]、0、1、2时，代数式对应的值如下表：\n则[ASSET:assets/expr/q.math.g6.expr.school.013_rId232.wmf]的值为（ ）.\n（A）-1 （B）2 （C）-3 （D）-5",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -1116,62 +1116,62 @@
     "assets": [
       {
         "relationship_id": "rId210",
-        "path": "assets/rational/q.math.g6.expr.school.013_rId210.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.013_rId210.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId212",
-        "path": "assets/rational/q.math.g6.expr.school.013_rId212.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.013_rId212.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId214",
-        "path": "assets/rational/q.math.g6.expr.school.013_rId214.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.013_rId214.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId216",
-        "path": "assets/rational/q.math.g6.expr.school.013_rId216.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.013_rId216.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId218",
-        "path": "assets/rational/q.math.g6.expr.school.013_rId218.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.013_rId218.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId220",
-        "path": "assets/rational/q.math.g6.expr.school.013_rId220.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.013_rId220.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId222",
-        "path": "assets/rational/q.math.g6.expr.school.013_rId222.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.013_rId222.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId224",
-        "path": "assets/rational/q.math.g6.expr.school.013_rId224.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.013_rId224.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId226",
-        "path": "assets/rational/q.math.g6.expr.school.013_rId226.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.013_rId226.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId228",
-        "path": "assets/rational/q.math.g6.expr.school.013_rId228.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.013_rId228.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId230",
-        "path": "assets/rational/q.math.g6.expr.school.013_rId230.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.013_rId230.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId232",
-        "path": "assets/rational/q.math.g6.expr.school.013_rId232.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.013_rId232.wmf",
         "extension": ".wmf"
       }
     ],
@@ -1210,7 +1210,7 @@
     "question_type": "choice",
     "question_type_source": "选择题",
     "difficulty": 2,
-    "question_text": "2、选择题：\n（1）下列式子中，不属于代数式的是（ ）.\nA．a－1； B．3xy； C．[ASSET:assets/rational/q.math.g6.expr.school.010_rId153.wmf]； D．a≤－5；\n（2）如果从一卷粗细均匀的电线上截取3米长的电线，称得它的质量为a克，再称得剩余电线的质量为b克，那么原来这卷电线的总长度是（ ）米\nA．[ASSET:assets/rational/q.math.g6.expr.school.010_rId155.wmf]； B．[ASSET:assets/rational/q.math.g6.expr.school.010_rId157.wmf]； C．[ASSET:assets/rational/q.math.g6.expr.school.010_rId159.wmf]； D．[ASSET:assets/rational/q.math.g6.expr.school.010_rId161.wmf]；\n（3）设某数为[ASSET:assets/rational/q.math.g6.expr.school.010_rId163.wmf]，那么代数式[ASSET:assets/rational/q.math.g6.expr.school.010_rId165.wmf]表示（ ）.\n（A）某数的3倍的平方减去5除以2 （B）某数平方的3倍与5的差的一半\n（C）某数的3倍减5的一半 （D）某数与5的差的3倍除以2\n（4）下列说法中，正确的是（ ）.\n（A）[ASSET:assets/rational/q.math.g6.expr.school.010_rId167.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.010_rId169.wmf]两数和的[ASSET:assets/rational/q.math.g6.expr.school.010_rId171.wmf]是[ASSET:assets/rational/q.math.g6.expr.school.010_rId173.wmf]\n（B）三个连续整数中，若[ASSET:assets/rational/q.math.g6.expr.school.010_rId175.wmf]是最小的一个，则这三个数的和为[ASSET:assets/rational/q.math.g6.expr.school.010_rId177.wmf]\n（C）如果一个两位数的十位数字是[ASSET:assets/rational/q.math.g6.expr.school.010_rId179.wmf]，个位数字是[ASSET:assets/rational/q.math.g6.expr.school.010_rId181.wmf]那么这个两位数可以表示为[ASSET:assets/rational/q.math.g6.expr.school.010_rId183.wmf]\n（D）m的2倍与[ASSET:assets/rational/q.math.g6.expr.school.010_rId185.wmf]的3倍的和是[ASSET:assets/rational/q.math.g6.expr.school.010_rId187.wmf]",
+    "question_text": "2、选择题：\n（1）下列式子中，不属于代数式的是（ ）.\nA．a－1； B．3xy； C．[ASSET:assets/expr/q.math.g6.expr.school.010_rId153.wmf]； D．a≤－5；\n（2）如果从一卷粗细均匀的电线上截取3米长的电线，称得它的质量为a克，再称得剩余电线的质量为b克，那么原来这卷电线的总长度是（ ）米\nA．[ASSET:assets/expr/q.math.g6.expr.school.010_rId155.wmf]； B．[ASSET:assets/expr/q.math.g6.expr.school.010_rId157.wmf]； C．[ASSET:assets/expr/q.math.g6.expr.school.010_rId159.wmf]； D．[ASSET:assets/expr/q.math.g6.expr.school.010_rId161.wmf]；\n（3）设某数为[ASSET:assets/expr/q.math.g6.expr.school.010_rId163.wmf]，那么代数式[ASSET:assets/expr/q.math.g6.expr.school.010_rId165.wmf]表示（ ）.\n（A）某数的3倍的平方减去5除以2 （B）某数平方的3倍与5的差的一半\n（C）某数的3倍减5的一半 （D）某数与5的差的3倍除以2\n（4）下列说法中，正确的是（ ）.\n（A）[ASSET:assets/expr/q.math.g6.expr.school.010_rId167.wmf]与[ASSET:assets/expr/q.math.g6.expr.school.010_rId169.wmf]两数和的[ASSET:assets/expr/q.math.g6.expr.school.010_rId171.wmf]是[ASSET:assets/expr/q.math.g6.expr.school.010_rId173.wmf]\n（B）三个连续整数中，若[ASSET:assets/expr/q.math.g6.expr.school.010_rId175.wmf]是最小的一个，则这三个数的和为[ASSET:assets/expr/q.math.g6.expr.school.010_rId177.wmf]\n（C）如果一个两位数的十位数字是[ASSET:assets/expr/q.math.g6.expr.school.010_rId179.wmf]，个位数字是[ASSET:assets/expr/q.math.g6.expr.school.010_rId181.wmf]那么这个两位数可以表示为[ASSET:assets/expr/q.math.g6.expr.school.010_rId183.wmf]\n（D）m的2倍与[ASSET:assets/expr/q.math.g6.expr.school.010_rId185.wmf]的3倍的和是[ASSET:assets/expr/q.math.g6.expr.school.010_rId187.wmf]",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -1277,92 +1277,92 @@
     "assets": [
       {
         "relationship_id": "rId153",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId153.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId153.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId155",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId155.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId155.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId157",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId157.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId157.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId159",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId159.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId159.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId161",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId161.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId161.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId163",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId163.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId163.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId165",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId165.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId165.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId167",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId167.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId167.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId169",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId169.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId169.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId171",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId171.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId171.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId173",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId173.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId173.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId175",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId175.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId175.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId177",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId177.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId177.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId179",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId179.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId179.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId181",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId181.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId181.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId183",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId183.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId183.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId185",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId185.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId185.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId187",
-        "path": "assets/rational/q.math.g6.expr.school.010_rId187.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.010_rId187.wmf",
         "extension": ".wmf"
       }
     ],
@@ -1407,7 +1407,7 @@
     "question_type": "choice",
     "question_type_source": "选择题",
     "difficulty": 2,
-    "question_text": "2、选择题\n（1）一次式[ASSET:assets/rational/q.math.g6.expr.school.029_rId423.wmf]与[ASSET:assets/rational/q.math.g6.expr.school.029_rId425.wmf]相减，结果是一次式，则下列结果正确的是（ ）\nA.[ASSET:assets/rational/q.math.g6.expr.school.029_rId427.wmf]； B.[ASSET:assets/rational/q.math.g6.expr.school.029_rId429.wmf]； C.[ASSET:assets/rational/q.math.g6.expr.school.029_rId431.wmf]； D.[ASSET:assets/rational/q.math.g6.expr.school.029_rId433.wmf]；\n（2）如图在一个大长方形内，放置了8个完全相同的小长方形，则大长方形的长和宽分别是（ ）\n[ASSET:assets/rational/q.math.g6.expr.school.029_rId434.png]A.6a和2b； B.3a+b和b+2a； C.6a和4a； D.2b和3b；",
+    "question_text": "2、选择题\n（1）一次式[ASSET:assets/expr/q.math.g6.expr.school.029_rId423.wmf]与[ASSET:assets/expr/q.math.g6.expr.school.029_rId425.wmf]相减，结果是一次式，则下列结果正确的是（ ）\nA.[ASSET:assets/expr/q.math.g6.expr.school.029_rId427.wmf]； B.[ASSET:assets/expr/q.math.g6.expr.school.029_rId429.wmf]； C.[ASSET:assets/expr/q.math.g6.expr.school.029_rId431.wmf]； D.[ASSET:assets/expr/q.math.g6.expr.school.029_rId433.wmf]；\n（2）如图在一个大长方形内，放置了8个完全相同的小长方形，则大长方形的长和宽分别是（ ）\n[ASSET:assets/expr/q.math.g6.expr.school.029_rId434.png]A.6a和2b； B.3a+b和b+2a； C.6a和4a； D.2b和3b；",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -1462,37 +1462,37 @@
     "assets": [
       {
         "relationship_id": "rId423",
-        "path": "assets/rational/q.math.g6.expr.school.029_rId423.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.029_rId423.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId425",
-        "path": "assets/rational/q.math.g6.expr.school.029_rId425.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.029_rId425.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId427",
-        "path": "assets/rational/q.math.g6.expr.school.029_rId427.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.029_rId427.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId429",
-        "path": "assets/rational/q.math.g6.expr.school.029_rId429.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.029_rId429.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId431",
-        "path": "assets/rational/q.math.g6.expr.school.029_rId431.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.029_rId431.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId433",
-        "path": "assets/rational/q.math.g6.expr.school.029_rId433.wmf",
+        "path": "assets/expr/q.math.g6.expr.school.029_rId433.wmf",
         "extension": ".wmf"
       },
       {
         "relationship_id": "rId434",
-        "path": "assets/rational/q.math.g6.expr.school.029_rId434.png",
+        "path": "assets/expr/q.math.g6.expr.school.029_rId434.png",
         "extension": ".png"
       }
     ],

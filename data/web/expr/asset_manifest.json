@@ -1,0 +1,2380 @@
+{
+  "chapter": "expr",
+  "generated_at": "2026-10-21T09:05:05.883952+00:00",
+  "question_count": 41,
+  "reference_count": 556,
+  "unique_asset_count": 296,
+  "converted_count": 296,
+  "failed_count": 0,
+  "unresolved_reference_count": 2,
+  "assets": [
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.001_rId11.wmf",
+      "source_sha256": "fd9f106035a85858b15e9ab57f2b6238bc114362adcdc7ce8eb3ddf0d2cfdddc",
+      "web_path": "expr/q.math.g6.expr.school.001_rId11.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.001_rId13.wmf",
+      "source_sha256": "40eb05d8c85996f2fb1714cd2fe0fc0ffbf60f30d99f151eaff92da31afeddcb",
+      "web_path": "expr/q.math.g6.expr.school.001_rId13.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.001_rId15.wmf",
+      "source_sha256": "69ca2d5b28c027eee5689e1d38b318e6e94c6dd8277a3a5b092dd6a8b552bb7a",
+      "web_path": "expr/q.math.g6.expr.school.001_rId15.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.001_rId17.wmf",
+      "source_sha256": "f89667df2c949ebcb9b60fe5b651a08a0eb15a00e5e970a5d268f38e03de8b31",
+      "web_path": "expr/q.math.g6.expr.school.001_rId17.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.001_rId19.wmf",
+      "source_sha256": "a3eb8f59dad69f9836c5798eac73f1399ef70513e814f11a7b383f8bc2b67d16",
+      "web_path": "expr/q.math.g6.expr.school.001_rId19.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.001_rId21.wmf",
+      "source_sha256": "673f56142e3514d40ba3b497d9901855d56eab29b69120d77c931e9df037af4c",
+      "web_path": "expr/q.math.g6.expr.school.001_rId21.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.001_rId23.wmf",
+      "source_sha256": "659a76264583d6c334434ac9ca3aade6f09a52cbde474d549014874ef38d76ef",
+      "web_path": "expr/q.math.g6.expr.school.001_rId23.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.001_rId25.wmf",
+      "source_sha256": "d86a5697eb6d2f2b513bab6e80baff827a872f11dfd84119bfcff553c261356b",
+      "web_path": "expr/q.math.g6.expr.school.001_rId25.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.001_rId27.wmf",
+      "source_sha256": "078ba0e7d5962d18cde719ffc29e62175e91c0be3fcea9aacd862b7927d1ef41",
+      "web_path": "expr/q.math.g6.expr.school.001_rId27.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.001_rId29.wmf",
+      "source_sha256": "fe0df02fbfd5812618b52ee4916b0bd4fc1b04d5c79d857769df3b061957e4c6",
+      "web_path": "expr/q.math.g6.expr.school.001_rId29.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.001_rId7.wmf",
+      "source_sha256": "b94991c8be8ea7fc32336b5aedf0ee626360920088fa7b46c2d8ebdabc3b410c",
+      "web_path": "expr/q.math.g6.expr.school.001_rId7.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.001_rId9.wmf",
+      "source_sha256": "9ec896dd1b109e46ede4424157033cbb27db1afd68302eb0298b04c7cd019faa",
+      "web_path": "expr/q.math.g6.expr.school.001_rId9.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.002_rId31.wmf",
+      "source_sha256": "b6e719e611e5654840e58894e5ab00a7aaeb0f826c9e2d9ebdd7f01eaf2accf4",
+      "web_path": "expr/q.math.g6.expr.school.002_rId31.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.002_rId33.wmf",
+      "source_sha256": "933372e6ce3e9160476f92889180b22ea4dce45c0f398f868bcb4d524ed4007f",
+      "web_path": "expr/q.math.g6.expr.school.002_rId33.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.002_rId38.wmf",
+      "source_sha256": "f184a328475fb6b154346bb20336c9668fd7d3364787f4ecc21c1b9512dc5634",
+      "web_path": "expr/q.math.g6.expr.school.002_rId38.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.002_rId40.wmf",
+      "source_sha256": "6c15a0c24faac86dd99697dd2ef11362bae641c82a528bbbb86e13c75918a1f4",
+      "web_path": "expr/q.math.g6.expr.school.002_rId40.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.002_rId42.wmf",
+      "source_sha256": "a1ca59b6930b8b758dd3c9d2070a6273fb672aa109370cc008581d3240b9eee6",
+      "web_path": "expr/q.math.g6.expr.school.002_rId42.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.002_rId44.wmf",
+      "source_sha256": "e235d1da726af064ca628c3f8b89162490f96126d8549c4404f9fdd489f64767",
+      "web_path": "expr/q.math.g6.expr.school.002_rId44.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.002_rId46.wmf",
+      "source_sha256": "ef1c5aae5240553950a7e11414b7da912ef58bf265543a59ed32ec3d2742b704",
+      "web_path": "expr/q.math.g6.expr.school.002_rId46.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.002_rId48.wmf",
+      "source_sha256": "690166abf8d936d412c88e0ffb71ff8fab129fa8fe5881f6c3b4344a7990523a",
+      "web_path": "expr/q.math.g6.expr.school.002_rId48.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.002_rId50.wmf",
+      "source_sha256": "0d518486d016162d6993f48e5c4bda1fd742331fa25421a9f036a72810117d43",
+      "web_path": "expr/q.math.g6.expr.school.002_rId50.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.003_rId51.png",
+      "source_sha256": "e3e4f507e9f8fd9822d048d1ea2122a48f54138740e2c7daf680d2b2c046f6ad",
+      "web_path": "expr/q.math.g6.expr.school.003_rId51.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "copy"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.004_rId53.wmf",
+      "source_sha256": "10e1891a416cbc6b32cbd6e23e4a61a468669fd26e1dcd4535b0827007f67581",
+      "web_path": "expr/q.math.g6.expr.school.004_rId53.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.004_rId55.wmf",
+      "source_sha256": "63d9d54d18df7e288cdf75f8f3f7e349ac1fe6aea429294a388243d8e0ea004f",
+      "web_path": "expr/q.math.g6.expr.school.004_rId55.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.004_rId56.png",
+      "source_sha256": "9c90a3f078ec6f29340150507daa0c1f92ac8d4bf7bc975a8ea79efb547ade93",
+      "web_path": "expr/q.math.g6.expr.school.004_rId56.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "copy"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.005_rId58.wmf",
+      "source_sha256": "12387f0d6712391521da5559d1180d3a67db522e5a0881e0db279a6b76d0d4a2",
+      "web_path": "expr/q.math.g6.expr.school.005_rId58.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.005_rId60.wmf",
+      "source_sha256": "9960d433c50b2f419f316d35f1bdd89e1cb9d0c9797ecb79d3cef1d354b214c4",
+      "web_path": "expr/q.math.g6.expr.school.005_rId60.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.005_rId62.wmf",
+      "source_sha256": "2b865ea2ba0a030e0a0d29025bdd2d3cc98a7698afba02019a466d2dd231e6a1",
+      "web_path": "expr/q.math.g6.expr.school.005_rId62.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.005_rId64.wmf",
+      "source_sha256": "ee5a1cdd66e637b56c29442078ef79d4a07d0389f9be912e36576c9c574e33a9",
+      "web_path": "expr/q.math.g6.expr.school.005_rId64.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.006_rId65.png",
+      "source_sha256": "7b247c1755b3cac7cec0798811c0d485367fa87fa872645bc62dfdb245004290",
+      "web_path": "expr/q.math.g6.expr.school.006_rId65.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "copy"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.006_rId67.wmf",
+      "source_sha256": "b28084bea981d929fe80825c31fa209a45d18f47e3996fcca32f271325a90b6b",
+      "web_path": "expr/q.math.g6.expr.school.006_rId67.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.007_rId69.wmf",
+      "source_sha256": "dd7313edcfe566e9000b60ad17e3bf3f8c2959a41850f87b16123558d57d129f",
+      "web_path": "expr/q.math.g6.expr.school.007_rId69.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.007_rId71.wmf",
+      "source_sha256": "c2b733533b488bb152937e154fa85e1a05aa06057097fca159eaf96d8d4926be",
+      "web_path": "expr/q.math.g6.expr.school.007_rId71.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.007_rId74.wmf",
+      "source_sha256": "c93ab249a9654d96161c63d24355fa15c98beab6b922ea1a3e38f37dce08535b",
+      "web_path": "expr/q.math.g6.expr.school.007_rId74.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.007_rId76.wmf",
+      "source_sha256": "9f662a5ef04847f63107b696c20584daac84be4417ba7a00311e5ccaadcf9336",
+      "web_path": "expr/q.math.g6.expr.school.007_rId76.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.008_rId78.wmf",
+      "source_sha256": "8e2e29846bfa840fdb8ced72fee8198785d906b8033bb83e51e5654e20ecf1e6",
+      "web_path": "expr/q.math.g6.expr.school.008_rId78.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId100.wmf",
+      "source_sha256": "ba9bb4c2412e856b5fbf98f2d1fe7d25dc35184837cac13db3811aaca05a25b8",
+      "web_path": "expr/q.math.g6.expr.school.009_rId100.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId102.wmf",
+      "source_sha256": "bee78775472cae4ef506519c6a371c1c005a3f41a0d3074e3374b387eca91b3b",
+      "web_path": "expr/q.math.g6.expr.school.009_rId102.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId104.wmf",
+      "source_sha256": "d4ba967c05aacdc61ded91e3b1cd9a245665a70814543536a4088702b7eeb6ca",
+      "web_path": "expr/q.math.g6.expr.school.009_rId104.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId106.wmf",
+      "source_sha256": "d8f57981bf45d97df14c417290e335c9d11773a4ed4f9a6606836d0b042b5c5e",
+      "web_path": "expr/q.math.g6.expr.school.009_rId106.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId108.wmf",
+      "source_sha256": "2b56a3d8e5a86825c1a23c38542f4fc3b0d9807181a12351cfd722728e273ac5",
+      "web_path": "expr/q.math.g6.expr.school.009_rId108.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId109.png",
+      "source_sha256": "e6a118da4627c67066eea980ff98528aecbb57c7e9c26e10c98669e8dc4c2437",
+      "web_path": "expr/q.math.g6.expr.school.009_rId109.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "copy"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId110.png",
+      "source_sha256": "e06a50ee42453834f93d222a609777949667cd0895c710e5effc6c73c0eca84f",
+      "web_path": "expr/q.math.g6.expr.school.009_rId110.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "copy"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId112.wmf",
+      "source_sha256": "b5ba50c66e24470b88fb3495e166a6b6addad5cc96bf4d540cdc1975ca052974",
+      "web_path": "expr/q.math.g6.expr.school.009_rId112.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId114.wmf",
+      "source_sha256": "270ebe4eefdff53b7460a2b7cc93614db1424e093af5c728e91c8457dc60e128",
+      "web_path": "expr/q.math.g6.expr.school.009_rId114.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId116.wmf",
+      "source_sha256": "0340fab9f44b2ee9a3f489ef215665050da35d143149b40c10004561c290baa5",
+      "web_path": "expr/q.math.g6.expr.school.009_rId116.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId118.wmf",
+      "source_sha256": "60af1aa9be88db0aca858f3252057d536fd8f83b4260377d9bf1f8a29614a4ef",
+      "web_path": "expr/q.math.g6.expr.school.009_rId118.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId120.wmf",
+      "source_sha256": "60c49960a7c0029437e4b60e1e7ea1f5e389c3c13a9dec997d9646d11ac484bb",
+      "web_path": "expr/q.math.g6.expr.school.009_rId120.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId122.wmf",
+      "source_sha256": "7d6dfa39c81cbe56d714e994d176bd5634dd476f94d3fd95da763f84e3609cb7",
+      "web_path": "expr/q.math.g6.expr.school.009_rId122.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId124.wmf",
+      "source_sha256": "72d146875a90633093a05133d4a90072d14ef1da7317c748c8f2aa9ec47b4733",
+      "web_path": "expr/q.math.g6.expr.school.009_rId124.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId126.wmf",
+      "source_sha256": "48433427ca1e769d8ebbad75b1ee29b1afc6f22195d058f90fb55f3db46dc948",
+      "web_path": "expr/q.math.g6.expr.school.009_rId126.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId128.wmf",
+      "source_sha256": "3ef0a7f2d41a75d6ed65b3694aea11f0313e1af6ea6e0e2987fba53d758bcf1f",
+      "web_path": "expr/q.math.g6.expr.school.009_rId128.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId130.wmf",
+      "source_sha256": "145612a3cce7e5a0d190177bc8e9abeced5f9f92fd2514486e066f09443781e3",
+      "web_path": "expr/q.math.g6.expr.school.009_rId130.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId132.wmf",
+      "source_sha256": "5625a3ca4df77d20c1f0487eed243dc203e5afd1157dcd51a272fe322e28b176",
+      "web_path": "expr/q.math.g6.expr.school.009_rId132.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId134.wmf",
+      "source_sha256": "125b1d80768a5139e9bd8393e89f0a017560aeccbdd7e8e7d7b6240923eb9b82",
+      "web_path": "expr/q.math.g6.expr.school.009_rId134.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId136.wmf",
+      "source_sha256": "9ff621568f50382dc1a07a09177cc8424a640030825a5a1a8b3d5e9fc904e623",
+      "web_path": "expr/q.math.g6.expr.school.009_rId136.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId138.wmf",
+      "source_sha256": "e58497c87e3c09b46157d8bfb0b8360cb27bcf78ad6205c3eda96071912a1765",
+      "web_path": "expr/q.math.g6.expr.school.009_rId138.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId140.wmf",
+      "source_sha256": "daef35986867e1a0b237fa140650b6694fd6ee72ece54104e99408942df51104",
+      "web_path": "expr/q.math.g6.expr.school.009_rId140.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId142.wmf",
+      "source_sha256": "6b80d74fafa601e5a336d95533434cb2d4af5d50f91963491460f2625b8cd862",
+      "web_path": "expr/q.math.g6.expr.school.009_rId142.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId146.wmf",
+      "source_sha256": "0ae1f9bdc006a7fde0b7c86e1e3f399bc38937288e53f666292dfcd40c4ad765",
+      "web_path": "expr/q.math.g6.expr.school.009_rId146.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId148.wmf",
+      "source_sha256": "c51395016a8869e5f4bf512cccdf78acb099affbb9a7fef4be8001a3d9b90289",
+      "web_path": "expr/q.math.g6.expr.school.009_rId148.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId80.wmf",
+      "source_sha256": "b1283ae56e736c8d915882003f16de664f8768831ca77c0bb36464cf9b6e2fb8",
+      "web_path": "expr/q.math.g6.expr.school.009_rId80.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId82.wmf",
+      "source_sha256": "72f520cb387b4970a52c488acbb4211ad83d6a701153b29b2205e2da93ca3836",
+      "web_path": "expr/q.math.g6.expr.school.009_rId82.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId84.wmf",
+      "source_sha256": "b0bf3a7dbe272d3f5da2c2fb39ea530522bbbb8c818af64b4ad7f443ab265f92",
+      "web_path": "expr/q.math.g6.expr.school.009_rId84.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId86.wmf",
+      "source_sha256": "93ab367040dbd1d912642886021a9b5745b4fe26f0fb7df67b4c6090aa865621",
+      "web_path": "expr/q.math.g6.expr.school.009_rId86.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId88.wmf",
+      "source_sha256": "9e7cdb5430e0d027a5f729e11a09d939b1b341f2a9622960489c47b9123e8c5b",
+      "web_path": "expr/q.math.g6.expr.school.009_rId88.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId90.wmf",
+      "source_sha256": "807ed4b40deed6921e8090e4268f69a5a5b3f135f379fc73f431c31b30492d4c",
+      "web_path": "expr/q.math.g6.expr.school.009_rId90.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId92.wmf",
+      "source_sha256": "2df75811629e2f4d1e40e58e7b48a4f7fb28cd5c10ad241e638ed29f2ba9c409",
+      "web_path": "expr/q.math.g6.expr.school.009_rId92.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId94.wmf",
+      "source_sha256": "35dedf6487ea553b2a9254dfb29f233f0650e24d0ad2471a17407e18b183c25e",
+      "web_path": "expr/q.math.g6.expr.school.009_rId94.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId96.wmf",
+      "source_sha256": "dc481a5f7299627edf5ddc2ab70a882199018b5f77cf6bf58a9f01d15bb3fc5f",
+      "web_path": "expr/q.math.g6.expr.school.009_rId96.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.009_rId98.wmf",
+      "source_sha256": "6202838d78925ab3758adb832fa6a9ba7e22c5c6882ca8644d33792d6fa95597",
+      "web_path": "expr/q.math.g6.expr.school.009_rId98.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId153.wmf",
+      "source_sha256": "7a4a46d99a9d5c48a69dc37690c0b1e61cfe90829d410ecf9bbd545f5589e81d",
+      "web_path": "expr/q.math.g6.expr.school.010_rId153.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId155.wmf",
+      "source_sha256": "ab2d154fd1cdb3ba2674c124d463bdf23e61be55ef5ee500331b6ff932a08d21",
+      "web_path": "expr/q.math.g6.expr.school.010_rId155.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId157.wmf",
+      "source_sha256": "fe1119472ab48c0bea614b1f8b1dace93c9d0583859436121962c03c71993b95",
+      "web_path": "expr/q.math.g6.expr.school.010_rId157.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId159.wmf",
+      "source_sha256": "18add5b3b89b2a75a39af07ef67c8f220c13e3d0594282ab689ae9281971aa95",
+      "web_path": "expr/q.math.g6.expr.school.010_rId159.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId161.wmf",
+      "source_sha256": "6b352f1ec2f03a6cebf064c8b254a71c9276362033d87d856a83156feb0fa468",
+      "web_path": "expr/q.math.g6.expr.school.010_rId161.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId163.wmf",
+      "source_sha256": "907a0bbd1e2510979ec0791b244024a534dd84830e577a41dd55f76fcdcaaec4",
+      "web_path": "expr/q.math.g6.expr.school.010_rId163.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId165.wmf",
+      "source_sha256": "1ebcdffa6f46752201f2a89f8915ae3a571ae62370ed5fe19ba1d057c0968632",
+      "web_path": "expr/q.math.g6.expr.school.010_rId165.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId167.wmf",
+      "source_sha256": "9f397e4e32177b8d954a0c2bbf2380bebcd49ad498362674cc74617b159ef4b1",
+      "web_path": "expr/q.math.g6.expr.school.010_rId167.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId169.wmf",
+      "source_sha256": "ab8d0ec71a36eee7063e0245009d012d925e1afce61ddc61e73339bb3981a6b0",
+      "web_path": "expr/q.math.g6.expr.school.010_rId169.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId171.wmf",
+      "source_sha256": "cd4decee03431c62a235fbcbc46fc53479c931e6076a4186770f70e43c1a9e59",
+      "web_path": "expr/q.math.g6.expr.school.010_rId171.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId173.wmf",
+      "source_sha256": "ab1181038441f80802e11642eb6ad53825f739dff86545edcc10b97227721a46",
+      "web_path": "expr/q.math.g6.expr.school.010_rId173.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId175.wmf",
+      "source_sha256": "dd19481c3ba809c123f57f3c57665d1ade54371ca7158dfdbd9abf9306a0c36d",
+      "web_path": "expr/q.math.g6.expr.school.010_rId175.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId177.wmf",
+      "source_sha256": "5c1a7530eef9c39abc056b49c22e073097d81c0ac627a33bb16073563410a701",
+      "web_path": "expr/q.math.g6.expr.school.010_rId177.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId179.wmf",
+      "source_sha256": "fc291297c203872237c3856d2c1ae256d7c8e4963f9eae1ca6694712b265f765",
+      "web_path": "expr/q.math.g6.expr.school.010_rId179.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId181.wmf",
+      "source_sha256": "a76595fe89586a7c442bfd1413c78d33a53cf215eff6495fe9acdaa47ddf4a85",
+      "web_path": "expr/q.math.g6.expr.school.010_rId181.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId183.wmf",
+      "source_sha256": "12babdc58c2db6c30bf1e83eb61bb46fc53353f403de0422721d2ae70eb9b10b",
+      "web_path": "expr/q.math.g6.expr.school.010_rId183.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId185.wmf",
+      "source_sha256": "47ff6017fdf7d657c03f30d0a481d3a9ca1786879abedef70152be876399aeb8",
+      "web_path": "expr/q.math.g6.expr.school.010_rId185.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.010_rId187.wmf",
+      "source_sha256": "77c0d0f4da03a00b7021e7816fc515640928b08069aa942e368a1b6e88cb9cd1",
+      "web_path": "expr/q.math.g6.expr.school.010_rId187.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.011_rId189.wmf",
+      "source_sha256": "da6e8fb5153b806b4eb7bd76447effcf09cb0374fae389e98422754cd72170da",
+      "web_path": "expr/q.math.g6.expr.school.011_rId189.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.011_rId191.wmf",
+      "source_sha256": "35174d401776c0dd5bb445cfec0496795ce2fd8899853b2324bd059b79d5051e",
+      "web_path": "expr/q.math.g6.expr.school.011_rId191.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.011_rId193.wmf",
+      "source_sha256": "b72ef8e4bb3a1e93c4bcb860517ed5e97958f97bbae800331dba1e73e6ae3209",
+      "web_path": "expr/q.math.g6.expr.school.011_rId193.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.011_rId195.wmf",
+      "source_sha256": "3bc03f0301c16ef592a6fcfac1480f4628f23e531eda58245f785b717c32511b",
+      "web_path": "expr/q.math.g6.expr.school.011_rId195.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.011_rId197.wmf",
+      "source_sha256": "9d84f7f87b456995d11c1be04edab6c3b5fe24d90cc06e073f92d03cd386f0d1",
+      "web_path": "expr/q.math.g6.expr.school.011_rId197.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.011_rId199.wmf",
+      "source_sha256": "afc29adb42b9856761dd06c245b2d2bc416d4a99110c5b37bb19ba2312c28726",
+      "web_path": "expr/q.math.g6.expr.school.011_rId199.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.011_rId201.wmf",
+      "source_sha256": "8fc8a6558234e570dca17e41a58dac8d50f23f3173305ff9ae795278115b738f",
+      "web_path": "expr/q.math.g6.expr.school.011_rId201.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.011_rId202.png",
+      "source_sha256": "2239ae81e4e5338e0325f6259694f01f661f4353f48d428063d6b7e18a37ad2f",
+      "web_path": "expr/q.math.g6.expr.school.011_rId202.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "copy"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.011_rId204.wmf",
+      "source_sha256": "087154115900d9b4d39f30e87e13645b5e8691fe457a191dc7ebab2a5eee35fe",
+      "web_path": "expr/q.math.g6.expr.school.011_rId204.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.011_rId206.wmf",
+      "source_sha256": "0708c370c5c6bf2fc3715d773f1cbce8d3023afa2073d0185acd8f2623c189fd",
+      "web_path": "expr/q.math.g6.expr.school.011_rId206.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.011_rId208.wmf",
+      "source_sha256": "f2b7b94163e863921528cdca19ccf4dd4579888c2be3bde9e233d47497f77fb3",
+      "web_path": "expr/q.math.g6.expr.school.011_rId208.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.013_rId210.wmf",
+      "source_sha256": "6347173919b1dff1280d0b7dda719cef24434a90ec88130145035a92f974313a",
+      "web_path": "expr/q.math.g6.expr.school.013_rId210.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.013_rId212.wmf",
+      "source_sha256": "dbe1ee15fdcc94a6f8f407ac4a09b1c2ca7dd95a52a84c1f052dbe7bccfeac09",
+      "web_path": "expr/q.math.g6.expr.school.013_rId212.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.013_rId214.wmf",
+      "source_sha256": "be65910b4bd9d45c6458f0e4eb9d9177a25c11a5ed90df57315a0e2f616d3f57",
+      "web_path": "expr/q.math.g6.expr.school.013_rId214.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.013_rId216.wmf",
+      "source_sha256": "4f5f595bafb35090fadf05414a3a896057abce118513896f4630281c074b83c9",
+      "web_path": "expr/q.math.g6.expr.school.013_rId216.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.013_rId218.wmf",
+      "source_sha256": "0ef7f36d659f544675b01f9cfb33128ff0e2c74c3b67464226f78e041ac1f193",
+      "web_path": "expr/q.math.g6.expr.school.013_rId218.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.013_rId220.wmf",
+      "source_sha256": "8b7fc5d1aa84c06497871e2d6986f83e24156bca9d7fc6fff1633d4e43763a80",
+      "web_path": "expr/q.math.g6.expr.school.013_rId220.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.013_rId222.wmf",
+      "source_sha256": "c6b5852f38aefd70d605687e0d3e5ccd6ada70d748785054fae24cadd1db75ef",
+      "web_path": "expr/q.math.g6.expr.school.013_rId222.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.013_rId224.wmf",
+      "source_sha256": "252fd5b26178072cb5f5dc3bffb3f614ecb4ed9f8f9059a80d0e1c23d20d2537",
+      "web_path": "expr/q.math.g6.expr.school.013_rId224.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.013_rId226.wmf",
+      "source_sha256": "1631714412c129e6bb64e4e859e21675f0c7a90879c3c7910035fab2c2b2d049",
+      "web_path": "expr/q.math.g6.expr.school.013_rId226.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.013_rId228.wmf",
+      "source_sha256": "e6c06fb6e40d44758594b26e6d0bc5c233b65de3e9004472a72cd2564ca06210",
+      "web_path": "expr/q.math.g6.expr.school.013_rId228.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.013_rId230.wmf",
+      "source_sha256": "9dfa79a6e215856dcf6408ddd51ccf585ee44c7f83027acd45af416e86466dd7",
+      "web_path": "expr/q.math.g6.expr.school.013_rId230.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.013_rId232.wmf",
+      "source_sha256": "6d223abbe992644179dcb3f4ecb9326922aa91f0a00b7102dd6e1371ffb4ff76",
+      "web_path": "expr/q.math.g6.expr.school.013_rId232.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.014_rId238.wmf",
+      "source_sha256": "98cc8745f2a348ff61b52b064ee9395caaacc555ac38cf4cc27910543ba32096",
+      "web_path": "expr/q.math.g6.expr.school.014_rId238.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.014_rId240.wmf",
+      "source_sha256": "a488008475d2e77b0eeb8db810b1c85d0387c3ee4b269f31cdb21f659890b777",
+      "web_path": "expr/q.math.g6.expr.school.014_rId240.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.015_rId243.wmf",
+      "source_sha256": "a3ff5bcdcfce8c1d848cc9a089b16370d80dbc8890137426262a78c443352a24",
+      "web_path": "expr/q.math.g6.expr.school.015_rId243.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.015_rId245.wmf",
+      "source_sha256": "a54d9b4e5641779c43b8eaec5d14c2299ec3318573ba1e16146195382cb3108b",
+      "web_path": "expr/q.math.g6.expr.school.015_rId245.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.017_rId247.wmf",
+      "source_sha256": "ca787d7aad53147f59e1296b786c1a69117aad84c49afd320f78bd333d5851ed",
+      "web_path": "expr/q.math.g6.expr.school.017_rId247.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.017_rId249.wmf",
+      "source_sha256": "288ffb13cca4aaf86cbbdcaa615bc724624027d44dd0c6a1e7d9667ffe70aa97",
+      "web_path": "expr/q.math.g6.expr.school.017_rId249.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.017_rId251.wmf",
+      "source_sha256": "f11b45604d7abbc86d40b490ee0258b0241f9f49c300013e433a077b3d0477f2",
+      "web_path": "expr/q.math.g6.expr.school.017_rId251.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.017_rId253.wmf",
+      "source_sha256": "1e1efe7e1e6e6ffa29129381102576934b9f271d3b9cb7a8f4db2a1fea1c9cc6",
+      "web_path": "expr/q.math.g6.expr.school.017_rId253.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.017_rId255.wmf",
+      "source_sha256": "22220ef03b9a661f48ccbc34c56f6952a1e6a5c6b03d2fc8b5bb72ff42fe762c",
+      "web_path": "expr/q.math.g6.expr.school.017_rId255.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.017_rId257.wmf",
+      "source_sha256": "dc6861eed60e6077868ea460ca054cedf2ace64290a33ff60bbe1180621ec94c",
+      "web_path": "expr/q.math.g6.expr.school.017_rId257.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.017_rId259.wmf",
+      "source_sha256": "c362f9950195d88cd3ef88af678d3cb7a94ed7aeab6925129a132de938055d7f",
+      "web_path": "expr/q.math.g6.expr.school.017_rId259.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.018_rId260.png",
+      "source_sha256": "59aca65f5f131e43b2db147f3dd7829cf52c5a0867339686bc1541a37c7f8794",
+      "web_path": "expr/q.math.g6.expr.school.018_rId260.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "copy"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.019_rId262.wmf",
+      "source_sha256": "9ed692f3bee96b99f33810b69082a932d9814ae7b082c8febb31cd8a1f39472e",
+      "web_path": "expr/q.math.g6.expr.school.019_rId262.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.019_rId264.wmf",
+      "source_sha256": "d3e4c6953b447e86614f63c45a88ae1403814f88fd2f0d205e554faa32cc91c6",
+      "web_path": "expr/q.math.g6.expr.school.019_rId264.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.019_rId266.wmf",
+      "source_sha256": "3459ea9bb7b95d20fefba33fc513db3c73f268f1d5635b1dd24c16d384d1a167",
+      "web_path": "expr/q.math.g6.expr.school.019_rId266.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.020_rId268.wmf",
+      "source_sha256": "94eb41d1fa177f43fc6be01568314118b5fd2afaa45e7654c4e6509252eb6a94",
+      "web_path": "expr/q.math.g6.expr.school.020_rId268.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.020_rId270.wmf",
+      "source_sha256": "2ea85e1f96c11db3834ef4cc88bdc590496252861ed2178e671af29cb5d6a9cc",
+      "web_path": "expr/q.math.g6.expr.school.020_rId270.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.020_rId272.wmf",
+      "source_sha256": "ec44c935049149e7e44872026c1f2937c76ab962ec48aa8ad2311e351a42461c",
+      "web_path": "expr/q.math.g6.expr.school.020_rId272.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.021_rId274.wmf",
+      "source_sha256": "2b08b65e99595838aac5ae3f7b4418a5aba9bd61e9ed8cc60df543e3b337611c",
+      "web_path": "expr/q.math.g6.expr.school.021_rId274.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.021_rId276.wmf",
+      "source_sha256": "821732751a4fde559815442e3fa8728a2b46ec26239f6e859fb3930514569dcc",
+      "web_path": "expr/q.math.g6.expr.school.021_rId276.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId278.wmf",
+      "source_sha256": "dda0cc4466abdb99ecdde0352dadd3d651512b6751a8c236f3a49a8e312841b5",
+      "web_path": "expr/q.math.g6.expr.school.022_rId278.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId280.wmf",
+      "source_sha256": "02c4514609f2054f1355696a65d2ff5b7b9b6defa2cc419920609b021bdc2245",
+      "web_path": "expr/q.math.g6.expr.school.022_rId280.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId281.png",
+      "source_sha256": "13fc5edc4451ebd050b8b33f4c583cfbd4fac7f4931f947cd443cbaac61f3ba5",
+      "web_path": "expr/q.math.g6.expr.school.022_rId281.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "copy"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId283.wmf",
+      "source_sha256": "a13c8eeef64995745516a6405baeb1746ccde3f242aa457272a26da253abc52f",
+      "web_path": "expr/q.math.g6.expr.school.022_rId283.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId285.wmf",
+      "source_sha256": "3b4f3090278fba6ce74bef49e81d77a14c590af0e36bc6811e5bc8f734efb7c0",
+      "web_path": "expr/q.math.g6.expr.school.022_rId285.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId287.wmf",
+      "source_sha256": "709232c2a05edaf8097f231b2a32b4c1e82962d79d0013aaa9b9564e7b96b2d7",
+      "web_path": "expr/q.math.g6.expr.school.022_rId287.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId289.wmf",
+      "source_sha256": "b32019729e6cef59134f8c80bad24694a3ab076a66eed804f6daeba57dfa83fd",
+      "web_path": "expr/q.math.g6.expr.school.022_rId289.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId291.wmf",
+      "source_sha256": "8f3629007f3aca41525d436b347b5036c6802e51ee7a7873914ffb9b41a21a03",
+      "web_path": "expr/q.math.g6.expr.school.022_rId291.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId293.wmf",
+      "source_sha256": "f500fa115871db1e503dd3129c9197f0775dd11985f64c43182fa8624b3d16c7",
+      "web_path": "expr/q.math.g6.expr.school.022_rId293.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId295.wmf",
+      "source_sha256": "4b423208ea26c39b2f849cfc7b90d65bbfc122befbd5a05c483cf2f12e58bdaf",
+      "web_path": "expr/q.math.g6.expr.school.022_rId295.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId297.wmf",
+      "source_sha256": "e7cef6a32a477ce1465072c70ebe60b1ace84e40602688c1494a30dc4df37f12",
+      "web_path": "expr/q.math.g6.expr.school.022_rId297.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId299.wmf",
+      "source_sha256": "91355fd84d277e2d0b32f6eaa6bf6da370dee1ef6d27ffeb25823341295e6dff",
+      "web_path": "expr/q.math.g6.expr.school.022_rId299.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.022_rId301.wmf",
+      "source_sha256": "ea38498e5294c28b2df6818548aff482fd0a6fdad1ab8435ff04f04061450fc3",
+      "web_path": "expr/q.math.g6.expr.school.022_rId301.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId303.wmf",
+      "source_sha256": "06ebeaa567644ff663f6838d54746eae1e6fa83e45567402fb537bdf7f96f6c7",
+      "web_path": "expr/q.math.g6.expr.school.023_rId303.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId305.wmf",
+      "source_sha256": "9125bb6b4afc412f6d5993f523d22ad08c7898f117efe1808fb4d29480cf859f",
+      "web_path": "expr/q.math.g6.expr.school.023_rId305.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId307.wmf",
+      "source_sha256": "1c115443e97a3ea418d3024de17507557759a482e84ee53c3d4180195a9e1fe2",
+      "web_path": "expr/q.math.g6.expr.school.023_rId307.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId309.wmf",
+      "source_sha256": "83b6bda5d7c6d8fd89cc40925b00d34c7bd7405b09171f97ea50dfab9f363f95",
+      "web_path": "expr/q.math.g6.expr.school.023_rId309.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId311.wmf",
+      "source_sha256": "8e490b150bd6b05168d934479494e4b5d6b098a4947fe3e24c153c3faa205ead",
+      "web_path": "expr/q.math.g6.expr.school.023_rId311.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId313.wmf",
+      "source_sha256": "705184224010d9900c571b27bb709e47b30409da0d02b1dc2aacf2ffc86b8133",
+      "web_path": "expr/q.math.g6.expr.school.023_rId313.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId315.wmf",
+      "source_sha256": "fcb8c8a8ff356dfa7c068d0084950e325ea44efeded67ded3dc400f4ec5f31ce",
+      "web_path": "expr/q.math.g6.expr.school.023_rId315.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId317.wmf",
+      "source_sha256": "1b55654c28bbe29296ecfd73022b26709728e747e10bc4d9c782af42dc36e174",
+      "web_path": "expr/q.math.g6.expr.school.023_rId317.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId319.wmf",
+      "source_sha256": "e3dbe2812a6d71007f809d6100910091809df92a46239c6ddf66b16205c2d062",
+      "web_path": "expr/q.math.g6.expr.school.023_rId319.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId321.wmf",
+      "source_sha256": "64f7477ded1098622f2525dea03944599666452bff040ffafa837091b2a95bb7",
+      "web_path": "expr/q.math.g6.expr.school.023_rId321.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId323.wmf",
+      "source_sha256": "427d943ec798660f2fdab1e737a4ef669bce1d977af583a62f2456f4aa36990c",
+      "web_path": "expr/q.math.g6.expr.school.023_rId323.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId325.wmf",
+      "source_sha256": "e9bf86e4248083667e7af2cbdbbb073f6d1312e3c980a6c8e40fa1277a8a0536",
+      "web_path": "expr/q.math.g6.expr.school.023_rId325.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId327.wmf",
+      "source_sha256": "36c1c15edf98196a9cde24d07ffcb8b93664342b5f5b701443e3053667d8ea35",
+      "web_path": "expr/q.math.g6.expr.school.023_rId327.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId329.wmf",
+      "source_sha256": "e72132ae0c459b51583ef563f58124a6f4bbc7b44ae73354f084d700425bc8a1",
+      "web_path": "expr/q.math.g6.expr.school.023_rId329.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId331.wmf",
+      "source_sha256": "c3b241f3552e7a586a864cceb1d50242ea76c68e3d2202a5dddb5c4a417c90fe",
+      "web_path": "expr/q.math.g6.expr.school.023_rId331.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.023_rId333.wmf",
+      "source_sha256": "f0a17fc4690e289afa05689366fde7d789aba937677f09433ffe4a1e9ba2174f",
+      "web_path": "expr/q.math.g6.expr.school.023_rId333.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.024_rId335.wmf",
+      "source_sha256": "e1cfb357194779b4a144955b46cc1deb528370eba99f223b291a24f66e699fcc",
+      "web_path": "expr/q.math.g6.expr.school.024_rId335.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.024_rId337.wmf",
+      "source_sha256": "6559890821f5fce402425e5822f763a7024d1dcc4e1d56e1783cad47068213f3",
+      "web_path": "expr/q.math.g6.expr.school.024_rId337.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.024_rId339.wmf",
+      "source_sha256": "9fb0572b64525adb744e22d8f92f7726135f9754f9464c5292cf23f4e2f3a929",
+      "web_path": "expr/q.math.g6.expr.school.024_rId339.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.024_rId341.wmf",
+      "source_sha256": "b7ecdd4078bd5407f07042bc7c5dc7a815c094061c6ef24ff93ea4c29e0561df",
+      "web_path": "expr/q.math.g6.expr.school.024_rId341.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.025_rId343.wmf",
+      "source_sha256": "34d157be1d1e57b12d18eada7f92b21c045df7c08503c3be94f3c8aa7ffac74b",
+      "web_path": "expr/q.math.g6.expr.school.025_rId343.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.025_rId345.wmf",
+      "source_sha256": "7f59d2edec2006f33e68987c5fb6d635ef2bede959c7c06292703739bc7619de",
+      "web_path": "expr/q.math.g6.expr.school.025_rId345.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.025_rId347.wmf",
+      "source_sha256": "2ed0231b98d6645d23a6d35b3a88bfc2f3281c334f280a595d6e5dc552c98cf9",
+      "web_path": "expr/q.math.g6.expr.school.025_rId347.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.025_rId349.wmf",
+      "source_sha256": "0cd3e2def5c4f06bb2ae3b6d5c37abbd01af26d681e246abd87bc9f07648aa40",
+      "web_path": "expr/q.math.g6.expr.school.025_rId349.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.025_rId351.wmf",
+      "source_sha256": "bea83bc65c192b6d6aadf7d578e4c38683ff74dd9e2bd6b5c54e23cd04e671ae",
+      "web_path": "expr/q.math.g6.expr.school.025_rId351.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.025_rId353.wmf",
+      "source_sha256": "dadaca2d504da4c227d2da74a76404c5dc48359d6cdb3b626d85de0482e2ce7d",
+      "web_path": "expr/q.math.g6.expr.school.025_rId353.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.025_rId354.png",
+      "source_sha256": "7e363a82554666956cda5f817397e6ef952b9aa7c7b0915b1ff583919fca3b92",
+      "web_path": "expr/q.math.g6.expr.school.025_rId354.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "copy"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.026_rId356.wmf",
+      "source_sha256": "6f6546979cf31b539ac98170452dd95bafef7311cc74a0ef22e91705ab9aeda0",
+      "web_path": "expr/q.math.g6.expr.school.026_rId356.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.026_rId358.wmf",
+      "source_sha256": "6f095548aca41c2785c1df79cc1112c223a1aa5d20397c4e3387beee0b5a3b96",
+      "web_path": "expr/q.math.g6.expr.school.026_rId358.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.026_rId360.wmf",
+      "source_sha256": "4b306102f62eab895307ed6a5c3dd9a7275db8008c475cea185372aa34883842",
+      "web_path": "expr/q.math.g6.expr.school.026_rId360.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.026_rId362.wmf",
+      "source_sha256": "2fa3f74875d0537145d8f7e1e6368b07a089051fb98c27401c565e33d0e1eaa3",
+      "web_path": "expr/q.math.g6.expr.school.026_rId362.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.026_rId364.wmf",
+      "source_sha256": "5be9f5ca274ac8cb6b80efe926227725339e58e945ab8c76ee3a8ba5691e6d18",
+      "web_path": "expr/q.math.g6.expr.school.026_rId364.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.026_rId367.wmf",
+      "source_sha256": "ec9cf3e96c8bb12a2870abe4cb014881ae5289da2aeae9889d5b86be098ad75c",
+      "web_path": "expr/q.math.g6.expr.school.026_rId367.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId369.wmf",
+      "source_sha256": "2661a584bc356afa9f9fda1963ac71e7ca996cc586b2cd652d1bf5f79e5debaf",
+      "web_path": "expr/q.math.g6.expr.school.028_rId369.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId371.wmf",
+      "source_sha256": "b09a652e300f6541eeb279f54d55bbcc6370c46d4cbabc95fe89432644467e93",
+      "web_path": "expr/q.math.g6.expr.school.028_rId371.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId373.wmf",
+      "source_sha256": "776b9d4e9b7e25ec6f360a86adc96a5a5db92a31c810472038db1db77ca91aee",
+      "web_path": "expr/q.math.g6.expr.school.028_rId373.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId375.wmf",
+      "source_sha256": "b44f242bcb55e825886fcd188296932b0b51bbaefce1976228bef12510d07111",
+      "web_path": "expr/q.math.g6.expr.school.028_rId375.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId377.wmf",
+      "source_sha256": "fbca47b2a6949b4cfb81ff48fdec1032e7afd1947ce8e60967e2371d5e01eee0",
+      "web_path": "expr/q.math.g6.expr.school.028_rId377.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId379.wmf",
+      "source_sha256": "ed7c02db2936262c51d8ce959a5f6f426d3f6cf86a8142ad699d5cbb6dbc7ab1",
+      "web_path": "expr/q.math.g6.expr.school.028_rId379.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId381.wmf",
+      "source_sha256": "a47a9bc19b09fc4bee7ac358abd4d061196cedc3e48094c36b65bc9cf403f781",
+      "web_path": "expr/q.math.g6.expr.school.028_rId381.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId383.wmf",
+      "source_sha256": "d5dacee1636a10b14352d3808e56ae47d370ab60a5a51850ebc2e092dae4cc6b",
+      "web_path": "expr/q.math.g6.expr.school.028_rId383.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId385.wmf",
+      "source_sha256": "d17122dbfb19a9332a677f4e7842c0e54fd9ba3ddd6df11f38ffd8aadaff618b",
+      "web_path": "expr/q.math.g6.expr.school.028_rId385.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId387.wmf",
+      "source_sha256": "6f9dcb94a0c7dd2b090efa909f0a9c887bbdae6f74371b771db4d0b67621d157",
+      "web_path": "expr/q.math.g6.expr.school.028_rId387.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId389.wmf",
+      "source_sha256": "e05a4f0f041801b9013f5358225a6e0146b9e6761e14d3a70d6e9d8ae72dc24d",
+      "web_path": "expr/q.math.g6.expr.school.028_rId389.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId391.wmf",
+      "source_sha256": "32cae20d4257e0f9f6e7c6e57989efc66bd02be1f705ded20952b8b1df7fdcf5",
+      "web_path": "expr/q.math.g6.expr.school.028_rId391.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId393.wmf",
+      "source_sha256": "c2eef42c004aab287ceb909d2f94b7f31cd51c4e77f3451b509c4fc700a1a027",
+      "web_path": "expr/q.math.g6.expr.school.028_rId393.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId395.wmf",
+      "source_sha256": "2fe5730e4171b2cc5a47f7ae9fb1c9d8fe3877b3b607c01a3605ff3274279229",
+      "web_path": "expr/q.math.g6.expr.school.028_rId395.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId397.wmf",
+      "source_sha256": "86fb6d72971e114016114d41bf0ddb3e5b091d4ef7cfd3ad2a4d74cdb51014d8",
+      "web_path": "expr/q.math.g6.expr.school.028_rId397.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId399.wmf",
+      "source_sha256": "58e6ca1a1daa7546dc084807164233da030e49e8d65c9fcb6ac062009e406830",
+      "web_path": "expr/q.math.g6.expr.school.028_rId399.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId401.wmf",
+      "source_sha256": "3f7f5c86dbf5bff5d7671320c3fc81572646d2511c03b3a53b4a847f341f3c72",
+      "web_path": "expr/q.math.g6.expr.school.028_rId401.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId403.wmf",
+      "source_sha256": "20cb907e9d806c154995dc5f2e29d27f3346ccd86ddf818c808623f516f74f48",
+      "web_path": "expr/q.math.g6.expr.school.028_rId403.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId405.wmf",
+      "source_sha256": "8d77879978bb49383ab9f045ea008a229643f6307233ab31bf1fdbc31039e49d",
+      "web_path": "expr/q.math.g6.expr.school.028_rId405.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId407.wmf",
+      "source_sha256": "06d2f2d20b8909e6ee4fdc95bd01fa12e474d267134b5b21c0f4ddf7cf6900c1",
+      "web_path": "expr/q.math.g6.expr.school.028_rId407.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId409.wmf",
+      "source_sha256": "0f236e1c9a42a7ab08dfc0d0bcd50669db6d5c47abf32c1f737a9dbc757dee6c",
+      "web_path": "expr/q.math.g6.expr.school.028_rId409.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId411.wmf",
+      "source_sha256": "37edca05197959bf1a968cecdf5338ce1ebc7943394809e1e1e42a39410745f4",
+      "web_path": "expr/q.math.g6.expr.school.028_rId411.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId413.wmf",
+      "source_sha256": "a6e061b28138f50b2cf609f3e83f0066fff614b830e998d27b85eb1670d19543",
+      "web_path": "expr/q.math.g6.expr.school.028_rId413.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId415.wmf",
+      "source_sha256": "e81f809a1da3efd41ea817553d1678e82ca8cbfe6b03ec2505f2653715a936ae",
+      "web_path": "expr/q.math.g6.expr.school.028_rId415.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId417.wmf",
+      "source_sha256": "ed6ce5147b59ce74ac2e7b2833e160ff261f886eca5afbab7670071c0ecee149",
+      "web_path": "expr/q.math.g6.expr.school.028_rId417.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId419.wmf",
+      "source_sha256": "fc8cdc4d914333fa725233c2b3852f90f7e379bc4f35c07ab60fcbd1c63c52cd",
+      "web_path": "expr/q.math.g6.expr.school.028_rId419.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.028_rId421.wmf",
+      "source_sha256": "6cbe348f56b02958b21014dddb898751b95b146da0760ebbad2de1d20f97c0cc",
+      "web_path": "expr/q.math.g6.expr.school.028_rId421.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.029_rId423.wmf",
+      "source_sha256": "ac8c11992e728c60d9789621763d4fe95d09824588621ee79b5b8245a62f5237",
+      "web_path": "expr/q.math.g6.expr.school.029_rId423.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.029_rId425.wmf",
+      "source_sha256": "d5d81832e9941828c670a0e12408dbd110a8514a10ad5ea3775b4c511835fa71",
+      "web_path": "expr/q.math.g6.expr.school.029_rId425.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.029_rId427.wmf",
+      "source_sha256": "9287fe17ed4b61bcf828905ad088004d96316821af3f0b3dba391ffe6f6c8674",
+      "web_path": "expr/q.math.g6.expr.school.029_rId427.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.029_rId429.wmf",
+      "source_sha256": "5f5f53dac400c5d5bc3efb633e2236dd9f28374417a020d6f523d6a3c5d749c3",
+      "web_path": "expr/q.math.g6.expr.school.029_rId429.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.029_rId431.wmf",
+      "source_sha256": "638ea0baa8fae71faf430d98b3a589697167de984383335326f5ccaea3536dc2",
+      "web_path": "expr/q.math.g6.expr.school.029_rId431.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.029_rId433.wmf",
+      "source_sha256": "7e3f10417883330f8aa6bacfa3ee61bc9f5f5f3f6ba5f3e22846424db2c09593",
+      "web_path": "expr/q.math.g6.expr.school.029_rId433.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.029_rId434.png",
+      "source_sha256": "9cb651805dcd74e00012ab6dd728e67fd1ffbc7b113c3fbaf9a477e538ba70a3",
+      "web_path": "expr/q.math.g6.expr.school.029_rId434.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "copy"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.030_rId436.wmf",
+      "source_sha256": "f82291823ad04dee6e161b723e33bf3512192a70b7663652103ab8d9b54a0461",
+      "web_path": "expr/q.math.g6.expr.school.030_rId436.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.030_rId438.wmf",
+      "source_sha256": "14b131dc6c41bb3fe9e18ee714dd532980298b0411015df8d4e72ed539e29465",
+      "web_path": "expr/q.math.g6.expr.school.030_rId438.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.030_rId440.wmf",
+      "source_sha256": "c18637904c915e5ed099348cf4cf591ebf49a8845e2b78efb40dab0b8d84c252",
+      "web_path": "expr/q.math.g6.expr.school.030_rId440.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.031_rId442.wmf",
+      "source_sha256": "7e380d356c67937a1cbc7dcb608ec4c54e7125fd555c397f8db40e5decc100a8",
+      "web_path": "expr/q.math.g6.expr.school.031_rId442.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.031_rId444.wmf",
+      "source_sha256": "b23023499a1d53369809e8a405bd5e34eb2f8c8a9463d13560679b1802b7d808",
+      "web_path": "expr/q.math.g6.expr.school.031_rId444.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.031_rId446.wmf",
+      "source_sha256": "c13dd214524b3370ca4eb36e9d972a601488951f6007973ff45995584aff34f3",
+      "web_path": "expr/q.math.g6.expr.school.031_rId446.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.031_rId448.wmf",
+      "source_sha256": "2fbcb05084893a1febf02cecd53f3a42c2eb178c21d302e2a0d1dc59513fff93",
+      "web_path": "expr/q.math.g6.expr.school.031_rId448.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.031_rId450.wmf",
+      "source_sha256": "2fd6377495a4d7d449ce0d9c4ae0b49e508938968f3a56dff9161fb5e6c70040",
+      "web_path": "expr/q.math.g6.expr.school.031_rId450.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId452.wmf",
+      "source_sha256": "afe1d6e5bed99d8e85dc26f70546fa0b9304a98adee17435dfd93179b4e277e8",
+      "web_path": "expr/q.math.g6.expr.school.032_rId452.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId454.wmf",
+      "source_sha256": "f019f641c0af324caf8f6c3dc09eedb48028d0b7966b593423b8325a7e43e38f",
+      "web_path": "expr/q.math.g6.expr.school.032_rId454.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId456.wmf",
+      "source_sha256": "0d0db298982f8a3108eb908f4a16c58476d2f95c963aea4eda6ca439a7331098",
+      "web_path": "expr/q.math.g6.expr.school.032_rId456.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId458.wmf",
+      "source_sha256": "09c1f8b3463e3ecdde53638d68e94cead2a1b4bd7a0b7ce22329930cd8da4e97",
+      "web_path": "expr/q.math.g6.expr.school.032_rId458.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId460.wmf",
+      "source_sha256": "e1637e39a689f9a9c61413ba147e5fbd96a5e8f11c108d64225e4483ca30ddb5",
+      "web_path": "expr/q.math.g6.expr.school.032_rId460.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId462.wmf",
+      "source_sha256": "317960ab914458ec079ce4041c0a073296eb90f547063b28fae0a0e3ccdb847c",
+      "web_path": "expr/q.math.g6.expr.school.032_rId462.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId464.wmf",
+      "source_sha256": "d2d752fe7bbb3d54a2a9e0ba7cb0dd44c4ef91d5da27c53f50a4720be5c187d0",
+      "web_path": "expr/q.math.g6.expr.school.032_rId464.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId466.wmf",
+      "source_sha256": "b38a31d75cd2b7faa145b5cc8671f449e4464cd6c00d86c013f0ba47e360323e",
+      "web_path": "expr/q.math.g6.expr.school.032_rId466.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId468.wmf",
+      "source_sha256": "ab6ef49b6471af8dd51cf8de3f3a4f1b4188e1427763c808981777ef034555d4",
+      "web_path": "expr/q.math.g6.expr.school.032_rId468.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId470.wmf",
+      "source_sha256": "e301849668390a2fc97bcadddf5f2aae2271c23e6acfbd433d9ba40c7a8125d6",
+      "web_path": "expr/q.math.g6.expr.school.032_rId470.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId472.wmf",
+      "source_sha256": "3d45e495ee2744ba8abb76f512bbe88a8f04950910fcb0203a6a9a31bfd839ac",
+      "web_path": "expr/q.math.g6.expr.school.032_rId472.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId474.wmf",
+      "source_sha256": "9b75288f2e0d1033b0f3060eef6dd1ad05be4b7fb6c920061da31571cdffd98c",
+      "web_path": "expr/q.math.g6.expr.school.032_rId474.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId476.wmf",
+      "source_sha256": "9a73a5c3c77a60238eca8d6ba21041ab54566a631a7adee334ec2321a45dbb05",
+      "web_path": "expr/q.math.g6.expr.school.032_rId476.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId478.wmf",
+      "source_sha256": "ecc6a7c2821fa86513d9ad5aeb4b86db794705195c27317196e004ac1cab25e2",
+      "web_path": "expr/q.math.g6.expr.school.032_rId478.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId480.wmf",
+      "source_sha256": "e402599012871438849feaa4b92346db370e7c8b940ae26973355fc6860b7bf2",
+      "web_path": "expr/q.math.g6.expr.school.032_rId480.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId482.wmf",
+      "source_sha256": "88e0f4c657acebe1e233174272e93ecd94a827c26b8d2c05aa684cb297ddbeb0",
+      "web_path": "expr/q.math.g6.expr.school.032_rId482.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.032_rId484.wmf",
+      "source_sha256": "ce9f3cb1b5e92711dc59537dc3c826eee934d87ddb9724d03be445603d4a657a",
+      "web_path": "expr/q.math.g6.expr.school.032_rId484.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.033_rId486.wmf",
+      "source_sha256": "bc7b30ab852e29722f7cb2fc544d28d6a523f78e6c5b268f117c1cc4e568d12b",
+      "web_path": "expr/q.math.g6.expr.school.033_rId486.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.033_rId488.wmf",
+      "source_sha256": "64253fde30c3c3a7602890bab37146c8ce36cb24d7e28e4b315465dfa34f493c",
+      "web_path": "expr/q.math.g6.expr.school.033_rId488.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.033_rId490.wmf",
+      "source_sha256": "5923941dc5f1c865ab60d7626d8237019636cafa3d25f7097fc90e617ba5fb67",
+      "web_path": "expr/q.math.g6.expr.school.033_rId490.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.033_rId492.wmf",
+      "source_sha256": "9027923dfa1e3de755d5c5872b53fe6ffea11e916c4104d2cc462494055241e2",
+      "web_path": "expr/q.math.g6.expr.school.033_rId492.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.033_rId494.wmf",
+      "source_sha256": "1b3d86e545cc6c68056d372521165fafbb1985a884a0d41e4e10e5d7f92229d6",
+      "web_path": "expr/q.math.g6.expr.school.033_rId494.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.033_rId496.wmf",
+      "source_sha256": "8bf8a6a6d3878c7a7c7fb56fad839a968cf897cc8b5935941495722c755e17b5",
+      "web_path": "expr/q.math.g6.expr.school.033_rId496.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.034_rId498.wmf",
+      "source_sha256": "58dc0542a8c9d61ef5e231171e0cb6e07698f0212bd1a6f049bb17bb97f751bb",
+      "web_path": "expr/q.math.g6.expr.school.034_rId498.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.034_rId500.wmf",
+      "source_sha256": "8866e7ea1e56cced6b8bdd286ed134cbf7b3e53086d4141ee5e232d89184d01a",
+      "web_path": "expr/q.math.g6.expr.school.034_rId500.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId502.wmf",
+      "source_sha256": "b1840337e12fb826f8106c4194c52b5ff10bd333406731f4f9330b17b026c325",
+      "web_path": "expr/q.math.g6.expr.school.035_rId502.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId504.wmf",
+      "source_sha256": "8e8db3847083d1d85cd6bd716469f179d6ff6b10a106d9f3adc93e1dd6558d91",
+      "web_path": "expr/q.math.g6.expr.school.035_rId504.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId506.wmf",
+      "source_sha256": "20566cdf7d65759600bbd07ff85a7f936574dcedccf6abf16ae30b2e63c8cd6d",
+      "web_path": "expr/q.math.g6.expr.school.035_rId506.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId508.wmf",
+      "source_sha256": "1d3237a562a92020f6382a86b49ef2f44568b8b292e26af24e1f0d94c5f84a7f",
+      "web_path": "expr/q.math.g6.expr.school.035_rId508.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId510.wmf",
+      "source_sha256": "ffa7b127f572e3641e8fe59bc94c647746f5adef9f5ab80269789eab66d18c26",
+      "web_path": "expr/q.math.g6.expr.school.035_rId510.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId512.wmf",
+      "source_sha256": "fc9112e7fa1846c3d84660e1a9005921285eecceb983504fc6757857f3148722",
+      "web_path": "expr/q.math.g6.expr.school.035_rId512.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId515.wmf",
+      "source_sha256": "9ba9db2ac273735c64cf90774a7de92a1be00af8c6ed07babab718086ec15670",
+      "web_path": "expr/q.math.g6.expr.school.035_rId515.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId517.wmf",
+      "source_sha256": "3548c28709df83b0f1a76ce2d515d2b150f5babe980cd5d661d9369563e3b7c6",
+      "web_path": "expr/q.math.g6.expr.school.035_rId517.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId519.wmf",
+      "source_sha256": "e8d4829ae8b2e0d481a4a5c37e1616230806b7638c18ddddbe2ca360bfed46d8",
+      "web_path": "expr/q.math.g6.expr.school.035_rId519.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId521.wmf",
+      "source_sha256": "e49f2369d05a8af5f1e14ea4f2e1190aa2281edb594a56704b001aa7f1dd1d65",
+      "web_path": "expr/q.math.g6.expr.school.035_rId521.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId523.wmf",
+      "source_sha256": "b58f9c173c179103166e6afe4da997bdca9aeeb49178c007dad74b371e2b5ae6",
+      "web_path": "expr/q.math.g6.expr.school.035_rId523.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId525.wmf",
+      "source_sha256": "c03a68cd35305a17817e490543b7b7cbda61b81eb14f444f25c25d6c9018099e",
+      "web_path": "expr/q.math.g6.expr.school.035_rId525.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId527.wmf",
+      "source_sha256": "f2d378bdd0e786a422eff5c1fe04e4b4c75c8623894da33762ed614e86d698fe",
+      "web_path": "expr/q.math.g6.expr.school.035_rId527.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId529.wmf",
+      "source_sha256": "f8a0173a5dae911ed1ae5e9b96c26e22c5e4563dd48fd9f2fa387f495459bea2",
+      "web_path": "expr/q.math.g6.expr.school.035_rId529.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId531.wmf",
+      "source_sha256": "daf4848a83903e69cd0d6599ebed36a73bc40e7bb9a4d7dbf34591dbc3ab1fc4",
+      "web_path": "expr/q.math.g6.expr.school.035_rId531.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId533.wmf",
+      "source_sha256": "cc6fd7edf15f8664f3d2c4cd5e8523a3ea7271ffe8ae39ad0c0c49d6c5e04d34",
+      "web_path": "expr/q.math.g6.expr.school.035_rId533.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.035_rId535.wmf",
+      "source_sha256": "a21def18d5306bb56f59f2d1957897624e45e5b0c29f1b2cbbfc26a6af2ac433",
+      "web_path": "expr/q.math.g6.expr.school.035_rId535.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId537.wmf",
+      "source_sha256": "535507079a2626c300fe4319f50513f90abf60645afc42809a4b445c80852057",
+      "web_path": "expr/q.math.g6.expr.school.036_rId537.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId539.wmf",
+      "source_sha256": "203c376d66bd1ddcb2521e700a567e0fad403d6e0ed83ad77c1e818433029b5c",
+      "web_path": "expr/q.math.g6.expr.school.036_rId539.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId541.wmf",
+      "source_sha256": "0865b38b62c460e6f2f7d82d9c3dd6a36a9f45450b123f785d7cca00109e7243",
+      "web_path": "expr/q.math.g6.expr.school.036_rId541.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId543.wmf",
+      "source_sha256": "dcc4e8323edda31b8969e0d7a38f43cd5bc41b31d9fab09e9ab7746bda29caa4",
+      "web_path": "expr/q.math.g6.expr.school.036_rId543.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId545.wmf",
+      "source_sha256": "044e06fd078baf24a42c339a74a3c4914081a7030eee1a31f00b100ae5d35468",
+      "web_path": "expr/q.math.g6.expr.school.036_rId545.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId547.wmf",
+      "source_sha256": "9a4d47137bf73c7b98e4f83142311aaf235e998ba0bd3d1832e0c2b4a975a9b3",
+      "web_path": "expr/q.math.g6.expr.school.036_rId547.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId549.wmf",
+      "source_sha256": "80674ec087e160cd9c116e7a757787fc25407495affb2de50ee432ef7f5ace86",
+      "web_path": "expr/q.math.g6.expr.school.036_rId549.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId551.wmf",
+      "source_sha256": "8c4cf0cc6d4689c53a7519abd49703791df56bfc13ca6b50c2ff24dfc8c09055",
+      "web_path": "expr/q.math.g6.expr.school.036_rId551.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId553.wmf",
+      "source_sha256": "72dc53d88c8ebed747de1828f996f37bdf3ba82331902fe77ece44bc454c9ef3",
+      "web_path": "expr/q.math.g6.expr.school.036_rId553.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId555.wmf",
+      "source_sha256": "27ea829e3095399fd21bc3f3760f233cbcafb9ae7a438301de3da22ce4643711",
+      "web_path": "expr/q.math.g6.expr.school.036_rId555.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId557.wmf",
+      "source_sha256": "c6be0a4bbc500c4bfb766164fb2b84ba98d746ba79fa6015b9b45acc277f6d39",
+      "web_path": "expr/q.math.g6.expr.school.036_rId557.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId559.wmf",
+      "source_sha256": "01689e0f3e738f4da739fc655b86e9a64c377060b57a0f20ca29104232af992c",
+      "web_path": "expr/q.math.g6.expr.school.036_rId559.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_rId561.wmf",
+      "source_sha256": "cade4bad60387ec1dc01547d6e353367b40d0df0c4fcff37d51971e8df49a25d",
+      "web_path": "expr/q.math.g6.expr.school.036_rId561.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.037_rId563.wmf",
+      "source_sha256": "00a4a4224f75ec2d5d9e5eeaa661f781f8be3f5c77fb446dd929104cf71d1294",
+      "web_path": "expr/q.math.g6.expr.school.037_rId563.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.037_rId565.wmf",
+      "source_sha256": "00c495948b69064b37bda42e475ff30618ac1e2f377ef709f5431d449336dbe6",
+      "web_path": "expr/q.math.g6.expr.school.037_rId565.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.037_rId568.wmf",
+      "source_sha256": "3933526937f30038c2bc70bbcff3468056dd4a0cd2fe872c4f6ba2cdf98b56c2",
+      "web_path": "expr/q.math.g6.expr.school.037_rId568.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.037_rId570.wmf",
+      "source_sha256": "e5aca283424a8900476e8299efe3e1b61e1dc4781f05766b77ccd8d9d9a1eeec",
+      "web_path": "expr/q.math.g6.expr.school.037_rId570.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.038_rId572.wmf",
+      "source_sha256": "07e8d7697e0cd456193b0699f3deefe8c5c51af3aa34d85c5c99312e2ea45f16",
+      "web_path": "expr/q.math.g6.expr.school.038_rId572.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.038_rId574.wmf",
+      "source_sha256": "76706dc3d190590d5a9e5510d4b68bb7384fe5b55afc0a9a159699b591b4abd4",
+      "web_path": "expr/q.math.g6.expr.school.038_rId574.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.038_rId576.wmf",
+      "source_sha256": "1fee12c09f00218dd5b63109abb42fcd29bdc4c639491d6f07b53d164c8c52eb",
+      "web_path": "expr/q.math.g6.expr.school.038_rId576.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.038_rId579.wmf",
+      "source_sha256": "690ba4131e3534c78fc2e96f766ac8215a97ce0834f2d4efd37833f165501711",
+      "web_path": "expr/q.math.g6.expr.school.038_rId579.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.038_rId581.wmf",
+      "source_sha256": "d1b3530007f39ae2a36ac5b037b0d3a85e0b7f5cbfdf6b1fe5235c8473cee20a",
+      "web_path": "expr/q.math.g6.expr.school.038_rId581.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.038_rId583.wmf",
+      "source_sha256": "22ebca8a040074f4653c652af68a0e24529ef2e306833884339694efbe0c6cd4",
+      "web_path": "expr/q.math.g6.expr.school.038_rId583.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.038_rId585.wmf",
+      "source_sha256": "7947db88e57dc86f721a93b7ded3516ba00b686f1c445afddf4001cace97579f",
+      "web_path": "expr/q.math.g6.expr.school.038_rId585.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.038_rId587.wmf",
+      "source_sha256": "53eb6e1e25896e1bc7321fe5a488d6cfb7ddbcf58c2fe6e269a3a91f29b4c24e",
+      "web_path": "expr/q.math.g6.expr.school.038_rId587.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.039_rId589.wmf",
+      "source_sha256": "6770b533b161b3c001ad7e5e92756c79ff8513c8b757a3ead68451d5a05db6ea",
+      "web_path": "expr/q.math.g6.expr.school.039_rId589.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.039_rId591.wmf",
+      "source_sha256": "1d088534a51943fe92c722f1397fa73502b3915fc485579aaf9393d7d195c0fe",
+      "web_path": "expr/q.math.g6.expr.school.039_rId591.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.039_rId593.wmf",
+      "source_sha256": "631fd90948ee57d7130870af6fcc0fb356eb6917cf32e9466f2196cfd6a69d98",
+      "web_path": "expr/q.math.g6.expr.school.039_rId593.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.039_rId596.wmf",
+      "source_sha256": "f6223123acd1071d2ef6f691cfa4393bc2082530b8fbfbfe0c4265b8708f7583",
+      "web_path": "expr/q.math.g6.expr.school.039_rId596.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.039_rId598.wmf",
+      "source_sha256": "1e24104bc231b1edf05092ac2a899a3e916e0f93e641b58126cad336c1dcc9aa",
+      "web_path": "expr/q.math.g6.expr.school.039_rId598.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.039_rId600.wmf",
+      "source_sha256": "9f022545582e23c3a0efa3738981a60e237e4fb95d088fdd0bfada34efcea095",
+      "web_path": "expr/q.math.g6.expr.school.039_rId600.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.039_rId602.wmf",
+      "source_sha256": "680bf0a1ce0960b1aa51b964dee24c2e3593e609d68124c268a595a95fc408ce",
+      "web_path": "expr/q.math.g6.expr.school.039_rId602.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.040_rId610.wmf",
+      "source_sha256": "a42bab78998748cdf6a24eb1a0f3db9485fe6c6f07655b72c5f2e2c635dab71f",
+      "web_path": "expr/q.math.g6.expr.school.040_rId610.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.040_rId611.png",
+      "source_sha256": "d0b6d7ec814125d53934157aa30f5c8d74652c4d143aeffa1216da207ac63360",
+      "web_path": "expr/q.math.g6.expr.school.040_rId611.png",
+      "format": "png",
+      "status": "converted",
+      "converter": "copy"
+    }
+  ]
+}

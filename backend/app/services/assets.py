@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from functools import lru_cache
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -16,9 +16,11 @@ from app.core.config import get_settings
 from app.models import PaperInstanceItem, Question
 
 
-@lru_cache(maxsize=1)
-def _manifest() -> dict[str, dict[str, Any]]:
-    path = get_settings().web_asset_dir / "asset_manifest.json"
+@lru_cache(maxsize=4)
+def _manifest(chapter: str) -> dict[str, dict[str, Any]]:
+    if chapter not in {"rational", "expr"}:
+        return {}
+    path = get_settings().web_asset_dir / chapter / "asset_manifest.json"
     if not path.exists():
         return {}
     with path.open("r", encoding="utf-8") as handle:
@@ -27,9 +29,15 @@ def _manifest() -> dict[str, dict[str, Any]]:
     return {item["source_path"]: item for item in entries}
 
 
+def _chapter_for_source_path(source_path: str) -> str | None:
+    parts = PurePosixPath(source_path).parts
+    if len(parts) >= 3 and parts[0] == "assets" and parts[1] in {"rational", "expr"}:
+        return parts[1]
+    return None
+
+
 def resolve_assets(assets: list[dict[str, Any]]) -> list[dict[str, Any]]:
     settings = get_settings()
-    manifest = _manifest()
     result: list[dict[str, Any]] = []
     for asset in assets:
         source_path = asset.get("path", "")
@@ -45,14 +53,15 @@ def resolve_assets(assets: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "conversion_status": "uploaded" if target.is_file() else "missing",
             })
             continue
-        entry = manifest.get(source_path)
+        chapter = _chapter_for_source_path(source_path)
+        entry = _manifest(chapter).get(source_path) if chapter else None
         web_url = None
         status = "missing"
         if entry is not None:
             status = entry.get("status", "missing")
             web_path = entry.get("web_path")
             if status == "converted" and web_path:
-                web_url = f"{settings.public_asset_base_url.rstrip('/')}/{Path(web_path).name}"
+                web_url = f"{settings.public_asset_base_url.rstrip('/')}/{web_path.lstrip('/')}"
         result.append(
             {"path": source_path, "web_url": web_url, "conversion_status": status}
         )
@@ -119,13 +128,14 @@ def question_asset_exists(source_path: str) -> bool:
     """Validate both immutable imported assets and teacher-uploaded assets."""
     if teacher_asset_exists(source_path):
         return True
-    entry = _manifest().get(source_path)
+    chapter = _chapter_for_source_path(source_path)
+    entry = _manifest(chapter).get(source_path) if chapter else None
     if entry is None or entry.get("status") != "converted":
         return False
     web_path = entry.get("web_path")
     return bool(
         isinstance(web_path, str)
-        and (get_settings().web_asset_dir / Path(web_path).name).is_file()
+        and (get_settings().web_asset_dir / Path(web_path)).is_file()
     )
 
 

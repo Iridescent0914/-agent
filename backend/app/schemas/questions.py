@@ -24,7 +24,7 @@ class QuestionAssetInput(BaseModel):
     path: str = Field(
         pattern=(
             r'^assets/(?:teacher/[0-9a-f]{32}\.png|'
-            r'rational/[A-Za-z0-9._-]+)$'
+            r'(?:rational|expr)/[A-Za-z0-9._-]+)$'
         ),
         max_length=255,
     )

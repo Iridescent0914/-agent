@@ -43,8 +43,10 @@ code/
 ├── data/
 │   ├── seed/                      M0 正式种子
 │   │   └── m5_demo_scenarios.json M5 固定演示场景合同
-│   ├── assets/rational/           M0 原始资源
-│   └── web/rational/              M1 Web 资源与 manifest
+│   ├── assets/rational/           第1章有理数原始资源
+│   ├── assets/expr/               第2章简单的代数式原始资源
+│   ├── web/rational/              第1章 Web 资源与 manifest
+│   └── web/expr/                  第2章 Web 资源与 manifest
 ├── scripts/
 │   ├── build_rational_m0.py
 │   ├── validate_m0.py
@@ -198,7 +200,7 @@ cd "D:\desktop\math-agent\code"
 ```powershell
 cd "D:\desktop\math-agent\code\backend"
 $env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
-$env:WEB_ASSET_DIR = "D:\desktop\math-agent\code\data\web\rational"
+$env:WEB_ASSET_DIR = "D:\desktop\math-agent\code\data\web"
 & "D:\desktop\math-agent\code\.conda-env\python.exe" -m uvicorn app.main:app --reload --port 8000
 ```
 
@@ -291,7 +293,7 @@ npm run dev
 
 ## 资源转换
 
-已生成的 Web 资源位于 `data/web/rational/`。当前共享资源清单同时包含第一章和第二章题目引用的图片/公式资源。重新构建任一章节数据后执行：
+已生成的 Web 资源按章节分别位于 `data/web/rational/` 和 `data/web/expr/`，每个目录各自维护 `asset_manifest.json`。重新构建任一章节数据后执行：
 
 ```powershell
 python .\scripts\convert_seed_assets.py

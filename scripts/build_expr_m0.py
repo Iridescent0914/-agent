@@ -3,9 +3,8 @@
 
 The DOCX parser and answer-structure rules are shared with the original M0
 rational-number builder. Outputs use an ``expr_*`` prefix, so this script does
-not overwrite the existing Chapter 1 artifacts. Imported image assets remain
-under ``assets/rational`` because the current backend exposes one immutable
-web-asset manifest and public route.
+not overwrite the existing Chapter 1 artifacts. Imported image assets are
+stored under the chapter-specific ``assets/expr`` directory.
 """
 
 from __future__ import annotations
@@ -95,7 +94,7 @@ KNOWLEDGE_POINTS = [
 def configure_builder() -> None:
     builder.CHAPTER_CODE = CHAPTER_CODE
     builder.CHAPTER_NAME = CHAPTER_NAME
-    builder.ASSET_DIR_NAME = "rational"
+    builder.ASSET_DIR_NAME = "expr"
     builder.OUTPUT_PREFIX = "expr"
     builder.SECTIONS = SECTIONS
     builder.SECTION_BY_NAME = {item["name"]: item for item in SECTIONS}

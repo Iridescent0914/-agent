@@ -14,8 +14,8 @@ class Settings(BaseSettings):
         "postgresql+psycopg://math_agent:math_agent_dev@localhost:5432/math_agent"
     )
     cors_origins: str = "http://localhost:5173"
-    public_asset_base_url: str = "http://localhost:8000/assets/rational"
-    web_asset_dir: Path = Path(__file__).resolve().parents[3] / "data" / "web" / "rational"
+    public_asset_base_url: str = "http://localhost:8000/assets"
+    web_asset_dir: Path = Path(__file__).resolve().parents[3] / "data" / "web"
     public_teacher_asset_base_url: str = "http://localhost:8000/assets/teacher"
     teacher_asset_dir: Path = Path(__file__).resolve().parents[3] / "data" / "web" / "teacher"
     question_asset_max_upload_bytes: int = 8 * 1024 * 1024

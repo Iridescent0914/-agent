@@ -55,7 +55,7 @@ def _question_text_with_assets(
 
     def keep_imported_asset(match: re.Match[str]) -> str:
         path = match.group(1)
-        if path in retained and path.startswith("assets/rational/"):
+        if path in retained and path.startswith(("assets/rational/", "assets/expr/")):
             return match.group(0)
         return ""
 

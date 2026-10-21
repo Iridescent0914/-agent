@@ -11,7 +11,7 @@ from app.models import KnowledgePoint, Question
 
 
 CODE_ROOT = Path(__file__).resolve().parents[2]
-MANIFEST_PATH = CODE_ROOT / "data" / "web" / "rational" / "asset_manifest.json"
+MANIFEST_PATH = CODE_ROOT / "data" / "web" / "expr" / "asset_manifest.json"
 CHAPTER_CODE = "math.g6.expr"
 
 
