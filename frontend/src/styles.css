@@ -226,6 +226,7 @@ a { color: inherit; }
 .assignment-filter-slider-title { font-weight: 650; }
 .assignment-filter-slider-summary { margin-top: 4px; color: #667085; font-size: 12px; }
 .assignment-filter-panel { margin-bottom: 18px; }
+.knowledge-point-chapter-label, .chapter-grade-label { display: block; border-top: 1px solid #d9dee8; padding-top: 6px; color: #344054; font-weight: 650; }
 .assignment-filter-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

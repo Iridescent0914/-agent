@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from math import floor
+import re
 from uuid import UUID
 
 from sqlalchemy import select
@@ -23,6 +24,14 @@ from app.services.student_profile import ProfileContext
 WEIGHTS = {"weakness": Decimal("0.40"), "recent_wrong": Decimal("0.25"),
            "difficulty_match": Decimal("0.20"), "forgetting": Decimal("0.15")}
 REVIEW_INTERVAL_DAYS = Decimal(30)
+
+
+def _core_literacy_tokens(value: str | None) -> set[str]:
+    return {
+        token.strip()
+        for token in re.split(r"[、,，;；/|]+", value or "")
+        if token.strip()
+    }
 
 
 @dataclass(frozen=True)
@@ -197,8 +206,8 @@ def required_question_candidates(
     """Load the shared, teacher-scoped pool used by mandatory questions.
 
     Mandatory questions are selected once per assignment, not once per student.
-    The core-literacy filter is resolved from the KnowledgePoint mapping because
-    that mapping is the authoritative curriculum metadata for this module.
+    Knowledge-point and core-literacy filters are independent. When both are
+    provided, a question must match both scopes (their intersection).
     """
 
     filters = [
@@ -218,7 +227,7 @@ def required_question_candidates(
         if knowledge_scope and knowledge_point.code not in knowledge_scope:
             continue
         if literacy_scope and not literacy_scope.intersection(
-            knowledge_point.core_competencies or []
+            _core_literacy_tokens(question.core_literacy)
         ):
             continue
         candidates.append(Candidate(
