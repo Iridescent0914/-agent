@@ -6,7 +6,7 @@
 
 - FastAPI + SQLAlchemy + PostgreSQL 后端；
 - Alembic 十三段迁移、推荐审计、发布试卷快照保护、版本生命周期、批改审计和图片识别守卫；
-- 139 组完整题库、初始 45 组自动组卷题、知识树和 5 名虚拟学生的幂等导入；
+- 180 组完整题库（有理数 139 组、简单的代数式 41 组）、初始 54 组自动组卷题和 5 名虚拟学生的幂等导入；
 - 3 次历史作业、15 份发布试卷、150 条确认作答及修订记录；
 - 题库列表、筛选、分页、详情、教师录题和业务删除 API / 页面；
 - 选择题、填空题支持教师修改答案、保存审核草稿、确认入池、撤回后重新编辑和版本冲突保护；
@@ -67,9 +67,10 @@ code/
 cd "D:\desktop\math-agent\code"
 Copy-Item .env.example .env
 docker compose up -d --build
-docker compose exec backend python -m scripts.seed_database
+docker compose exec backend python -m scripts.seed_database --chapter all
 docker compose exec backend python -m scripts.rebuild_mastery --all
 docker compose exec backend python -m scripts.verify_m1
+docker compose exec backend python -m scripts.verify_expr
 docker compose exec backend python -m scripts.verify_m2
 docker compose exec backend python -m scripts.verify_m3
 docker compose exec backend python -m scripts.verify_m4
@@ -110,16 +111,48 @@ docker compose ps
 
 当前源码通过目录挂载进入容器，普通 Python / TypeScript 源码修改会由后端 reload 和 Vite 自动加载，通常不需要重新构建镜像。
 
-修改了 `backend/pyproject.toml`、`frontend/package.json` 或 Dockerfile 后再执行：
+获取新代码后应按实际改动类型执行，不需要每次重新构建镜像或安装 npm 包。**每一行命令执行完成后再执行下一行，不要粘连成一行。**
+
+仅修改普通 `.py`、`.ts`、`.tsx` 或 CSS 源码时，如果容器已经运行，不需要执行更新命令，后端 reload 和 Vite 会自动加载；容器未运行时只需：
 
 ```powershell
 cd "D:\desktop\math-agent\code"
-docker compose build backend frontend
-docker compose run --rm frontend npm install
 docker compose up -d
 ```
 
-拉取到新的 Alembic 迁移时不需要手动执行迁移；启动 backend 时会自动升级到最新版本。可以通过以下命令确认：
+包含 Alembic 迁移、知识点或题库种子数据变化时执行：
+
+```powershell
+cd "D:\desktop\math-agent\code"
+docker compose up -d
+docker compose exec backend python -m alembic upgrade head
+docker compose exec backend python -m scripts.seed_database --chapter all
+docker compose exec backend python -m scripts.rebuild_mastery --all
+docker compose ps
+docker compose exec backend python -m alembic current
+docker compose exec backend python -m scripts.verify_expr
+```
+
+`alembic upgrade head`、`seed_database` 和 `rebuild_mastery --all` 均可重复执行。后端容器从停止状态启动时本身也会执行迁移；显式运行迁移可以覆盖“容器原本已经运行，拉取代码后没有重新触发启动命令”的情况。
+
+只有修改了 `backend/pyproject.toml`、后端 Dockerfile 或 Python 依赖时，才需要重新构建后端：
+
+```powershell
+cd "D:\desktop\math-agent\code"
+docker compose build backend
+docker compose up -d backend
+```
+
+只有修改了 `frontend/package.json`、`frontend/package-lock.json`、前端 Dockerfile 或 npm 依赖时，才需要安装前端依赖：
+
+```powershell
+cd "D:\desktop\math-agent\code"
+docker compose build frontend
+docker compose run --rm frontend npm install
+docker compose up -d frontend
+```
+
+可以通过以下命令确认数据库迁移和主要工作流状态：
 
 ```powershell
 docker compose exec backend python -m alembic current
@@ -262,8 +295,9 @@ $env:PIP_CACHE_DIR = "$PWD\.pip-cache"
 $env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
 cd backend
 & "..\.conda-env\python.exe" -m alembic upgrade head
-& "..\.conda-env\python.exe" -m scripts.seed_database
+& "..\.conda-env\python.exe" -m scripts.seed_database --chapter all
 & "..\.conda-env\python.exe" -m scripts.rebuild_mastery --all
+& "..\.conda-env\python.exe" -m scripts.verify_expr
 & "..\.conda-env\python.exe" -m scripts.verify_m2
 & "..\.conda-env\python.exe" -m scripts.verify_m3
 ```
@@ -357,7 +391,7 @@ Assignment
 
 数据库触发器拒绝修改或删除已发布试卷，也拒绝增删改其中的题目快照。
 
-## 题库分层结果
+## 第一章“有理数”题库分层结果
 
 - 完整题库：139 组，全部可在题库页面查看；
 - 初始自动组卷池：45 组，其中填空 32、选择 11、判断 2；教师确认或撤回后数量会动态变化；
