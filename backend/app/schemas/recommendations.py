@@ -14,6 +14,8 @@ class RecommendationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     chapter_code: str = Field(default="math.g6.rational", min_length=1, max_length=160)
+    chapter_codes: list[str] = Field(default_factory=list, max_length=20)
+    grade_codes: list[str] = Field(default_factory=list, max_length=20)
     new_knowledge_point_codes: list[str] = Field(default_factory=list, max_length=54)
     review_knowledge_point_codes: list[str] = Field(default_factory=list, max_length=54)
     new_count: int = Field(default=0, ge=0, le=30, strict=True)
@@ -28,6 +30,14 @@ class RecommendationRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_scope(self) -> Self:
+        if not self.chapter_codes:
+            self.chapter_codes = [self.chapter_code]
+        if self.chapter_code not in self.chapter_codes:
+            self.chapter_codes.insert(0, self.chapter_code)
+        if len(set(self.chapter_codes)) != len(self.chapter_codes):
+            raise ValueError("绔犺妭涓嶈兘閲嶅")
+        if len(set(self.grade_codes)) != len(self.grade_codes):
+            raise ValueError("骞寸骇涓嶈兘閲嶅")
         total = self.new_count + self.review_count
         if not 1 <= total <= 30:
             raise ValueError("总题量必须在 1 至 30 之间")

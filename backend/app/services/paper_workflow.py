@@ -279,6 +279,23 @@ def list_assignment_items(
     return result, total
 
 
+def list_recent_completed_assignments(
+    db: Session, *, limit: int = 5
+) -> list[AssignmentListItem]:
+    """Return the latest assignments whose generated papers are all published.
+
+    A teacher explicitly chooses the history source; the API deliberately does
+    not guess which assignment a relative label such as "yesterday" refers to.
+    """
+
+    candidates, _ = list_assignment_items(db, offset=0, limit=100)
+    completed = [
+        item for item in candidates
+        if item.student_count > 0 and item.draft_count == 0 and item.published_count > 0
+    ]
+    return completed[:limit]
+
+
 def delete_empty_assignment(db: Session, assignment_id: UUID) -> UUID:
     assignment = db.scalar(
         select(Assignment).where(Assignment.id == assignment_id).with_for_update()

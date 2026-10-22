@@ -200,6 +200,43 @@ a { color: inherit; }
 .analytics-drawer .ant-drawer-body { overflow-x: hidden; }
 .assignment-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
 .assignment-form-grid .ant-select { width: 100%; }
+.assignment-filter-sliders {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.assignment-filter-slider {
+  min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid #dce3e7;
+  border-radius: 10px;
+  background: #fff;
+  color: #1f2937;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .2s, background .2s, box-shadow .2s;
+}
+.assignment-filter-slider:hover, .assignment-filter-slider.active {
+  border-color: #176c61;
+  background: #f3faf8;
+  box-shadow: 0 4px 12px rgba(23, 108, 97, .1);
+}
+.assignment-filter-slider-title, .assignment-filter-slider-summary { display: block; }
+.assignment-filter-slider-title { font-weight: 650; }
+.assignment-filter-slider-summary { margin-top: 4px; color: #667085; font-size: 12px; }
+.assignment-filter-panel { margin-bottom: 18px; }
+.assignment-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+}
+.difficulty-count-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.difficulty-count-grid .ant-form-item { margin-bottom: 0; }
 .preview-table { margin-block: 18px; }
 .paper-workspace .ant-card-extra { max-width: 100%; }
 .paper-workspace details { margin-top: 16px; }
@@ -227,6 +264,8 @@ a { color: inherit; }
   .analytics-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .analytics-progress-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .recommendation-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .assignment-filter-sliders { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .difficulty-count-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 560px) {
@@ -235,6 +274,8 @@ a { color: inherit; }
   .section-heading .knowledge-point-select { width: 100%; }
   .student-heading { align-items: flex-start; }
   .assignment-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .assignment-filter-sliders, .assignment-filter-grid { grid-template-columns: minmax(0, 1fr); }
+  .difficulty-count-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .paper-workspace .ant-card-head { align-items: flex-start; }
   .paper-workspace .ant-card-extra { margin-inline-start: 0; padding-bottom: 12px; }
   .answer-item-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }

@@ -10,12 +10,75 @@ from app.schemas.papers import PaperSummaryOut
 from app.schemas.recommendations import RecommendationOut, RecommendationRequest
 
 
+class RequiredQuestionFilter(BaseModel):
+    """Filters for the mandatory-question module."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    knowledge_point_codes: list[str] = Field(default_factory=list, max_length=54)
+    core_literacies: list[str] = Field(default_factory=list, max_length=32)
+    difficulty_counts: dict[str, int] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_difficulty_counts(self):
+        invalid = set(self.difficulty_counts) - {"1", "2", "3", "4", "5"}
+        if invalid:
+            raise ValueError("difficulty_counts keys must be between 1 and 5")
+        if any(not isinstance(value, int) or isinstance(value, bool) or value < 0 for value in self.difficulty_counts.values()):
+            raise ValueError("difficulty_counts values must be non-negative integers")
+        if sum(self.difficulty_counts.values()) > 30:
+            raise ValueError("difficulty_counts total cannot exceed 30")
+        return self
+
+
+class PersonalizedQuestionFilter(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    knowledge_point_codes: list[str] = Field(default_factory=list, max_length=54)
+    primary_competency: str | None = Field(default=None, max_length=120)
+    question_count: int = Field(default=3, ge=3, le=3, strict=True)
+
+
+class HistoryQuestionFilter(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    assignment_id: UUID | None = None
+
+
+class AssignmentFilterConfig(BaseModel):
+    """Create-page filter contract for scope and the three filter modules."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    grade_codes: list[str] = Field(min_length=1, max_length=20)
+    chapter_codes: list[str] = Field(min_length=1, max_length=20)
+    required: RequiredQuestionFilter = Field(default_factory=RequiredQuestionFilter)
+    personalized: PersonalizedQuestionFilter = Field(default_factory=PersonalizedQuestionFilter)
+    history: HistoryQuestionFilter = Field(default_factory=HistoryQuestionFilter)
+
+    @model_validator(mode="after")
+    def unique_scopes(self):
+        if sum(self.required.difficulty_counts.values()) < 1:
+            raise ValueError("at least one required question is needed")
+        if len(set(self.grade_codes)) != len(self.grade_codes):
+            raise ValueError("grade_codes must not contain duplicates")
+        if len(set(self.chapter_codes)) != len(self.chapter_codes):
+            raise ValueError("chapter_codes must not contain duplicates")
+        if len(set(self.required.knowledge_point_codes)) != len(self.required.knowledge_point_codes):
+            raise ValueError("required knowledge points must not contain duplicates")
+        if len(set(self.personalized.knowledge_point_codes)) != len(self.personalized.knowledge_point_codes):
+            raise ValueError("personalized knowledge points must not contain duplicates")
+        return self
+
+
 class AssignmentPlanRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
     class_id: UUID | None = None
     student_scope: Literal["selected", "all_class"] = "selected"
     student_ids: list[UUID] = Field(default_factory=list, max_length=2000)
     recommendation_parameters: RecommendationRequest
+    filter_config: AssignmentFilterConfig | None = None
 
     @model_validator(mode="after")
     def unique_students(self):

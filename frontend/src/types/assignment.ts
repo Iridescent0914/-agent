@@ -1,6 +1,30 @@
 import type { AssetInfo, Page } from './index'
 import type { Recommendation, RecommendationParams, RecommendedQuestion } from './profile'
 
+export interface RequiredQuestionFilter {
+  knowledge_point_codes: string[]
+  core_literacies: string[]
+  difficulty_counts: Record<string, number>
+}
+
+export interface PersonalizedQuestionFilter {
+  knowledge_point_codes: string[]
+  primary_competency?: string | null
+  question_count: 3
+}
+
+export interface HistoryQuestionFilter {
+  assignment_id?: string | null
+}
+
+export interface AssignmentFilterConfig {
+  grade_codes: string[]
+  chapter_codes: string[]
+  required: RequiredQuestionFilter
+  personalized: PersonalizedQuestionFilter
+  history: HistoryQuestionFilter
+}
+
 export interface AssignmentPreviewStudent {
   student_id: string
   student_code: string
@@ -21,6 +45,7 @@ export interface AssignmentRequest {
   student_scope: 'selected' | 'all_class'
   student_ids: string[]
   recommendation_parameters: RecommendationParams
+  filter_config?: AssignmentFilterConfig
 }
 
 export interface PaperSummary {

@@ -63,6 +63,7 @@ export interface AttemptEvidence {
 }
 export interface RecommendationParams {
   chapter_code: string; new_knowledge_point_codes: string[]; review_knowledge_point_codes: string[]
+  chapter_codes?: string[]; grade_codes?: string[]
   new_count: number; review_count: number; question_types: string[]
   base_difficulty: number; min_difficulty: number; max_difficulty: number
   avoid_recent_days: number; max_knowledge_point_ratio: number

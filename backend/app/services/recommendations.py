@@ -159,12 +159,20 @@ def select_recommendations(*, student_id: UUID, candidates: list[Candidate],
     )
 
 
-def recommendation_candidates(db: Session, chapter_code: str) -> list[Candidate]:
+def recommendation_candidates(
+    db: Session, chapter_code: str | list[str], grades: list[str] | None = None
+) -> list[Candidate]:
+    chapter_codes = [chapter_code] if isinstance(chapter_code, str) else chapter_code
+    filters = [
+        Question.chapter_code.in_(chapter_codes),
+    ]
+    if grades:
+        filters.append(Question.grade.in_(grades))
     rows = db.execute(
         select(Question, KnowledgePoint)
         .join(KnowledgePoint, KnowledgePoint.id == Question.main_knowledge_point_id)
         .where(
-            Question.chapter_code == chapter_code,
+            *filters,
             Question.archived_at.is_(None),
         )
     ).all()
@@ -179,13 +187,122 @@ def recommendation_candidates(db: Session, chapter_code: str) -> list[Candidate]
     ) for question, knowledge_point in rows]
 
 
+def required_question_candidates(
+    db: Session,
+    chapter_codes: list[str],
+    grades: list[str],
+    knowledge_point_codes: list[str] | None = None,
+    core_literacies: list[str] | None = None,
+) -> list[Candidate]:
+    """Load the shared, teacher-scoped pool used by mandatory questions.
+
+    Mandatory questions are selected once per assignment, not once per student.
+    The core-literacy filter is resolved from the KnowledgePoint mapping because
+    that mapping is the authoritative curriculum metadata for this module.
+    """
+
+    filters = [
+        Question.chapter_code.in_(chapter_codes),
+        Question.grade.in_(grades),
+        Question.archived_at.is_(None),
+    ]
+    rows = db.execute(
+        select(Question, KnowledgePoint)
+        .join(KnowledgePoint, KnowledgePoint.id == Question.main_knowledge_point_id)
+        .where(*filters)
+    ).all()
+    knowledge_scope = set(knowledge_point_codes or [])
+    literacy_scope = set(core_literacies or [])
+    candidates = []
+    for question, knowledge_point in rows:
+        if knowledge_scope and knowledge_point.code not in knowledge_scope:
+            continue
+        if literacy_scope and not literacy_scope.intersection(
+            knowledge_point.core_competencies or []
+        ):
+            continue
+        candidates.append(Candidate(
+            question.id, question.original_qid, question.question_type,
+            question.difficulty, knowledge_point.id, knowledge_point.code,
+            knowledge_point.name,
+            question.grading_readiness == "machine_ready"
+            and question.source_review_status == "reviewed",
+        ))
+    return candidates
+
+
+def select_required_recommendations(
+    *, student_id: UUID, candidates: list[Candidate],
+    knowledge_point_codes: list[str], difficulty_counts: dict[str, int],
+    params: RecommendationRequest, as_of: datetime,
+) -> RecommendationOut:
+    """Select one deterministic question set shared by every student."""
+
+    unique_candidates = {
+        candidate.question_id: candidate for candidate in candidates
+        if candidate.ready
+    }
+    selected: list[RecommendedQuestion] = []
+    diagnostics: list[BucketDiagnostic] = []
+    selected_per_knowledge: Counter[str] = Counter()
+    used: set[UUID] = set()
+    for difficulty in sorted(difficulty_counts, key=int):
+        requested = difficulty_counts[difficulty]
+        pool = sorted(
+            (candidate for candidate in unique_candidates.values()
+             if candidate.difficulty == int(difficulty) and candidate.question_id not in used),
+            key=lambda candidate: (candidate.original_qid, candidate.question_id.int),
+        )
+        chosen = pool[:requested]
+        used.update(candidate.question_id for candidate in chosen)
+        for candidate in chosen:
+            item = score_candidate(candidate, None, params, "new", as_of)
+            selected.append(item.model_copy(update={
+                "reason_codes": ["required_question", f"difficulty_{difficulty}"],
+                "reason_text": f"教师设置的必做题，难度 {difficulty}",
+            }))
+            selected_per_knowledge[candidate.knowledge_point_code] += 1
+        shortfall = requested - len(chosen)
+        diagnostics.append(BucketDiagnostic(
+            bucket="new", knowledge_point_codes=knowledge_point_codes,
+            requested_count=requested, selected_count=len(chosen),
+            shortfall=shortfall,
+            stages=[
+                FilterStage(code="teacher_scope", remaining=len(unique_candidates), removed=0),
+                FilterStage(code="difficulty_filter", remaining=len(pool), removed=0),
+                FilterStage(code="grading_readiness", remaining=len(chosen), removed=len(pool) - len(chosen)),
+            ],
+            reason_codes=["insufficient_difficulty_inventory"] if shortfall else [],
+            capped_knowledge_point_codes=[],
+        ))
+    total = sum(difficulty_counts.values())
+    selected_count = len(selected)
+    shortfall = total - selected_count
+    diagnostics.append(BucketDiagnostic(
+        bucket="review", knowledge_point_codes=[], requested_count=0,
+        selected_count=0, shortfall=0, stages=[], reason_codes=[],
+        capped_knowledge_point_codes=[],
+    ))
+    return RecommendationOut(
+        student_id=student_id, as_of=as_of, rule_version=RULE_VERSION,
+        parameters=params, weights=ScoreParts(**WEIGHTS),
+        status="ready" if shortfall == 0 else "insufficient_candidates",
+        requested_count=total, selected_count=selected_count, shortfall=shortfall,
+        new_shortfall=shortfall, review_shortfall=0,
+        max_per_knowledge_point=total,
+        selected_per_knowledge_point=dict(selected_per_knowledge),
+        diagnostics=diagnostics, items=selected,
+    )
+
+
 def preview(db: Session, context: ProfileContext, params: RecommendationRequest,
             *, as_of: datetime,
             candidates: list[Candidate] | None = None) -> RecommendationOut:
+    chapter_codes = params.chapter_codes or [params.chapter_code]
     allowed = {
         knowledge_point.code
         for knowledge_point in context.catalog
-        if knowledge_point.chapter_code == params.chapter_code
+        if knowledge_point.chapter_code in chapter_codes
     }
     if not set(
         params.new_knowledge_point_codes + params.review_knowledge_point_codes
@@ -194,7 +311,7 @@ def preview(db: Session, context: ProfileContext, params: RecommendationRequest,
     if any(record.problem not in (None, "needs_review") for record in context.records):
         raise ValueError("存在异常作答证据，请修复后再预览推荐")
     if candidates is None:
-        candidates = recommendation_candidates(db, params.chapter_code)
+        candidates = recommendation_candidates(db, chapter_codes, params.grade_codes)
     return select_recommendations(student_id=context.student.id, candidates=candidates, results=context.results,
                                   practiced=[(r.attempt.question_id, r.attempt.answered_at) for r in context.records],
                                   params=params, as_of=as_of)

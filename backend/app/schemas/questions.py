@@ -65,6 +65,8 @@ class QuestionCatalogKnowledgePoint(TagOut):
 class QuestionCatalogChapter(TagOut):
     sections: list[str]
     knowledge_points: list[QuestionCatalogKnowledgePoint]
+    grades: list[str] = Field(default_factory=list)
+    core_literacies: list[str] = Field(default_factory=list)
 
 
 class QuestionCreateRequest(BaseModel):

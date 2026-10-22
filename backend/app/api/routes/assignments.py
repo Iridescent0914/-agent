@@ -18,7 +18,8 @@ from app.schemas.papers import BatchPublishRequest, PaperSummaryOut
 from app.services.paper_generation import create_assignment, preview_assignment
 from app.services.paper_workflow import (
     PaperConflict, PaperValidation, assignment_detail, assignment_paper_summaries,
-    delete_empty_assignment, list_assignment_items, publish_paper,
+    delete_empty_assignment, list_assignment_items, list_recent_completed_assignments,
+    publish_paper,
 )
 
 
@@ -60,6 +61,13 @@ def list_assignments(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1
         class_name=class_name, chapter_code=chapter_code,
     )
     return Page(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get("/recent-completed", response_model=list[AssignmentListItem])
+def recent_completed_assignments(
+    limit: int = Query(5, ge=1, le=5), db: Session = Depends(get_db)
+):
+    return list_recent_completed_assignments(db, limit=limit)
 
 
 @router.get("/{assignment_id}", response_model=AssignmentDetailOut)

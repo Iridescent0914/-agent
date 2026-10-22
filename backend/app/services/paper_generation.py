@@ -15,7 +15,10 @@ from app.schemas.assignments import (
     StudentRecommendationPreview,
 )
 from app.services.paper_snapshots import load_questions, new_item, snapshot_payload
-from app.services.recommendations import preview, recommendation_candidates
+from app.services.recommendations import (
+    preview, recommendation_candidates, required_question_candidates,
+    select_required_recommendations,
+)
 from app.services.student_profile import load_contexts
 
 
@@ -79,20 +82,58 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
     at = as_of or datetime.now(timezone.utc)
     students = _students_for_request(db, request)
     _school_class(db, students, request.class_id)
-    contexts = load_contexts(db, [student.id for student in students])
-    candidates = recommendation_candidates(
-        db, request.recommendation_parameters.chapter_code
-    )
-    results = []
-    for student in students:
-        recommendation = preview(
-            db, contexts[student.id], request.recommendation_parameters,
-            as_of=at, candidates=candidates,
+    if request.filter_config is not None:
+        required = request.filter_config.required
+        chapter_codes = request.filter_config.chapter_codes
+        scope_codes = required.knowledge_point_codes or request.recommendation_parameters.new_knowledge_point_codes
+        candidates = required_question_candidates(
+            db, chapter_codes, request.filter_config.grade_codes,
+            scope_codes, required.core_literacies,
         )
-        results.append(StudentRecommendationPreview(
-            student_id=student.id, student_code=student.student_code,
-            student_name=student.display_name, recommendation=recommendation,
-        ))
+        difficulty_counts = {
+            str(difficulty): count
+            for difficulty, count in required.difficulty_counts.items()
+            if count
+        }
+        total_required = sum(difficulty_counts.values())
+        params = request.recommendation_parameters
+        if params.new_count != total_required or params.review_count != 0:
+            params = params.model_copy(update={
+                "new_count": total_required, "review_count": 0,
+                "new_knowledge_point_codes": scope_codes,
+                "review_knowledge_point_codes": [],
+            })
+        template = select_required_recommendations(
+            student_id=students[0].id, candidates=candidates,
+            knowledge_point_codes=scope_codes,
+            difficulty_counts=difficulty_counts, params=params, as_of=at,
+        )
+        results = [
+            StudentRecommendationPreview(
+                student_id=student.id, student_code=student.student_code,
+                student_name=student.display_name,
+                recommendation=template.model_copy(update={"student_id": student.id}),
+            )
+            for student in students
+        ]
+    else:
+        contexts = load_contexts(db, [student.id for student in students])
+        candidates = recommendation_candidates(
+            db,
+            request.recommendation_parameters.chapter_codes
+            or [request.recommendation_parameters.chapter_code],
+            request.recommendation_parameters.grade_codes,
+        )
+        results = []
+        for student in students:
+            recommendation = preview(
+                db, contexts[student.id], request.recommendation_parameters,
+                as_of=at, candidates=candidates,
+            )
+            results.append(StudentRecommendationPreview(
+                student_id=student.id, student_code=student.student_code,
+                student_name=student.display_name, recommendation=recommendation,
+            ))
     return AssignmentPreviewOut(
         as_of=at,
         student_count=len(results),
@@ -122,20 +163,32 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
         student_scope=request.student_scope,
         student_ids=request.student_ids,
         recommendation_parameters=request.recommendation_parameters,
+        filter_config=request.filter_config,
     )
     result = preview_assignment(db, plan, as_of=as_of)
     students = _students_for_request(db, request)
     school_class = _school_class(db, students, request.class_id)
-    params = request.recommendation_parameters.model_dump(mode="json")
+    params = (
+        result.students[0].recommendation.parameters.model_dump(mode="json")
+        if result.students else request.recommendation_parameters.model_dump(mode="json")
+    )
+    filter_config = (
+        request.filter_config.model_dump(mode="json")
+        if request.filter_config is not None
+        else None
+    )
+    teaching_scope = {
+        "new_knowledge_point_codes": params["new_knowledge_point_codes"],
+        "review_knowledge_point_codes": params["review_knowledge_point_codes"],
+    }
+    if filter_config is not None:
+        teaching_scope["filter_config"] = filter_config
     assignment = Assignment(
         idempotency_key=request.idempotency_key,
         title=request.title,
         class_id=school_class.id,
         chapter_code=request.recommendation_parameters.chapter_code,
-        teaching_scope={
-            "new_knowledge_point_codes": params["new_knowledge_point_codes"],
-            "review_knowledge_point_codes": params["review_knowledge_point_codes"],
-        },
+        teaching_scope=teaching_scope,
         generation_config={
             "schema_version": "m3-generation-config-v1",
             "request_fingerprint": fingerprint,
@@ -144,6 +197,7 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
             "student_ids": [str(value) for value in request.student_ids],
             "resolved_student_ids": [str(value.student_id) for value in result.students],
             "recommendation_parameters": params,
+            "filter_config": filter_config,
         },
         assignment_type="practice",
     )

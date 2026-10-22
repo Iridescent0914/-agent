@@ -497,6 +497,8 @@ def question_filter_catalog(db: Session = Depends(get_db)) -> list[QuestionCatal
                 name=knowledge_point.chapter_name,
                 sections=[],
                 knowledge_points=[],
+                grades=[],
+                core_literacies=[],
             ),
         )
         chapter.knowledge_points.append(QuestionCatalogKnowledgePoint(
@@ -516,6 +518,20 @@ def question_filter_catalog(db: Session = Depends(get_db)) -> list[QuestionCatal
         chapter = chapters.get(chapter_code)
         if chapter is not None and section not in chapter.sections:
             chapter.sections.append(section)
+    metadata_rows = db.execute(
+        select(Question.chapter_code, Question.grade, Question.core_literacy)
+        .where(Question.archived_at.is_(None))
+        .distinct()
+        .order_by(Question.chapter_code, Question.grade, Question.core_literacy)
+    ).all()
+    for chapter_code, grade, core_literacy in metadata_rows:
+        chapter = chapters.get(chapter_code)
+        if chapter is None:
+            continue
+        if grade and grade not in chapter.grades:
+            chapter.grades.append(grade)
+        if core_literacy and core_literacy not in chapter.core_literacies:
+            chapter.core_literacies.append(core_literacy)
     return list(chapters.values())
 
 

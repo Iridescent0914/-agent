@@ -45,6 +45,8 @@ export interface QuestionCatalogKnowledgePoint extends Tag {
 export interface QuestionCatalogChapter extends Tag {
   sections: string[]
   knowledge_points: QuestionCatalogKnowledgePoint[]
+  grades?: string[]
+  core_literacies?: string[]
 }
 
 export interface QuestionCreateRequest {

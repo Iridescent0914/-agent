@@ -36,6 +36,26 @@ def _chapter_for_source_path(source_path: str) -> str | None:
     return None
 
 
+def _legacy_expr_source_path(source_path: str) -> str | None:
+    """Return the corrected Chapter 2 path for pre-split database rows."""
+
+    prefix = "assets/rational/q.math.g6.expr."
+    if source_path.startswith(prefix):
+        return source_path.replace("assets/rational/", "assets/expr/", 1)
+    return None
+
+
+def _manifest_entry(source_path: str) -> tuple[dict[str, Any] | None, str | None]:
+    chapter = _chapter_for_source_path(source_path)
+    entry = _manifest(chapter).get(source_path) if chapter else None
+    if entry is not None:
+        return entry, source_path
+    corrected_path = _legacy_expr_source_path(source_path)
+    if corrected_path is not None:
+        return _manifest("expr").get(corrected_path), corrected_path
+    return None, None
+
+
 def resolve_assets(assets: list[dict[str, Any]]) -> list[dict[str, Any]]:
     settings = get_settings()
     result: list[dict[str, Any]] = []
@@ -53,8 +73,7 @@ def resolve_assets(assets: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "conversion_status": "uploaded" if target.is_file() else "missing",
             })
             continue
-        chapter = _chapter_for_source_path(source_path)
-        entry = _manifest(chapter).get(source_path) if chapter else None
+        entry, _ = _manifest_entry(source_path)
         web_url = None
         status = "missing"
         if entry is not None:
@@ -128,8 +147,7 @@ def question_asset_exists(source_path: str) -> bool:
     """Validate both immutable imported assets and teacher-uploaded assets."""
     if teacher_asset_exists(source_path):
         return True
-    chapter = _chapter_for_source_path(source_path)
-    entry = _manifest(chapter).get(source_path) if chapter else None
+    entry, _ = _manifest_entry(source_path)
     if entry is None or entry.get("status") != "converted":
         return False
     web_path = entry.get("web_path")
