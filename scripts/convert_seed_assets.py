@@ -16,15 +16,12 @@ CODE_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = CODE_ROOT / "data"
 # Convert the complete catalog so pending questions are still reviewable.
 # Automatic assignment eligibility is controlled separately by grading_readiness.
-# The public backend currently exposes one immutable asset route/manifest.
-# Keep both chapter catalogs in that manifest so Chapter 2 question images are
-# available without changing the existing Chapter 1 URLs.
-QUESTIONS_PATHS = [
-    DATA_DIR / "interim" / "rational_all.json",
-    DATA_DIR / "interim" / "expr_all.json",
-]
-OUTPUT_DIR = DATA_DIR / "web" / "rational"
-MANIFEST_PATH = OUTPUT_DIR / "asset_manifest.json"
+# Each chapter owns its source directory, converted directory, and manifest.
+CHAPTERS = {
+    "rational": DATA_DIR / "interim" / "rational_all.json",
+    "expr": DATA_DIR / "interim" / "expr_all.json",
+}
+WEB_ROOT = DATA_DIR / "web"
 POWERSHELL_CONVERTER = CODE_ROOT / "scripts" / "convert_wmf_to_png.ps1"
 ASSET_PATTERN = re.compile(r"\[ASSET:([^\]]+)\]")
 
@@ -37,10 +34,10 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def load_previous_manifest() -> dict[str, dict[str, Any]]:
-    if not MANIFEST_PATH.exists():
+def load_previous_manifest(manifest_path: Path) -> dict[str, dict[str, Any]]:
+    if not manifest_path.exists():
         return {}
-    with MANIFEST_PATH.open("r", encoding="utf-8") as handle:
+    with manifest_path.open("r", encoding="utf-8") as handle:
         raw = json.load(handle)
     return {item["source_path"]: item for item in raw.get("assets", [])}
 
@@ -115,19 +112,19 @@ def convert_asset(source: Path, destination: Path) -> tuple[bool, str]:
     return convert_with_powershell(source, destination)
 
 
-def main() -> int:
+def convert_chapter(chapter: str, questions_path: Path) -> int:
+    output_dir = WEB_ROOT / chapter
+    manifest_path = output_dir / "asset_manifest.json"
     questions: list[dict[str, Any]] = []
-    for questions_path in QUESTIONS_PATHS:
-        if not questions_path.is_file():
-            continue
+    if questions_path.is_file():
         with questions_path.open("r", encoding="utf-8") as handle:
-            questions.extend(json.load(handle))
+            questions = json.load(handle)
     all_references = collect_references(questions)
     unresolved_references = [value for value in all_references if value == "unknown"]
     references = [value for value in all_references if value != "unknown"]
     unique_references = sorted(set(references))
-    previous = load_previous_manifest()
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    previous = load_previous_manifest(manifest_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
     entries: list[dict[str, Any]] = []
     failures = 0
 
@@ -141,7 +138,7 @@ def main() -> int:
             continue
 
         source_hash = sha256(source)
-        destination = OUTPUT_DIR / f"{source.stem}.png"
+        destination = output_dir / f"{source.stem}.png"
         old = previous.get(source_path, {})
         if (
             old.get("status") == "converted"
@@ -151,7 +148,7 @@ def main() -> int:
         ):
             entry.update(
                 source_sha256=source_hash,
-                web_path=f"rational/{destination.name}",
+                web_path=f"{chapter}/{destination.name}",
                 format="png",
                 status="converted",
                 converter=old.get("converter", "cached"),
@@ -166,11 +163,11 @@ def main() -> int:
         if ok:
             actual = destination
             if not actual.exists():
-                copied = [path for path in OUTPUT_DIR.glob(f"{source.stem}.*") if path != source]
+                copied = [path for path in output_dir.glob(f"{source.stem}.*") if path != source]
                 actual = copied[0] if copied else destination
             entry.update(
                 source_sha256=source_hash,
-                web_path=f"rational/{actual.name}",
+                web_path=f"{chapter}/{actual.name}",
                 format=actual.suffix.lstrip(".").lower(),
                 status="converted",
                 converter=detail,
@@ -185,6 +182,7 @@ def main() -> int:
         entries.append(entry)
 
     manifest = {
+        "chapter": chapter,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "question_count": len(questions),
         "reference_count": len(references),
@@ -194,11 +192,15 @@ def main() -> int:
         "unresolved_reference_count": len(unresolved_references),
         "assets": entries,
     }
-    MANIFEST_PATH.write_bytes(
+    manifest_path.write_bytes(
         (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     )
     print(json.dumps({key: value for key, value in manifest.items() if key != "assets"}, ensure_ascii=False, indent=2))
     return 1 if failures else 0
+
+
+def main() -> int:
+    return max(convert_chapter(chapter, questions_path) for chapter, questions_path in CHAPTERS.items())
 
 
 if __name__ == "__main__":
