@@ -55,6 +55,17 @@ const isConfiguredGrade = (value: string | null | undefined): value is string =>
   return Boolean(normalized) && normalized !== '未设置'
 }
 
+const expandChapterSelection = (values: string[], chapters: QuestionCatalogChapter[]) => {
+  const selection = Array.isArray(values) ? values : []
+  if (selection.includes(ALL_CHAPTERS)) return chapters.map((chapter) => chapter.code)
+  const expanded = new Set(selection.filter((value) => !value.startsWith(ALL_GRADE_CHAPTERS)))
+  selection.filter((value) => value.startsWith(ALL_GRADE_CHAPTERS)).forEach((value) => {
+    const grade = value.slice(ALL_GRADE_CHAPTERS.length)
+    chapters.filter((chapter) => chapter.grades?.includes(grade)).forEach((chapter) => expanded.add(chapter.code))
+  })
+  return Array.from(expanded)
+}
+
 export function AssignmentCreatePage() {
   const [form] = Form.useForm<FormValues>()
   const navigate = useNavigate()
@@ -77,21 +88,21 @@ export function AssignmentCreatePage() {
       .then(([classItems, chapterItems, recentItems]) => {
         setClasses(classItems); setChapters(chapterItems); setRecentAssignments(recentItems)
         const initialClass = classItems.find((item) => item.student_count > 0) ?? classItems[0]
-        const grades = Array.from(new Set([
-          ...classItems.map((item) => item.grade).filter(Boolean),
-          ...chapterItems.flatMap((item) => item.grades ?? []),
-        ].filter(isConfiguredGrade)))
         form.setFieldsValue({
           class_id: initialClass?.id,
-          grade_codes: grades,
-          chapter_codes: chapterItems.map((item) => item.code),
+          grade_codes: [ALL_GRADES],
+          chapter_codes: [ALL_CHAPTERS],
         })
       })
       .catch((reason) => setError((reason as Error).message))
   }, [form])
 
   const selectedClassId = Form.useWatch('class_id', form)
-  const selectedChapterCodes = Form.useWatch('chapter_codes', form) ?? []
+  const selectedChapterSelection = Form.useWatch('chapter_codes', form) ?? []
+  const selectedChapterCodes = useMemo(
+    () => expandChapterSelection(selectedChapterSelection, chapters),
+    [selectedChapterSelection, chapters],
+  )
   const selectedRequiredKps = Form.useWatch('required_knowledge_point_codes', form) ?? []
   const selectedPersonalizedKps = Form.useWatch('personalized_knowledge_point_codes', form) ?? []
   const selectedHistoryAssignmentId = Form.useWatch('history_assignment_id', form)
@@ -111,9 +122,16 @@ export function AssignmentCreatePage() {
         const merged = Array.from(new Map(results.flat().map((item) => [item.code, item])).values())
         setCatalog(merged)
         const allowed = new Set(merged.map((item) => item.code))
+        const retainKnowledgePointSelection = (values: string[]) => values.filter((value) => {
+          if (value === ALL_KNOWLEDGE_POINTS) return true
+          if (value.startsWith(ALL_CHAPTER_KNOWLEDGE_POINTS)) {
+            return selectedChapterCodes.includes(value.slice(ALL_CHAPTER_KNOWLEDGE_POINTS.length))
+          }
+          return allowed.has(value)
+        })
         form.setFieldsValue({
-          required_knowledge_point_codes: (form.getFieldValue('required_knowledge_point_codes') ?? []).filter((code: string) => allowed.has(code)),
-          personalized_knowledge_point_codes: (form.getFieldValue('personalized_knowledge_point_codes') ?? []).filter((code: string) => allowed.has(code)),
+          required_knowledge_point_codes: retainKnowledgePointSelection(form.getFieldValue('required_knowledge_point_codes') ?? []),
+          personalized_knowledge_point_codes: retainKnowledgePointSelection(form.getFieldValue('personalized_knowledge_point_codes') ?? []),
         })
       })
       .catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
@@ -139,10 +157,7 @@ export function AssignmentCreatePage() {
   ]
   const sectionOptions = Array.from(new Set(selectedChapters.flatMap((item) => item.sections))).map((value) => ({ value, label: value }))
   const coreLiteracyOptions = CORE_LITERACIES.map((value) => ({ value, label: value }))
-  const competencyOptions = Array.from(new Set(selectedPersonalizedKps.flatMap((code) => {
-    const point = selectedChapters.flatMap((item) => item.knowledge_points).find((candidate) => candidate.code === code)
-    return point?.core_competencies ?? []
-  }))).map((value) => ({ value, label: value }))
+  const competencyOptions = CORE_LITERACIES.map((value) => ({ value, label: value }))
   const gradeValues = Array.from(new Set([
     ...classes.map((item) => item.grade).filter(Boolean), ...chapters.flatMap((item) => item.grades ?? []),
   ].filter(isConfiguredGrade)))
@@ -170,48 +185,78 @@ export function AssignmentCreatePage() {
   ]
   const totalRequiredCount = Object.values(difficultyCounts).reduce((sum, value) => sum + Number(value || 0), 0)
 
-  const handleKnowledgePointChange = (values: string[]) => {
-    if (values.includes(ALL_KNOWLEDGE_POINTS)) {
-      form.setFieldValue('required_knowledge_point_codes', available.map((point) => point.code))
-      return
+  const expandKnowledgePointSelection = (values: string[]) => {
+    const selection = Array.isArray(values) ? values : []
+    if (selection.includes(ALL_KNOWLEDGE_POINTS)) {
+      return available.map((point) => point.code)
     }
-    const expanded = new Set(values.filter((value) => !value.startsWith(ALL_CHAPTER_KNOWLEDGE_POINTS)))
-    values.filter((value) => value.startsWith(ALL_CHAPTER_KNOWLEDGE_POINTS)).forEach((value) => {
+    const expanded = new Set(selection.filter((value) => !value.startsWith(ALL_CHAPTER_KNOWLEDGE_POINTS)))
+    selection.filter((value) => value.startsWith(ALL_CHAPTER_KNOWLEDGE_POINTS)).forEach((value) => {
       const chapterCode = value.slice(ALL_CHAPTER_KNOWLEDGE_POINTS.length)
       const chapter = selectedChapters.find((item) => item.code === chapterCode)
       chapter?.knowledge_points.forEach((point) => {
         if (available.some((candidate) => candidate.code === point.code)) expanded.add(point.code)
       })
     })
-    form.setFieldValue('required_knowledge_point_codes', Array.from(expanded))
+    return Array.from(expanded)
+  }
+
+  const compactKnowledgePointSelection = (values: string[]) => {
+    const selection = Array.isArray(values) ? values : []
+    if (selection.includes(ALL_KNOWLEDGE_POINTS)) return [ALL_KNOWLEDGE_POINTS]
+    const chapterSelections = selection.filter((value) => value.startsWith(ALL_CHAPTER_KNOWLEDGE_POINTS))
+    const chapterKnowledgePointCodes = new Set(chapterSelections.flatMap((value) => {
+      const chapter = selectedChapters.find((item) => item.code === value.slice(ALL_CHAPTER_KNOWLEDGE_POINTS.length))
+      return chapter?.knowledge_points.map((point) => point.code) ?? []
+    }))
+    return [
+      ...chapterSelections,
+      ...selection.filter((value) => !value.startsWith(ALL_CHAPTER_KNOWLEDGE_POINTS) && !chapterKnowledgePointCodes.has(value)),
+    ]
+  }
+  const selectedRequiredKpCount = expandKnowledgePointSelection(selectedRequiredKps).length
+  const selectedPersonalizedKpCount = expandKnowledgePointSelection(selectedPersonalizedKps).length
+
+  const handleKnowledgePointChange = (values: string[]) => {
+    form.setFieldValue('required_knowledge_point_codes', compactKnowledgePointSelection(values))
+  }
+
+  const handlePersonalizedKnowledgePointChange = (values: string[]) => {
+    form.setFieldValue('personalized_knowledge_point_codes', compactKnowledgePointSelection(values))
   }
 
   const handleGradeChange = (values: string[]) => {
-    form.setFieldValue('grade_codes', values.includes(ALL_GRADES) ? gradeValues : values.filter(isConfiguredGrade))
+    const selection = Array.isArray(values) ? values : []
+    form.setFieldValue('grade_codes', selection.includes(ALL_GRADES) ? [ALL_GRADES] : selection.filter(isConfiguredGrade))
   }
 
   const handleChapterChange = (values: string[]) => {
-    if (values.includes(ALL_CHAPTERS)) {
-      form.setFieldValue('chapter_codes', chapters.map((chapter) => chapter.code))
+    const selection = Array.isArray(values) ? values : []
+    if (selection.includes(ALL_CHAPTERS)) {
+      form.setFieldValue('chapter_codes', [ALL_CHAPTERS])
       return
     }
-    const expanded = new Set(values.filter((value) => !value.startsWith(ALL_GRADE_CHAPTERS)))
-    values.filter((value) => value.startsWith(ALL_GRADE_CHAPTERS)).forEach((value) => {
-      const grade = value.slice(ALL_GRADE_CHAPTERS.length)
-      chapters.filter((chapter) => chapter.grades?.includes(grade)).forEach((chapter) => expanded.add(chapter.code))
-    })
-    form.setFieldValue('chapter_codes', Array.from(expanded))
+    const gradeSelections = selection.filter((value) => value.startsWith(ALL_GRADE_CHAPTERS))
+    const gradeChapterCodes = new Set(expandChapterSelection(gradeSelections, chapters))
+    form.setFieldValue('chapter_codes', [
+      ...gradeSelections,
+      ...selection.filter((value) => !value.startsWith(ALL_GRADE_CHAPTERS) && !gradeChapterCodes.has(value)),
+    ])
   }
 
+  const expandGradeSelection = (values: string[]) => (
+    (Array.isArray(values) && values.includes(ALL_GRADES)) ? gradeValues : (Array.isArray(values) ? values.filter(isConfiguredGrade) : [])
+  )
+
   const buildFilterConfig = (values: FormValues): AssignmentFilterConfig => ({
-    grade_codes: values.grade_codes, chapter_codes: values.chapter_codes,
+    grade_codes: expandGradeSelection(values.grade_codes), chapter_codes: expandChapterSelection(values.chapter_codes, chapters),
     required: {
-      knowledge_point_codes: values.required_knowledge_point_codes,
+      knowledge_point_codes: expandKnowledgePointSelection(values.required_knowledge_point_codes),
       core_literacies: values.required_core_literacies,
       difficulty_counts: values.difficulty_counts,
     },
     personalized: {
-      knowledge_point_codes: values.personalized_knowledge_point_codes,
+      knowledge_point_codes: expandKnowledgePointSelection(values.personalized_knowledge_point_codes),
       primary_competency: values.primary_competency || null, question_count: 3,
     },
     history: { assignment_id: values.history_assignment_id || null },
@@ -219,13 +264,13 @@ export function AssignmentCreatePage() {
 
   const build = (values: FormValues): AssignmentRequest => {
     const selectedCodes = values.required_knowledge_point_codes.length
-      ? values.required_knowledge_point_codes : available.map((point) => point.code)
+      ? expandKnowledgePointSelection(values.required_knowledge_point_codes) : available.map((point) => point.code)
     return {
       class_id: values.class_id, student_scope: 'all_class', student_ids: [],
       filter_config: buildFilterConfig(values),
       recommendation_parameters: {
-        chapter_code: values.chapter_codes[0], chapter_codes: values.chapter_codes,
-        grade_codes: values.grade_codes, new_knowledge_point_codes: selectedCodes,
+        chapter_code: expandChapterSelection(values.chapter_codes, chapters)[0], chapter_codes: expandChapterSelection(values.chapter_codes, chapters),
+        grade_codes: expandGradeSelection(values.grade_codes), new_knowledge_point_codes: selectedCodes,
         review_knowledge_point_codes: [], new_count: totalRequiredCount, review_count: 0,
         question_types: values.question_types, base_difficulty: values.base_difficulty,
         min_difficulty: values.min_difficulty, max_difficulty: values.max_difficulty,
@@ -301,8 +346,8 @@ export function AssignmentCreatePage() {
 
         <Divider orientation="left">题目筛选模块</Divider>
         <div className="assignment-filter-sliders">
-          {moduleButton('required', '必做题', `${totalRequiredCount} 道 · ${selectedRequiredKps.length ? `${selectedRequiredKps.length} 个知识点` : '全章节'}`)}
-          {moduleButton('personalized', '个性化', `${selectedPersonalizedKps.length ? `${selectedPersonalizedKps.length} 个知识点` : '待配置'} · 3 道`)}
+          {moduleButton('required', '必做题', `${totalRequiredCount} 道 · ${selectedRequiredKpCount ? `${selectedRequiredKpCount} 个知识点` : '全章节'}`)}
+          {moduleButton('personalized', '个性化', `${selectedPersonalizedKpCount ? `${selectedPersonalizedKpCount} 个知识点` : '待配置'} · 3 道`)}
           {moduleButton('history', '历史回顾', selectedHistoryAssignmentId ? '已选择作业' : '待选择作业')}
         </div>
 
@@ -318,8 +363,8 @@ export function AssignmentCreatePage() {
 
         {activeModule === 'personalized' && <Card size="small" className="assignment-filter-panel" title="个性化筛选" extra={<Button type="link" onClick={() => setActiveModule(null)}>收起</Button>}>
           <Alert type="info" showIcon message="当前阶段只保存筛选条件，个性化出题算法将在后续接入" />
-          <Form.Item label="节（知识点，后续启用）" name="personalized_knowledge_point_codes"><Select mode="multiple" showSearch optionFilterProp="label" options={knowledgePointOptions} placeholder="后续配置个性化知识点" /></Form.Item>
-          <Form.Item label="主要能力（任选其一）" name="primary_competency"><Select allowClear options={competencyOptions} placeholder={selectedPersonalizedKps.length ? '请选择主要能力' : '先选择知识点'} /></Form.Item>
+          <Form.Item label="节（知识点，后续启用）" name="personalized_knowledge_point_codes"><Select mode="multiple" showSearch optionFilterProp="label" options={knowledgePointSelectOptions} onChange={handlePersonalizedKnowledgePointChange} placeholder="可独立选择知识点" /></Form.Item>
+          <Form.Item label="主要能力（任选其一）" name="primary_competency"><Select allowClear options={competencyOptions} placeholder="可独立选择主要能力，与知识点取交集" /></Form.Item>
           <Typography.Text type="secondary">个性化模块固定预留 3 道题。</Typography.Text>
         </Card>}
 
