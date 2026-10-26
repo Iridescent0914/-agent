@@ -2,8 +2,12 @@ import {
   Alert, Button, Card, Divider, Empty, Form, Input,
   InputNumber, Select, Space, Table, Tag, Typography, message,
 } from 'antd'
+import {
+  BookOutlined, BulbOutlined, CheckCircleFilled, HistoryOutlined,
+  SettingOutlined, ThunderboltOutlined,
+} from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiGet, apiPost } from '../api/client'
 import type { ClassSummary, QuestionCatalogChapter } from '../types'
@@ -83,15 +87,15 @@ export function AssignmentCreatePage() {
     Promise.all([
       apiGet<ClassSummary[]>('/classes'),
       apiGet<QuestionCatalogChapter[]>('/questions/catalog'),
-      apiGet<AssignmentListItem[]>('/assignments/recent-completed?limit=5'),
     ])
-      .then(([classItems, chapterItems, recentItems]) => {
-        setClasses(classItems); setChapters(chapterItems); setRecentAssignments(recentItems)
+      .then(([classItems, chapterItems]) => {
+        setClasses(classItems); setChapters(chapterItems)
         const initialClass = classItems.find((item) => item.student_count > 0) ?? classItems[0]
         form.setFieldsValue({
           class_id: initialClass?.id,
           grade_codes: [ALL_GRADES],
           chapter_codes: [ALL_CHAPTERS],
+          difficulty_counts: { '1': 0, '2': 6, '3': 0, '4': 0, '5': 0 },
         })
       })
       .catch((reason) => setError((reason as Error).message))
@@ -106,7 +110,29 @@ export function AssignmentCreatePage() {
   const selectedRequiredKps = Form.useWatch('required_knowledge_point_codes', form) ?? []
   const selectedPersonalizedKps = Form.useWatch('personalized_knowledge_point_codes', form) ?? []
   const selectedHistoryAssignmentId = Form.useWatch('history_assignment_id', form)
-  const difficultyCounts = Form.useWatch('difficulty_counts', form) ?? {}
+  const difficultyCounts = Form.useWatch('difficulty_counts', form) ?? defaults.difficulty_counts ?? {}
+
+  useEffect(() => {
+    if (!selectedClassId) {
+      setRecentAssignments([])
+      form.setFieldValue('history_assignment_id', undefined)
+      return
+    }
+    const controller = new AbortController()
+    apiGet<AssignmentListItem[]>(
+      `/assignments/recent-completed?limit=5&class_id=${encodeURIComponent(selectedClassId)}`,
+      controller.signal,
+    )
+      .then((items) => {
+        setRecentAssignments(items)
+        const selected = form.getFieldValue('history_assignment_id')
+        if (selected && !items.some((item) => item.id === selected)) {
+          form.setFieldValue('history_assignment_id', undefined)
+        }
+      })
+      .catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
+    return () => controller.abort()
+  }, [form, selectedClassId])
 
   useEffect(() => {
     if (!selectedChapterCodes.length) {
@@ -157,7 +183,6 @@ export function AssignmentCreatePage() {
   ]
   const sectionOptions = Array.from(new Set(selectedChapters.flatMap((item) => item.sections))).map((value) => ({ value, label: value }))
   const coreLiteracyOptions = CORE_LITERACIES.map((value) => ({ value, label: value }))
-  const competencyOptions = CORE_LITERACIES.map((value) => ({ value, label: value }))
   const gradeValues = Array.from(new Set([
     ...classes.map((item) => item.grade).filter(Boolean), ...chapters.flatMap((item) => item.grades ?? []),
   ].filter(isConfiguredGrade)))
@@ -216,13 +241,30 @@ export function AssignmentCreatePage() {
   }
   const selectedRequiredKpCount = expandKnowledgePointSelection(selectedRequiredKps).length
   const selectedPersonalizedKpCount = expandKnowledgePointSelection(selectedPersonalizedKps).length
+  const selectedPersonalizedKpCodes = expandKnowledgePointSelection(selectedPersonalizedKps)
+  const personalizedCompetencies = Array.from(new Set(
+    selectedChapters.flatMap((chapter) => chapter.knowledge_points)
+      .filter((point) => selectedPersonalizedKpCodes.includes(point.code))
+      .flatMap((point) => point.core_competencies ?? []),
+  ))
+  const competencyOptions = personalizedCompetencies.map((value) => ({ value, label: value }))
 
   const handleKnowledgePointChange = (values: string[]) => {
     form.setFieldValue('required_knowledge_point_codes', compactKnowledgePointSelection(values))
   }
 
   const handlePersonalizedKnowledgePointChange = (values: string[]) => {
-    form.setFieldValue('personalized_knowledge_point_codes', compactKnowledgePointSelection(values))
+    const compacted = compactKnowledgePointSelection(values)
+    form.setFieldValue('personalized_knowledge_point_codes', compacted)
+    const expanded = expandKnowledgePointSelection(compacted)
+    const allowed = new Set(
+      selectedChapters.flatMap((chapter) => chapter.knowledge_points)
+        .filter((point) => expanded.includes(point.code))
+        .flatMap((point) => point.core_competencies ?? []),
+    )
+    if (!allowed.has(form.getFieldValue('primary_competency'))) {
+      form.setFieldValue('primary_competency', undefined)
+    }
   }
 
   const handleGradeChange = (values: string[]) => {
@@ -251,20 +293,21 @@ export function AssignmentCreatePage() {
   const buildFilterConfig = (values: FormValues): AssignmentFilterConfig => ({
     grade_codes: expandGradeSelection(values.grade_codes), chapter_codes: expandChapterSelection(values.chapter_codes, chapters),
     required: {
-      knowledge_point_codes: expandKnowledgePointSelection(values.required_knowledge_point_codes),
-      core_literacies: values.required_core_literacies,
-      difficulty_counts: values.difficulty_counts,
+      knowledge_point_codes: expandKnowledgePointSelection(values.required_knowledge_point_codes ?? []),
+      core_literacies: values.required_core_literacies ?? [],
+      difficulty_counts: values.difficulty_counts ?? defaults.difficulty_counts ?? {},
     },
     personalized: {
-      knowledge_point_codes: expandKnowledgePointSelection(values.personalized_knowledge_point_codes),
+      knowledge_point_codes: expandKnowledgePointSelection(values.personalized_knowledge_point_codes ?? []),
       primary_competency: values.primary_competency || null, question_count: 3,
     },
     history: { assignment_id: values.history_assignment_id || null },
   })
 
   const build = (values: FormValues): AssignmentRequest => {
-    const selectedCodes = values.required_knowledge_point_codes.length
-      ? expandKnowledgePointSelection(values.required_knowledge_point_codes) : available.map((point) => point.code)
+    const requiredKnowledgePoints = values.required_knowledge_point_codes ?? []
+    const selectedCodes = requiredKnowledgePoints.length
+      ? expandKnowledgePointSelection(requiredKnowledgePoints) : available.map((point) => point.code)
     return {
       class_id: values.class_id, student_scope: 'all_class', student_ids: [],
       filter_config: buildFilterConfig(values),
@@ -282,6 +325,8 @@ export function AssignmentCreatePage() {
   const validateNewFilters = (values: FormValues) => {
     if (!values.grade_codes?.length || !values.chapter_codes?.length) return '请选择至少一个年级和章节'
     if (totalRequiredCount < 1) return '请设置至少 1 道必做题'
+    if (!expandKnowledgePointSelection(values.personalized_knowledge_point_codes ?? []).length) return '请选择个性化模块的知识点'
+    if (!values.primary_competency) return '请选择所选知识点对应的主要能力'
     if (values.history_assignment_id && !recentAssignments.some((item) => item.id === values.history_assignment_id)) return '历史回顾作业无效，请重新选择'
     return null
   }
@@ -309,7 +354,7 @@ export function AssignmentCreatePage() {
   const columns: ColumnsType<AssignmentPreviewStudent> = [
     { title: '学生', render: (_, row) => `${row.student_code} · ${row.student_name}` },
     { title: '结果', render: (_, row) => <Tag color={row.recommendation.shortfall ? 'orange' : 'green'}>{row.recommendation.selected_count} / {row.recommendation.requested_count} 题</Tag> },
-    { title: '策略', render: (_, row) => `${row.recommendation.items.filter((item) => item.strategy === 'personalized').length} 道个性化 · ${row.recommendation.items.filter((item) => item.strategy === 'diagnostic').length} 道诊断` },
+    { title: '题目来源', render: (_, row) => `${row.recommendation.items.filter((item) => item.source_module === 'required').length} 道必做 · ${row.recommendation.items.filter((item) => item.source_module === 'history').length} 道历史回顾 · 个性化待接入` },
     { title: '缺口', render: (_, row) => row.recommendation.shortfall ? `缺 ${row.recommendation.shortfall} 题` : '无' },
   ]
   const requiredQuestionColumns: ColumnsType<RecommendedQuestion> = [
@@ -318,16 +363,43 @@ export function AssignmentCreatePage() {
     { title: '难度', dataIndex: 'difficulty', width: 80 },
     { title: '题型', dataIndex: 'question_type', width: 100 },
   ]
-  const moduleButton = (module: Exclude<FilterModule, null>, label: string, summary: string) => (
+  const moduleButton = (
+    module: Exclude<FilterModule, null>, label: string, summary: string,
+    icon: ReactNode, tone: 'required' | 'personalized' | 'history',
+  ) => (
     <button type="button" className={`assignment-filter-slider ${activeModule === module ? 'active' : ''}`} onMouseEnter={() => setActiveModule(module)} onClick={() => setActiveModule(activeModule === module ? null : module)}>
-      <span className="assignment-filter-slider-title">{label}</span><span className="assignment-filter-slider-summary">{summary}</span>
+      <span className={`assignment-filter-slider-icon ${tone}`}>{icon}</span>
+      <span className="assignment-filter-slider-copy">
+        <span className="assignment-filter-slider-title">{label}</span>
+        <span className="assignment-filter-slider-summary">{summary}</span>
+      </span>
+      <span className="assignment-filter-slider-state">{activeModule === module ? '配置中' : '查看'}</span>
     </button>
   )
+  const sharedRequiredItems = preview?.students[0]?.recommendation.items.filter(
+    (item) => item.source_module === 'required',
+  ) ?? []
 
   return <Space direction="vertical" size="large" className="page-stack assignment-workspace">
-    <div className="student-heading"><div><Typography.Title level={2}>创建个性化作业</Typography.Title><Typography.Text type="secondary">先确定作业范围，再配置必做题、个性化和历史回顾模块</Typography.Text></div></div>
+    <section className="assignment-hero">
+      <div className="assignment-hero-copy">
+        <Tag bordered={false} className="assignment-hero-tag"><ThunderboltOutlined /> 智能组卷工作台</Tag>
+        <Typography.Title level={2}>创建班级作业</Typography.Title>
+        <Typography.Paragraph>确定教学范围，组合全班必做题与逐学生历史回顾；预检确认后再生成草稿。</Typography.Paragraph>
+        <div className="assignment-hero-meta">
+          <span><CheckCircleFilled /> 预检不写入数据库</span>
+          <span><CheckCircleFilled /> 必做题全班统一</span>
+          <span><CheckCircleFilled /> 历史回顾逐学生生成</span>
+        </div>
+      </div>
+      <div className="assignment-hero-metric">
+        <span>当前必做题</span>
+        <strong>{totalRequiredCount}</strong>
+        <small>道 · 按难度配置</small>
+      </div>
+    </section>
     {error && <Alert type="error" showIcon message="操作失败" description={error} />}
-    <Card>
+    <Card className="assignment-builder-card">
       <Form
         form={form}
         layout="vertical"
@@ -336,19 +408,27 @@ export function AssignmentCreatePage() {
         onFinishFailed={() => setError('请先完成作业标题、班级、年级和章节选择')}
         onValuesChange={() => { setPreview(null); setError(null) }}
       >
-        <div className="assignment-form-grid">
+        <div className="assignment-section-heading">
+          <span className="assignment-section-index">01</span>
+          <div><Typography.Title level={4}>作业基本信息</Typography.Title><Typography.Text type="secondary">选择班级和本次教学覆盖的年级、章节</Typography.Text></div>
+        </div>
+        <div className="assignment-form-grid assignment-scope-grid">
           <Form.Item label="作业标题" name="title" rules={[{ required: true }]}><Input maxLength={255} /></Form.Item>
           <Form.Item label="班级" name="class_id" rules={[{ required: true, message: '请选择班级' }]}><Select placeholder="请选择班级" options={classes.map((item) => ({ value: item.id, label: `${item.name}（${item.student_count}人）` }))} /></Form.Item>
           <Form.Item label="年级（可多选）" name="grade_codes" rules={[{ required: true, type: 'array', min: 1, message: '请选择至少一个年级' }]}><Select mode="multiple" options={gradeSelectOptions} onChange={handleGradeChange} placeholder="请选择年级" /></Form.Item>
           <Form.Item label="章（可多选）" name="chapter_codes" rules={[{ required: true, type: 'array', min: 1, message: '请选择至少一个章节' }]}><Select mode="multiple" options={chapterSelectOptions} onChange={handleChapterChange} placeholder="请选择章节" /></Form.Item>
-          <Form.Item label="学生范围"><Typography.Text type="secondary">{selectedClass ? `当前班级全部学生（${selectedClass.student_count}人）` : '请先选择班级'}</Typography.Text></Form.Item>
+          <Form.Item label="学生范围"><div className="assignment-scope-readonly">{selectedClass ? <><CheckCircleFilled /> 当前班级全部学生（{selectedClass.student_count} 人）</> : '请先选择班级'}</div></Form.Item>
         </div>
 
-        <Divider orientation="left">题目筛选模块</Divider>
+        <Divider />
+        <div className="assignment-section-heading">
+          <span className="assignment-section-index">02</span>
+          <div><Typography.Title level={4}>配置题目模块</Typography.Title><Typography.Text type="secondary">点击卡片展开设置；必做题与历史回顾会进入本轮试卷</Typography.Text></div>
+        </div>
         <div className="assignment-filter-sliders">
-          {moduleButton('required', '必做题', `${totalRequiredCount} 道 · ${selectedRequiredKpCount ? `${selectedRequiredKpCount} 个知识点` : '全章节'}`)}
-          {moduleButton('personalized', '个性化', `${selectedPersonalizedKpCount ? `${selectedPersonalizedKpCount} 个知识点` : '待配置'} · 3 道`)}
-          {moduleButton('history', '历史回顾', selectedHistoryAssignmentId ? '已选择作业' : '待选择作业')}
+          {moduleButton('required', '必做题', `${totalRequiredCount} 道 · ${selectedRequiredKpCount ? `${selectedRequiredKpCount} 个知识点` : '全章节'}`, <BookOutlined />, 'required')}
+          {moduleButton('personalized', '个性化', `${selectedPersonalizedKpCount ? `${selectedPersonalizedKpCount} 个知识点` : '待配置'} · 3 道`, <BulbOutlined />, 'personalized')}
+          {moduleButton('history', '历史回顾', selectedHistoryAssignmentId ? '已选择来源作业' : '本次可不选择', <HistoryOutlined />, 'history')}
         </div>
 
         {activeModule === 'required' && <Card size="small" className="assignment-filter-panel" title="必做题筛选" extra={<Button type="link" onClick={() => setActiveModule(null)}>收起</Button>}>
@@ -357,39 +437,48 @@ export function AssignmentCreatePage() {
             <Form.Item label="核心素养（可选，可多选）" name="required_core_literacies"><Select mode="multiple" options={coreLiteracyOptions} placeholder="可独立选择核心素养，与知识点取交集" /></Form.Item>
           </div>
           {sectionOptions.length > 0 && <Typography.Text type="secondary">已按所选章节提供节与知识点选项</Typography.Text>}
-          <Divider plain>按难度设置必做题数量</Divider>
-          <div className="difficulty-count-grid">{[1, 2, 3, 4, 5].map((difficulty) => <Form.Item key={difficulty} label={`${difficulty} 星`} name={['difficulty_counts', String(difficulty)]}><InputNumber min={0} max={30} precision={0} /></Form.Item>)}</div>
+          <Divider plain><SettingOutlined /> 按难度设置必做题数量</Divider>
+          <div className="difficulty-count-grid">{[1, 2, 3, 4, 5].map((difficulty) => <Form.Item key={difficulty} label={`${difficulty} 星`} name={['difficulty_counts', String(difficulty)]} initialValue={difficulty === 2 ? 6 : 0}><InputNumber min={0} max={30} precision={0} /></Form.Item>)}</div>
         </Card>}
 
         {activeModule === 'personalized' && <Card size="small" className="assignment-filter-panel" title="个性化筛选" extra={<Button type="link" onClick={() => setActiveModule(null)}>收起</Button>}>
           <Alert type="info" showIcon message="当前阶段只保存筛选条件，个性化出题算法将在后续接入" />
-          <Form.Item label="节（知识点，后续启用）" name="personalized_knowledge_point_codes"><Select mode="multiple" showSearch optionFilterProp="label" options={knowledgePointSelectOptions} onChange={handlePersonalizedKnowledgePointChange} placeholder="可独立选择知识点" /></Form.Item>
-          <Form.Item label="主要能力（任选其一）" name="primary_competency"><Select allowClear options={competencyOptions} placeholder="可独立选择主要能力，与知识点取交集" /></Form.Item>
+          <Form.Item label="节（知识点，必选）" name="personalized_knowledge_point_codes" rules={[{ required: true, type: 'array', min: 1, message: '请选择至少一个知识点' }]}><Select mode="multiple" showSearch optionFilterProp="label" options={knowledgePointSelectOptions} onChange={handlePersonalizedKnowledgePointChange} placeholder="请先选择知识点" /></Form.Item>
+          <Form.Item label="主要能力（任选其一）" name="primary_competency" rules={[{ required: true, message: '请选择主要能力' }]}><Select allowClear disabled={!personalizedCompetencies.length} options={competencyOptions} placeholder={personalizedCompetencies.length ? '请选择所选知识点对应的一项能力' : '请先选择知识点'} /></Form.Item>
           <Typography.Text type="secondary">个性化模块固定预留 3 道题。</Typography.Text>
         </Card>}
 
         {activeModule === 'history' && <Card size="small" className="assignment-filter-panel" title="历史回顾筛选" extra={<Button type="link" onClick={() => setActiveModule(null)}>收起</Button>}>
-          <Alert type="info" showIcon message="请选择要回顾的已完成作业，系统不会根据“昨天”等相对时间自动猜测" />
-          <Form.Item label="最近 5 次已完成作业" name="history_assignment_id"><Select allowClear options={recentAssignments.map((item) => ({ value: item.id, label: `${item.title} · ${new Date(item.created_at).toLocaleString('zh-CN')}` }))} placeholder={recentAssignments.length ? '请选择作业' : '暂无已完成作业'} notFoundContent={<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已完成作业" />} /></Form.Item>
+          <Alert type="info" showIcon message="选择后，将按每名学生在该作业必做题中的三星及以下错题，生成同知识点、同难度回顾题" description="系统不会根据“昨天”等相对时间自动猜测；没有符合条件的错题时不生成历史回顾题。" />
+          <Form.Item label="当前班级最近 5 次已批改作业" name="history_assignment_id"><Select allowClear options={recentAssignments.map((item) => ({ value: item.id, label: `${item.title} · ${item.class_name ?? '未命名班级'} · ${new Date(item.created_at).toLocaleString('zh-CN')}` }))} placeholder={recentAssignments.length ? '请选择作业' : '暂无已全部批改的作业'} notFoundContent={<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已全部批改的作业" />} /></Form.Item>
         </Card>}
 
-        <Button type="primary" htmlType="submit" loading={loading}>预检全部学生</Button>
+        <div className="assignment-preview-action">
+          <div><Typography.Text strong>配置完成后先预检</Typography.Text><Typography.Text type="secondary">检查每名学生的实际题量与库存缺口</Typography.Text></div>
+          <Button type="primary" size="large" htmlType="submit" loading={loading} icon={<ThunderboltOutlined />}>预检全部学生</Button>
+        </div>
       </Form>
     </Card>
-    {preview && <Card title="预检结果" extra={<Typography.Text type="secondary">预检不会写入作业</Typography.Text>}>
+    {preview && <Card className="assignment-preview-card" title="预检结果" extra={<Tag color="green">只读预检</Tag>}>
+      <div className="assignment-preview-summary">
+        <div><span>班级学生</span><strong>{preview.student_count}</strong><small>人</small></div>
+        <div><span>可完整生成</span><strong>{preview.ready_count}</strong><small>人</small></div>
+        <div className={preview.shortfall_student_count ? 'warning' : ''}><span>存在缺口</span><strong>{preview.shortfall_student_count}</strong><small>人</small></div>
+        <div><span>统一必做题</span><strong>{sharedRequiredItems.length}</strong><small>道</small></div>
+      </div>
       <Alert type={preview.shortfall_student_count ? 'warning' : 'success'} showIcon message={`${preview.ready_count} / ${preview.student_count} 名学生可完整生成`} description={`统一基准时间：${new Date(preview.as_of).toLocaleString('zh-CN')}`} />
       <Table className="preview-table" rowKey="student_id" columns={columns} dataSource={preview.students} pagination={{ pageSize: 20, showSizeChanger: true }} scroll={{ x: 720 }} />
-      {preview.students[0]?.recommendation.items.length > 0 && <Card size="small" title={`必做题草稿（${preview.students[0].recommendation.items.length} 题，所有学生相同）`}>
+      {sharedRequiredItems.length > 0 && <Card size="small" title={`必做题草稿（${sharedRequiredItems.length} 题，所有学生相同）`}>
         <Table
           size="small"
           rowKey="question_id"
           columns={requiredQuestionColumns}
-          dataSource={preview.students[0].recommendation.items}
+          dataSource={sharedRequiredItems}
           pagination={false}
         />
       </Card>}
-      {preview.students[0]?.recommendation.items.length === 0 && <Alert type="warning" showIcon message="当前筛选条件没有可用的必做题" description="请减少难度题量，或放宽年级、章节、知识点和核心素养筛选范围。" />}
-      <Button type="primary" onClick={generate} loading={loading}>生成草稿</Button>
+      {sharedRequiredItems.length === 0 && <Alert type="warning" showIcon message="当前筛选条件没有可用的必做题" description="请减少难度题量，或放宽年级、章节、知识点和核心素养筛选范围。" />}
+      <div className="assignment-generate-action"><Typography.Text type="secondary">确认预检结果后，为当前班级生成可继续编辑的试卷草稿。</Typography.Text><Button type="primary" size="large" onClick={generate} loading={loading}>确认并生成草稿</Button></div>
     </Card>}
   </Space>
 }

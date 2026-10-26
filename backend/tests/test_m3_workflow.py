@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections import defaultdict
+from copy import deepcopy
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -8,7 +11,11 @@ from sqlalchemy import func, select
 
 from app.core.database import SessionLocal, get_db
 from app.main import app
-from app.models import Assignment, PaperInstance, PaperInstanceItem, Student
+from app.models import (
+    Assignment, Attempt, KnowledgePoint, PaperInstance, PaperInstanceItem,
+    Question, Student, Submission,
+)
+from app.services.paper_snapshots import new_item, snapshot_payload
 
 
 @pytest.fixture
@@ -51,6 +58,94 @@ def request_body(db, *, key: str):
 def counts(db):
     return tuple(int(db.scalar(select(func.count()).select_from(model)) or 0)
                  for model in (Assignment, PaperInstance, PaperInstanceItem))
+
+
+def completed_required_source(db, student):
+    grouped = defaultdict(list)
+    rows = db.execute(
+        select(Question, KnowledgePoint)
+        .join(KnowledgePoint, KnowledgePoint.id == Question.main_knowledge_point_id)
+        .where(
+            Question.archived_at.is_(None),
+            Question.grading_readiness == "machine_ready",
+            Question.source_review_status == "reviewed",
+            Question.difficulty <= 3,
+        )
+        .order_by(Question.original_qid)
+    ).all()
+    for question, knowledge_point in rows:
+        grouped[(
+            question.grade, question.chapter_code, question.difficulty,
+            knowledge_point.code,
+        )].append((question, knowledge_point))
+    group = next(items for items in grouped.values() if len(items) >= 2)
+    source_question, knowledge_point = group[0]
+    now = datetime.now(timezone.utc)
+    assignment = Assignment(
+        title="已批改历史来源作业",
+        class_id=student.class_id,
+        chapter_code=source_question.chapter_code,
+        teaching_scope={},
+        generation_config={},
+        assignment_type="practice",
+    )
+    db.add(assignment)
+    db.flush()
+    paper = PaperInstance(
+        assignment_id=assignment.id,
+        student_id=student.id,
+        version_no=1,
+        status="draft",
+        recommendation_audit={},
+        edit_history=[],
+        edit_revision=1,
+    )
+    db.add(paper)
+    db.flush()
+    item = new_item(
+        paper_id=paper.id,
+        order_no=1,
+        payload=snapshot_payload(source_question),
+        selection_audit={
+            "source": "recommendation",
+            "source_module": "required",
+            "reason_codes": ["required_question"],
+        },
+    )
+    db.add(item)
+    db.flush()
+    paper.status = "published"
+    paper.instance_code = f"HIS-{uuid4().hex[:12].upper()}"
+    paper.published_at = now
+    db.flush()
+    submission = Submission(
+        student_id=student.id,
+        paper_instance_id=paper.id,
+        source="manual",
+        idempotency_key="history-source-" + uuid4().hex,
+        request_fingerprint=uuid4().hex,
+        attachments=[],
+        submitted_at=now,
+    )
+    db.add(submission)
+    db.flush()
+    db.add(Attempt(
+        submission_id=submission.id,
+        student_id=student.id,
+        paper_instance_item_id=item.id,
+        question_id=source_question.id,
+        student_answer="wrong",
+        normalized_answer="wrong",
+        grading_details={},
+        grade_status="teacher_confirmed",
+        is_correct=False,
+        manual_override=True,
+        revision_no=1,
+        answered_at=now,
+        reviewed_at=now,
+    ))
+    db.flush()
+    return assignment, source_question, knowledge_point
 
 
 def test_preview_create_idempotency_and_audit(client, db):
@@ -108,6 +203,94 @@ def test_assignment_can_expand_an_entire_class_without_student_id_limit(client, 
     assert created.json()["student_count"] == expected_count
     assert created.json()["generation_config"]["student_scope"] == "all_class"
     assert len(created.json()["generation_config"]["resolved_student_ids"]) == expected_count
+
+
+def test_required_and_selected_history_are_combined_per_student(client, db):
+    student = db.scalar(select(Student).where(
+        Student.archived_at.is_(None), Student.class_id.is_not(None),
+    ).order_by(Student.student_code))
+    source, source_question, knowledge_point = completed_required_source(db, student)
+    request = {
+        "class_id": str(student.class_id),
+        "student_scope": "all_class",
+        "student_ids": [],
+        "recommendation_parameters": {
+            "chapter_code": source_question.chapter_code,
+            "chapter_codes": [source_question.chapter_code],
+            "grade_codes": [source_question.grade],
+            "new_knowledge_point_codes": [knowledge_point.code],
+            "review_knowledge_point_codes": [],
+            "new_count": 1,
+            "review_count": 0,
+            "avoid_recent_days": 0,
+            "max_knowledge_point_ratio": 1,
+        },
+        "filter_config": {
+            "grade_codes": [source_question.grade],
+            "chapter_codes": [source_question.chapter_code],
+            "required": {
+                "knowledge_point_codes": [knowledge_point.code],
+                "core_literacies": [],
+                "difficulty_counts": {str(source_question.difficulty): 1},
+            },
+            "personalized": {
+                "knowledge_point_codes": [knowledge_point.code],
+                "primary_competency": (
+                    knowledge_point.core_competencies[0]
+                    if knowledge_point.core_competencies else "运算能力"
+                ),
+                "question_count": 3,
+            },
+            "history": {"assignment_id": str(source.id)},
+        },
+    }
+    preview = client.post("/api/v1/assignments/preview", json=request)
+    assert preview.status_code == 200, preview.text
+    students = preview.json()["students"]
+    source_student = next(item for item in students if item["student_id"] == str(student.id))
+    assert [
+        item["source_module"] for item in source_student["recommendation"]["items"]
+    ] == ["required", "history"]
+    history_item = source_student["recommendation"]["items"][1]
+    assert history_item["question_id"] != str(source_question.id)
+    assert history_item["difficulty"] == source_question.difficulty
+    assert history_item["knowledge_point_code"] == knowledge_point.code
+    assert history_item["evidence"]
+    assert all(
+        len(item["recommendation"]["items"]) == (
+            2 if item["student_id"] == str(student.id) else 1
+        )
+        for item in students
+    )
+
+    invalid_competency = deepcopy(request)
+    invalid_competency["filter_config"]["personalized"]["primary_competency"] = "不存在的能力"
+    rejected = client.post("/api/v1/assignments/preview", json=invalid_competency)
+    assert rejected.status_code == 422
+    assert "主要能力不属于所选知识点" in rejected.text
+
+    recent = client.get(
+        "/api/v1/assignments/recent-completed",
+        params={"limit": 5, "class_id": str(student.class_id)},
+    )
+    assert recent.status_code == 200, recent.text
+    assert str(source.id) in {item["id"] for item in recent.json()}
+
+    create_request = {
+        **request,
+        "title": "必做与历史回顾组合测试",
+        "idempotency_key": "history-combined-" + uuid4().hex,
+    }
+    created = client.post("/api/v1/assignments", json=create_request)
+    assert created.status_code == 201, created.text
+    source_paper = next(
+        paper for paper in created.json()["papers"]
+        if paper["student_id"] == str(student.id)
+    )
+    paper = client.get(f"/api/v1/paper-instances/{source_paper['id']}").json()
+    assert [item["selection_audit"]["source_module"] for item in paper["items"]] == [
+        "required", "history",
+    ]
 
 
 def test_selected_student_scope_accepts_more_than_one_hundred_ids(client, db):

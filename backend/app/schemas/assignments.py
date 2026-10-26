@@ -38,6 +38,14 @@ class PersonalizedQuestionFilter(BaseModel):
     primary_competency: str | None = Field(default=None, max_length=120)
     question_count: int = Field(default=3, ge=3, le=3, strict=True)
 
+    @model_validator(mode="after")
+    def require_scope_and_competency(self):
+        if not self.knowledge_point_codes:
+            raise ValueError("个性化模块必须选择至少一个知识点")
+        if not self.primary_competency or not self.primary_competency.strip():
+            raise ValueError("个性化模块必须选择一个主要能力")
+        return self
+
 
 class HistoryQuestionFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")

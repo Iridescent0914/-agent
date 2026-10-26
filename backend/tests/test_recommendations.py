@@ -6,7 +6,10 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.recommendations import RecommendationRequest
-from app.services.recommendations import Candidate, score_candidate, select_recommendations
+from app.services.recommendations import (
+    Candidate, HistoryWrongAnswer, score_candidate, select_history_recommendations,
+    select_recommendations,
+)
 from app.services.mastery import replay
 from tests.test_mastery import evidence
 
@@ -106,6 +109,46 @@ def test_personalized_components_and_review_time_do_not_change_mastery():
     assert result.mastery == original
     new = score_candidate(candidates()[0], result, params(), "new", NOW)
     assert new.components.forgetting == 0
+
+
+def test_history_review_uses_same_knowledge_point_and_difficulty_without_duplicates():
+    error = HistoryWrongAnswer(
+        student_id=STUDENT,
+        source_question_id=UUID(int=1),
+        source_original_qid="q.001",
+        order_no=1,
+        difficulty=2,
+        knowledge_point_code="kp.a",
+        knowledge_point_name="知识点 A",
+        attempt_id=UUID(int=900),
+        revision_no=2,
+    )
+    selected, diagnostic = select_history_recommendations(
+        student_id=STUDENT,
+        candidates=list(reversed(candidates())),
+        errors=[error],
+        excluded_question_ids={UUID(int=1), UUID(int=2)},
+        params=params(),
+        as_of=NOW,
+    )
+    assert [item.question_id for item in selected] == [UUID(int=3)]
+    assert selected[0].source_module == "history"
+    assert selected[0].difficulty == 2
+    assert selected[0].knowledge_point_code == "kp.a"
+    assert selected[0].evidence[0].attempt_id == UUID(int=900)
+    assert diagnostic.requested_count == diagnostic.selected_count == 1
+
+    missing, missing_diagnostic = select_history_recommendations(
+        student_id=STUDENT,
+        candidates=candidates(),
+        errors=[error],
+        excluded_question_ids={UUID(int=1), UUID(int=2), UUID(int=3)},
+        params=params(),
+        as_of=NOW,
+    )
+    assert missing == []
+    assert missing_diagnostic.shortfall == 1
+    assert missing_diagnostic.reason_codes == ["insufficient_history_inventory"]
 
 
 @pytest.mark.parametrize("changes", [

@@ -6,24 +6,31 @@ async function noOverflow(page: import('@playwright/test').Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy()
 }
 
+async function configurePersonalizedFilter(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: /个性化/ }).click()
+  const knowledgePoint = page.getByRole('combobox', { name: '节（知识点，必选）' })
+  await knowledgePoint.click()
+  await knowledgePoint.press('ArrowDown')
+  await knowledgePoint.press('Enter')
+  await knowledgePoint.press('Escape')
+  const competency = page.getByRole('combobox', { name: '主要能力（任选其一）' })
+  await expect(competency).toBeEnabled()
+  await competency.click()
+  await competency.press('ArrowDown')
+  await competency.press('Enter')
+}
+
 test('assignment navigation and multi-student preview stay read-only', async ({ page }, testInfo) => {
   const before = await (await page.request.get(`${api}/assignments?page_size=100`)).json()
   await page.goto('/assignments')
   await expect(page.getByRole('heading', { name: '个性化作业', exact: true })).toBeVisible()
   await page.getByRole('link', { name: '创建作业', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '创建个性化作业', exact: true })).toBeVisible()
-  await expect(page.getByRole('radio', { name: '全班学生' })).toBeChecked()
-
-  const catalog = await (await page.request.get(`${api}/knowledge-points?chapter_code=math.g6.rational`)).json()
-  const sufficient = catalog.find((item: { available_question_count: number }) => item.available_question_count >= 6)
-  await page.getByLabel('回顾范围').click()
-  await page.getByRole('combobox', { name: '回顾范围' }).fill(sufficient.name)
-  await page.locator('.ant-select-dropdown:visible').getByText(`${sufficient.name}（${sufficient.available_question_count}题）`, { exact: true }).click()
-  await page.getByRole('spinbutton', { name: '单知识点最大占比' }).fill('1')
-  await page.getByRole('spinbutton', { name: '避免近期重复天数' }).fill('0')
+  await expect(page.getByRole('heading', { name: '创建班级作业', exact: true })).toBeVisible()
+  await expect(page.getByText(/当前班级全部学生/)).toBeVisible()
+  await configurePersonalizedFilter(page)
   await page.getByRole('button', { name: '预检全部学生' }).click()
   await expect(page.getByText(/名学生可完整生成/)).toBeVisible()
-  await expect(page.getByText('预检不会写入作业', { exact: true })).toBeVisible()
+  await expect(page.getByText('预检不写入数据库', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '生成草稿' })).toBeVisible()
   await noOverflow(page)
   await page.screenshot({ path: testInfo.outputPath('assignment-preview.png'), fullPage: true })
@@ -34,7 +41,7 @@ test('assignment navigation and multi-student preview stay read-only', async ({ 
 
 test('assignment creation page has no global overflow on narrow viewport', async ({ page }) => {
   await page.goto('/assignments/new')
-  await expect(page.getByRole('heading', { name: '创建个性化作业', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '创建班级作业', exact: true })).toBeVisible()
   await noOverflow(page)
 })
 
@@ -82,7 +89,8 @@ test('assignment creation sends large classes as a server-expanded scope', async
   })
 
   await page.goto('/assignments/new')
-  await expect(page.getByText('学生（当前班级 101 人）', { exact: true })).toBeVisible()
+  await expect(page.getByText('当前班级全部学生（101 人）', { exact: true })).toBeVisible()
+  await configurePersonalizedFilter(page)
   await page.getByRole('button', { name: '预检全部学生' }).click()
   await expect(page.getByText('101 / 101 名学生可完整生成')).toBeVisible()
   expect(requestedPages).toEqual([])

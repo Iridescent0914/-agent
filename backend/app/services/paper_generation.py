@@ -9,14 +9,15 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Assignment, PaperInstance, SchoolClass, Student
+from app.models import Assignment, KnowledgePoint, PaperInstance, SchoolClass, Student
 from app.schemas.assignments import (
     AssignmentCreateRequest, AssignmentPlanRequest, AssignmentPreviewOut,
     StudentRecommendationPreview,
 )
 from app.services.paper_snapshots import load_questions, new_item, snapshot_payload
 from app.services.recommendations import (
-    preview, recommendation_candidates, required_question_candidates,
+    history_wrong_answers, preview, recommendation_candidates,
+    required_question_candidates, select_history_recommendations,
     select_required_recommendations,
 )
 from app.services.student_profile import load_contexts
@@ -77,11 +78,36 @@ def _school_class(
     return school_class
 
 
+def _validate_personalized_filter(db: Session, request: AssignmentPlanRequest) -> None:
+    if request.filter_config is None:
+        return
+    personalized = request.filter_config.personalized
+    rows = list(db.scalars(select(KnowledgePoint).where(
+        KnowledgePoint.code.in_(personalized.knowledge_point_codes),
+    )))
+    by_code = {item.code: item for item in rows}
+    if set(by_code) != set(personalized.knowledge_point_codes):
+        raise ValueError("个性化知识点不存在")
+    if any(
+        item.chapter_code not in request.filter_config.chapter_codes
+        for item in rows
+    ):
+        raise ValueError("个性化知识点不属于所选章节")
+    allowed_competencies = {
+        competency
+        for item in rows
+        for competency in (item.core_competencies or [])
+    }
+    if personalized.primary_competency not in allowed_competencies:
+        raise ValueError("主要能力不属于所选知识点")
+
+
 def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                        as_of: datetime | None = None) -> AssignmentPreviewOut:
     at = as_of or datetime.now(timezone.utc)
     students = _students_for_request(db, request)
-    _school_class(db, students, request.class_id)
+    school_class = _school_class(db, students, request.class_id)
+    _validate_personalized_filter(db, request)
     if request.filter_config is not None:
         required = request.filter_config.required
         chapter_codes = request.filter_config.chapter_codes
@@ -108,14 +134,63 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
             knowledge_point_codes=scope_codes,
             difficulty_counts=difficulty_counts, params=params, as_of=at,
         )
-        results = [
-            StudentRecommendationPreview(
-                student_id=student.id, student_code=student.student_code,
-                student_name=student.display_name,
-                recommendation=template.model_copy(update={"student_id": student.id}),
+        history_errors = {student.id: [] for student in students}
+        history_candidates = []
+        if request.filter_config.history.assignment_id is not None:
+            history_errors = history_wrong_answers(
+                db,
+                source_assignment_id=request.filter_config.history.assignment_id,
+                class_id=school_class.id,
+                student_ids=[student.id for student in students],
             )
-            for student in students
-        ]
+            history_candidates = recommendation_candidates(
+                db, chapter_codes, request.filter_config.grade_codes,
+            )
+        required_ids = {item.question_id for item in template.items}
+        results = []
+        for student in students:
+            wrong_answers = history_errors[student.id]
+            history_items, history_diagnostic = select_history_recommendations(
+                student_id=student.id,
+                candidates=history_candidates,
+                errors=wrong_answers,
+                excluded_question_ids=(
+                    required_ids
+                    | {item.source_question_id for item in wrong_answers}
+                ),
+                params=params,
+                as_of=at,
+            )
+            required_diagnostics = [
+                diagnostic for diagnostic in template.diagnostics
+                if diagnostic.bucket != "review"
+            ]
+            all_items = [*template.items, *history_items]
+            selected_per_knowledge = dict(template.selected_per_knowledge_point)
+            for item in history_items:
+                selected_per_knowledge[item.knowledge_point_code] = (
+                    selected_per_knowledge.get(item.knowledge_point_code, 0) + 1
+                )
+            requested_count = template.requested_count + len(wrong_answers)
+            selected_count = len(all_items)
+            shortfall = template.new_shortfall + history_diagnostic.shortfall
+            recommendation = template.model_copy(update={
+                "student_id": student.id,
+                "status": "ready" if shortfall == 0 else "insufficient_candidates",
+                "requested_count": requested_count,
+                "selected_count": selected_count,
+                "shortfall": shortfall,
+                "review_shortfall": history_diagnostic.shortfall,
+                "selected_per_knowledge_point": selected_per_knowledge,
+                "diagnostics": [*required_diagnostics, history_diagnostic],
+                "items": all_items,
+            })
+            results.append(StudentRecommendationPreview(
+                student_id=student.id,
+                student_code=student.student_code,
+                student_name=student.display_name,
+                recommendation=recommendation,
+            ))
     else:
         contexts = load_contexts(db, [student.id for student in students])
         candidates = recommendation_candidates(
@@ -229,6 +304,7 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
             audit = {
                 "schema_version": "m3-selection-audit-v1",
                 "source": "recommendation",
+                "source_module": selected.source_module,
                 "selected_at": result.as_of.isoformat(),
                 **selected.model_dump(mode="json"),
             }

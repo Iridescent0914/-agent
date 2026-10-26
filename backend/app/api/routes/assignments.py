@@ -65,9 +65,11 @@ def list_assignments(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1
 
 @router.get("/recent-completed", response_model=list[AssignmentListItem])
 def recent_completed_assignments(
-    limit: int = Query(5, ge=1, le=5), db: Session = Depends(get_db)
+    limit: int = Query(5, ge=1, le=5),
+    class_id: UUID | None = Query(None),
+    db: Session = Depends(get_db),
 ):
-    return list_recent_completed_assignments(db, limit=limit)
+    return list_recent_completed_assignments(db, limit=limit, class_id=class_id)
 
 
 @router.get("/{assignment_id}", response_model=AssignmentDetailOut)

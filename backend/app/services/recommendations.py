@@ -11,7 +11,9 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import KnowledgePoint, Question
+from app.models import (
+    Assignment, Attempt, KnowledgePoint, PaperInstance, PaperInstanceItem, Question,
+)
 from app.schemas.profile import EvidenceRef
 from app.schemas.recommendations import (
     BucketDiagnostic, FilterStage, RecommendationOut, RecommendationRequest,
@@ -44,6 +46,183 @@ class Candidate:
     knowledge_point_code: str
     knowledge_point_name: str
     ready: bool = True
+
+
+@dataclass(frozen=True)
+class HistoryWrongAnswer:
+    student_id: UUID
+    source_question_id: UUID
+    source_original_qid: str
+    order_no: int
+    difficulty: int
+    knowledge_point_code: str
+    knowledge_point_name: str
+    attempt_id: UUID
+    revision_no: int
+
+
+def _is_required_item(selection_audit: dict | None) -> bool:
+    audit = selection_audit or {}
+    return (
+        audit.get("source_module") == "required"
+        or "required_question" in (audit.get("reason_codes") or [])
+    )
+
+
+def assignment_is_fully_graded(db: Session, assignment_id: UUID) -> bool:
+    """Return whether every item in every active paper has a final result."""
+
+    papers = list(db.scalars(select(PaperInstance).where(
+        PaperInstance.assignment_id == assignment_id,
+    )))
+    if any(paper.status == "draft" for paper in papers):
+        return False
+    active_ids = [
+        paper.id for paper in papers
+        if paper.status == "published" and paper.invalidated_at is None
+    ]
+    if not active_ids:
+        return False
+    item_ids = list(db.scalars(select(PaperInstanceItem.id).where(
+        PaperInstanceItem.paper_instance_id.in_(active_ids),
+    )))
+    if not item_ids:
+        return False
+    attempts = list(db.scalars(select(Attempt).where(
+        Attempt.paper_instance_item_id.in_(item_ids),
+    )))
+    by_item = {attempt.paper_instance_item_id: attempt for attempt in attempts}
+    return all(
+        item_id in by_item
+        and by_item[item_id].grade_status in ("auto_confirmed", "teacher_confirmed")
+        and by_item[item_id].is_correct is not None
+        for item_id in item_ids
+    )
+
+
+def history_wrong_answers(
+    db: Session, *, source_assignment_id: UUID, class_id: UUID,
+    student_ids: list[UUID],
+) -> dict[UUID, list[HistoryWrongAnswer]]:
+    """Load final <=3-star mandatory errors from the teacher-selected assignment."""
+
+    assignment = db.get(Assignment, source_assignment_id)
+    if assignment is None:
+        raise LookupError("历史回顾作业不存在")
+    if assignment.class_id != class_id:
+        raise ValueError("历史回顾作业不属于当前班级")
+    if not assignment_is_fully_graded(db, source_assignment_id):
+        raise ValueError("历史回顾作业尚未全部批改完成")
+
+    target_students = set(student_ids)
+    result = {student_id: [] for student_id in student_ids}
+    rows = db.execute(
+        select(PaperInstance.student_id, PaperInstanceItem, Attempt)
+        .join(
+            PaperInstanceItem,
+            PaperInstanceItem.paper_instance_id == PaperInstance.id,
+        )
+        .join(Attempt, Attempt.paper_instance_item_id == PaperInstanceItem.id)
+        .where(
+            PaperInstance.assignment_id == source_assignment_id,
+            PaperInstance.status == "published",
+            PaperInstance.invalidated_at.is_(None),
+            PaperInstance.student_id.in_(student_ids),
+            Attempt.grade_status.in_(("auto_confirmed", "teacher_confirmed")),
+            Attempt.is_correct.is_(False),
+        )
+        .order_by(PaperInstance.student_id, PaperInstanceItem.order_no)
+    ).all()
+    for student_id, item, attempt in rows:
+        if student_id not in target_students or not _is_required_item(item.selection_audit):
+            continue
+        snapshot = item.question_snapshot or {}
+        knowledge = item.knowledge_point_snapshot or {}
+        difficulty = snapshot.get("difficulty")
+        knowledge_code = knowledge.get("id")
+        if not isinstance(difficulty, int) or not 1 <= difficulty <= 3:
+            continue
+        if not isinstance(knowledge_code, str) or not knowledge_code:
+            continue
+        result[student_id].append(HistoryWrongAnswer(
+            student_id=student_id,
+            source_question_id=item.question_id,
+            source_original_qid=str(snapshot.get("original_qid") or item.question_id),
+            order_no=item.order_no,
+            difficulty=difficulty,
+            knowledge_point_code=knowledge_code,
+            knowledge_point_name=str(knowledge.get("name") or knowledge_code),
+            attempt_id=attempt.id,
+            revision_no=attempt.revision_no,
+        ))
+    return result
+
+
+def select_history_recommendations(
+    *, student_id: UUID, candidates: list[Candidate],
+    errors: list[HistoryWrongAnswer], excluded_question_ids: set[UUID],
+    params: RecommendationRequest, as_of: datetime,
+) -> tuple[list[RecommendedQuestion], BucketDiagnostic]:
+    """Choose one deterministic same-KP, same-difficulty replacement per error."""
+
+    pools: dict[tuple[str, int], list[Candidate]] = {}
+    for candidate in candidates:
+        if not candidate.ready or candidate.question_id in excluded_question_ids:
+            continue
+        pools.setdefault(
+            (candidate.knowledge_point_code, candidate.difficulty), []
+        ).append(candidate)
+    for pool in pools.values():
+        pool.sort(key=lambda item: (item.original_qid, item.question_id.int))
+
+    selected: list[RecommendedQuestion] = []
+    used = set(excluded_question_ids)
+    missing = 0
+    for error in errors:
+        chosen = next((
+            candidate for candidate in pools.get(
+                (error.knowledge_point_code, error.difficulty), []
+            )
+            if candidate.question_id not in used
+            and candidate.question_id != error.source_question_id
+        ), None)
+        if chosen is None:
+            missing += 1
+            continue
+        used.add(chosen.question_id)
+        item = score_candidate(chosen, None, params, "review", as_of)
+        selected.append(item.model_copy(update={
+            "source_module": "history",
+            "reason_codes": [
+                "history_review", "source_required_wrong",
+                "same_knowledge_point", "same_difficulty",
+            ],
+            "reason_text": (
+                f"回顾所选作业中的错题 {error.source_original_qid}："
+                f"同知识点、同难度（{error.difficulty} 星）替换题。"
+            ),
+            "evidence": [EvidenceRef(
+                attempt_id=error.attempt_id, revision_no=error.revision_no,
+            )],
+        }))
+
+    knowledge_codes = list(dict.fromkeys(
+        error.knowledge_point_code for error in errors
+    ))
+    diagnostic = BucketDiagnostic(
+        bucket="review",
+        knowledge_point_codes=knowledge_codes,
+        requested_count=len(errors),
+        selected_count=len(selected),
+        shortfall=missing,
+        stages=[FilterStage(
+            code="history_same_knowledge_and_difficulty",
+            remaining=len(selected), removed=missing,
+        )],
+        reason_codes=["insufficient_history_inventory"] if missing else [],
+        capped_knowledge_point_codes=[],
+    )
+    return selected, diagnostic
 
 
 def score_candidate(candidate: Candidate, result: MasteryResult | None,
@@ -267,6 +446,7 @@ def select_required_recommendations(
         for candidate in chosen:
             item = score_candidate(candidate, None, params, "new", as_of)
             selected.append(item.model_copy(update={
+                "source_module": "required",
                 "reason_codes": ["required_question", f"difficulty_{difficulty}"],
                 "reason_text": f"教师设置的必做题，难度 {difficulty}",
             }))

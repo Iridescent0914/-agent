@@ -24,7 +24,9 @@ from app.services.paper_snapshots import (
     copy_item, current_knowledge_point_snapshot, current_selection_audit, load_question,
     snapshot_payload, student_safe_question_snapshot, student_safe_value,
 )
-from app.services.recommendations import Candidate, score_candidate
+from app.services.recommendations import (
+    Candidate, assignment_is_fully_graded, score_candidate,
+)
 from app.services.student_profile import load_context
 
 
@@ -218,9 +220,11 @@ def assignment_paper_summaries(
 
 def list_assignment_items(
     db: Session, *, offset: int, limit: int, class_name: str | None = None,
-    chapter_code: str | None = None,
+    chapter_code: str | None = None, class_id: UUID | None = None,
 ) -> tuple[list[AssignmentListItem], int]:
     assignment_query = select(Assignment).where(Assignment.assignment_type == "practice")
+    if class_id is not None:
+        assignment_query = assignment_query.where(Assignment.class_id == class_id)
     if chapter_code is not None:
         assignment_query = assignment_query.where(Assignment.chapter_code == chapter_code)
     if class_name is not None:
@@ -280,20 +284,34 @@ def list_assignment_items(
 
 
 def list_recent_completed_assignments(
-    db: Session, *, limit: int = 5
+    db: Session, *, limit: int = 5, class_id: UUID | None = None,
 ) -> list[AssignmentListItem]:
-    """Return the latest assignments whose generated papers are all published.
+    """Return the latest fully graded assignments for the selected class.
 
     A teacher explicitly chooses the history source; the API deliberately does
     not guess which assignment a relative label such as "yesterday" refers to.
     """
 
-    candidates, _ = list_assignment_items(db, offset=0, limit=100)
-    completed = [
-        item for item in candidates
-        if item.student_count > 0 and item.draft_count == 0 and item.published_count > 0
-    ]
-    return completed[:limit]
+    completed: list[AssignmentListItem] = []
+    offset = 0
+    while len(completed) < limit:
+        candidates, total = list_assignment_items(
+            db, offset=offset, limit=100, class_id=class_id,
+        )
+        for item in candidates:
+            if (
+                item.student_count > 0
+                and item.draft_count == 0
+                and item.published_count > 0
+                and assignment_is_fully_graded(db, item.id)
+            ):
+                completed.append(item)
+                if len(completed) == limit:
+                    break
+        offset += len(candidates)
+        if not candidates or offset >= total:
+            break
+    return completed
 
 
 def delete_empty_assignment(db: Session, assignment_id: UUID) -> UUID:
