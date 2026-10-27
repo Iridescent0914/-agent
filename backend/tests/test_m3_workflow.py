@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from copy import deepcopy
-from datetime import datetime, timezone
-from uuid import uuid4
+from datetime import datetime, timedelta, timezone
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,7 +16,10 @@ from app.models import (
     Question, Student, Submission,
 )
 from app.services.paper_snapshots import new_item, snapshot_payload
-from app.services.recommendations import required_question_candidates
+from app.services.recommendations import (
+    history_wrong_answers, recent_completed_assignment_ids,
+    required_question_candidates,
+)
 
 
 @pytest.fixture
@@ -61,7 +64,11 @@ def counts(db):
                  for model in (Assignment, PaperInstance, PaperInstanceItem))
 
 
-def completed_required_source(db, student):
+def completed_required_source(
+    db, student, *, minimum_group_size: int = 2,
+    minimum_required_count: int = 0,
+    source_module: str = "required",
+):
     grouped = defaultdict(list)
     rows = db.execute(
         select(Question, KnowledgePoint)
@@ -79,7 +86,11 @@ def completed_required_source(db, student):
             question.grade, question.chapter_code, question.difficulty,
             knowledge_point.code,
         )].append((question, knowledge_point))
-    group = next(items for items in grouped.values() if len(items) >= 2)
+    group = next(
+        items for items in grouped.values()
+        if len(items) >= minimum_group_size
+        and sum(question.is_required for question, _ in items) >= minimum_required_count
+    )
     source_question, knowledge_point = group[0]
     now = datetime.now(timezone.utc)
     assignment = Assignment(
@@ -109,8 +120,10 @@ def completed_required_source(db, student):
         payload=snapshot_payload(source_question),
         selection_audit={
             "source": "recommendation",
-            "source_module": "required",
-            "reason_codes": ["required_question"],
+            "source_module": source_module,
+            "reason_codes": (
+                ["required_question"] if source_module == "required" else []
+            ),
         },
     )
     db.add(item)
@@ -292,6 +305,271 @@ def test_required_and_selected_history_are_combined_per_student(client, db):
     assert [item["selection_audit"]["source_module"] for item in paper["items"]] == [
         "required", "history",
     ]
+
+
+def test_history_scope_is_independent_from_current_grade_and_chapter(client, db):
+    student = db.scalar(select(Student).where(
+        Student.archived_at.is_(None), Student.class_id.is_not(None),
+    ).order_by(Student.student_code))
+    source, source_question, source_knowledge_point = completed_required_source(
+        db, student, minimum_group_size=4,
+    )
+    suffix = uuid4().hex
+    target_chapter_code = f"test.cross.scope.{suffix}"
+    target_knowledge_point = KnowledgePoint(
+        code=f"{target_chapter_code}.kp",
+        name="Cross-scope current knowledge point",
+        chapter_code=target_chapter_code,
+        chapter_name="Cross-scope current chapter",
+        section="Cross-scope section",
+        sort_order=1,
+        core_competencies=["Cross-scope competency"],
+    )
+    db.add(target_knowledge_point)
+    db.flush()
+    target_question = Question(
+        original_qid=f"test.cross.scope.question.{suffix}",
+        schema_version=source_question.schema_version,
+        chapter_code=target_chapter_code,
+        chapter_name="Cross-scope current chapter",
+        grade="Cross-scope current grade",
+        section="Cross-scope section",
+        question_type=source_question.question_type,
+        difficulty=2,
+        main_knowledge_point_id=target_knowledge_point.id,
+        question_text=source_question.question_text,
+        options=deepcopy(source_question.options),
+        correct_answer=deepcopy(source_question.correct_answer),
+        reference_answer_raw=source_question.reference_answer_raw,
+        answer_match_type=source_question.answer_match_type,
+        answer_normalization_rule=deepcopy(source_question.answer_normalization_rule),
+        solution=source_question.solution,
+        wrong_analysis=source_question.wrong_analysis,
+        estimated_score_rate=source_question.estimated_score_rate,
+        core_literacy=source_question.core_literacy,
+        is_required=True,
+        has_image=source_question.has_image,
+        has_equation=source_question.has_equation,
+        assets=deepcopy(source_question.assets),
+        source_file="cross-scope-history-test",
+        source_question_number=1,
+        source_review_status="reviewed",
+        grading_readiness="machine_ready",
+        import_status="parsed",
+        import_issues=[],
+        review_revision=1,
+        review_history=[],
+    )
+    db.add(target_question)
+    db.flush()
+    request = {
+        "class_id": str(student.class_id),
+        "student_scope": "all_class",
+        "student_ids": [],
+        "recommendation_parameters": {
+            "chapter_code": target_question.chapter_code,
+            "chapter_codes": [target_question.chapter_code],
+            "grade_codes": [target_question.grade],
+            "new_knowledge_point_codes": [target_knowledge_point.code],
+            "review_knowledge_point_codes": [],
+            "new_count": 1,
+            "review_count": 0,
+            "avoid_recent_days": 0,
+            "max_knowledge_point_ratio": 1,
+        },
+        "filter_config": {
+            "grade_codes": [target_question.grade],
+            "chapter_codes": [target_question.chapter_code],
+            "required": {
+                "knowledge_point_codes": [target_knowledge_point.code],
+                "core_literacies": [],
+                "difficulty_counts": {str(target_question.difficulty): 1},
+            },
+            "personalized": {
+                "knowledge_point_codes": [target_knowledge_point.code],
+                "primary_competency": target_knowledge_point.core_competencies[0],
+                "question_count": 3,
+            },
+            "history": {"assignment_id": str(source.id)},
+        },
+        "title": "cross-scope history test",
+        "idempotency_key": "cross-scope-history-" + uuid4().hex,
+    }
+    created = client.post("/api/v1/assignments", json=request)
+    assert created.status_code == 201, created.text
+    paper_summary = next(
+        value for value in created.json()["papers"]
+        if value["student_id"] == str(student.id)
+    )
+    paper = client.get(
+        f"/api/v1/paper-instances/{paper_summary['id']}"
+    ).json()
+    required_item = next(
+        item for item in paper["items"]
+        if item["selection_audit"]["source_module"] == "required"
+    )
+    history_item = next(
+        item for item in paper["items"]
+        if item["selection_audit"]["source_module"] == "history"
+    )
+    assert required_item["knowledge_point_snapshot"]["id"] == target_knowledge_point.code
+    assert history_item["knowledge_point_snapshot"]["id"] == source_knowledge_point.code
+    assert history_item["question_snapshot"]["chapter_code"] == source_question.chapter_code
+    assert history_item["question_id"] != str(source_question.id)
+
+    alternatives = client.get(
+        f"/api/v1/paper-instances/{paper['id']}/items/{history_item['id']}/alternatives"
+    )
+    assert alternatives.status_code == 200, alternatives.text
+    choices = alternatives.json()["items"]
+    assert choices
+    assert all(
+        item["knowledge_point_code"] == source_knowledge_point.code
+        and item["difficulty"] == source_question.difficulty
+        for item in choices
+    )
+
+
+def test_required_and_history_replacements_preserve_module_and_history_evidence(client, db):
+    student = db.scalar(select(Student).where(
+        Student.archived_at.is_(None), Student.class_id.is_not(None),
+    ).order_by(Student.student_code))
+    source, source_question, knowledge_point = completed_required_source(
+        db, student, minimum_group_size=6, minimum_required_count=4,
+    )
+    competency = knowledge_point.core_competencies[0]
+    request = {
+        "class_id": str(student.class_id),
+        "student_scope": "all_class",
+        "student_ids": [],
+        "recommendation_parameters": {
+            "chapter_code": source_question.chapter_code,
+            "chapter_codes": [source_question.chapter_code],
+            "grade_codes": [source_question.grade],
+            "new_knowledge_point_codes": [knowledge_point.code],
+            "review_knowledge_point_codes": [],
+            "new_count": 1,
+            "review_count": 0,
+            "avoid_recent_days": 0,
+            "max_knowledge_point_ratio": 0.5,
+        },
+        "filter_config": {
+            "grade_codes": [source_question.grade],
+            "chapter_codes": [source_question.chapter_code],
+            "required": {
+                "knowledge_point_codes": [knowledge_point.code],
+                "core_literacies": [],
+                "difficulty_counts": {str(source_question.difficulty): 1},
+            },
+            "personalized": {
+                "knowledge_point_codes": [knowledge_point.code],
+                "primary_competency": competency,
+                "question_count": 3,
+            },
+            "history": {"assignment_id": str(source.id)},
+        },
+        "title": "history replacement audit test",
+        "idempotency_key": "history-replacement-" + uuid4().hex,
+    }
+    created = client.post("/api/v1/assignments", json=request)
+    assert created.status_code == 201, created.text
+    paper_summary = next(
+        value for value in created.json()["papers"]
+        if value["student_id"] == str(student.id)
+    )
+    paper = client.get(
+        f"/api/v1/paper-instances/{paper_summary['id']}"
+    ).json()
+    history_item = next(
+        item for item in paper["items"]
+        if item["selection_audit"]["source_module"] == "history"
+    )
+    original_evidence = history_item["selection_audit"]["evidence"]
+    history_alternatives = client.get(
+        f"/api/v1/paper-instances/{paper['id']}/items/{history_item['id']}/alternatives"
+    )
+    assert history_alternatives.status_code == 200, history_alternatives.text
+    history_choices = history_alternatives.json()["items"]
+    assert history_choices
+    assert str(source_question.id) not in {
+        item["question_id"] for item in history_choices
+    }
+    assert all(
+        item["knowledge_point_code"] == knowledge_point.code
+        and item["difficulty"] == source_question.difficulty
+        for item in history_choices
+    )
+    replaced_history = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/items/{history_item['id']}/replace",
+        json={
+            "replacement_question_id": history_choices[0]["question_id"],
+            "expected_edit_revision": paper["edit_revision"],
+        },
+    )
+    assert replaced_history.status_code == 200, replaced_history.text
+    paper = replaced_history.json()
+    history_item = next(item for item in paper["items"] if item["id"] == history_item["id"])
+    assert history_item["selection_audit"]["source_module"] == "history"
+    assert history_item["selection_audit"]["evidence"] == original_evidence
+    assert "history_review" in history_item["selection_audit"]["reason_codes"]
+
+    required_item = next(
+        item for item in paper["items"]
+        if item["selection_audit"]["source_module"] == "required"
+    )
+    required_alternatives = client.get(
+        f"/api/v1/paper-instances/{paper['id']}/items/{required_item['id']}/alternatives"
+    )
+    assert required_alternatives.status_code == 200, required_alternatives.text
+    required_choices = required_alternatives.json()["items"]
+    assert required_choices
+    required_choice_ids = [item["question_id"] for item in required_choices]
+    assert all(db.get(Question, UUID(value)).is_required for value in required_choice_ids)
+    replaced_required = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/items/{required_item['id']}/replace",
+        json={
+            "replacement_question_id": required_choices[0]["question_id"],
+            "expected_edit_revision": paper["edit_revision"],
+        },
+    )
+    assert replaced_required.status_code == 200, replaced_required.text
+    required_item = next(
+        item for item in replaced_required.json()["items"]
+        if item["id"] == required_item["id"]
+    )
+    assert required_item["selection_audit"]["source_module"] == "required"
+    assert "required_question" in required_item["selection_audit"]["reason_codes"]
+
+
+def test_history_source_must_be_one_of_latest_five_eligible_assignments(db):
+    student = db.scalar(select(Student).where(
+        Student.archived_at.is_(None), Student.class_id.is_not(None),
+    ).order_by(Student.student_code))
+    base = datetime.now(timezone.utc) + timedelta(days=30)
+    sources = []
+    for index in range(6):
+        assignment, _, _ = completed_required_source(db, student)
+        assignment.created_at = base + timedelta(minutes=index)
+        sources.append(assignment)
+
+    ineligible, _, _ = completed_required_source(
+        db, student, source_module="legacy_recommendation",
+    )
+    ineligible.created_at = base + timedelta(minutes=7)
+    db.flush()
+
+    recent_ids = recent_completed_assignment_ids(
+        db, class_id=student.class_id, limit=5,
+    )
+    assert recent_ids == [assignment.id for assignment in reversed(sources[1:])]
+    assert ineligible.id not in recent_ids
+    with pytest.raises(ValueError, match="最近五次"):
+        history_wrong_answers(
+            db,
+            source_assignment_id=sources[0].id,
+            class_id=student.class_id,
+            student_ids=[student.id],
+        )
 
 
 def test_required_candidates_exclude_questions_not_marked_required(db):

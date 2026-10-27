@@ -483,7 +483,7 @@ export function AssignmentCreatePage() {
 
         <div hidden={activeModule !== 'history'}>
           <Card size="small" className="assignment-filter-panel" title="历史回顾筛选" extra={<Button type="link" onClick={() => setActiveModule(null)}>收起</Button>}>
-          <Alert type="info" showIcon message="选择后，将按每名学生在该作业必做题中的三星及以下错题，生成同知识点、同难度回顾题" description="系统不会根据“昨天”等相对时间自动猜测；没有符合条件的错题时不生成历史回顾题。" />
+          <Alert type="info" showIcon message="选择后，将按每名学生在该作业必做题中的三星及以下错题，生成同知识点、同难度回顾题" description="历史回顾不受本次年级和章节限制；系统不会根据“昨天”等相对时间自动猜测，没有符合条件的错题时不生成历史回顾题。" />
           <Form.Item label="当前班级最近 5 次已批改作业" name="history_assignment_id"><Select allowClear options={recentAssignments.map((item) => ({ value: item.id, label: `${item.title} · ${item.class_name ?? '未命名班级'} · ${new Date(item.created_at).toLocaleString('zh-CN')}` }))} placeholder={recentAssignments.length ? '请选择作业' : '暂无已全部批改的作业'} notFoundContent={<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已全部批改的作业" />} /></Form.Item>
           </Card>
         </div>

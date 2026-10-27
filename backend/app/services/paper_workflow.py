@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Assignment, KnowledgePoint, PaperInstance, PaperInstanceItem, Question,
+    Assignment, Attempt, KnowledgePoint, PaperInstance, PaperInstanceItem, Question,
     SchoolClass, Student,
 )
 from app.schemas.assignments import AssignmentDetailOut, AssignmentListItem
@@ -25,7 +25,7 @@ from app.services.paper_snapshots import (
     snapshot_payload, student_safe_question_snapshot, student_safe_value,
 )
 from app.services.recommendations import (
-    Candidate, assignment_is_fully_graded, score_candidate,
+    Candidate, recent_completed_assignment_ids, score_candidate,
 )
 from app.services.student_profile import load_context
 
@@ -292,6 +292,9 @@ def list_recent_completed_assignments(
     not guess which assignment a relative label such as "yesterday" refers to.
     """
 
+    eligible_ids = set(recent_completed_assignment_ids(
+        db, class_id=class_id, limit=limit,
+    ))
     completed: list[AssignmentListItem] = []
     offset = 0
     while len(completed) < limit:
@@ -299,12 +302,7 @@ def list_recent_completed_assignments(
             db, offset=offset, limit=100, class_id=class_id,
         )
         for item in candidates:
-            if (
-                item.student_count > 0
-                and item.draft_count == 0
-                and item.published_count > 0
-                and assignment_is_fully_graded(db, item.id)
-            ):
+            if item.id in eligible_ids:
                 completed.append(item)
                 if len(completed) == limit:
                     break
@@ -353,31 +351,56 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
     target = next((item for item in items if item.id == item_id), None)
     if target is None:
         raise LookupError("paper item not found")
-    bucket = (target.selection_audit or {}).get("bucket")
+    audit = target.selection_audit or {}
+    bucket = audit.get("bucket")
     if bucket not in ("new", "review"):
         raise PaperValidation("paper item has no recommendation bucket")
     params, as_of = _parameters(db, paper)
     context = load_context(db, paper.student_id)
+    source_module = audit.get("source_module")
+    is_history = source_module == "history"
+    target_knowledge_code = target.knowledge_point_snapshot.get("id")
+    target_difficulty = target.question_snapshot.get("difficulty")
     allowed_codes = (
-        params.new_knowledge_point_codes
+        [target_knowledge_code]
+        if is_history and target_knowledge_code
+        else params.new_knowledge_point_codes
         if bucket == "new"
         else params.review_knowledge_point_codes
     )
     existing_ids = {item.question_id for item in items}
+    source_question_ids: set[UUID] = set()
+    if is_history:
+        attempt_ids: list[UUID] = []
+        for evidence in audit.get("evidence") or []:
+            try:
+                attempt_ids.append(UUID(str(evidence.get("attempt_id"))))
+            except (AttributeError, TypeError, ValueError):
+                continue
+        if attempt_ids:
+            source_question_ids.update(db.scalars(
+                select(Attempt.question_id).where(Attempt.id.in_(attempt_ids))
+            ))
     per_knowledge = Counter(
         item.knowledge_point_snapshot.get("id")
-        for item in items if item.id != target.id
+        for item in items
+        if item.id != target.id
+        and (item.selection_audit or {}).get("bucket") == bucket
     )
     practiced = {record.attempt.question_id for record in context.records
                  if params.avoid_recent_days and
                  as_of - timedelta(days=params.avoid_recent_days) <= record.attempt.answered_at <= as_of}
+    question_filters = [Question.archived_at.is_(None)]
+    if not is_history:
+        question_filters.append(Question.chapter_code.in_(
+            params.chapter_codes or [params.chapter_code]
+        ))
+    if not is_history and params.grade_codes:
+        question_filters.append(Question.grade.in_(params.grade_codes))
     rows = db.execute(
         select(Question, KnowledgePoint)
         .join(KnowledgePoint, KnowledgePoint.id == Question.main_knowledge_point_id)
-        .where(
-            Question.chapter_code == params.chapter_code,
-            Question.archived_at.is_(None),
-        )
+        .where(*question_filters)
     ).all()
     ranked = []
     cap = max(
@@ -388,18 +411,27 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
         ),
     )
     for question, knowledge_point in rows:
-        if question.id in existing_ids or question.id in practiced:
+        if question.id in existing_ids or question.id in source_question_ids:
+            continue
+        if not is_history and question.id in practiced:
             continue
         if (
             knowledge_point.code not in allowed_codes
-            or question.question_type not in params.question_types
         ):
             continue
-        if not params.min_difficulty <= question.difficulty <= params.max_difficulty:
+        if is_history:
+            if question.difficulty != target_difficulty:
+                continue
+        elif (
+            question.question_type not in params.question_types
+            or not params.min_difficulty <= question.difficulty <= params.max_difficulty
+        ):
+            continue
+        if source_module == "required" and not question.is_required:
             continue
         if question.grading_readiness != "machine_ready" or question.source_review_status != "reviewed":
             continue
-        if per_knowledge[knowledge_point.code] >= cap:
+        if not is_history and per_knowledge[knowledge_point.code] >= cap:
             continue
         candidate = Candidate(
             question.id, question.original_qid, question.question_type, question.difficulty,
@@ -427,8 +459,10 @@ def replace_item(db: Session, paper_id: UUID, item_id: UUID, *, replacement_id: 
                    if value.question_id == replacement_id), None)
     if choice is None:
         raise PaperValidation("replacement question is not an allowed alternative")
+    previous_audit = deepcopy(item.selection_audit or {})
     old = {"item_id": str(item.id), "question_id": str(item.question_id),
-           "original_qid": item.question_snapshot.get("original_qid")}
+           "original_qid": item.question_snapshot.get("original_qid"),
+           "source_module": previous_audit.get("source_module")}
     payload = snapshot_payload(load_question(db, replacement_id))
     item.question_id = replacement_id
     item.question_snapshot = payload["question_snapshot"]
@@ -437,10 +471,27 @@ def replace_item(db: Session, paper_id: UUID, item_id: UUID, *, replacement_id: 
     item.answer_rule_snapshot = payload["answer_rule_snapshot"]
     item.knowledge_point_snapshot = payload["knowledge_point_snapshot"]
     item.answer_region = None
+    choice_audit = choice.model_dump(mode="json")
+    previous_module = previous_audit.get("source_module")
+    if previous_module in {"required", "personalized", "history", "legacy_recommendation"}:
+        choice_audit["source_module"] = previous_module
+    reason_codes = list(dict.fromkeys([
+        *(choice_audit.get("reason_codes") or []),
+        *(previous_audit.get("reason_codes") or []),
+        "teacher_replacement",
+    ]))
+    if previous_module == "required" and "required_question" not in reason_codes:
+        reason_codes.append("required_question")
+    choice_audit["reason_codes"] = reason_codes
+    if previous_module == "history":
+        choice_audit["evidence"] = deepcopy(previous_audit.get("evidence") or [])
+        choice_audit["reason_text"] = previous_audit.get(
+            "reason_text", choice_audit.get("reason_text", "")
+        )
     item.selection_audit = {
         "schema_version": "m3-selection-audit-v1", "source": "teacher_replacement",
         "selected_at": datetime.now(timezone.utc).isoformat(), "replaces": old,
-        **choice.model_dump(mode="json"),
+        **choice_audit,
     }
     _event(paper, "replace_item", {"item_id": str(item.id), "before": old,
                                     "replacement_question_id": str(replacement_id)})

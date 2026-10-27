@@ -100,6 +100,47 @@ def assignment_is_fully_graded(db: Session, assignment_id: UUID) -> bool:
     )
 
 
+def assignment_has_required_items(db: Session, assignment_id: UUID) -> bool:
+    """Return whether an active paper contains an auditable mandatory item."""
+
+    audits = db.scalars(
+        select(PaperInstanceItem.selection_audit)
+        .join(
+            PaperInstance,
+            PaperInstance.id == PaperInstanceItem.paper_instance_id,
+        )
+        .where(
+            PaperInstance.assignment_id == assignment_id,
+            PaperInstance.status == "published",
+            PaperInstance.invalidated_at.is_(None),
+        )
+    )
+    return any(_is_required_item(audit) for audit in audits)
+
+
+def recent_completed_assignment_ids(
+    db: Session, *, class_id: UUID | None, limit: int = 5,
+) -> list[UUID]:
+    """Resolve the latest completed assignments that can drive history review."""
+
+    query = select(Assignment.id).where(Assignment.assignment_type == "practice")
+    if class_id is not None:
+        query = query.where(Assignment.class_id == class_id)
+    candidate_ids = db.scalars(
+        query.order_by(Assignment.created_at.desc(), Assignment.id)
+    )
+    completed: list[UUID] = []
+    for assignment_id in candidate_ids:
+        if (
+            assignment_is_fully_graded(db, assignment_id)
+            and assignment_has_required_items(db, assignment_id)
+        ):
+            completed.append(assignment_id)
+            if len(completed) == limit:
+                break
+    return completed
+
+
 def history_wrong_answers(
     db: Session, *, source_assignment_id: UUID, class_id: UUID,
     student_ids: list[UUID],
@@ -113,6 +154,10 @@ def history_wrong_answers(
         raise ValueError("历史回顾作业不属于当前班级")
     if not assignment_is_fully_graded(db, source_assignment_id):
         raise ValueError("历史回顾作业尚未全部批改完成")
+    if source_assignment_id not in recent_completed_assignment_ids(
+        db, class_id=class_id, limit=5,
+    ):
+        raise ValueError("历史回顾作业不在当前班级最近五次可回顾作业中")
 
     target_students = set(student_ids)
     result = {student_id: [] for student_id in student_ids}
@@ -364,6 +409,37 @@ def recommendation_candidates(
         .join(KnowledgePoint, KnowledgePoint.id == Question.main_knowledge_point_id)
         .where(
             *filters,
+            Question.archived_at.is_(None),
+        )
+    ).all()
+    return [Candidate(
+        question.id, question.original_qid, question.question_type,
+        question.difficulty,
+        knowledge_point.id,
+        knowledge_point.code,
+        knowledge_point.name,
+        question.grading_readiness == "machine_ready"
+        and question.source_review_status == "reviewed",
+    ) for question, knowledge_point in rows]
+
+
+def history_recommendation_candidates(
+    db: Session, knowledge_point_codes: list[str],
+) -> list[Candidate]:
+    """Load history replacements from source-error knowledge points only.
+
+    History scope is chosen explicitly through the source assignment.  It must
+    not be narrowed again by the grade and chapter filters used for today's
+    required and personalized modules.
+    """
+
+    if not knowledge_point_codes:
+        return []
+    rows = db.execute(
+        select(Question, KnowledgePoint)
+        .join(KnowledgePoint, KnowledgePoint.id == Question.main_knowledge_point_id)
+        .where(
+            KnowledgePoint.code.in_(knowledge_point_codes),
             Question.archived_at.is_(None),
         )
     ).all()

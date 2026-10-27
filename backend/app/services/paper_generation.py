@@ -16,7 +16,8 @@ from app.schemas.assignments import (
 )
 from app.services.paper_snapshots import load_questions, new_item, snapshot_payload
 from app.services.recommendations import (
-    history_wrong_answers, preview, recommendation_candidates,
+    history_recommendation_candidates, history_wrong_answers, preview,
+    recommendation_candidates,
     required_question_candidates, select_history_recommendations,
     select_required_recommendations,
 )
@@ -147,8 +148,13 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                 class_id=school_class.id,
                 student_ids=[student.id for student in students],
             )
-            history_candidates = recommendation_candidates(
-                db, chapter_codes, request.filter_config.grade_codes,
+            history_knowledge_point_codes = sorted({
+                error.knowledge_point_code
+                for errors in history_errors.values()
+                for error in errors
+            })
+            history_candidates = history_recommendation_candidates(
+                db, history_knowledge_point_codes,
             )
         required_ids = {item.question_id for item in template.items}
         results = []
