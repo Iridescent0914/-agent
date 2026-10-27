@@ -16,6 +16,7 @@ from app.models import (
     Question, Student, Submission,
 )
 from app.services.paper_snapshots import new_item, snapshot_payload
+from app.services.recommendations import required_question_candidates
 
 
 @pytest.fixture
@@ -291,6 +292,26 @@ def test_required_and_selected_history_are_combined_per_student(client, db):
     assert [item["selection_audit"]["source_module"] for item in paper["items"]] == [
         "required", "history",
     ]
+
+
+def test_required_candidates_exclude_questions_not_marked_required(db):
+    question = db.scalar(select(Question).where(
+        Question.archived_at.is_(None),
+        Question.grading_readiness == "machine_ready",
+        Question.source_review_status == "reviewed",
+        Question.is_required.is_(True),
+    ))
+    assert question is not None
+
+    question.is_required = False
+    db.flush()
+
+    candidates = required_question_candidates(
+        db,
+        chapter_codes=[question.chapter_code],
+        grades=[question.grade],
+    )
+    assert question.id not in {candidate.question_id for candidate in candidates}
 
 
 def test_selected_student_scope_accepts_more_than_one_hundred_ids(client, db):

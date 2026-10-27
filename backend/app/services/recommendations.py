@@ -384,7 +384,8 @@ def required_question_candidates(
 ) -> list[Candidate]:
     """Load the shared, teacher-scoped pool used by mandatory questions.
 
-    Mandatory questions are selected once per assignment, not once per student.
+    Mandatory questions are selected once per assignment, not once per student,
+    and only questions explicitly marked ``is_required`` may enter this pool.
     Knowledge-point and core-literacy filters are independent. When both are
     provided, a question must match both scopes (their intersection).
     """
@@ -392,6 +393,7 @@ def required_question_candidates(
     filters = [
         Question.chapter_code.in_(chapter_codes),
         Question.grade.in_(grades),
+        Question.is_required.is_(True),
         Question.archived_at.is_(None),
     ]
     rows = db.execute(
