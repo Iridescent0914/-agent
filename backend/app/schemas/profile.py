@@ -22,6 +22,7 @@ class KnowledgePointOut(BaseModel):
     name: str
     chapter_code: str
     available_question_count: int
+    required_available_question_count: int = 0
 
 
 class MasteryOut(BaseModel):

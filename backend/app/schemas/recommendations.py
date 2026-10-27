@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from math import floor
 from typing import Literal, Self
 from uuid import UUID
 
@@ -35,9 +34,9 @@ class RecommendationRequest(BaseModel):
         if self.chapter_code not in self.chapter_codes:
             self.chapter_codes.insert(0, self.chapter_code)
         if len(set(self.chapter_codes)) != len(self.chapter_codes):
-            raise ValueError("绔犺妭涓嶈兘閲嶅")
+            raise ValueError("章节不能重复")
         if len(set(self.grade_codes)) != len(self.grade_codes):
-            raise ValueError("骞寸骇涓嶈兘閲嶅")
+            raise ValueError("年级不能重复")
         total = self.new_count + self.review_count
         if not 1 <= total <= 30:
             raise ValueError("总题量必须在 1 至 30 之间")
@@ -52,8 +51,6 @@ class RecommendationRequest(BaseModel):
             raise ValueError("新知识与回顾范围不能重叠")
         if not self.min_difficulty <= self.base_difficulty <= self.max_difficulty:
             raise ValueError("基础难度必须位于允许难度范围内")
-        if floor(total * self.max_knowledge_point_ratio) < 1:
-            raise ValueError("单知识点允许题数不足 1，请提高知识点占比")
         return self
 
 

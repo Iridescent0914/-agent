@@ -270,7 +270,10 @@ def select_recommendations(*, student_id: UUID, candidates: list[Candidate],
     if as_of.tzinfo is None or as_of.utcoffset() is None:
         raise ValueError("as_of must include a timezone")
     total = params.new_count + params.review_count
-    cap = floor(total * params.max_knowledge_point_ratio)
+    # A valid one-question request must still be able to select one item.  The
+    # ratio is a concentration limit, not a reason to make the whole request
+    # impossible when floor(total * ratio) is zero.
+    cap = max(1, floor(total * params.max_knowledge_point_ratio))
     excluded = {qid for qid, at in practiced
                 if params.avoid_recent_days and as_of - timedelta(days=params.avoid_recent_days) <= at <= as_of}
     selected = []
@@ -428,8 +431,12 @@ def select_required_recommendations(
 ) -> RecommendationOut:
     """Select one deterministic question set shared by every student."""
 
-    unique_candidates = {
+    scoped_candidates = {
         candidate.question_id: candidate for candidate in candidates
+    }
+    unique_candidates = {
+        question_id: candidate
+        for question_id, candidate in scoped_candidates.items()
         if candidate.ready
     }
     selected: list[RecommendedQuestion] = []
@@ -459,9 +466,22 @@ def select_required_recommendations(
             requested_count=requested, selected_count=len(chosen),
             shortfall=shortfall,
             stages=[
-                FilterStage(code="teacher_scope", remaining=len(unique_candidates), removed=0),
-                FilterStage(code="difficulty_filter", remaining=len(pool), removed=0),
-                FilterStage(code="grading_readiness", remaining=len(chosen), removed=len(pool) - len(chosen)),
+                FilterStage(code="teacher_scope", remaining=len(scoped_candidates), removed=0),
+                FilterStage(
+                    code="grading_readiness",
+                    remaining=len(unique_candidates),
+                    removed=len(scoped_candidates) - len(unique_candidates),
+                ),
+                FilterStage(
+                    code="difficulty_filter",
+                    remaining=len(pool),
+                    removed=len(unique_candidates) - len(pool),
+                ),
+                FilterStage(
+                    code="selection_limit",
+                    remaining=len(chosen),
+                    removed=len(pool) - len(chosen),
+                ),
             ],
             reason_codes=["insufficient_difficulty_inventory"] if shortfall else [],
             capped_knowledge_point_codes=[],

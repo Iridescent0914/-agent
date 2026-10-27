@@ -111,27 +111,31 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
     if request.filter_config is not None:
         required = request.filter_config.required
         chapter_codes = request.filter_config.chapter_codes
-        scope_codes = required.knowledge_point_codes or request.recommendation_parameters.new_knowledge_point_codes
+        # In the stage-two contract an empty required scope means "all
+        # knowledge points in the selected grades and chapters".  Do not let
+        # the legacy recommendation field silently narrow that scope.
+        scope_codes = list(required.knowledge_point_codes)
         candidates = required_question_candidates(
             db, chapter_codes, request.filter_config.grade_codes,
             scope_codes, required.core_literacies,
         )
+        effective_scope_codes = scope_codes or sorted({
+            candidate.knowledge_point_code for candidate in candidates
+        })
         difficulty_counts = {
             str(difficulty): count
             for difficulty, count in required.difficulty_counts.items()
             if count
         }
         total_required = sum(difficulty_counts.values())
-        params = request.recommendation_parameters
-        if params.new_count != total_required or params.review_count != 0:
-            params = params.model_copy(update={
-                "new_count": total_required, "review_count": 0,
-                "new_knowledge_point_codes": scope_codes,
-                "review_knowledge_point_codes": [],
-            })
+        params = request.recommendation_parameters.model_copy(update={
+            "new_count": total_required, "review_count": 0,
+            "new_knowledge_point_codes": effective_scope_codes,
+            "review_knowledge_point_codes": [],
+        })
         template = select_required_recommendations(
             student_id=students[0].id, candidates=candidates,
-            knowledge_point_codes=scope_codes,
+            knowledge_point_codes=effective_scope_codes,
             difficulty_counts=difficulty_counts, params=params, as_of=at,
         )
         history_errors = {student.id: [] for student in students}

@@ -1,7 +1,14 @@
 import type { AssetInfo } from './index'
 
 export interface EvidenceRef { attempt_id: string; revision_no: number }
-export interface KnowledgePoint { id: string; code: string; name: string; chapter_code: string; available_question_count: number }
+export interface KnowledgePoint {
+  id: string
+  code: string
+  name: string
+  chapter_code: string
+  available_question_count: number
+  required_available_question_count: number
+}
 export interface Mastery {
   knowledge_point_id: string
   knowledge_point_code: string

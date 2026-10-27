@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from app.schemas.recommendations import RecommendationRequest
 from app.services.recommendations import (
     Candidate, HistoryWrongAnswer, score_candidate, select_history_recommendations,
-    select_recommendations,
+    select_recommendations, select_required_recommendations,
 )
 from app.services.mastery import replay
 from tests.test_mastery import evidence
@@ -66,6 +66,42 @@ def test_no_cross_bucket_fill_and_cap_shortage():
     cap = select(settings=params(review_knowledge_point_codes=["kp.a"], review_count=4))
     assert cap.selected_count == 2
     assert "knowledge_point_cap" in cap.diagnostics[1].reason_codes
+
+
+def test_single_question_request_keeps_a_minimum_cap_of_one():
+    settings = params(
+        review_knowledge_point_codes=["kp.a"],
+        review_count=1,
+        max_knowledge_point_ratio=0.5,
+    )
+    output = select(settings=settings)
+    assert output.max_per_knowledge_point == 1
+    assert output.selected_count == 1
+    assert output.shortfall == 0
+
+
+def test_required_diagnostics_separate_readiness_difficulty_and_limit():
+    pool = candidates()
+    pool[0] = replace(pool[0], ready=False)
+    pool[1] = replace(pool[1], difficulty=3)
+    settings = RecommendationRequest(
+        new_knowledge_point_codes=["kp.a", "kp.b"],
+        new_count=1,
+        max_knowledge_point_ratio=0.5,
+    )
+    output = select_required_recommendations(
+        student_id=STUDENT,
+        candidates=pool,
+        knowledge_point_codes=[],
+        difficulty_counts={"2": 1},
+        params=settings,
+        as_of=NOW,
+    )
+    stages = {stage.code: stage for stage in output.diagnostics[0].stages}
+    assert stages["teacher_scope"].remaining == 6
+    assert stages["grading_readiness"].removed == 1
+    assert stages["difficulty_filter"].removed == 1
+    assert stages["selection_limit"].removed == 3
 
 
 def test_readiness_type_difficulty_filters_do_not_relax():
@@ -152,7 +188,7 @@ def test_history_review_uses_same_knowledge_point_and_difficulty_without_duplica
 
 
 @pytest.mark.parametrize("changes", [
-    {"review_count": 0}, {"review_count": 31}, {"review_count": 1, "max_knowledge_point_ratio": 0.5},
+    {"review_count": 0}, {"review_count": 31},
     {"review_knowledge_point_codes": []}, {"new_knowledge_point_codes": ["kp.a"], "new_count": 1},
     {"question_types": []}, {"base_difficulty": 5, "max_difficulty": 3},
     {"avoid_recent_days": -1}, {"review_count": True}, {"chapter_code": ""},

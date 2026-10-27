@@ -60,10 +60,28 @@ def knowledge_point_catalog(
         )
         .group_by(Question.main_knowledge_point_id).subquery()
     )
+    required_counts = (
+        select(
+            Question.main_knowledge_point_id,
+            func.count(Question.id).label("required_count"),
+        )
+        .where(
+            Question.is_required.is_(True),
+            Question.grading_readiness == "machine_ready",
+            Question.source_review_status == "reviewed",
+            Question.archived_at.is_(None),
+        )
+        .group_by(Question.main_knowledge_point_id)
+        .subquery()
+    )
     query = (
-        select(KnowledgePoint, counts.c.count)
+        select(KnowledgePoint, counts.c.count, required_counts.c.required_count)
         .join(active, active.c.main_knowledge_point_id == KnowledgePoint.id)
         .outerjoin(counts, counts.c.main_knowledge_point_id == KnowledgePoint.id)
+        .outerjoin(
+            required_counts,
+            required_counts.c.main_knowledge_point_id == KnowledgePoint.id,
+        )
     )
     if chapter_code is not None:
         query = query.where(KnowledgePoint.chapter_code == chapter_code)
@@ -74,8 +92,9 @@ def knowledge_point_catalog(
             name=knowledge_point.name,
             chapter_code=knowledge_point.chapter_code,
             available_question_count=count or 0,
+            required_available_question_count=required_count or 0,
         )
-        for knowledge_point, count in db.execute(
+        for knowledge_point, count, required_count in db.execute(
             query.order_by(KnowledgePoint.sort_order, KnowledgePoint.code)
         ).all()
     ]

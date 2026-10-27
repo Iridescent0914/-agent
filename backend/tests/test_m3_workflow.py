@@ -224,7 +224,7 @@ def test_required_and_selected_history_are_combined_per_student(client, db):
             "new_count": 1,
             "review_count": 0,
             "avoid_recent_days": 0,
-            "max_knowledge_point_ratio": 1,
+            "max_knowledge_point_ratio": 0.5,
         },
         "filter_config": {
             "grade_codes": [source_question.grade],
@@ -312,6 +312,100 @@ def test_required_candidates_exclude_questions_not_marked_required(db):
         grades=[question.grade],
     )
     assert question.id not in {candidate.question_id for candidate in candidates}
+
+
+def test_empty_required_scope_does_not_fall_back_to_legacy_scope(client, db):
+    student = db.scalar(select(Student).where(
+        Student.archived_at.is_(None), Student.class_id.is_not(None),
+    ).order_by(Student.student_code))
+    row = db.execute(
+        select(Question, KnowledgePoint)
+        .join(KnowledgePoint, KnowledgePoint.id == Question.main_knowledge_point_id)
+        .where(
+            Question.archived_at.is_(None),
+            Question.is_required.is_(True),
+            Question.grading_readiness == "machine_ready",
+            Question.source_review_status == "reviewed",
+        )
+        .order_by(Question.original_qid)
+    ).first()
+    assert student is not None and row is not None
+    question, knowledge_point = row
+    request = {
+        "class_id": str(student.class_id),
+        "student_scope": "all_class",
+        "student_ids": [],
+        "recommendation_parameters": {
+            "chapter_code": question.chapter_code,
+            "chapter_codes": [question.chapter_code],
+            "grade_codes": [question.grade],
+            "new_knowledge_point_codes": ["legacy.scope.must.not.filter"],
+            "review_knowledge_point_codes": [],
+            "new_count": 1,
+            "review_count": 0,
+            "max_knowledge_point_ratio": 0.5,
+        },
+        "filter_config": {
+            "grade_codes": [question.grade],
+            "chapter_codes": [question.chapter_code],
+            "required": {
+                "knowledge_point_codes": [],
+                "core_literacies": [],
+                "difficulty_counts": {str(question.difficulty): 1},
+            },
+            "personalized": {
+                "knowledge_point_codes": [knowledge_point.code],
+                "primary_competency": knowledge_point.core_competencies[0],
+                "question_count": 3,
+            },
+            "history": {"assignment_id": None},
+        },
+    }
+    preview = client.post("/api/v1/assignments/preview", json=request)
+    assert preview.status_code == 200, preview.text
+    recommendation = preview.json()["students"][0]["recommendation"]
+    assert recommendation["selected_count"] == 1
+    assert "legacy.scope.must.not.filter" not in recommendation["parameters"]["new_knowledge_point_codes"]
+    assert recommendation["items"][0]["knowledge_point_code"] in recommendation["parameters"]["new_knowledge_point_codes"]
+    assert recommendation["items"][0]["knowledge_point_code"] != "legacy.scope.must.not.filter"
+
+
+def test_knowledge_point_catalog_reports_required_inventory(client, db):
+    row = db.execute(
+        select(Question.main_knowledge_point_id, Question.chapter_code)
+        .where(
+            Question.archived_at.is_(None),
+            Question.grading_readiness == "machine_ready",
+            Question.source_review_status == "reviewed",
+            Question.is_required.is_(False),
+        )
+        .order_by(Question.original_qid)
+    ).first()
+    assert row is not None
+    knowledge_point_id, chapter_code = row
+    expected_required = int(db.scalar(
+        select(func.count(Question.id)).where(
+            Question.main_knowledge_point_id == knowledge_point_id,
+            Question.archived_at.is_(None),
+            Question.grading_readiness == "machine_ready",
+            Question.source_review_status == "reviewed",
+            Question.is_required.is_(True),
+        )
+    ) or 0)
+    expected_all = int(db.scalar(
+        select(func.count(Question.id)).where(
+            Question.main_knowledge_point_id == knowledge_point_id,
+            Question.archived_at.is_(None),
+            Question.grading_readiness == "machine_ready",
+            Question.source_review_status == "reviewed",
+        )
+    ) or 0)
+    response = client.get("/api/v1/knowledge-points", params={"chapter_code": chapter_code})
+    assert response.status_code == 200, response.text
+    item = next(value for value in response.json() if value["id"] == str(knowledge_point_id))
+    assert item["available_question_count"] == expected_all
+    assert item["required_available_question_count"] == expected_required
+    assert expected_required < expected_all
 
 
 def test_selected_student_scope_accepts_more_than_one_hundred_ids(client, db):

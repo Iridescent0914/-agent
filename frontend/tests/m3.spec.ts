@@ -100,3 +100,94 @@ test('assignment creation sends large classes as a server-expanded scope', async
     student_ids: [],
   })
 })
+
+test('required filters use catalog grades and required-only inventory', async ({ page }) => {
+  const classId = '00000000-0000-4000-8000-000000000088'
+  const knowledgePointId = '00000000-0000-4000-8000-000000000089'
+  let previewRequest: Record<string, any> | null = null
+  await page.route('**/api/v1/classes', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify([{
+      id: classId, name: '六年级测试班', grade: '六年级', school_year: '2026-2027',
+      teacher_name: null, student_count: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    }]),
+  }))
+  await page.route('**/api/v1/questions/catalog', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify([{
+      code: 'math.g6.test', name: '测试章', sections: ['测试节'], grades: ['六年级上册'],
+      core_literacies: ['运算能力'],
+      knowledge_points: [{
+        code: 'math.g6.test.kp.01', name: '测试知识点', section: '测试节',
+        mastery_level: '掌握', core_competencies: ['运算能力'],
+      }],
+    }]),
+  }))
+  await page.route('**/api/v1/knowledge-points?**', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify([{
+      id: knowledgePointId, code: 'math.g6.test.kp.01', name: '测试知识点',
+      chapter_code: 'math.g6.test', available_question_count: 5,
+      required_available_question_count: 2,
+    }]),
+  }))
+  await page.route('**/api/v1/assignments/recent-completed?**', (route) => route.fulfill({
+    status: 200, contentType: 'application/json', body: '[]',
+  }))
+  await page.route('**/api/v1/assignments/preview', async (route) => {
+    previewRequest = route.request().postDataJSON() as Record<string, any>
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        as_of: new Date().toISOString(), student_count: 1, ready_count: 1,
+        shortfall_student_count: 0, students: [],
+      }),
+    })
+  })
+
+  await page.goto('/assignments/new')
+  const grade = page.getByRole('combobox', { name: '年级（可多选）' })
+  await grade.click()
+  const gradeDropdown = page.locator('.ant-select-dropdown:visible')
+  await expect(
+    gradeDropdown.locator('.ant-select-item-option-content').filter({ hasText: /^六年级上册$/ }),
+  ).toBeVisible()
+  await expect(
+    gradeDropdown.locator('.ant-select-item-option-content').filter({ hasText: /^六年级$/ }),
+  ).toHaveCount(0)
+  await grade.press('Escape')
+
+  const requiredKnowledge = page.getByRole('combobox', { name: '节（知识点，可选）' })
+  await requiredKnowledge.click()
+  await expect(
+    page.locator('.ant-select-dropdown:visible .ant-select-item-option-content')
+      .filter({ hasText: /^测试知识点（2题）$/ }),
+  ).toBeVisible()
+  await requiredKnowledge.press('Escape')
+
+  const twoStar = page.getByRole('spinbutton', { name: '2 星' })
+  await twoStar.click()
+  await twoStar.press('Control+A')
+  await twoStar.press('1')
+  await twoStar.press('Tab')
+  await expect(twoStar).toHaveValue('1')
+  await configurePersonalizedFilter(page)
+  await page.getByRole('button', { name: '预检全部学生' }).click()
+  await expect.poll(() => previewRequest).not.toBeNull()
+  expect(previewRequest).toMatchObject({
+    recommendation_parameters: {
+      grade_codes: ['六年级上册'],
+      chapter_codes: ['math.g6.test'],
+      new_count: 1,
+    },
+    filter_config: {
+      grade_codes: ['六年级上册'],
+      chapter_codes: ['math.g6.test'],
+      required: { difficulty_counts: { '1': 0, '2': 1, '3': 0, '4': 0, '5': 0 } },
+    },
+  })
+})
