@@ -16,7 +16,8 @@ from app.schemas.assignments import (
 )
 from app.services.paper_snapshots import load_questions, new_item, snapshot_payload
 from app.services.recommendations import (
-    history_recommendation_candidates, history_wrong_answers, preview,
+    history_recommendation_candidates, history_source_question_ids,
+    history_wrong_answers, preview,
     recommendation_candidates,
     required_question_candidates, select_history_recommendations,
     select_required_recommendations,
@@ -140,12 +141,19 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
             difficulty_counts=difficulty_counts, params=params, as_of=at,
         )
         history_errors = {student.id: [] for student in students}
+        history_source_ids = {student.id: set() for student in students}
         history_candidates = []
         if request.filter_config.history.assignment_id is not None:
+            source_assignment_id = request.filter_config.history.assignment_id
             history_errors = history_wrong_answers(
                 db,
-                source_assignment_id=request.filter_config.history.assignment_id,
+                source_assignment_id=source_assignment_id,
                 class_id=school_class.id,
+                student_ids=[student.id for student in students],
+            )
+            history_source_ids = history_source_question_ids(
+                db,
+                source_assignment_id=source_assignment_id,
                 student_ids=[student.id for student in students],
             )
             history_knowledge_point_codes = sorted({
@@ -166,7 +174,7 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                 errors=wrong_answers,
                 excluded_question_ids=(
                     required_ids
-                    | {item.source_question_id for item in wrong_answers}
+                    | history_source_ids[student.id]
                 ),
                 params=params,
                 as_of=at,

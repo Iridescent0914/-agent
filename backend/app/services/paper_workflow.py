@@ -25,7 +25,8 @@ from app.services.paper_snapshots import (
     snapshot_payload, student_safe_question_snapshot, student_safe_value,
 )
 from app.services.recommendations import (
-    Candidate, recent_completed_assignment_ids, score_candidate,
+    Candidate, history_source_question_ids, recent_completed_assignment_ids,
+    score_candidate,
 )
 from app.services.student_profile import load_context
 
@@ -343,6 +344,18 @@ def _parameters(db: Session, paper: PaperInstance) -> tuple[RecommendationReques
     return RecommendationRequest.model_validate(raw), datetime.fromisoformat(as_of)
 
 
+def _history_source_assignment_id(db: Session, paper: PaperInstance) -> UUID | None:
+    assignment = db.get(Assignment, paper.assignment_id)
+    config = (assignment.generation_config if assignment else None) or {}
+    filter_config = config.get("filter_config") or {}
+    history_config = filter_config.get("history") or {}
+    raw = history_config.get("assignment_id")
+    try:
+        return UUID(str(raw)) if raw else None
+    except (TypeError, ValueError):
+        return None
+
+
 def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
     paper = _paper(db, paper_id)
     if paper.status != "draft":
@@ -371,6 +384,15 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
     existing_ids = {item.question_id for item in items}
     source_question_ids: set[UUID] = set()
     if is_history:
+        source_assignment_id = _history_source_assignment_id(db, paper)
+        if source_assignment_id is not None:
+            source_question_ids.update(history_source_question_ids(
+                db,
+                source_assignment_id=source_assignment_id,
+                student_ids=[paper.student_id],
+            )[paper.student_id])
+        # Keep evidence-based exclusion for legacy drafts that predate the
+        # stage-two filter_config contract.
         attempt_ids: list[UUID] = []
         for evidence in audit.get("evidence") or []:
             try:

@@ -203,6 +203,38 @@ def history_wrong_answers(
     return result
 
 
+def history_source_question_ids(
+    db: Session, *, source_assignment_id: UUID, student_ids: list[UUID],
+) -> dict[UUID, set[UUID]]:
+    """Load every question seen by each student in the selected source assignment.
+
+    History replacements must be new relative to the student's complete source
+    paper, not merely different from the particular question they answered
+    incorrectly. Only the current, non-invalidated published paper contributes
+    to this exclusion set.
+    """
+
+    result = {student_id: set() for student_id in student_ids}
+    if not student_ids:
+        return result
+    rows = db.execute(
+        select(PaperInstance.student_id, PaperInstanceItem.question_id)
+        .join(
+            PaperInstanceItem,
+            PaperInstanceItem.paper_instance_id == PaperInstance.id,
+        )
+        .where(
+            PaperInstance.assignment_id == source_assignment_id,
+            PaperInstance.status == "published",
+            PaperInstance.invalidated_at.is_(None),
+            PaperInstance.student_id.in_(student_ids),
+        )
+    ).all()
+    for student_id, question_id in rows:
+        result[student_id].add(question_id)
+    return result
+
+
 def select_history_recommendations(
     *, student_id: UUID, candidates: list[Candidate],
     errors: list[HistoryWrongAnswer], excluded_question_ids: set[UUID],

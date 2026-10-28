@@ -17,7 +17,7 @@ from app.models import (
 )
 from app.services.paper_snapshots import new_item, snapshot_payload
 from app.services.recommendations import (
-    history_wrong_answers, recent_completed_assignment_ids,
+    history_source_question_ids, history_wrong_answers, recent_completed_assignment_ids,
     required_question_candidates,
 )
 
@@ -68,6 +68,7 @@ def completed_required_source(
     db, student, *, minimum_group_size: int = 2,
     minimum_required_count: int = 0,
     source_module: str = "required",
+    additional_source_questions: int = 0,
 ):
     grouped = defaultdict(list)
     rows = db.execute(
@@ -114,19 +115,25 @@ def completed_required_source(
     )
     db.add(paper)
     db.flush()
-    item = new_item(
-        paper_id=paper.id,
-        order_no=1,
-        payload=snapshot_payload(source_question),
-        selection_audit={
-            "source": "recommendation",
-            "source_module": source_module,
-            "reason_codes": (
-                ["required_question"] if source_module == "required" else []
-            ),
-        },
-    )
-    db.add(item)
+    source_questions = [
+        question for question, _ in group[:1 + additional_source_questions]
+    ]
+    source_items = []
+    for order_no, question in enumerate(source_questions, start=1):
+        item = new_item(
+            paper_id=paper.id,
+            order_no=order_no,
+            payload=snapshot_payload(question),
+            selection_audit={
+                "source": "recommendation",
+                "source_module": source_module,
+                "reason_codes": (
+                    ["required_question"] if source_module == "required" else []
+                ),
+            },
+        )
+        db.add(item)
+        source_items.append(item)
     db.flush()
     paper.status = "published"
     paper.instance_code = f"HIS-{uuid4().hex[:12].upper()}"
@@ -143,21 +150,25 @@ def completed_required_source(
     )
     db.add(submission)
     db.flush()
-    db.add(Attempt(
-        submission_id=submission.id,
-        student_id=student.id,
-        paper_instance_item_id=item.id,
-        question_id=source_question.id,
-        student_answer="wrong",
-        normalized_answer="wrong",
-        grading_details={},
-        grade_status="teacher_confirmed",
-        is_correct=False,
-        manual_override=True,
-        revision_no=1,
-        answered_at=now,
-        reviewed_at=now,
-    ))
+    for index, (question, item) in enumerate(
+        zip(source_questions, source_items, strict=True)
+    ):
+        is_correct = index > 0
+        db.add(Attempt(
+            submission_id=submission.id,
+            student_id=student.id,
+            paper_instance_item_id=item.id,
+            question_id=question.id,
+            student_answer="correct" if is_correct else "wrong",
+            normalized_answer="correct" if is_correct else "wrong",
+            grading_details={},
+            grade_status="teacher_confirmed",
+            is_correct=is_correct,
+            manual_override=True,
+            revision_no=1,
+            answered_at=now,
+            reviewed_at=now,
+        ))
     db.flush()
     return assignment, source_question, knowledge_point
 
@@ -451,7 +462,14 @@ def test_required_and_history_replacements_preserve_module_and_history_evidence(
     ).order_by(Student.student_code))
     source, source_question, knowledge_point = completed_required_source(
         db, student, minimum_group_size=6, minimum_required_count=4,
+        additional_source_questions=2,
     )
+    source_question_ids = history_source_question_ids(
+        db,
+        source_assignment_id=source.id,
+        student_ids=[student.id],
+    )[student.id]
+    assert len(source_question_ids) == 3
     competency = knowledge_point.core_competencies[0]
     request = {
         "class_id": str(student.class_id),
@@ -499,6 +517,7 @@ def test_required_and_history_replacements_preserve_module_and_history_evidence(
         item for item in paper["items"]
         if item["selection_audit"]["source_module"] == "history"
     )
+    assert UUID(history_item["question_id"]) not in source_question_ids
     original_evidence = history_item["selection_audit"]["evidence"]
     history_alternatives = client.get(
         f"/api/v1/paper-instances/{paper['id']}/items/{history_item['id']}/alternatives"
@@ -506,9 +525,9 @@ def test_required_and_history_replacements_preserve_module_and_history_evidence(
     assert history_alternatives.status_code == 200, history_alternatives.text
     history_choices = history_alternatives.json()["items"]
     assert history_choices
-    assert str(source_question.id) not in {
-        item["question_id"] for item in history_choices
-    }
+    assert source_question_ids.isdisjoint({
+        UUID(item["question_id"]) for item in history_choices
+    })
     assert all(
         item["knowledge_point_code"] == knowledge_point.code
         and item["difficulty"] == source_question.difficulty
