@@ -113,9 +113,9 @@ export function AssignmentCreatePage() {
   const difficultyCounts = Form.useWatch('difficulty_counts', form) ?? defaults.difficulty_counts ?? {}
 
   useEffect(() => {
+    setRecentAssignments([])
+    form.setFieldValue('history_assignment_id', undefined)
     if (!selectedClassId) {
-      setRecentAssignments([])
-      form.setFieldValue('history_assignment_id', undefined)
       return
     }
     const controller = new AbortController()
@@ -124,11 +124,7 @@ export function AssignmentCreatePage() {
       controller.signal,
     )
       .then((items) => {
-        setRecentAssignments(items)
-        const selected = form.getFieldValue('history_assignment_id')
-        if (selected && !items.some((item) => item.id === selected)) {
-          form.setFieldValue('history_assignment_id', undefined)
-        }
+        setRecentAssignments(items.filter((item) => item.class_id === selectedClassId))
       })
       .catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
     return () => controller.abort()
@@ -360,7 +356,8 @@ export function AssignmentCreatePage() {
     return null
   }
 
-  const runPreview = async (values: FormValues) => {
+  const runPreview = async () => {
+    const values = form.getFieldsValue(true) as FormValues
     const validationError = validateNewFilters(values)
     if (validationError) { setError(validationError); return }
     setLoading(true); setError(null); setPreview(null)
@@ -370,7 +367,9 @@ export function AssignmentCreatePage() {
   }
 
   const generate = async () => {
-    const values = await form.validateFields(); const validationError = validateNewFilters(values)
+    await form.validateFields()
+    const values = form.getFieldsValue(true) as FormValues
+    const validationError = validateNewFilters(values)
     if (validationError) { setError(validationError); return }
     setLoading(true); setError(null)
     try {
@@ -396,7 +395,7 @@ export function AssignmentCreatePage() {
     module: Exclude<FilterModule, null>, label: string, summary: string,
     icon: ReactNode, tone: 'required' | 'personalized' | 'history',
   ) => (
-    <button type="button" className={`assignment-filter-slider ${activeModule === module ? 'active' : ''}`} onMouseEnter={() => setActiveModule(module)} onClick={() => setActiveModule(activeModule === module ? null : module)}>
+    <button type="button" className={`assignment-filter-slider ${activeModule === module ? 'active' : ''}`} onClick={() => setActiveModule(module)}>
       <span className={`assignment-filter-slider-icon ${tone}`}>{icon}</span>
       <span className="assignment-filter-slider-copy">
         <span className="assignment-filter-slider-title">{label}</span>
@@ -427,10 +426,10 @@ export function AssignmentCreatePage() {
         <small>道 · 按难度配置</small>
       </div>
     </section>
-    {error && <Alert type="error" showIcon message="操作失败" description={error} />}
     <Card className="assignment-builder-card">
       <Form
         form={form}
+        preserve
         layout="vertical"
         initialValues={defaults}
         onFinish={runPreview}
@@ -515,5 +514,6 @@ export function AssignmentCreatePage() {
       {sharedRequiredItems.length === 0 && <Alert type="warning" showIcon message="当前筛选条件没有可用的必做题" description="请减少难度题量，或放宽年级、章节、知识点和核心素养筛选范围。" />}
       <div className="assignment-generate-action"><Typography.Text type="secondary">确认预检结果后，为当前班级生成可继续编辑的试卷草稿。</Typography.Text><Button type="primary" size="large" onClick={generate} loading={loading}>确认并生成草稿</Button></div>
     </Card>}
+    {error && <Alert type="error" showIcon message="操作失败" description={error} />}
   </Space>
 }

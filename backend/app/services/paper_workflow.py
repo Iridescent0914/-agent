@@ -284,7 +284,7 @@ def list_assignment_items(
 
 
 def list_recent_completed_assignments(
-    db: Session, *, limit: int = 5, class_id: UUID | None = None,
+    db: Session, *, class_id: UUID, limit: int = 5,
 ) -> list[AssignmentListItem]:
     """Return the latest fully graded assignments for the selected class.
 

@@ -289,6 +289,11 @@ def test_required_and_selected_history_are_combined_per_student(client, db):
     )
     assert recent.status_code == 200, recent.text
     assert str(source.id) in {item["id"] for item in recent.json()}
+    assert all(item["class_id"] == str(student.class_id) for item in recent.json())
+    unscoped_recent = client.get(
+        "/api/v1/assignments/recent-completed", params={"limit": 5},
+    )
+    assert unscoped_recent.status_code == 422
 
     create_request = {
         **request,
