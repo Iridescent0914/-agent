@@ -30,7 +30,6 @@ test('assignment navigation and multi-student preview stay read-only', async ({ 
   await configurePersonalizedFilter(page)
   await page.getByRole('button', { name: '预检全部学生' }).click()
   await expect(page.getByText(/名学生可完整生成/)).toBeVisible()
-  await expect(page.getByText('预检不写入数据库', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '生成草稿' })).toBeVisible()
   await noOverflow(page)
   await page.screenshot({ path: testInfo.outputPath('assignment-preview.png'), fullPage: true })
@@ -42,6 +41,10 @@ test('assignment navigation and multi-student preview stay read-only', async ({ 
 test('assignment creation page has no global overflow on narrow viewport', async ({ page }) => {
   await page.goto('/assignments/new')
   await expect(page.getByRole('heading', { name: '创建班级作业', exact: true })).toBeVisible()
+  await expect(page.getByText('智能组卷工作台', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('预检不写入数据库', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('当前必做题', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('点击卡片展开设置；必做题与历史回顾会进入本轮试卷', { exact: true })).toHaveCount(0)
   await noOverflow(page)
 })
 
@@ -168,10 +171,13 @@ test('required filters use catalog grades and required-only inventory', async ({
   })
 
   await page.goto('/assignments/new')
+  await expect(page.getByText('当前班级全部学生（1 人）', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '预检全部学生' }).click()
   const previewActionBox = await page.locator('.assignment-preview-action').boundingBox()
   const errorAlert = page.locator('.ant-alert-error')
   await expect(errorAlert).toBeVisible()
+  await expect(errorAlert).toContainText('请选择个性化模块的知识点')
+  await expect(page.getByText('个性化筛选', { exact: true })).toBeVisible()
   const errorBox = await errorAlert.boundingBox()
   expect(errorBox!.y).toBeGreaterThanOrEqual(previewActionBox!.y + previewActionBox!.height)
   const grade = page.getByRole('combobox', { name: '年级（可多选）' })
@@ -185,6 +191,7 @@ test('required filters use catalog grades and required-only inventory', async ({
   ).toHaveCount(0)
   await grade.press('Escape')
 
+  await page.getByRole('button', { name: /必做题/ }).click()
   const requiredKnowledge = page.getByRole('combobox', { name: '节（知识点，可选）' })
   await requiredKnowledge.click()
   await expect(

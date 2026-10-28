@@ -53,12 +53,13 @@ def create(request: AssignmentCreateRequest, db: Session = Depends(get_db)):
 
 @router.get("", response_model=Page[AssignmentListItem])
 def list_assignments(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),
+                     class_id: UUID | None = Query(None),
                      class_name: str | None = Query(None, min_length=1, max_length=120),
                      chapter_code: str | None = Query(None, min_length=1, max_length=160),
                      db: Session = Depends(get_db)):
     items, total = list_assignment_items(
         db, offset=(page - 1) * page_size, limit=page_size,
-        class_name=class_name, chapter_code=chapter_code,
+        class_id=class_id, class_name=class_name, chapter_code=chapter_code,
     )
     return Page(items=items, total=total, page=page, page_size=page_size)
 

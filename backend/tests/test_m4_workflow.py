@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import (
-    Attempt, AttemptRevision, PaperInstanceItem, Question, Student,
+    Assignment, Attempt, AttemptRevision, PaperInstance, PaperInstanceItem, Question, Student,
     StudentMastery, Submission,
 )
 from app.services.student_profile import load_context
@@ -379,7 +379,27 @@ def test_queue_and_submission_view(client, db):
     _, paper = _published_paper(client, db)
     queue = client.get("/api/v1/grading/queue", params={"status": "unsubmitted"})
     assert queue.status_code == 200
-    assert any(item["paper_instance_id"] == paper["id"] for item in queue.json()["items"])
+    target = next(
+        item for item in queue.json()["items"]
+        if item["paper_instance_id"] == paper["id"]
+    )
+    paper_row = db.get(PaperInstance, UUID(paper["id"]))
+    assignment = db.get(Assignment, paper_row.assignment_id)
+    assert target["class_id"] == str(assignment.class_id)
+    assert target["class_name"]
+    filtered = client.get(
+        "/api/v1/grading/queue",
+        params={"status": "unsubmitted", "class_id": str(assignment.class_id)},
+    )
+    assert filtered.status_code == 200, filtered.text
+    assert any(
+        item["paper_instance_id"] == paper["id"]
+        for item in filtered.json()["items"]
+    )
+    assert all(
+        item["class_id"] == str(assignment.class_id)
+        for item in filtered.json()["items"]
+    )
     view = client.get(f"/api/v1/paper-instances/{paper['id']}/submission")
     assert view.status_code == 200
     assert view.json()["can_submit"] is True

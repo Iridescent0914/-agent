@@ -1,23 +1,51 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Modal, Space, Table, Tag, Typography, message } from 'antd'
+import { Alert, Button, Card, Modal, Select, Space, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { apiDelete, apiGet } from '../api/client'
+import { Link, useSearchParams } from 'react-router-dom'
+import { apiDelete, apiGet, queryString } from '../api/client'
 import type { AssignmentListItem, AssignmentPage } from '../types/assignment'
+import type { ClassSummary } from '../types'
 
 export function AssignmentListPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [classes, setClasses] = useState<ClassSummary[]>([])
+  const [classId, setClassId] = useState<string>()
+  const [classesLoading, setClassesLoading] = useState(true)
   const [data, setData] = useState<AssignmentPage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const load = () => {
+    if (!classId) {
+      setData({ items: [], total: 0, page: 1, page_size: pageSize })
+      setLoading(classesLoading)
+      return
+    }
     setLoading(true); setError(null)
-    apiGet<AssignmentPage>(`/assignments?page=${page}&page_size=${pageSize}`)
+    apiGet<AssignmentPage>(`/assignments${queryString({
+      page, page_size: pageSize, class_id: classId,
+    })}`)
       .then(setData).catch((reason) => setError((reason as Error).message)).finally(() => setLoading(false))
   }
-  useEffect(load, [page, pageSize])
+  useEffect(() => {
+    apiGet<ClassSummary[]>('/classes')
+      .then((items) => {
+        setClasses(items)
+        const requested = searchParams.get('class_id')
+        const selected = items.find((item) => item.id === requested)
+          ?? items.find((item) => item.student_count > 0)
+          ?? items[0]
+        if (selected) {
+          setClassId(selected.id)
+          setSearchParams({ class_id: selected.id }, { replace: true })
+        }
+      })
+      .catch((reason) => setError((reason as Error).message))
+      .finally(() => setClassesLoading(false))
+  }, [])
+  useEffect(load, [classId, classesLoading, page, pageSize])
   const deleteAssignment = (assignment: AssignmentListItem) => {
     Modal.confirm({
       title: `删除作业“${assignment.title}”？`,
@@ -51,7 +79,23 @@ export function AssignmentListPage() {
   return <Space direction="vertical" size="large" className="page-stack">
     <div className="student-heading">
       <div><Typography.Title level={2}>个性化作业</Typography.Title><Typography.Text type="secondary">为每名学生生成、调整并发布独立试卷</Typography.Text></div>
-      <Button type="primary" icon={<PlusOutlined />}><Link to="/assignments/new">创建作业</Link></Button>
+      <Space wrap>
+        <Select
+          aria-label="班级"
+          loading={classesLoading}
+          placeholder="请选择班级"
+          value={classId}
+          onChange={(value) => {
+            setClassId(value); setPage(1)
+            setSearchParams({ class_id: value }, { replace: true })
+          }}
+          options={classes.map((item) => ({
+            value: item.id, label: `${item.name}（${item.student_count}人）`,
+          }))}
+          style={{ width: 220 }}
+        />
+        <Button type="primary" icon={<PlusOutlined />}><Link to="/assignments/new">创建作业</Link></Button>
+      </Space>
     </div>
     {error && <Alert type="error" showIcon message="作业加载失败" description={error} action={<Button onClick={load}>重试</Button>} />}
     <Card className="table-card"><Table rowKey="id" loading={loading} columns={columns} dataSource={data?.items ?? []} pagination={{

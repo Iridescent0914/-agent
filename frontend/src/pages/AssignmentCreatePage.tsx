@@ -348,12 +348,26 @@ export function AssignmentCreatePage() {
   }
 
   const validateNewFilters = (values: FormValues) => {
+    if (!values.title?.trim()) return '请填写作业标题'
+    if (!values.class_id) return '请选择班级'
     if (!values.grade_codes?.length || !values.chapter_codes?.length) return '请选择至少一个年级和章节'
     if (totalRequiredCount < 1) return '请设置至少 1 道必做题'
     if (!expandKnowledgePointSelection(values.personalized_knowledge_point_codes ?? [], available).length) return '请选择个性化模块的知识点'
     if (!values.primary_competency) return '请选择所选知识点对应的主要能力'
     if (values.history_assignment_id && !recentAssignments.some((item) => item.id === values.history_assignment_id)) return '历史回顾作业无效，请重新选择'
     return null
+  }
+
+  const handleFinishFailed = () => {
+    const values = form.getFieldsValue(true) as FormValues
+    const validationError = validateNewFilters(values)
+    if (
+      validationError === '请选择个性化模块的知识点'
+      || validationError === '请选择所选知识点对应的主要能力'
+    ) {
+      setActiveModule('personalized')
+    }
+    setError(validationError ?? '请检查表单中的必填项')
   }
 
   const runPreview = async () => {
@@ -409,23 +423,7 @@ export function AssignmentCreatePage() {
   ) ?? []
 
   return <Space direction="vertical" size="large" className="page-stack assignment-workspace">
-    <section className="assignment-hero">
-      <div className="assignment-hero-copy">
-        <Tag bordered={false} className="assignment-hero-tag"><ThunderboltOutlined /> 智能组卷工作台</Tag>
-        <Typography.Title level={2}>创建班级作业</Typography.Title>
-        <Typography.Paragraph>确定教学范围，组合全班必做题与逐学生历史回顾；预检确认后再生成草稿。</Typography.Paragraph>
-        <div className="assignment-hero-meta">
-          <span><CheckCircleFilled /> 预检不写入数据库</span>
-          <span><CheckCircleFilled /> 必做题全班统一</span>
-          <span><CheckCircleFilled /> 历史回顾逐学生生成</span>
-        </div>
-      </div>
-      <div className="assignment-hero-metric">
-        <span>当前必做题</span>
-        <strong>{totalRequiredCount}</strong>
-        <small>道 · 按难度配置</small>
-      </div>
-    </section>
+    <Typography.Title level={2}>创建班级作业</Typography.Title>
     <Card className="assignment-builder-card">
       <Form
         form={form}
@@ -433,7 +431,7 @@ export function AssignmentCreatePage() {
         layout="vertical"
         initialValues={defaults}
         onFinish={runPreview}
-        onFinishFailed={() => setError('请先完成作业标题、班级、年级和章节选择')}
+        onFinishFailed={handleFinishFailed}
         onValuesChange={() => { setPreview(null); setError(null) }}
       >
         <div className="assignment-section-heading">
@@ -451,7 +449,7 @@ export function AssignmentCreatePage() {
         <Divider />
         <div className="assignment-section-heading">
           <span className="assignment-section-index">02</span>
-          <div><Typography.Title level={4}>配置题目模块</Typography.Title><Typography.Text type="secondary">点击卡片展开设置；必做题与历史回顾会进入本轮试卷</Typography.Text></div>
+          <Typography.Title level={4}>配置题目模块</Typography.Title>
         </div>
         <div className="assignment-filter-sliders">
           {moduleButton('required', '必做题', `${totalRequiredCount} 道 · ${selectedRequiredKpCount ? `${selectedRequiredKpCount} 个知识点` : '全章节'}`, <BookOutlined />, 'required')}

@@ -33,9 +33,12 @@ def _error(exc: Exception) -> HTTPException:
 def get_grading_queue(
     offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=200),
     status: Literal["unsubmitted", "needs_review", "completed"] | None = None,
+    class_id: UUID | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    return grading_queue(db, offset=offset, limit=limit, status=status)
+    return grading_queue(
+        db, offset=offset, limit=limit, status=status, class_id=class_id,
+    )
 
 
 @router.get("/paper-instances/{paper_id}/submission", response_model=SubmissionDetailOut)

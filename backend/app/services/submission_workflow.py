@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models import (
     Assignment, Attempt, AttemptRevision, PaperInstance, PaperInstanceItem,
-    Question, RecognitionRun, Student, Submission,
+    Question, RecognitionRun, SchoolClass, Student, Submission,
 )
 from app.schemas.submissions import (
     AttemptOut, AttemptReviewRequest, AttemptRevisionOut, GradingQueueItem,
@@ -568,7 +568,8 @@ def revision_history(db: Session, attempt_id: UUID) -> list[AttemptRevisionOut]:
 
 
 def grading_queue(db: Session, *, offset: int = 0, limit: int = 100,
-                  status: str | None = None) -> GradingQueueOut:
+                  status: str | None = None,
+                  class_id: UUID | None = None) -> GradingQueueOut:
     item_counts = (
         select(
             PaperInstanceItem.paper_instance_id.label("paper_id"),
@@ -589,10 +590,11 @@ def grading_queue(db: Session, *, offset: int = 0, limit: int = 100,
     pending = func.coalesce(pending_counts.c.pending_count, 0)
     query = (
         select(
-            PaperInstance, Assignment, Student, Submission,
+            PaperInstance, Assignment, SchoolClass, Student, Submission,
             func.coalesce(item_counts.c.item_count, 0), pending,
         )
         .join(Assignment, Assignment.id == PaperInstance.assignment_id)
+        .outerjoin(SchoolClass, SchoolClass.id == Assignment.class_id)
         .join(Student, Student.id == PaperInstance.student_id)
         .outerjoin(Submission, Submission.paper_instance_id == PaperInstance.id)
         .outerjoin(item_counts, item_counts.c.paper_id == PaperInstance.id)
@@ -605,6 +607,8 @@ def grading_queue(db: Session, *, offset: int = 0, limit: int = 100,
             or_(PaperInstance.invalidated_at.is_(None), Submission.id.is_not(None)),
         )
     )
+    if class_id is not None:
+        query = query.where(Assignment.class_id == class_id)
     if status == "unsubmitted":
         query = query.where(Submission.id.is_(None))
     elif status == "needs_review":
@@ -619,14 +623,17 @@ def grading_queue(db: Session, *, offset: int = 0, limit: int = 100,
         .offset(offset).limit(limit)
     ).all()
     output = []
-    for paper, assignment, student, submission, item_count, pending_count in rows:
+    for paper, assignment, school_class, student, submission, item_count, pending_count in rows:
         grade_status = (
             "unsubmitted" if submission is None
             else "needs_review" if pending_count else "completed"
         )
         output.append(GradingQueueItem(
             paper_instance_id=paper.id, assignment_id=assignment.id,
-            assignment_title=assignment.title, student_id=student.id,
+            assignment_title=assignment.title,
+            class_id=assignment.class_id,
+            class_name=school_class.name if school_class else student.class_name,
+            student_id=student.id,
             student_code=student.student_code, student_name=student.display_name,
             version_no=paper.version_no, instance_code=paper.instance_code or "",
             is_active=paper.invalidated_at is None,

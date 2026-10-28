@@ -88,6 +88,8 @@ export interface GradingQueueItem {
   paper_instance_id: string
   assignment_id: string
   assignment_title: string
+  class_id: string | null
+  class_name: string | null
   student_id: string
   student_code: string
   student_name: string

@@ -190,6 +190,8 @@ class GradingQueueItem(BaseModel):
     paper_instance_id: UUID
     assignment_id: UUID
     assignment_title: str
+    class_id: UUID | None
+    class_name: str | None
     student_id: UUID
     student_code: str
     student_name: str

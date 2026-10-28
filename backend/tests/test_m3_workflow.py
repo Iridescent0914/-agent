@@ -177,6 +177,16 @@ def test_preview_create_idempotency_and_audit(client, db):
     assignment = created.json()
     assert assignment["student_count"] == 2 and assignment["draft_count"] == 2
     assert all(paper["item_count"] == 4 for paper in assignment["papers"])
+    class_listing = client.get(
+        "/api/v1/assignments",
+        params={"class_id": assignment["class_id"], "page_size": 100},
+    )
+    assert class_listing.status_code == 200, class_listing.text
+    assert any(item["id"] == assignment["id"] for item in class_listing.json()["items"])
+    assert all(
+        item["class_id"] == assignment["class_id"]
+        for item in class_listing.json()["items"]
+    )
     after = counts(db)
     assert after == (before[0] + 1, before[1] + 2, before[2] + 8)
     repeated = client.post("/api/v1/assignments", json=body)
