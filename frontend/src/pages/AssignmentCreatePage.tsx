@@ -491,6 +491,7 @@ export function AssignmentCreatePage() {
           <div><Typography.Text strong>配置完成后先预检</Typography.Text><Typography.Text type="secondary">检查每名学生的实际题量与库存缺口</Typography.Text></div>
           <Button type="primary" size="large" htmlType="submit" loading={loading} icon={<ThunderboltOutlined />}>预检全部学生</Button>
         </div>
+        {error && <Alert type="error" showIcon message="操作失败" description={error} />}
       </Form>
     </Card>
     {preview && <Card className="assignment-preview-card" title="预检结果" extra={<Tag color="green">只读预检</Tag>}>
@@ -514,6 +515,5 @@ export function AssignmentCreatePage() {
       {sharedRequiredItems.length === 0 && <Alert type="warning" showIcon message="当前筛选条件没有可用的必做题" description="请减少难度题量，或放宽年级、章节、知识点和核心素养筛选范围。" />}
       <div className="assignment-generate-action"><Typography.Text type="secondary">确认预检结果后，为当前班级生成可继续编辑的试卷草稿。</Typography.Text><Button type="primary" size="large" onClick={generate} loading={loading}>确认并生成草稿</Button></div>
     </Card>}
-    {error && <Alert type="error" showIcon message="操作失败" description={error} />}
   </Space>
 }

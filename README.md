@@ -120,6 +120,26 @@ cd "D:\desktop\math-agent\code"
 docker compose up -d
 ```
 
+#### 前端修改后页面没有变化
+
+Windows 目录挂载到 Linux Docker 容器时，Vite 偶尔可能没有收到文件变更事件。此时容器内源码虽然已经更新，但 Vite 仍在返回旧的转换模块。先重启前端开发服务，再在浏览器中按 `Ctrl+F5` 强制刷新：
+
+```powershell
+cd "D:\desktop\math-agent\code"
+docker compose restart frontend
+```
+
+该命令只重启前端容器并重建 Vite 内存模块图，不会清空数据库、重新安装依赖或重新构建镜像。
+
+如果重启后页面仍未更新，强制重新创建前端容器：
+
+```powershell
+cd "D:\desktop\math-agent\code"
+docker compose up -d --force-recreate frontend
+```
+
+重新创建前端容器同样不会删除 PostgreSQL 数据卷。不要为解决前端缓存问题执行 `docker compose down -v`。
+
 包含 Alembic 迁移、知识点或题库种子数据变化时执行：
 
 ```powershell

@@ -169,11 +169,11 @@ test('required filters use catalog grades and required-only inventory', async ({
 
   await page.goto('/assignments/new')
   await page.getByRole('button', { name: '预检全部学生' }).click()
-  const builderBox = await page.locator('.assignment-builder-card').boundingBox()
+  const previewActionBox = await page.locator('.assignment-preview-action').boundingBox()
   const errorAlert = page.locator('.ant-alert-error')
   await expect(errorAlert).toBeVisible()
   const errorBox = await errorAlert.boundingBox()
-  expect(errorBox!.y).toBeGreaterThanOrEqual(builderBox!.y + builderBox!.height)
+  expect(errorBox!.y).toBeGreaterThanOrEqual(previewActionBox!.y + previewActionBox!.height)
   const grade = page.getByRole('combobox', { name: '年级（可多选）' })
   await grade.click()
   const gradeDropdown = page.locator('.ant-select-dropdown:visible')
