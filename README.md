@@ -30,7 +30,7 @@
 - 作业进度只统计每名学生的当前有效发布版本，区分未提交、待复核、已完成、草稿和历史作废版本；
 - `m5_start` / `m5_showcase` 两套固定演示场景、隔离数据库安全重置脚本和只读 `verify_m5.py`；
 - 页面级懒加载，ECharts 与 zrender 独立分包；学情页和批改筛选 URL 支持桌面与 390px 页面；
-- M1～M6 只读验收、118 项后端测试、前端 production build，以及桌面 / 390px 浏览器回归。
+- M1～M6 只读验收、130 项后端测试、前端 production build，以及桌面 / 390px 浏览器回归。
 
 推荐预览仍保持只读；只有教师确认生成后才创建 Assignment 和草稿。M4 首次录入会锁定题库中当时已发布且可机判的标准答案：录入前完成的答案修订会直接用于首次评分；只有提交之后题库再次修改，已有提交才显示“重新评分”。重新评分由教师显式触发并追加修订，始终不改写 `PaperInstanceItem` 发布快照。M6 的模型置信度仅用于展示，所有图片作答初始均为 `needs_review`，教师确认前不会更新画像。
 
@@ -51,15 +51,20 @@ code/
 │   ├── build_rational_m0.py
 │   ├── validate_m0.py
 │   ├── convert_seed_assets.py
-│   ├── convert_wmf_to_png.ps1
-│   └── reset_m5_demo.ps1          仅重建隔离的 M5 演示数据库
+│   └── convert_wmf_to_png.ps1
 ├── docker-compose.yml
 └── .env.example
 ```
 
-## Docker Compose 启动
+## 运行方式与快速开始
 
-### 首次运行
+项目统一使用 Docker Compose 运行，后端测试、迁移、种子导入和验收均以容器环境为准，避免维护第二套 Python 和 PostgreSQL 环境。前端 Playwright 浏览器回归是唯一例外：它在 Windows 主机上使用 Node.js 和 Microsoft Edge 执行，但仍连接 Docker 中的后端和数据库。
+
+### Docker Compose
+
+以下 Docker 命令均从项目根目录 `D:\desktop\math-agent\code` 执行。
+
+#### 首次运行
 
 只在第一次创建容器、镜像和数据库卷时执行：
 
@@ -69,18 +74,12 @@ Copy-Item .env.example .env
 docker compose up -d --build
 docker compose exec backend python -m scripts.seed_database --chapter all
 docker compose exec backend python -m scripts.rebuild_mastery --all
-docker compose exec backend python -m scripts.verify_m1
-docker compose exec backend python -m scripts.verify_expr
-docker compose exec backend python -m scripts.verify_m2
-docker compose exec backend python -m scripts.verify_m3
-docker compose exec backend python -m scripts.verify_m4
-docker compose exec backend python -m scripts.verify_m5
-docker compose exec backend python -m scripts.verify_m6
+docker compose ps
 ```
 
-`seed_database` 和 `rebuild_mastery` 是初始化业务数据，不需要在日常启动时重复执行。后端容器每次启动都会自动执行 `alembic upgrade head`。
+`seed_database` 和 `rebuild_mastery` 是首次初始化业务数据，不需要在日常启动时重复执行。后端容器每次启动都会自动执行 `alembic upgrade head`。M1～M6 验收不是启动前置条件，需要时按“测试与验收”章节执行。
 
-### 非首次运行（日常启动）
+#### 日常启动
 
 以后正常启动只需要：
 
@@ -107,11 +106,13 @@ docker compose start
 docker compose ps
 ```
 
-### 代码或依赖发生变化时
+#### 代码或依赖发生变化时
 
 当前源码通过目录挂载进入容器，普通 Python / TypeScript 源码修改会由后端 reload 和 Vite 自动加载，通常不需要重新构建镜像。
 
 获取新代码后应按实际改动类型执行，不需要每次重新构建镜像或安装 npm 包。**每一行命令执行完成后再执行下一行，不要粘连成一行。**
+
+##### 仅修改普通源码
 
 仅修改普通 `.py`、`.ts`、`.tsx` 或 CSS 源码时，如果容器已经运行，不需要执行更新命令，后端 reload 和 Vite 会自动加载；容器未运行时只需：
 
@@ -120,7 +121,7 @@ cd "D:\desktop\math-agent\code"
 docker compose up -d
 ```
 
-#### 前端修改后页面没有变化
+##### 前端修改后页面没有变化
 
 Windows 目录挂载到 Linux Docker 容器时，Vite 偶尔可能没有收到文件变更事件。此时容器内源码虽然已经更新，但 Vite 仍在返回旧的转换模块。先重启前端开发服务，再在浏览器中按 `Ctrl+F5` 强制刷新：
 
@@ -140,6 +141,17 @@ docker compose up -d --force-recreate frontend
 
 重新创建前端容器同样不会删除 PostgreSQL 数据卷。不要为解决前端缓存问题执行 `docker compose down -v`。
 
+##### 后端修改后接口没有变化
+
+后端通常会由 Uvicorn 自动 reload；如果接口仍是旧行为，重启后端服务：
+
+```powershell
+cd "D:\desktop\math-agent\code"
+docker compose restart backend
+```
+
+##### 修改迁移或种子数据
+
 包含 Alembic 迁移、知识点或题库种子数据变化时执行：
 
 ```powershell
@@ -155,6 +167,8 @@ docker compose exec backend python -m scripts.verify_expr
 
 `alembic upgrade head`、`seed_database` 和 `rebuild_mastery --all` 均可重复执行。后端容器从停止状态启动时本身也会执行迁移；显式运行迁移可以覆盖“容器原本已经运行，拉取代码后没有重新触发启动命令”的情况。
 
+##### 修改后端依赖
+
 只有修改了 `backend/pyproject.toml`、后端 Dockerfile 或 Python 依赖时，才需要重新构建后端：
 
 ```powershell
@@ -163,14 +177,28 @@ docker compose build backend
 docker compose up -d backend
 ```
 
+##### 修改前端依赖
+
 只有修改了 `frontend/package.json`、`frontend/package-lock.json`、前端 Dockerfile 或 npm 依赖时，才需要安装前端依赖：
 
 ```powershell
 cd "D:\desktop\math-agent\code"
 docker compose build frontend
-docker compose run --rm frontend npm install
+docker compose run --rm frontend npm ci
 docker compose up -d frontend
 ```
+
+##### 修改 `.env` 或 Compose 配置
+
+修改 `.env`、端口、跨域来源或 `docker-compose.yml` 后，重新创建受影响的服务。无法确定影响范围时可以重新创建全部服务；该操作不会删除 PostgreSQL 数据卷：
+
+```powershell
+cd "D:\desktop\math-agent\code"
+docker compose up -d --force-recreate
+docker compose ps
+```
+
+#### 状态确认、访问与停止
 
 可以通过以下命令确认数据库迁移和主要工作流状态：
 
@@ -186,6 +214,7 @@ docker compose exec backend python -m scripts.verify_m3
 后端文档：http://localhost:8000/docs
 健康检查：http://localhost:8000/api/v1/health
 就绪检查：http://localhost:8000/api/v1/ready
+PostgreSQL（宿主机）：localhost:55433
 ```
 
 临时停止但保留容器：
@@ -206,6 +235,8 @@ docker compose down
 
 Compose 启动后端时会执行 `alembic upgrade head`，但不会自动导入业务种子。种子导入使用显式命令，避免每次启动静默修改数据。
 
+#### 镜像构建网络故障
+
 如果构建时报 `failed to fetch oauth token` 或 `auth.docker.io:443` 超时，说明故障发生在 Docker Hub 网络连接，不是项目代码。可以分别重试基础镜像下载，再重新构建：
 
 ```powershell
@@ -221,169 +252,55 @@ docker compose build backend frontend
 docker compose build --build-arg NPM_REGISTRY=https://registry.npmjs.org frontend
 ```
 
-如果 Docker Hub 仍不可达，可直接使用下面的 D 盘本地环境方式。
-
-## 当前电脑直接启动（推荐）
-
-当前电脑已经完成 conda 环境创建、依赖安装、数据库初始化和种子数据导入。以后运行项目时，**不需要再次执行 `conda create`、`initdb`、`createdb`、数据库迁移或种子导入**。
-
-“不创建默认 C 盘 conda 环境”的意思不是不用 conda，而是使用 `--prefix` 把 conda 环境放在本项目的 `code/.conda-env/` 中。运行时直接调用其中的 Python，不需要执行 `conda activate`。环境、包缓存和 PostgreSQL 数据都保存在 D 盘项目目录内。
-
-每次启动需要打开三个 PowerShell 窗口。
-
-### 1. 启动数据库
-
-在第一个 PowerShell 窗口运行：
-
-```powershell
-cd "D:\desktop\math-agent\code"
-
-& "D:\desktop\math-agent\code\.conda-env\Library\bin\pg_ctl.exe" `
-  -D "D:\desktop\math-agent\code\.postgres-data" `
-  -l "D:\desktop\math-agent\code\.postgres-data\server.log" `
-  -o "-p 55432" start
-```
-
-项目现在位于全英文路径 `D:\desktop\math-agent\code`，PostgreSQL 可以直接使用项目内环境和数据目录，不再需要额外的目录联接。看到 `server started` 表示数据库已经在后台运行，这个窗口可以关闭。
-
-### 2. 启动后端
-
-在第二个 PowerShell 窗口运行：
-
-```powershell
-cd "D:\desktop\math-agent\code\backend"
-$env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
-$env:WEB_ASSET_DIR = "D:\desktop\math-agent\code\data\web"
-& "D:\desktop\math-agent\code\.conda-env\python.exe" -m uvicorn app.main:app --reload --port 8000
-```
-
-启动后可访问后端接口文档：<http://localhost:8000/docs>。
-
-### 3. 启动前端
-
-在第三个 PowerShell 窗口运行：
-
-```powershell
-cd "D:\desktop\math-agent\code\frontend"
-npm run dev
-```
-
-启动后访问：<http://localhost:5173>。
-
-### 停止项目
-
-先在前端和后端窗口分别按 `Ctrl+C`，再运行：
-
-```powershell
-& "D:\desktop\math-agent\code\.conda-env\Library\bin\pg_ctl.exe" `
-  -D "D:\desktop\math-agent\code\.postgres-data" stop
-```
-
-## 首次创建 D 盘 conda 环境（当前电脑无需再执行）
-
-以下命令只用于在新电脑或删除 `.conda-env` 后重新安装。`--prefix "$PWD\.conda-env"` 会创建 conda 环境，但把它放在当前 D 盘项目目录，而不是 conda 默认的 C 盘环境目录：
-
-```powershell
-cd "D:\desktop\math-agent\code"
-$env:CONDA_PKGS_DIRS = "$PWD\.conda-pkgs"
-conda create --prefix "$PWD\.conda-env" -c conda-forge python=3.12 postgresql=16 -y
-
-$env:PIP_CACHE_DIR = "$PWD\.pip-cache"
-& "$PWD\.conda-env\python.exe" -m pip install -e ".\backend[dev]" `
-  -i https://pypi.tuna.tsinghua.edu.cn/simple
-```
-
-项目根目录为全英文路径，可以直接初始化项目内 PostgreSQL 数据目录：
-
-```powershell
-& "D:\desktop\math-agent\code\.conda-env\Library\bin\initdb.exe" `
-  -D "D:\desktop\math-agent\code\.postgres-data" `
-  -U postgres -A trust --encoding=UTF8 --locale=C
-
-& "D:\desktop\math-agent\code\.conda-env\Library\bin\pg_ctl.exe" `
-  -D "D:\desktop\math-agent\code\.postgres-data" `
-  -l "D:\desktop\math-agent\code\.postgres-data\server.log" `
-  -o "-p 55432" start
-
-& "D:\desktop\math-agent\code\.conda-env\Library\bin\createdb.exe" `
-  -h localhost -p 55432 -U postgres math_agent
-```
-
-迁移和导入：
-
-```powershell
-$env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
-cd backend
-& "..\.conda-env\python.exe" -m alembic upgrade head
-& "..\.conda-env\python.exe" -m scripts.seed_database --chapter all
-& "..\.conda-env\python.exe" -m scripts.rebuild_mastery --all
-& "..\.conda-env\python.exe" -m scripts.verify_expr
-& "..\.conda-env\python.exe" -m scripts.verify_m2
-& "..\.conda-env\python.exe" -m scripts.verify_m3
-```
-
-本地启动后端：
-
-```powershell
-$env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
-cd backend
-& "..\.conda-env\python.exe" -m uvicorn app.main:app --reload --port 8000
-```
-
-另开终端启动前端：
-
-```powershell
-cd "D:\desktop\math-agent\code\frontend"
-npm install
-npm run dev
-```
-
-停止项目内 PostgreSQL：
-
-```powershell
-& "D:\desktop\math-agent\code\.conda-env\Library\bin\pg_ctl.exe" `
-  -D "D:\desktop\math-agent\code\.postgres-data" stop
-```
-
 ## 资源转换
 
 已生成的 Web 资源按章节分别位于 `data/web/rational/` 和 `data/web/expr/`，每个目录各自维护 `asset_manifest.json`。重新构建任一章节数据后执行：
 
 ```powershell
-python .\scripts\convert_seed_assets.py
+cd "D:\desktop\math-agent\code"
+docker compose exec -w /app backend python scripts/convert_seed_assets.py
 ```
 
 脚本只处理正式种子题实际引用的资源，并生成 `asset_manifest.json`。Windows 优先使用 ImageMagick，未安装时使用项目内 PowerShell + GDI+ 转换器。转换失败会返回非零状态，不会覆盖原始 WMF。
 
 ## 测试与验收
 
-后端：
+### Docker 后端测试与前端构建
 
 ```powershell
-$env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
-cd code\backend
-& "..\.conda-env\python.exe" -m pytest -q
-& "..\.conda-env\python.exe" -m scripts.verify_m1
-& "..\.conda-env\python.exe" -m scripts.verify_m2
-& "..\.conda-env\python.exe" -m scripts.verify_m3
-& "..\.conda-env\python.exe" -m scripts.verify_m4
-& "..\.conda-env\python.exe" -m scripts.verify_m5
-& "..\.conda-env\python.exe" -m scripts.verify_m6
+cd "D:\desktop\math-agent\code"
+docker compose exec backend pytest -q
+docker compose exec backend python -m scripts.verify_m1
+docker compose exec backend python -m scripts.verify_expr
+docker compose exec backend python -m scripts.verify_m2
+docker compose exec backend python -m scripts.verify_m3
+docker compose exec backend python -m scripts.verify_m4
+docker compose exec backend python -m scripts.verify_m5
+docker compose exec backend python -m scripts.verify_m6
+docker compose exec frontend npm run build
 ```
 
-前端：
+### 前端浏览器回归（Windows 主机）
+
+Playwright 会自行启动 Vite 测试服务，因此运行前应先停止占用 `5173` 端口的 Docker 前端；后端和数据库保持运行。首次执行或 `package-lock.json` 变化后先运行 `npm ci`：
 
 ```powershell
-cd code\frontend
-npm run build
+cd "D:\desktop\math-agent\code"
+docker compose stop frontend
+cd ".\frontend"
+npm ci
 npm run test:e2e
+cd ".."
+docker compose start frontend
 ```
 
-M0 回归：
+如果测试中断，仍可单独执行 `docker compose start frontend` 恢复日常前端。
+
+### M0 数据回归
 
 ```powershell
-cd code
-python .\scripts\validate_m0.py
+cd "D:\desktop\math-agent\code"
+docker compose exec -w /app backend python scripts/validate_m0.py
 ```
 
 ## 种子导入规则
@@ -431,9 +348,10 @@ Assignment
 第二章使用新版 `六年级_数学_校本审核/新/expr_简单的代数式.docx`，构建命令为：
 
 ```powershell
-python .\scripts\build_expr_m0.py
-python .\scripts\validate_m0.py --prefix expr --source-root . --chapter-code math.g6.expr --min-seed 1 --max-seed 50 --expected-sections 4 --expected-knowledge-points 8
-python .\scripts\convert_seed_assets.py
+cd "D:\desktop\math-agent\code"
+docker compose exec -w /app backend python scripts/build_expr_m0.py
+docker compose exec -w /app backend python scripts/validate_m0.py --prefix expr --source-root . --chapter-code math.g6.expr --min-seed 1 --max-seed 50 --expected-sections 4 --expected-knowledge-points 8
+docker compose exec -w /app backend python scripts/convert_seed_assets.py
 ```
 
 产物为：
@@ -446,15 +364,16 @@ python .\scripts\convert_seed_assets.py
 题库导入支持按章节执行。第一章默认行为不变；第二章导入使用独立命令，不会创建第二套历史演示作业：
 
 ```powershell
-cd backend
-python -m scripts.seed_database --chapter expr
-python -m scripts.verify_expr
+cd "D:\desktop\math-agent\code"
+docker compose exec backend python -m scripts.seed_database --chapter expr
+docker compose exec backend python -m scripts.verify_expr
 ```
 
 也可以在空库或需要同时重导两个章节时执行：
 
 ```powershell
-python -m scripts.seed_database --chapter all
+cd "D:\desktop\math-agent\code"
+docker compose exec backend python -m scripts.seed_database --chapter all
 ```
 
 第二章完整题库中 25 组解答题和部分复杂填空题保留在题库展示层，当前不进入自动组卷池；这与第一章的“完整题库 / 自动组卷池”分层规则一致。
@@ -464,10 +383,9 @@ python -m scripts.seed_database --chapter all
 `StudentMastery` 是可重建汇总，Attempt、AttemptRevision 和已发布试卷快照才是证据来源。重算一个或全部学生：
 
 ```powershell
-cd code\backend
-$env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
-& "..\.conda-env\python.exe" -m scripts.rebuild_mastery --student-code S001 --dry-run
-& "..\.conda-env\python.exe" -m scripts.rebuild_mastery --all
+cd "D:\desktop\math-agent\code"
+docker compose exec backend python -m scripts.rebuild_mastery --student-code S001 --dry-run
+docker compose exec backend python -m scripts.rebuild_mastery --all
 ```
 
 查询画像和推荐预览不会写入数据库。M4 的新提交、改判和撤销确认会在同一事务中复用现有重放与汇总写入服务。
@@ -479,9 +397,8 @@ $env:DATABASE_URL = "postgresql+psycopg://postgres@localhost:55432/math_agent"
 M3 只读数据验收：
 
 ```powershell
-cd code\backend
-$env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
-& '..\.conda-env\python.exe' -m scripts.verify_m3
+cd "D:\desktop\math-agent\code"
+docker compose exec backend python -m scripts.verify_m3
 ```
 
 教师可从题库页面手动录入新题，新题先进入待审核区，选择题和填空题完成结构化答案审核后可进入自动组卷池。题目与学生的“删除”采用业务归档：从当前列表、推荐和后续组卷中移除，但保留既有试卷快照、作答和审计证据。
@@ -505,9 +422,8 @@ group   按 item_id 对齐小题并保留逐项结果
 M4 只读数据验收：
 
 ```powershell
-cd code\backend
-$env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
-& '..\.conda-env\python.exe' -m scripts.verify_m4
+cd "D:\desktop\math-agent\code"
+docker compose exec backend python -m scripts.verify_m4
 ```
 
 ## M5 班级学情与固定演示
@@ -517,27 +433,18 @@ $env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
 固定演示场景（按演示目标二选一；若需切换到另一场景，可另行执行对应命令）：
 
 ```powershell
-cd code\backend
-$env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
-& '..\.conda-env\python.exe' -m scripts.prepare_m5_demo --scenario m5_start
-# 或：& '..\.conda-env\python.exe' -m scripts.prepare_m5_demo --scenario m5_showcase
+cd "D:\desktop\math-agent\code"
+docker compose exec backend python -m scripts.prepare_m5_demo --scenario m5_start
+# 或：docker compose exec backend python -m scripts.prepare_m5_demo --scenario m5_showcase
 ```
 
-`prepare_m5_demo` 是幂等构造器，但不会删除或倒带已有审计记录。需要重复恢复同一初始状态时，使用独立的 `math_agent_m5_demo` 数据库：
-
-```powershell
-cd code
-.\scripts\reset_m5_demo.ps1 -Scenario m5_showcase -ConfirmResetM5Demo
-```
-
-重置脚本只允许删除精确命名的 `math_agent_m5_demo`，不会修改默认 `math_agent` 开发库，也不会关闭 AttemptRevision 的追加式保护。执行前须确保项目内 PostgreSQL 已在 55432 端口运行。
+`prepare_m5_demo` 是幂等构造器，但不会删除或倒带已有审计记录；需要完全恢复初始状态时，应使用单独的测试数据库或重新创建演示环境，不要清空默认开发库。
 
 M5 只读验收：
 
 ```powershell
-cd code\backend
-$env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
-& '..\.conda-env\python.exe' -m scripts.verify_m5
+cd "D:\desktop\math-agent\code"
+docker compose exec backend python -m scripts.verify_m5
 ```
 
 生产构建已按路由懒加载，并将 ECharts 与 zrender 从页面代码中拆出。MathLive 是仅在公式录入路由加载的单模块大包，构建仍会如实报告其大于 500 kB；项目没有通过调高 Vite 告警阈值隐藏该事实。
@@ -564,12 +471,11 @@ VISION_MAX_TOKENS=2048
 真实图片评估使用 `data/eval/m6/manifest.example.json` 作为清单模板；私人答题图片目录和结果文件已加入 `.gitignore`：
 
 ```powershell
-cd code\backend
-$env:DATABASE_URL = 'postgresql+psycopg://postgres@localhost:55432/math_agent'
-& '..\.conda-env\python.exe' -m scripts.evaluate_m6_recognition --help
-& '..\.conda-env\python.exe' -m scripts.purge_recognition_images
-& '..\.conda-env\python.exe' -m scripts.verify_m6
-& '..\.conda-env\python.exe' -m scripts.verify_m6 --require-image-scenario
+cd "D:\desktop\math-agent\code"
+docker compose exec backend python -m scripts.evaluate_m6_recognition --help
+docker compose exec backend python -m scripts.purge_recognition_images
+docker compose exec backend python -m scripts.verify_m6
+docker compose exec backend python -m scripts.verify_m6 --require-image-scenario
 ```
 
 `verify_m6 --require-image-scenario` 只接受由非 fake 供应商完成并提交的图片闭环。真实评估拒绝 disabled/fake 适配器和空样本；使用 `--require-thresholds` 时，还会按 manifest 中的 `acceptance_thresholds` 决定退出码。示例阈值只是演示基线，应由项目组结合真实复核负担确认。

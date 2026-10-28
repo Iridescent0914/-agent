@@ -19,11 +19,11 @@ def test_question_list_filters_and_detail_assets() -> None:
     response = client.get("/api/v1/questions", params={"page_size": 100})
     assert response.status_code == 200
     body = response.json()
-    assert body["total"] == 139
+    assert body["total"] == 180
     assert len(body["items"]) == 100
 
     choice = client.get("/api/v1/questions", params={"question_type": "choice"}).json()
-    assert choice["total"] == 11
+    assert choice["total"] == 17
     true_false = client.get(
         "/api/v1/questions", params={"question_type": "true_false"}
     ).json()
@@ -33,11 +33,11 @@ def test_question_list_filters_and_detail_assets() -> None:
     ready = client.get(
         "/api/v1/questions", params={"grading_readiness": "machine_ready", "page_size": 100}
     ).json()
-    assert 0 <= ready["total"] <= 139
+    assert 0 <= ready["total"] <= 180
     assert all(item["grading_readiness"] == "machine_ready" for item in ready["items"])
     assert all(item["import_issue_count"] == 0 for item in ready["items"])
     stats = client.get("/api/v1/questions/stats").json()
-    assert stats["total"] == 139
+    assert stats["total"] == 180
     assert stats["ready_count"] == ready["total"]
     assert stats["ready_count"] + stats["pending_count"] == stats["total"]
 
