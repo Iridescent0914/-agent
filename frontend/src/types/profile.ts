@@ -17,6 +17,7 @@ export interface Mastery {
   knowledge_point_name: string
   assessment_status: 'unassessed' | 'insufficient' | 'assessed'
   mastery: number | null
+  learning_status: 'yes' | 'no' | 'weak' | null
   confidence_level: 'low' | 'medium' | 'high'
   attempt_count: number
   correct_count: number
@@ -90,7 +91,7 @@ export interface RecommendedQuestion {
   knowledge_point_code: string; knowledge_point_name: string; bucket: 'new' | 'review'
   strategy: 'diagnostic' | 'personalized'; score: number; target_difficulty: number
   components: ScoreParts; contributions: ScoreParts; reason_codes: string[]; reason_text: string; evidence: EvidenceRef[]
-  source_module?: 'required' | 'personalized' | 'history' | 'legacy_recommendation'
+  source_module?: 'required' | 'personalized' | 'history' | 'weekly_summary' | 'legacy_recommendation'
 }
 export interface Recommendation {
   student_id: string; as_of: string; rule_version: string; parameters: RecommendationParams; weights: ScoreParts

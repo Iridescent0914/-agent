@@ -159,6 +159,12 @@ export function AssignmentDetailPage() {
         <Button type="primary" disabled={!selected.length} onClick={publishSelected}>发布所选草稿</Button>
       </Space>
     </div>
+    {data?.assignment_type === 'weekly_summary' && paperData?.total === 0 && <Alert
+      type="info"
+      showIcon
+      message="本次没有需要生成周总结的学生"
+      description="所选来源作业中，没有学生出现历史回顾再次答错的情况，因此暂无标“否”的知识点，也不会生成空白学生试卷。"
+    />}
     <Card className="table-card">
       <Table rowKey="id" loading={loading} columns={columns} dataSource={paperData?.items ?? []} pagination={{
         current: page, pageSize, total: paperData?.total ?? 0, showSizeChanger: true,

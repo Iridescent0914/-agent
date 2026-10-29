@@ -10,6 +10,7 @@ from app.models.entities import (
     RecognitionRun,
     SchoolClass,
     Student,
+    StudentKnowledgeStatus,
     StudentMastery,
     Submission,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "RecognitionRun",
     "SchoolClass",
     "Student",
+    "StudentKnowledgeStatus",
     "StudentMastery",
     "Submission",
 ]

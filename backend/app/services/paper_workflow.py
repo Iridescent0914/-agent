@@ -223,7 +223,9 @@ def list_assignment_items(
     db: Session, *, offset: int, limit: int, class_name: str | None = None,
     chapter_code: str | None = None, class_id: UUID | None = None,
 ) -> tuple[list[AssignmentListItem], int]:
-    assignment_query = select(Assignment).where(Assignment.assignment_type == "practice")
+    assignment_query = select(Assignment).where(
+        Assignment.assignment_type.in_(("practice", "weekly_summary"))
+    )
     if class_id is not None:
         assignment_query = assignment_query.where(Assignment.class_id == class_id)
     if chapter_code is not None:
@@ -344,16 +346,22 @@ def _parameters(db: Session, paper: PaperInstance) -> tuple[RecommendationReques
     return RecommendationRequest.model_validate(raw), datetime.fromisoformat(as_of)
 
 
-def _history_source_assignment_id(db: Session, paper: PaperInstance) -> UUID | None:
+def _review_source_assignment_ids(db: Session, paper: PaperInstance) -> list[UUID]:
     assignment = db.get(Assignment, paper.assignment_id)
     config = (assignment.generation_config if assignment else None) or {}
     filter_config = config.get("filter_config") or {}
     history_config = filter_config.get("history") or {}
-    raw = history_config.get("assignment_id")
-    try:
-        return UUID(str(raw)) if raw else None
-    except (TypeError, ValueError):
-        return None
+    raw_values = [history_config.get("assignment_id")]
+    raw_values.extend(config.get("source_assignment_ids") or [])
+    result = []
+    for raw in raw_values:
+        try:
+            value = UUID(str(raw)) if raw else None
+        except (TypeError, ValueError):
+            continue
+        if value is not None and value not in result:
+            result.append(value)
+    return result
 
 
 def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
@@ -372,25 +380,26 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
     context = load_context(db, paper.student_id)
     source_module = audit.get("source_module")
     is_history = source_module == "history"
+    is_fixed_review = source_module in {"history", "weekly_summary"}
     target_knowledge_code = target.knowledge_point_snapshot.get("id")
     target_difficulty = target.question_snapshot.get("difficulty")
     allowed_codes = (
         [target_knowledge_code]
-        if is_history and target_knowledge_code
+        if is_fixed_review and target_knowledge_code
         else params.new_knowledge_point_codes
         if bucket == "new"
         else params.review_knowledge_point_codes
     )
     existing_ids = {item.question_id for item in items}
     source_question_ids: set[UUID] = set()
-    if is_history:
-        source_assignment_id = _history_source_assignment_id(db, paper)
-        if source_assignment_id is not None:
+    if is_fixed_review:
+        for source_assignment_id in _review_source_assignment_ids(db, paper):
             source_question_ids.update(history_source_question_ids(
                 db,
                 source_assignment_id=source_assignment_id,
                 student_ids=[paper.student_id],
             )[paper.student_id])
+    if is_history:
         # Keep evidence-based exclusion for legacy drafts that predate the
         # stage-two filter_config contract.
         attempt_ids: list[UUID] = []
@@ -413,11 +422,11 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
                  if params.avoid_recent_days and
                  as_of - timedelta(days=params.avoid_recent_days) <= record.attempt.answered_at <= as_of}
     question_filters = [Question.archived_at.is_(None)]
-    if not is_history:
+    if not is_fixed_review:
         question_filters.append(Question.chapter_code.in_(
             params.chapter_codes or [params.chapter_code]
         ))
-    if not is_history and params.grade_codes:
+    if not is_fixed_review and params.grade_codes:
         question_filters.append(Question.grade.in_(params.grade_codes))
     rows = db.execute(
         select(Question, KnowledgePoint)
@@ -435,13 +444,13 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
     for question, knowledge_point in rows:
         if question.id in existing_ids or question.id in source_question_ids:
             continue
-        if not is_history and question.id in practiced:
+        if not is_fixed_review and question.id in practiced:
             continue
         if (
             knowledge_point.code not in allowed_codes
         ):
             continue
-        if is_history:
+        if is_fixed_review:
             if question.difficulty != target_difficulty:
                 continue
         elif (
@@ -453,7 +462,7 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
             continue
         if question.grading_readiness != "machine_ready" or question.source_review_status != "reviewed":
             continue
-        if not is_history and per_knowledge[knowledge_point.code] >= cap:
+        if not is_fixed_review and per_knowledge[knowledge_point.code] >= cap:
             continue
         candidate = Candidate(
             question.id, question.original_qid, question.question_type, question.difficulty,
@@ -495,7 +504,9 @@ def replace_item(db: Session, paper_id: UUID, item_id: UUID, *, replacement_id: 
     item.answer_region = None
     choice_audit = choice.model_dump(mode="json")
     previous_module = previous_audit.get("source_module")
-    if previous_module in {"required", "personalized", "history", "legacy_recommendation"}:
+    if previous_module in {
+        "required", "personalized", "history", "weekly_summary", "legacy_recommendation"
+    }:
         choice_audit["source_module"] = previous_module
     reason_codes = list(dict.fromkeys([
         *(choice_audit.get("reason_codes") or []),
@@ -505,7 +516,7 @@ def replace_item(db: Session, paper_id: UUID, item_id: UUID, *, replacement_id: 
     if previous_module == "required" and "required_question" not in reason_codes:
         reason_codes.append("required_question")
     choice_audit["reason_codes"] = reason_codes
-    if previous_module == "history":
+    if previous_module in {"history", "weekly_summary"}:
         choice_audit["evidence"] = deepcopy(previous_audit.get("evidence") or [])
         choice_audit["reason_text"] = previous_audit.get(
             "reason_text", choice_audit.get("reason_text", "")

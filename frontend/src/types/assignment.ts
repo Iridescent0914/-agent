@@ -40,6 +40,35 @@ export interface AssignmentPreview {
   students: AssignmentPreviewStudent[]
 }
 
+export interface WeeklySummaryKnowledgePoint {
+  knowledge_point_code: string
+  knowledge_point_name: string
+  evidence: Array<{ attempt_id: string; revision_no: number }>
+}
+
+export interface WeeklySummaryStudentPreview {
+  student_id: string
+  student_code: string
+  student_name: string
+  false_knowledge_points: WeeklySummaryKnowledgePoint[]
+  requested_count: number
+  selected_count: number
+  shortfall: number
+  status: 'no_review_needed' | 'ready' | 'insufficient_candidates'
+  items: RecommendedQuestion[]
+}
+
+export interface WeeklySummaryPreview {
+  as_of: string
+  student_count: number
+  paper_student_count: number
+  ready_count: number
+  shortfall_student_count: number
+  source_assignment_ids: string[]
+  involved_knowledge_point_codes: string[]
+  students: WeeklySummaryStudentPreview[]
+}
+
 export interface AssignmentRequest {
   class_id: string
   student_scope: 'selected' | 'all_class'

@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.models import Student
+from app.services.knowledge_status import rebuild_knowledge_statuses
 from app.services.student_profile import load_context, persist_mastery
 
 
@@ -29,7 +30,10 @@ def main() -> int:
             report = {}
             for student in students:
                 context = load_context(db, student.id)
-                report[student.student_code] = persist_mastery(db, context)
+                report[student.student_code] = {
+                    "mastery": persist_mastery(db, context),
+                    "knowledge_status": rebuild_knowledge_statuses(db, student.id),
+                }
             if args.dry_run:
                 db.rollback()
             else:

@@ -173,6 +173,29 @@ class StudentMastery(Base):
     )
 
 
+class StudentKnowledgeStatus(Base):
+    __tablename__ = "student_knowledge_statuses"
+    __table_args__ = (
+        CheckConstraint("status IN ('yes', 'no', 'weak')", name="ck_student_knowledge_status"),
+        CheckConstraint("source_revision_no >= 1", name="ck_student_knowledge_status_revision"),
+    )
+
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE"), primary_key=True
+    )
+    knowledge_point_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("knowledge_points.id", ondelete="CASCADE"), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(String(8), nullable=False)
+    source_attempt_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("attempts.id", ondelete="RESTRICT"), nullable=False
+    )
+    source_revision_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
 class Assignment(TimestampMixin, Base):
     __tablename__ = "assignments"
 

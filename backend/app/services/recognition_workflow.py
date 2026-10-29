@@ -22,6 +22,7 @@ from app.models import (
 from app.schemas.recognition import RecognitionReviewRequest, RecognitionRunOut
 from app.schemas.submissions import ManualAnswerIn, SubmissionDetailOut
 from app.services.grading import grade_answer
+from app.services.knowledge_status import rebuild_knowledge_statuses
 from app.services.student_profile import load_context, persist_mastery
 from app.services.submission_workflow import (
     GradingConflict, GradingValidation, _attempt_state, _grading_reference,
@@ -669,6 +670,7 @@ def review_recognition(
         ))
     db.flush()
     mastery_stats = persist_mastery(db, load_context(db, submission.student_id))
+    rebuild_knowledge_statuses(db, submission.student_id)
     return submission_view(
         db, submission.paper_instance_id, mastery_stats=mastery_stats
     )

@@ -33,6 +33,7 @@ class MasteryOut(BaseModel):
     knowledge_point_name: str
     assessment_status: Literal["unassessed", "insufficient", "assessed"]
     mastery: float | None
+    learning_status: Literal["yes", "no", "weak"] | None = None
     confidence_level: Literal["low", "medium", "high"]
     attempt_count: int = 0
     correct_count: int = 0

@@ -1,11 +1,17 @@
-import { Card, Select, Space, Switch, Typography } from 'antd'
+import { Card, Select, Space, Switch, Tag, Typography } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 import { apiGet, queryString } from '../api/client'
 import type { ClassOverview } from '../types/analytics'
 import type { QuestionCatalogChapter } from '../types'
-import type { Profile } from '../types/profile'
+import type { Mastery, Profile } from '../types/profile'
 import { KnowledgePointAccuracyChart, type AccuracyRow } from './KnowledgePointAccuracyChart'
 import { LiteracyRadarChart } from './LiteracyRadarChart'
+
+const learningStatusLabels: Record<NonNullable<Mastery['learning_status']>, { label: string; color: string }> = {
+  yes: { label: '是', color: 'green' },
+  no: { label: '否', color: 'orange' },
+  weak: { label: '弱', color: 'red' },
+}
 
 export function StudentProfileOverview({
   profile,
@@ -70,6 +76,10 @@ export function StudentProfileOverview({
       classAverage: classByCode.get(point.code) ?? null,
     }
   }), [chapterCatalog, classByCode, masteryByCode])
+  const learningStatuses = useMemo(() => chapterCatalog.flatMap((point) => {
+    const status = masteryByCode.get(point.code)?.learning_status
+    return status ? [{ point, status }] : []
+  }), [chapterCatalog, masteryByCode])
 
   return <Space direction="vertical" size="large" className="full-width">
     <div className="section-heading">
@@ -84,6 +94,11 @@ export function StudentProfileOverview({
       </Space>
     </div>
     <KnowledgePointAccuracyChart rows={accuracyRows} showClassAverage={showClassAverage} />
+    <Card title="知识点回顾标签">
+      {learningStatuses.length
+        ? <Space wrap>{learningStatuses.map(({ point, status }) => <Tag key={point.code} color={learningStatusLabels[status].color}>{point.name}：{learningStatusLabels[status].label}</Tag>)}</Space>
+        : <Typography.Text type="secondary">当前章节暂无“是 / 否 / 弱”回顾标签。</Typography.Text>}
+    </Card>
     <Card title="素养能力水平">
       <LiteracyRadarChart student={literacies} classAverage={classOverview?.literacies ?? literacies} />
     </Card>

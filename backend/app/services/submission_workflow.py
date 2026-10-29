@@ -23,6 +23,7 @@ from app.schemas.submissions import (
 )
 from app.services.assets import resolve_assets
 from app.services.grading import grade_answer
+from app.services.knowledge_status import rebuild_knowledge_statuses
 from app.services.paper_snapshots import current_knowledge_point_snapshot
 from app.services.student_profile import load_context, persist_mastery
 
@@ -392,6 +393,7 @@ def create_manual_submission(db: Session, paper_id: UUID,
         ))
     db.flush()
     mastery_stats = persist_mastery(db, load_context(db, paper.student_id))
+    rebuild_knowledge_statuses(db, paper.student_id)
     return submission_view(db, paper.id, mastery_stats=mastery_stats)
 
 
@@ -464,6 +466,7 @@ def review_attempt(db: Session, attempt_id: UUID,
     ))
     db.flush()
     mastery_stats = persist_mastery(db, load_context(db, attempt.student_id))
+    rebuild_knowledge_statuses(db, attempt.student_id)
     return submission_view(db, submission.paper_instance_id, mastery_stats=mastery_stats)
 
 
@@ -546,6 +549,7 @@ def regrade_submission(
         return submission_view(db, submission.paper_instance_id, unchanged=True)
     db.flush()
     mastery_stats = persist_mastery(db, load_context(db, submission.student_id))
+    rebuild_knowledge_statuses(db, submission.student_id)
     return submission_view(
         db,
         submission.paper_instance_id,

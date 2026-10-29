@@ -5,6 +5,7 @@ import { AppShell } from './components/AppShell'
 
 const ClassAnalyticsPage = lazy(() => import('./pages/ClassAnalyticsPage').then((module) => ({ default: module.ClassAnalyticsPage })))
 const AssignmentCreatePage = lazy(() => import('./pages/AssignmentCreatePage').then((module) => ({ default: module.AssignmentCreatePage })))
+const WeeklySummaryCreatePage = lazy(() => import('./pages/WeeklySummaryCreatePage').then((module) => ({ default: module.WeeklySummaryCreatePage })))
 const AssignmentDetailPage = lazy(() => import('./pages/AssignmentDetailPage').then((module) => ({ default: module.AssignmentDetailPage })))
 const AssignmentListPage = lazy(() => import('./pages/AssignmentListPage').then((module) => ({ default: module.AssignmentListPage })))
 const PaperInstancePage = lazy(() => import('./pages/PaperInstancePage').then((module) => ({ default: module.PaperInstancePage })))
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/students/:studentId" element={<StudentDetailPage />} />
           <Route path="/assignments" element={<AssignmentListPage />} />
           <Route path="/assignments/new" element={<AssignmentCreatePage />} />
+          <Route path="/assignments/weekly-summary/new" element={<WeeklySummaryCreatePage />} />
           <Route path="/assignments/:assignmentId" element={<AssignmentDetailPage />} />
           <Route path="/paper-instances/:paperInstanceId/print" element={<PaperPrintPage />} />
           <Route path="/paper-instances/:paperInstanceId/recognize" element={<RecognitionPage />} />

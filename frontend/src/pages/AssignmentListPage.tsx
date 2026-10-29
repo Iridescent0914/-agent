@@ -1,4 +1,4 @@
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import { CalendarOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Modal, Select, Space, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
@@ -63,7 +63,7 @@ export function AssignmentListPage() {
     })
   }
   const columns: ColumnsType<AssignmentListItem> = [
-    { title: '作业', dataIndex: 'title', render: (value, row) => <Link to={`/assignments/${row.id}`}>{value}</Link> },
+    { title: '作业', dataIndex: 'title', render: (value, row) => <Space><Link to={`/assignments/${row.id}`}>{value}</Link>{row.assignment_type === 'weekly_summary' && <Tag color="purple">周总结</Tag>}</Space> },
     { title: '班级', dataIndex: 'class_name', width: 150, render: (value) => value || '未设置' },
     { title: '学生', dataIndex: 'student_count', width: 90 },
     { title: '草稿', dataIndex: 'draft_count', width: 90, render: (value) => <Tag color={value ? 'gold' : 'default'}>{value}</Tag> },
@@ -95,6 +95,7 @@ export function AssignmentListPage() {
           style={{ width: 220 }}
         />
         <Button type="primary" icon={<PlusOutlined />}><Link to="/assignments/new">创建作业</Link></Button>
+        <Button icon={<CalendarOutlined />}><Link to={`/assignments/weekly-summary/new${classId ? `?class_id=${encodeURIComponent(classId)}` : ''}`}>创建周总结</Link></Button>
       </Space>
     </div>
     {error && <Alert type="error" showIcon message="作业加载失败" description={error} action={<Button onClick={load}>重试</Button>} />}

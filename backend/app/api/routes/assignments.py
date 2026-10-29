@@ -15,12 +15,16 @@ from app.schemas.assignments import (
 )
 from app.schemas.common import Page
 from app.schemas.papers import BatchPublishRequest, PaperSummaryOut
+from app.schemas.weekly_summary import (
+    WeeklySummaryCreateRequest, WeeklySummaryPlanRequest, WeeklySummaryPreviewOut,
+)
 from app.services.paper_generation import create_assignment, preview_assignment
 from app.services.paper_workflow import (
     PaperConflict, PaperValidation, assignment_detail, assignment_paper_summaries,
     delete_empty_assignment, list_assignment_items, list_recent_completed_assignments,
     publish_paper,
 )
+from app.services.weekly_summary import create_weekly_summary, preview_weekly_summary
 
 
 router = APIRouter(prefix="/assignments", tags=["assignments"])
@@ -51,6 +55,29 @@ def create(request: AssignmentCreateRequest, db: Session = Depends(get_db)):
         raise _error(exc) from exc
 
 
+@router.post("/weekly-summary/preview", response_model=WeeklySummaryPreviewOut)
+def preview_weekly(
+    request: WeeklySummaryPlanRequest, db: Session = Depends(get_db),
+):
+    try:
+        return preview_weekly_summary(db, request, as_of=datetime.now(timezone.utc))
+    except (LookupError, ValueError) as exc:
+        raise _error(exc) from exc
+
+
+@router.post("/weekly-summary", response_model=AssignmentDetailOut, status_code=201)
+def create_weekly(
+    request: WeeklySummaryCreateRequest, db: Session = Depends(get_db),
+):
+    try:
+        assignment, _ = create_weekly_summary(
+            db, request, as_of=datetime.now(timezone.utc)
+        )
+        return assignment_detail(db, assignment.id)
+    except (LookupError, ValueError, RuntimeError) as exc:
+        raise _error(exc) from exc
+
+
 @router.get("", response_model=Page[AssignmentListItem])
 def list_assignments(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),
                      class_id: UUID | None = Query(None),
@@ -66,7 +93,7 @@ def list_assignments(page: int = Query(1, ge=1), page_size: int = Query(20, ge=1
 
 @router.get("/recent-completed", response_model=list[AssignmentListItem])
 def recent_completed_assignments(
-    limit: int = Query(5, ge=1, le=5),
+    limit: int = Query(5, ge=1, le=6),
     class_id: UUID = Query(...),
     db: Session = Depends(get_db),
 ):

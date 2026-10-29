@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.models import (
     Attempt, AttemptRevision, KnowledgePoint, PaperInstance, PaperInstanceItem,
     Question, Student, StudentMastery, Submission,
+    StudentKnowledgeStatus,
 )
 from app.schemas.profile import (
     AttemptEvidenceOut, EvidenceRef, ExcludedEvidence, FocusPoint, KnowledgePointOut,
@@ -41,6 +42,7 @@ class ProfileContext:
     catalog: list[KnowledgePointOut]
     records: list[AttemptRecord]
     results: dict[tuple[UUID, UUID], MasteryResult]
+    knowledge_statuses: dict[UUID, StudentKnowledgeStatus]
 
 
 def knowledge_point_catalog(
@@ -126,6 +128,7 @@ def _context_from_rows(
     catalog: list[KnowledgePointOut],
     rows: list[tuple],
     current_knowledge_by_question_id: dict[UUID, tuple[str, str]],
+    knowledge_statuses: dict[UUID, StudentKnowledgeStatus] | None = None,
 ) -> ProfileContext:
     by_code = {knowledge_point.code: knowledge_point for knowledge_point in catalog}
     records = []
@@ -172,9 +175,12 @@ def _context_from_rows(
         records.append(AttemptRecord(
             attempt, item, paper, submission, revision, evidence, problem, main
         ))
-    return ProfileContext(student, catalog, records,
-                          replay([record.evidence for record in records
-                                  if record.problem is None and record.evidence is not None]))
+    return ProfileContext(
+        student, catalog, records,
+        replay([record.evidence for record in records
+                if record.problem is None and record.evidence is not None]),
+        knowledge_statuses or {},
+    )
 
 
 def load_contexts(db: Session, student_ids: list[UUID]) -> dict[UUID, ProfileContext]:
@@ -211,12 +217,20 @@ def load_contexts(db: Session, student_ids: list[UUID]) -> dict[UUID, ProfileCon
             .where(Question.archived_at.is_(None))
         ).all()
     }
+    statuses_by_student: dict[UUID, dict[UUID, StudentKnowledgeStatus]] = {
+        student.id: {} for student in students
+    }
+    for status in db.scalars(select(StudentKnowledgeStatus).where(
+        StudentKnowledgeStatus.student_id.in_(ids)
+    )):
+        statuses_by_student[status.student_id][status.knowledge_point_id] = status
     by_student = {
         student.id: _context_from_rows(
             student,
             catalog,
             grouped[student.id],
             current_knowledge_by_question_id,
+            statuses_by_student[student.id],
         )
         for student in students
     }
@@ -249,6 +263,10 @@ def mastery_items(context: ProfileContext, chapter_code: str | None = None) -> l
             assessment_status=("unassessed" if result is None else "insufficient"
                                if result.attempt_count < 3 or result.distinct_question_count < 2 else "assessed"),
             mastery=float(result.mastery) if result else None,
+            learning_status=(
+                context.knowledge_statuses[knowledge_point.id].status
+                if knowledge_point.id in context.knowledge_statuses else None
+            ),
             confidence_level=result.confidence_level if result else "low",
             available_question_count=knowledge_point.available_question_count, **values,
         ))

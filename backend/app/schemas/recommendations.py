@@ -77,7 +77,9 @@ class RecommendedQuestion(BaseModel):
     reason_codes: list[str]
     reason_text: str
     evidence: list[EvidenceRef]
-    source_module: Literal["required", "personalized", "history", "legacy_recommendation"] = (
+    source_module: Literal[
+        "required", "personalized", "history", "weekly_summary", "legacy_recommendation"
+    ] = (
         "legacy_recommendation"
     )
 
