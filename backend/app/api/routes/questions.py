@@ -488,6 +488,19 @@ def question_filter_catalog(db: Session = Depends(get_db)) -> list[QuestionCatal
             KnowledgePoint.name,
         )
     ).unique().all()
+    kp_section_rows = db.execute(
+        select(
+            Question.main_knowledge_point_id,
+            Question.section,
+            Question.source_question_number,
+        )
+        .where(Question.archived_at.is_(None))
+        .order_by(Question.main_knowledge_point_id, Question.source_question_number)
+    ).all()
+    section_by_kp: dict[uuid.UUID, str] = {}
+    for point_id, section, _source_number in kp_section_rows:
+        if point_id not in section_by_kp and section:
+            section_by_kp[point_id] = section
     chapters: dict[str, QuestionCatalogChapter] = {}
     for knowledge_point in knowledge_points:
         chapter = chapters.setdefault(
@@ -504,7 +517,7 @@ def question_filter_catalog(db: Session = Depends(get_db)) -> list[QuestionCatal
         chapter.knowledge_points.append(QuestionCatalogKnowledgePoint(
             code=knowledge_point.code,
             name=knowledge_point.name,
-            section=knowledge_point.section,
+            section=section_by_kp.get(knowledge_point.id) or knowledge_point.section,
             mastery_level=knowledge_point.mastery_level,
             core_competencies=knowledge_point.core_competencies,
         ))

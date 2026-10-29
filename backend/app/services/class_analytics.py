@@ -21,6 +21,7 @@ from app.schemas.analytics import (
     KnowledgePointStudentListOut,
 )
 from app.services.mastery import RULE_VERSION
+from app.services.literacy_catalog import baseline_literacies
 from app.services.student_profile import (
     ProfileContext,
     knowledge_point_catalog,
@@ -89,12 +90,12 @@ def _contexts(db: Session, students: list[Student]) -> list[ProfileContext]:
 
 
 def build_class_overview(
-    db: Session, *, class_name: str, chapter_code: str
+    db: Session, *, class_name: str, chapter_code: str, grade: str | None = None
 ) -> ClassOverviewOut:
     students = _active_students(db, class_name)
     if not students:
         raise LookupError("class not found")
-    catalog = knowledge_point_catalog(db, chapter_code)
+    catalog = knowledge_point_catalog(db, chapter_code, grade)
     if not catalog:
         raise LookupError("chapter not found")
     catalog_codes = {item.code for item in catalog}
@@ -122,6 +123,7 @@ def build_class_overview(
                 knowledge_point_id=knowledge_point.id,
                 knowledge_point_code=knowledge_point.code,
                 knowledge_point_name=knowledge_point.name,
+                section=knowledge_point.section,
                 student_count=len(students),
                 evidence_student_count=len(evidenced),
                 stable_student_count=sum(
@@ -229,6 +231,7 @@ def build_class_overview(
             uncovered_knowledge_point_count=len(knowledge_rows) - covered,
         ),
         knowledge_points=knowledge_rows,
+        literacies=baseline_literacies(),
         focus_points=focus_points,
     )
 

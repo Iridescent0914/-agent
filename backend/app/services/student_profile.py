@@ -20,6 +20,7 @@ from app.services.assets import resolve_assets
 from app.services.mastery import (
     Evidence, MasteryResult, RECENT_WINDOW_SIZE, RULE_VERSION, evidence_problem, replay,
 )
+from app.services.literacy_catalog import baseline_literacies
 
 
 @dataclass
@@ -43,34 +44,43 @@ class ProfileContext:
 
 
 def knowledge_point_catalog(
-    db: Session, chapter_code: str | None = None
+    db: Session, chapter_code: str | None = None, grade: str | None = None
 ) -> list[KnowledgePointOut]:
+    active_filters = [Question.archived_at.is_(None)]
+    if grade is not None:
+        active_filters.append(Question.grade == grade)
     active = (
         select(Question.main_knowledge_point_id)
-        .where(Question.archived_at.is_(None))
+        .where(*active_filters)
         .distinct()
         .subquery()
     )
+    count_filters = [
+        Question.grading_readiness == 'machine_ready',
+        Question.source_review_status == 'reviewed',
+        Question.archived_at.is_(None),
+    ]
+    if grade is not None:
+        count_filters.append(Question.grade == grade)
     counts = (
         select(Question.main_knowledge_point_id, func.count(Question.id).label("count"))
-        .where(
-            Question.grading_readiness == 'machine_ready',
-            Question.source_review_status == 'reviewed',
-            Question.archived_at.is_(None),
-        )
+        .where(*count_filters)
         .group_by(Question.main_knowledge_point_id).subquery()
     )
+    required_filters = [
+        Question.is_required.is_(True),
+        Question.grading_readiness == "machine_ready",
+        Question.source_review_status == "reviewed",
+        Question.archived_at.is_(None),
+    ]
+    if grade is not None:
+        required_filters.append(Question.grade == grade)
     required_counts = (
         select(
             Question.main_knowledge_point_id,
             func.count(Question.id).label("required_count"),
         )
-        .where(
-            Question.is_required.is_(True),
-            Question.grading_readiness == "machine_ready",
-            Question.source_review_status == "reviewed",
-            Question.archived_at.is_(None),
-        )
+        .where(*required_filters)
         .group_by(Question.main_knowledge_point_id)
         .subquery()
     )
@@ -85,12 +95,23 @@ def knowledge_point_catalog(
     )
     if chapter_code is not None:
         query = query.where(KnowledgePoint.chapter_code == chapter_code)
+    section_rows = db.execute(
+        select(Question.main_knowledge_point_id, Question.section)
+        .where(*active_filters)
+        .order_by(Question.main_knowledge_point_id, Question.source_question_number)
+    ).all()
+    section_by_id: dict[UUID, str] = {}
+    for point_id, section in section_rows:
+        if point_id not in section_by_id and section:
+            section_by_id[point_id] = section
     return [
         KnowledgePointOut(
             id=knowledge_point.id,
             code=knowledge_point.code,
             name=knowledge_point.name,
             chapter_code=knowledge_point.chapter_code,
+            chapter_name=knowledge_point.chapter_name,
+            section=section_by_id.get(knowledge_point.id) or knowledge_point.section,
             available_question_count=count or 0,
             required_available_question_count=required_count or 0,
         )
@@ -277,7 +298,7 @@ def build_profile(context: ProfileContext, *, computed_at: datetime | None = Non
             invalid_evidence_count=len(invalid), distinct_question_count=len({r.attempt.question_id for r in valid}),
             assessed_knowledge_point_count=assessed,
             unassessed_knowledge_point_count=len(items) - assessed,
-        ), masteries=items, focus_points=focus, recent_errors=recent_errors[:10],
+        ), masteries=items, literacies=baseline_literacies(), focus_points=focus, recent_errors=recent_errors[:10],
         excluded_evidence=[ExcludedEvidence(attempt_id=r.attempt.id, revision_no=r.attempt.revision_no,
                                             reason=r.problem) for r in context.records if r.problem],
     )

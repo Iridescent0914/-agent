@@ -4,7 +4,9 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from app.schemas.profile import LiteracyScoreOut
 
 
 class ClassOption(BaseModel):
@@ -26,6 +28,7 @@ class ClassKnowledgePointAnalytics(BaseModel):
     knowledge_point_id: UUID
     knowledge_point_code: str
     knowledge_point_name: str
+    section: str | None = None
     student_count: int
     evidence_student_count: int
     stable_student_count: int
@@ -53,6 +56,7 @@ class ClassOverviewOut(BaseModel):
     rule_version: str
     summary: ClassAnalyticsSummary
     knowledge_points: list[ClassKnowledgePointAnalytics]
+    literacies: list[LiteracyScoreOut] = Field(default_factory=list)
     focus_points: list[ClassFocusPoint]
     evidence_note: str = (
         "正确率只统计有效确认作答；待复核不算错误；"

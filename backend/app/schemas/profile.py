@@ -21,6 +21,8 @@ class KnowledgePointOut(BaseModel):
     code: str
     name: str
     chapter_code: str
+    chapter_name: str = ""
+    section: str | None = None
     available_question_count: int
     required_available_question_count: int = 0
 
@@ -42,6 +44,13 @@ class MasteryOut(BaseModel):
     practiced_question_types: list[str] = Field(default_factory=list)
     practiced_difficulties: list[int] = Field(default_factory=list)
     available_question_count: int = 0
+
+
+class LiteracyScoreOut(BaseModel):
+    name: str
+    score: float
+    score_source: Literal["baseline", "computed"]
+    rule_version: str
 
 
 class HistoryPointOut(EvidenceRef):
@@ -90,6 +99,7 @@ class ProfileOut(BaseModel):
     rule_version: str
     summary: ProfileSummary
     masteries: list[MasteryOut]
+    literacies: list[LiteracyScoreOut] = Field(default_factory=list)
     focus_points: list[FocusPoint]
     recent_errors: list[RecentWrong]
     excluded_evidence: list[ExcludedEvidence]

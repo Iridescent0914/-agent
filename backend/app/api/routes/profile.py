@@ -29,9 +29,10 @@ def student_context(student_id: UUID, db: Session = Depends(get_db)) -> ProfileC
 @router.get("/knowledge-points", response_model=list[KnowledgePointOut])
 def list_knowledge_points(
     chapter_code: str | None = None,
+    grade: str | None = None,
     db: Session = Depends(get_db),
 ):
-    return knowledge_point_catalog(db, chapter_code)
+    return knowledge_point_catalog(db, chapter_code, grade)
 
 
 @router.get("/students/{student_id}/mastery", response_model=list[MasteryOut])

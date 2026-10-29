@@ -30,10 +30,13 @@ def get_classes(db: Session = Depends(get_db)):
 def get_class_overview(
     class_name: str = Query(min_length=1, max_length=120),
     chapter_code: str = Query(min_length=1, max_length=160),
+    grade: str | None = Query(None, min_length=1, max_length=80),
     db: Session = Depends(get_db),
 ):
     try:
-        return build_class_overview(db, class_name=class_name, chapter_code=chapter_code)
+        return build_class_overview(
+            db, class_name=class_name, chapter_code=chapter_code, grade=grade
+        )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

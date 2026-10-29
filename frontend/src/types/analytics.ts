@@ -1,3 +1,5 @@
+import type { LiteracyScore } from './profile'
+
 export interface ClassOption {
   class_name: string
   student_count: number
@@ -7,6 +9,7 @@ export interface ClassKnowledgePointAnalytics {
   knowledge_point_id: string
   knowledge_point_code: string
   knowledge_point_name: string
+  section?: string | null
   student_count: number
   evidence_student_count: number
   stable_student_count: number
@@ -42,6 +45,7 @@ export interface ClassOverview {
     uncovered_knowledge_point_count: number
   }
   knowledge_points: ClassKnowledgePointAnalytics[]
+  literacies?: LiteracyScore[]
   focus_points: ClassFocusPoint[]
   evidence_note: string
 }

@@ -6,6 +6,8 @@ export interface KnowledgePoint {
   code: string
   name: string
   chapter_code: string
+  chapter_name: string
+  section?: string | null
   available_question_count: number
   required_available_question_count: number
 }
@@ -26,6 +28,12 @@ export interface Mastery {
   practiced_question_types: string[]
   practiced_difficulties: number[]
   available_question_count: number
+}
+export interface LiteracyScore {
+  name: string
+  score: number
+  score_source: 'baseline' | 'computed'
+  rule_version: string
 }
 export interface HistoryPoint extends EvidenceRef {
   answered_at: string
@@ -53,6 +61,7 @@ export interface Profile {
     assessed_knowledge_point_count: number; unassessed_knowledge_point_count: number
   }
   masteries: Mastery[]
+  literacies?: LiteracyScore[]
   focus_points: FocusPoint[]
   recent_errors: Array<EvidenceRef & { answered_at: string; original_qid: string; knowledge_point_code: string; knowledge_point_name: string }>
   excluded_evidence: Array<EvidenceRef & { reason: string }>
