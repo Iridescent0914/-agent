@@ -1,6 +1,6 @@
 # 数学教学 Agent Demo
 
-当前已完成 M0～M5，并实现 M6“固定答题区与 VLM 图片识别”的工程闭环。系统可以打印不含标答的学生试卷，上传答题区照片，由视觉模型只抄读答案，再经教师核对、确定性规则判分、修订审计和画像重算进入下一轮推荐。真实 VLM 的质量验收仍需配置供应商凭据并使用真实样本集运行评估脚本，不能用内置 fake adapter 代替。
+当前以阶段二筛选与组卷规则为业务基线，已实现必做题、历史回顾、周总结、提交批改、学生画像和班级学情；个性化组卷后端尚未接入。系统同时具备固定答题区与 VLM 图片识别的工程闭环，但真实 VLM 仍需配置供应商凭据并使用真实样本集验收，不能用内置 fake adapter 代替。
 
 ## 当前功能
 
@@ -17,7 +17,7 @@
 - 每个画像点和推荐理由可回溯到历史 Attempt、修订号与发布试卷快照；
 - 教师可设置新知识 / 回顾范围、题量、题型、难度、近期去重和单知识点占比，预览规则推荐及候选缺口；
 - 860 个唯一公式/图片资源转换为浏览器可显示格式（第一章 564 个，第二章新增 296 个）；
-- 第二章“简单的代数式”已按同一 M0 流程生成 41 组完整题库、9 组可自动判分候选题和 8 个知识点；
+- 第二章“简单的代数式”已按统一题库导入流程生成 41 组完整题库、9 组可自动判分候选题和 8 个知识点；
 - 多学生只读预检与原子生成，每名学生拥有独立 draft PaperInstance；
 - 草稿支持规则一致的备选换题、删题、连续调序和乐观锁冲突保护；
 - 单份 / 批量发布、全局唯一实例码、按码精确查询和发布后复制新版本；
@@ -28,11 +28,10 @@
 - 批改工作台、逐题结果、修订时间线和画像入口支持桌面与 390px 页面；
 - 班级学情总览按发布快照和当前有效修订聚合，支持知识点正确率、掌握度参考均值、证据覆盖、未评估状态和学生下钻；
 - 作业进度只统计每名学生的当前有效发布版本，区分未提交、待复核、已完成、草稿和历史作废版本；
-- `m5_start` / `m5_showcase` 两套固定演示场景、隔离数据库安全重置脚本和只读 `verify_m5.py`；
 - 页面级懒加载，ECharts 与 zrender 独立分包；学情页和批改筛选 URL 支持桌面与 390px 页面；
-- M1～M6 只读验收、130 项后端测试、前端 production build，以及桌面 / 390px 浏览器回归。
+- 当前业务规则的后端自动化测试、只读一致性验收、前端 production build，以及桌面 / 390px 浏览器回归。
 
-推荐预览仍保持只读；只有教师确认生成后才创建 Assignment 和草稿。M4 首次录入会锁定题库中当时已发布且可机判的标准答案：录入前完成的答案修订会直接用于首次评分；只有提交之后题库再次修改，已有提交才显示“重新评分”。重新评分由教师显式触发并追加修订，始终不改写 `PaperInstanceItem` 发布快照。M6 的模型置信度仅用于展示，所有图片作答初始均为 `needs_review`，教师确认前不会更新画像。
+推荐预览仍保持只读；只有教师确认生成后才创建 Assignment 和草稿。首次录入会锁定题库中当时已发布且可机判的标准答案：录入前完成的答案修订会直接用于首次评分；只有提交之后题库再次修改，已有提交才显示“重新评分”。重新评分由教师显式触发并追加修订，始终不改写 `PaperInstanceItem` 发布快照。视觉模型置信度仅用于展示，所有图片作答初始均为 `needs_review`，教师确认前不会更新画像。
 
 ## 目录
 
@@ -41,8 +40,7 @@ code/
 ├── backend/                       FastAPI、模型、迁移、种子、验收和测试
 ├── frontend/                      React + TypeScript + Ant Design
 ├── data/
-│   ├── seed/                      M0 正式种子
-│   │   └── m5_demo_scenarios.json M5 固定演示场景合同
+│   ├── seed/                      正式题库与当前演示场景配置
 │   ├── assets/rational/           第1章有理数原始资源
 │   ├── assets/expr/               第2章简单的代数式原始资源
 │   ├── web/rational/              第1章 Web 资源与 manifest
@@ -76,7 +74,7 @@ docker compose exec backend python -m scripts.seed_database --chapter all
 docker compose ps
 ```
 
-`seed_database` 默认只初始化知识点和题库，不创建班级、学生、作业、试卷、作答或画像。后端容器每次启动都会自动执行 `alembic upgrade head`。业务演示数据应通过单独的显式脚本创建；没有学生时不需要执行 `rebuild_mastery --all`。M1～M6 验收不是启动前置条件，需要时在准备好对应隔离测试数据后执行。
+`seed_database` 只初始化知识点和题库，不创建班级、学生、作业、试卷、作答或画像。后端容器每次启动都会自动执行 `alembic upgrade head`。业务演示数据通过当前版本的独立脚本创建；没有学生时不需要执行 `rebuild_mastery --all`。
 
 #### 日常启动
 
@@ -268,9 +266,7 @@ docker compose exec -w /app backend python scripts/convert_seed_assets.py
 ```powershell
 cd "D:\desktop\math-agent\code"
 docker compose exec backend pytest -q
-docker compose exec backend python -m scripts.verify_m1
 docker compose exec backend python -m scripts.verify_expr
-docker compose exec backend python -m scripts.verify_m2
 docker compose exec backend python -m scripts.verify_m3
 docker compose exec backend python -m scripts.verify_m4
 docker compose exec backend python -m scripts.verify_m5
@@ -294,7 +290,7 @@ docker compose start frontend
 
 如果测试中断，仍可单独执行 `docker compose start frontend` 恢复日常前端。
 
-### M0 数据回归
+### 题库数据回归
 
 ```powershell
 cd "D:\desktop\math-agent\code"
@@ -309,13 +305,26 @@ docker compose exec -w /app backend python scripts/validate_m0.py
 docker compose exec backend python -m scripts.seed_database --chapter all
 ```
 
-阶段一旧版 S001～S005、未设置年级/学年的 Demo 班和三次旧历史作答不再属于默认种子。只为兼容旧版 M1～M5 隔离演示库保留显式开关：
+阶段一旧版 S001～S005、未设置年级/学年的 Demo 班和三次旧历史作答已停止支持。种子导入器不再提供旧演示兼容开关；演示数据统一由符合当前筛选、组卷和画像规则的独立脚本创建。
+
+### 创建当前版本演示数据
+
+先完成迁移和题库导入，再显式创建当前演示场景：
 
 ```powershell
-docker compose exec backend python -m scripts.seed_database --chapter rational --include-legacy-demo
+docker compose exec backend python -m scripts.prepare_current_demo
 ```
 
-不要在默认开发库或正式环境使用 `--include-legacy-demo`。新的演示数据应由符合当前筛选、组卷和画像规则的独立脚本创建。
+该命令读取 `data/seed/current_demo_scenario.json`，幂等创建：
+
+- 六年级 Demo 班，年级为“六年级”，学年为 `2026-2027`；
+- 5 名匿名演示学生；
+- 2 份全班统一必做题且已全部批改的来源作业；
+- 1 份按当前规则生成的必做题 + 逐学生历史回顾作业；
+- 1 份独立周总结；
+- 可由真实 Attempt 和修订记录回放的“是 / 否 / 弱”状态及学生画像。
+
+演示构造器调用当前组卷、发布、提交、确定性判分、知识点状态和周总结服务，不生成尚未实现的个性化题。重复执行不会重复创建班级、学生、作业或作答。它不会随 `docker compose up` 自动运行；其他协作者拉取代码后需要在自己的数据库显式执行一次。
 
 ### 清理旧业务与演示数据
 
@@ -406,23 +415,23 @@ docker compose exec backend python -m scripts.seed_database --chapter all
 
 第二章完整题库中 25 组解答题和部分复杂填空题保留在题库展示层，当前不进入自动组卷池；这与第一章的“完整题库 / 自动组卷池”分层规则一致。
 
-## M2 画像重算
+## 学生画像重算
 
 `StudentMastery` 是可重建汇总，Attempt、AttemptRevision 和已发布试卷快照才是证据来源。重算一个或全部学生：
 
 ```powershell
 cd "D:\desktop\math-agent\code"
-docker compose exec backend python -m scripts.rebuild_mastery --student-code S001 --dry-run
+docker compose exec backend python -m scripts.rebuild_mastery --student-code DEMO-S001 --dry-run
 docker compose exec backend python -m scripts.rebuild_mastery --all
 ```
 
-查询画像和推荐预览不会写入数据库。M4 的新提交、改判和撤销确认会在同一事务中复用现有重放与汇总写入服务。
+查询画像和推荐预览不会写入数据库。新提交、改判和撤销确认会在同一事务中复用现有重放与汇总写入服务。
 
-## M3 组卷与发布
+## 组卷与发布
 
 教师从“组卷”页面选择学生、教学范围和题量，先进行不会写库的全班预检，再原子生成草稿。草稿可换题、删题、调序或整份删除；发布时生成 `RAT-XXXX-XXXX` 实例码并冻结快照。已发布版本可以撤回并重新发布，但不能物理删除；修订版发布时自动将直接前版标记为“已被更新”。旧编号始终定位旧版，同时返回其有效、撤回或已被更新状态。
 
-M3 只读数据验收：
+组卷与发布只读数据验收：
 
 ```powershell
 cd "D:\desktop\math-agent\code"
@@ -431,7 +440,7 @@ docker compose exec backend python -m scripts.verify_m3
 
 教师可从题库页面手动录入新题，新题先进入待审核区，选择题和填空题完成结构化答案审核后可进入自动组卷池。题目与学生的“删除”采用业务归档：从当前列表、推荐和后续组卷中移除，但保留既有试卷快照、作答和审计证据。
 
-## M4 手动批改与画像闭环
+## 手动批改与画像闭环
 
 教师从“批改”页面选择当前有效的已发布学生试卷，按题号录入答案或明确标记留白。系统按发布快照执行确定性判分：
 
@@ -447,28 +456,18 @@ group   按 item_id 对齐小题并保留逐项结果
 
 非选择题可在普通输入和可视化公式输入之间切换。公式区直接提供分数、平方根、n 次根、平方、幂、下标、绝对值、括号、π、正负号、乘除号、比较符号和度数符号，并可打开数字、符号、字母和希腊字母完整键盘。该键盘只解决可靠录入问题，不改变判分语义：`numeric` 仍遵循题目规则中的有理数等价开关，`latex_exact` 仍不承诺任意代数等价。
 
-M4 只读数据验收：
+批改与画像只读数据验收：
 
 ```powershell
 cd "D:\desktop\math-agent\code"
 docker compose exec backend python -m scripts.verify_m4
 ```
 
-## M5 班级学情与固定演示
+## 班级学情
 
 前端默认进入“学情”页面。班级聚合沿用个人画像的同一证据校验与重放逻辑：`needs_review` 不进入正确率分母，未评估学生不按 0 或内部冷启动值 0.5 参与班级掌握度均值。每个知识点同时给出证据学生数、确认作答数、正确率和掌握度参考值，并可下钻到学生画像和具体 Attempt。
 
-固定演示场景（按演示目标二选一；若需切换到另一场景，可另行执行对应命令）：
-
-```powershell
-cd "D:\desktop\math-agent\code"
-docker compose exec backend python -m scripts.prepare_m5_demo --scenario m5_start
-# 或：docker compose exec backend python -m scripts.prepare_m5_demo --scenario m5_showcase
-```
-
-`prepare_m5_demo` 是幂等构造器，但不会删除或倒带已有审计记录；需要完全恢复初始状态时，应使用单独的测试数据库或重新创建演示环境，不要清空默认开发库。
-
-M5 只读验收：
+班级学情只读验收：
 
 ```powershell
 cd "D:\desktop\math-agent\code"
@@ -477,9 +476,9 @@ docker compose exec backend python -m scripts.verify_m5
 
 生产构建已按路由懒加载，并将 ECharts 与 zrender 从页面代码中拆出。MathLive 是仅在公式录入路由加载的单模块大包，构建仍会如实报告其大于 500 kB；项目没有通过调高 Vite 告警阈值隐藏该事实。
 
-## M6 打印、图片识别与教师复核
+## 打印、图片识别与教师复核
 
-已发布试卷详情页提供“打印学生卷”和“上传答题区照片”。打印接口和普通 student view 都使用题目字段白名单，不返回标准答案、评分规则、解析、易错分析或教师审计字段；图片支持 JPEG、PNG、WebP，服务端会校验真实格式和像素、应用 EXIF 方向、去除元数据并重新编码。识别结果只抄读答案，提交后所有 Attempt 先进入 `needs_review`，教师对照原图确认或修正后才调用 M4 的 `grade_answer` 并重算画像。
+已发布试卷详情页提供“打印学生卷”和“上传答题区照片”。打印接口和普通 student view 都使用题目字段白名单，不返回标准答案、评分规则、解析、易错分析或教师审计字段；图片支持 JPEG、PNG、WebP，服务端会校验真实格式和像素、应用 EXIF 方向、去除元数据并重新编码。识别结果只抄读答案，提交后所有 Attempt 先进入 `needs_review`，教师对照原图确认或修正后才调用确定性判分服务并重算画像。
 
 默认配置使用 `VISION_PROVIDER=fake`，只用于离线开发和故障回退，会把每题标成“无法辨认”，不代表真实识别验收通过。接入兼容 `/chat/completions` 的视觉模型时，在本地 `.env` 配置：
 
@@ -494,7 +493,7 @@ VISION_MAX_TOKENS=2048
 
 推荐的本地演示模型是 `Qwen/Qwen3-VL-4B-Instruct`，使用 Instruct 而不是 Thinking 版本。通过 vLLM 在本机提供 OpenAI 兼容接口时，`VISION_API_KEY` 可以留空；只有配置了密钥时，后端才发送 `Authorization` 请求头。识别提示词会按发布快照动态传递选择题可用字母（不限于 ABCD），但不会传递标准答案。模型输出的大小写和全角字母会被归一化，超出本题选项范围、组合小题缺失或重复的结果会自动进入“存在歧义”，只能由教师修正，不能直接判错。
 
-当前打印产物是“试卷正文 + 文末统一答题区”，不是独立答题卡；主链路要求教师手工裁剪统一答题区，再由 VLM 读取。后续 M6.1 将增加独立 A4 答题卡、稳定定位标记、不可变布局版本、逐题坐标、透视校正和自动裁剪。第一版仍只使用一个主 VLM，`PP-OCRv5` 与 `PP-FormulaNet_plus-M` 仅在真实评测证明存在特定短板后作为可选 adapter，不是同时接入的前置依赖。本阶段不引入 PaddlePaddle 重型运行时，详见项目根目录 `11_数学教学Agent_M6模型接入与答题识别优化计划.md`。
+当前打印产物是“试卷正文 + 文末统一答题区”，不是独立答题卡；主链路要求教师手工裁剪统一答题区，再由 VLM 读取。后续识别优化将增加独立 A4 答题卡、稳定定位标记、不可变布局版本、逐题坐标、透视校正和自动裁剪。第一版仍只使用一个主 VLM，`PP-OCRv5` 与 `PP-FormulaNet_plus-M` 仅在真实评测证明存在特定短板后作为可选 adapter，不是同时接入的前置依赖。本阶段不引入 PaddlePaddle 重型运行时，详见项目根目录 `11_数学教学Agent_M6模型接入与答题识别优化计划.md`。
 
 真实图片评估使用 `data/eval/m6/manifest.example.json` 作为清单模板；私人答题图片目录和结果文件已加入 `.gitignore`：
 
@@ -510,8 +509,6 @@ docker compose exec backend python -m scripts.verify_m6 --require-image-scenario
 
 `purge_recognition_images` 默认仅 dry-run，只有显式传入 `--confirm` 才删除超过保留期的原图；数据库中的哈希、模型版本、识别结果、Submission、Attempt 和修订审计仍会保留。
 
-完整实现与演示交接见 `docs/13_M6_工作总结与教师演示版交接.md`。
-
 ## 下一阶段
 
-先配置真实视觉模型并收集去身份化样本，执行准确率、漏识别率、需修改比例与教师复核耗时评估。达到项目约定阈值后，才能将 M6 标记为“教师演示版完成”；在此之前工程功能可演示，但识别质量只算待验收。
+先配置真实视觉模型并收集去身份化样本，执行准确率、漏识别率、需修改比例与教师复核耗时评估。达到项目约定阈值后，才能将视觉识别标记为“教师演示版完成”；在此之前工程功能可演示，但识别质量只算待验收。

@@ -18,7 +18,7 @@ from app.models import Attempt, RecognitionItem, RecognitionRun, Submission
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Read-only M6 validation")
+    parser = argparse.ArgumentParser(description="Read-only recognition workflow validation")
     parser.add_argument("--require-image-scenario", action="store_true")
     args = parser.parse_args()
     errors: list[str] = []
@@ -26,8 +26,8 @@ def main() -> int:
     settings = get_settings()
     with SessionLocal() as db:
         migration = db.scalar(text("SELECT version_num FROM alembic_version"))
-        if migration != "0023":
-            errors.append(f"migration is {migration}, expected 0023")
+        if migration != "0024":
+            errors.append(f"migration is {migration}, expected 0024")
         runs = list(db.scalars(select(RecognitionRun)))
         now = datetime.now(timezone.utc)
         run_ids = {run.id for run in runs}
@@ -85,9 +85,9 @@ def main() -> int:
         if args.require_image_scenario and not committed_real_runs:
             errors.append("no committed real-provider image submission exists")
         elif not image_submissions:
-            warnings.append("当前数据库尚未准备 M6 图片演示场景")
+            warnings.append("当前数据库尚未准备图片识别演示场景")
         elif not committed_real_runs:
-            warnings.append("当前数据库只有 fake 图片场景，不能用于 M6 真实识别验收")
+            warnings.append("当前数据库只有 fake 图片场景，不能用于真实识别验收")
         for name, count in {
             "duplicate recognition items": len(duplicate_items),
             "run item ownership errors": ownership_errors,

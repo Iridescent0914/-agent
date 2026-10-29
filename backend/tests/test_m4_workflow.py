@@ -37,7 +37,7 @@ def client(db):
 
 
 def _published_paper(client, db):
-    student = db.scalar(select(Student).where(Student.student_code == "S002"))
+    student = db.scalar(select(Student).where(Student.student_code == "DEMO-S002"))
     request = {
         "idempotency_key": "m4-assignment-" + uuid4().hex,
         "title": "M4 批改闭环测试",

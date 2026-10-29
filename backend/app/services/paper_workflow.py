@@ -342,7 +342,7 @@ def _parameters(db: Session, paper: PaperInstance) -> tuple[RecommendationReques
     raw = config.get("recommendation_parameters")
     as_of = config.get("as_of")
     if not raw or not as_of:
-        raise PaperValidation("paper has no M3 generation configuration")
+        raise PaperValidation("paper has no assignment generation configuration")
     return RecommendationRequest.model_validate(raw), datetime.fromisoformat(as_of)
 
 

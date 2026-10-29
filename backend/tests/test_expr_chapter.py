@@ -33,7 +33,7 @@ def expr_seeded() -> dict[str, object]:
             )
         ) or 0
         student_id = db.scalar(
-            select(Student.id).where(Student.student_code == "S001")
+            select(Student.id).where(Student.student_code == "DEMO-S001")
         )
         new_code = db.scalar(
             select(KnowledgePoint.code)
@@ -53,7 +53,7 @@ def expr_seeded() -> dict[str, object]:
     if not question_count:
         pytest.skip("math.g6.expr seed data is not loaded in this database")
     if student_id is None or new_code is None:
-        pytest.fail("expr integration data is incomplete: S001 or a machine-ready knowledge point is missing")
+        pytest.fail("expr integration data is incomplete: DEMO-S001 or a machine-ready knowledge point is missing")
     return {"student_id": student_id, "new_code": new_code}
 
 

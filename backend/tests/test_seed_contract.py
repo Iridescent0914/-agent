@@ -14,10 +14,10 @@ MANIFEST_PATH = CODE_ROOT / "data" / "web" / "rational" / "asset_manifest.json"
 ASSET_PATTERN = re.compile(r"\[ASSET:([^\]]+)\]")
 
 
-def test_catalog_import_does_not_enable_legacy_demo_by_default() -> None:
+def test_catalog_import_has_no_business_data_options() -> None:
     parameters = signature(import_seed_data).parameters
-    assert parameters["include_demo_students"].default is False
-    assert parameters["include_demo_history"].default is False
+    assert "include_demo_students" not in parameters
+    assert "include_demo_history" not in parameters
 
 
 def test_m0_seed_contract_is_preserved() -> None:

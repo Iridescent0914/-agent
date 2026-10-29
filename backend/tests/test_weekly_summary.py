@@ -13,7 +13,7 @@ from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import (
     Assignment, Attempt, AttemptRevision, KnowledgePoint, PaperInstance, PaperInstanceItem,
-    Question, Student,
+    Question, SchoolClass, Student,
     StudentKnowledgeStatus, Submission,
 )
 from app.services.knowledge_status import rebuild_knowledge_statuses
@@ -191,10 +191,29 @@ def _completed_assignment_with_wrong_history(db, student):
     return assignment, point
 
 
+def _isolated_student(db) -> Student:
+    token = uuid4().hex
+    school_class = SchoolClass(
+        name=f"周总结测试班-{token}",
+        grade="六年级",
+        school_year="2026-2027",
+    )
+    db.add(school_class)
+    db.flush()
+    student = Student(
+        student_code=f"WEEKLY-{token[:20]}",
+        display_name="周总结测试学生",
+        class_id=school_class.id,
+        class_name=school_class.name,
+        is_demo=True,
+    )
+    db.add(student)
+    db.flush()
+    return student
+
+
 def test_weekly_summary_generation_shortfall_contract_and_weak_status(client, db):
-    student = db.scalar(select(Student).where(
-        Student.archived_at.is_(None), Student.class_id.is_not(None),
-    ).order_by(Student.student_code))
+    student = _isolated_student(db)
     assert student is not None and student.class_id is not None
     source, point = _completed_assignment_with_wrong_history(db, student)
     rebuild_knowledge_statuses(db, student.id)
@@ -307,9 +326,7 @@ def test_weekly_summary_generation_shortfall_contract_and_weak_status(client, db
 
 
 def test_weekly_summary_inventory_shortfall_still_creates_empty_draft(client, db):
-    student = db.scalar(select(Student).where(
-        Student.archived_at.is_(None), Student.class_id.is_not(None),
-    ).order_by(Student.student_code))
+    student = _isolated_student(db)
     assert student is not None and student.class_id is not None
     source, point = _completed_assignment_with_wrong_history(db, student)
     source_question_ids = set(db.scalars(

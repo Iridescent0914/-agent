@@ -90,11 +90,13 @@ def test_student_history_is_traceable() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["total"] >= 5
-    # The demo database is intentionally reusable: later M4 submissions append
-    # attempts without replacing the 30 seeded history records per student.
-    seeded = [item for item in body["items"] if item["student_code"] in {"S001", "S002", "S003", "S004", "S005"}]
+    # The current demo scenario is intentionally small but every student must
+    # remain traceable through at least one real submission attempt.
+    seeded = [item for item in body["items"] if item["student_code"] in {
+        "DEMO-S001", "DEMO-S002", "DEMO-S003", "DEMO-S004", "DEMO-S005"
+    }]
     assert len(seeded) == 5
-    assert all(item["attempt_count"] >= 30 for item in seeded)
+    assert all(item["attempt_count"] > 0 for item in seeded)
 
     student = seeded[0]
     detail = client.get(f"/api/v1/students/{student['id']}")

@@ -17,7 +17,7 @@ def _normal(value: object) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Evaluate a real M6 vision provider")
+    parser = argparse.ArgumentParser(description="Evaluate a real vision provider")
     parser.add_argument("--manifest", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument(

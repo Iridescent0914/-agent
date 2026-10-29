@@ -35,17 +35,7 @@ def main() -> None:
         default="rational",
         help="要导入的章节；默认只导入第一章题库",
     )
-    parser.add_argument(
-        "--include-legacy-demo",
-        action="store_true",
-        help=(
-            "显式导入阶段一旧版 S001-S005 演示班及三次历史作答；"
-            "默认只导入题库和知识点"
-        ),
-    )
     args = parser.parse_args()
-    if args.include_legacy_demo and args.chapter == "expr":
-        parser.error("--include-legacy-demo requires --chapter rational or --chapter all")
     chapter_names = list(CHAPTERS) if args.chapter == "all" else [args.chapter]
     output = {}
     with SessionLocal() as session:
@@ -58,12 +48,6 @@ def main() -> None:
                 config["catalog"],
                 min_seed_questions=config["min_seed"],
                 expected_catalog_count=config["catalog_count"],
-                include_demo_students=(
-                    args.include_legacy_demo and chapter_name == "rational"
-                ),
-                include_demo_history=(
-                    args.include_legacy_demo and chapter_name == "rational"
-                ),
             )
             output[chapter_name] = stats.as_dict()
     print(json.dumps(output, ensure_ascii=False, indent=2))

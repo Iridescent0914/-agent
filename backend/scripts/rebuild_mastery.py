@@ -13,7 +13,7 @@ from app.services.student_profile import load_context, persist_mastery
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Rebuild M2 mastery from current confirmed attempts")
+    parser = argparse.ArgumentParser(description="Rebuild mastery from current confirmed attempts")
     target = parser.add_mutually_exclusive_group(required=True)
     target.add_argument("--all", action="store_true")
     target.add_argument("--student-code")

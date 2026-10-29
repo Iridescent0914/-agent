@@ -22,11 +22,10 @@ def _knowledge_code(record: object) -> str | None:
 
 def main() -> None:
     errors: list[str] = []
-    warnings: list[str] = []
     with SessionLocal() as db:
         migration = db.scalar(text("SELECT version_num FROM alembic_version"))
-        if migration != "0023":
-            errors.append(f"migration is {migration}, expected 0023")
+        if migration != "0024":
+            errors.append(f"migration is {migration}, expected 0024")
 
         students = list(
             db.scalars(
@@ -130,12 +129,6 @@ def main() -> None:
         ):
             build_assignment_overview(db, assignment.id)
             assignment_checks += 1
-        demo_scenarios = list(
-            db.scalars(select(Assignment).where(Assignment.seed_key.like("M5-DEMO-%")))
-        )
-        if not demo_scenarios:
-            warnings.append("尚未在当前数据库准备 M5 固定演示场景")
-
         for name, count in {
             "aggregate mismatches": aggregate_mismatches,
             "mastery mismatches": mastery_mismatches,
@@ -153,12 +146,10 @@ def main() -> None:
             "pending_review_count": overview.summary.pending_review_count,
             "invalid_evidence_count": overview.summary.invalid_evidence_count,
             "assignment_checks": assignment_checks,
-            "demo_scenario_count": len(demo_scenarios),
             "duplicate_active_paper_targets": len(duplicate_targets),
             "aggregate_mismatches": aggregate_mismatches,
             "mastery_mismatches": mastery_mismatches,
             "validation_errors": len(errors),
-            "warnings": warnings,
             "errors": errors,
         }
         print(json.dumps(output, ensure_ascii=False, indent=2))

@@ -11,7 +11,7 @@ from app.models import RecognitionRun
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Purge expired M6 images; dry-run by default")
+    parser = argparse.ArgumentParser(description="Purge expired recognition images; dry-run by default")
     parser.add_argument("--confirm", action="store_true")
     args = parser.parse_args()
     now = datetime.now(timezone.utc)

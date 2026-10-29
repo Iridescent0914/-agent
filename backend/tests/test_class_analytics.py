@@ -45,7 +45,7 @@ def _overview(client: TestClient) -> dict:
 
 
 def _published_paper(client: TestClient, db) -> tuple[Student, dict]:
-    student = db.scalar(select(Student).where(Student.student_code == "S002"))
+    student = db.scalar(select(Student).where(Student.student_code == "DEMO-S002"))
     response = client.post(
         "/api/v1/assignments",
         json={
@@ -269,7 +269,7 @@ def test_assignment_progress_is_filtered_by_class(client, db):
     )
     assert demo_progress.status_code == 200, demo_progress.text
     assert demo_progress.json()["summary"]["student_count"] == 1
-    assert [item["student_code"] for item in demo_progress.json()["students"]] == ["S002"]
+    assert [item["student_code"] for item in demo_progress.json()["students"]] == ["DEMO-S002"]
 
     other_list = client.get(
         "/api/v1/assignments",
@@ -288,7 +288,7 @@ def test_assignment_progress_is_filtered_by_class(client, db):
 
 
 def test_empty_assignment_can_be_deleted(client, db):
-    student = db.scalar(select(Student).where(Student.student_code == "S002"))
+    student = db.scalar(select(Student).where(Student.student_code == "DEMO-S002"))
     created = client.post(
         "/api/v1/assignments",
         json={

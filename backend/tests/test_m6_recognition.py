@@ -58,7 +58,7 @@ def client(db):
 
 
 def _published_paper(client: TestClient, db) -> tuple[Student, dict]:
-    student = db.scalar(select(Student).where(Student.student_code == "S003"))
+    student = db.scalar(select(Student).where(Student.student_code == "DEMO-S003"))
     response = client.post("/api/v1/assignments", json={
         "idempotency_key": "m6-assignment-" + uuid4().hex,
         "title": "M6 图片识别测试",

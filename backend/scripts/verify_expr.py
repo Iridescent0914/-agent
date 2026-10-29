@@ -38,8 +38,8 @@ def main() -> int:
     qids = [question.original_qid for question in questions]
     machine_ready = sum(question.grading_readiness == "machine_ready" for question in questions)
     required = sum(bool(question.is_required) for question in questions)
-    if migration != "0023":
-        errors.append(f"migration is {migration}, expected 0023")
+    if migration != "0024":
+        errors.append(f"migration is {migration}, expected 0024")
     if len(questions) != 41:
         errors.append(f"expr questions: expected 41, got {len(questions)}")
     if len(set(qids)) != len(qids):
@@ -62,7 +62,7 @@ def main() -> int:
         errors.append(f"web asset conversion failures: {manifest.get('failed_count')}")
 
     output = {
-        "schema_at_head": migration == "0023",
+        "schema_at_head": migration == "0024",
         "chapter_code": CHAPTER_CODE,
         "questions": len(questions),
         "knowledge_points": knowledge_points,

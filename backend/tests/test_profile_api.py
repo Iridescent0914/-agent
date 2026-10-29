@@ -41,7 +41,7 @@ def client(db):
 
 
 def first_student(db):
-    return db.scalar(select(Student).where(Student.student_code == "S001"))
+    return db.scalar(select(Student).where(Student.student_code == "DEMO-S001"))
 
 
 def counts(db):
@@ -53,7 +53,7 @@ def test_profile_history_detail_and_read_only_preview(client, db):
     student = first_student(db)
     before = counts(db)
     profile = client.get(f"/api/v1/students/{student.id}/profile").json()
-    assert profile["summary"]["valid_attempt_count"] >= 30
+    assert profile["summary"]["valid_attempt_count"] > 0
     assert profile["summary"]["assessed_knowledge_point_count"] == sum(
         item["attempt_count"] > 0 for item in profile["masteries"]
     )
@@ -70,10 +70,15 @@ def test_profile_history_detail_and_read_only_preview(client, db):
     detail = client.get(f"/api/v1/students/{student.id}/attempts/{attempt_id}").json()
     assert detail["used_in_profile"] and detail["revision"]["revision_no"] == detail["revision_no"]
     assert detail["question_snapshot"]["original_qid"]
-    other = db.scalar(select(Student).where(Student.student_code == "S002"))
+    other = db.scalar(select(Student).where(Student.student_code == "DEMO-S002"))
     assert client.get(f"/api/v1/students/{other.id}/attempts/{attempt_id}").status_code == 404
+    review_codes = [
+        item["knowledge_point_code"]
+        for item in evaluated
+        if item["knowledge_point_code"].startswith("math.g6.rational.")
+    ]
     response = client.post(f"/api/v1/students/{student.id}/recommendations/preview", json={
-        "review_knowledge_point_codes": [item["knowledge_point_code"] for item in evaluated], "review_count": 6,
+        "review_knowledge_point_codes": review_codes, "review_count": 6,
     })
     assert response.status_code == 200
     output = response.json()
@@ -150,7 +155,12 @@ def test_rebuild_idempotence_revision_and_withdrawal(db):
     before = {row.knowledge_point_id: (tuple(getattr(row, field) for field in MASTERY_FIELDS), row.updated_at)
               for row in db.scalars(select(StudentMastery).where(StudentMastery.student_id == student.id))}
     second = persist_mastery(db, load_context(db, student.id))
-    assert second == {"inserted": 0, "updated": 0, "deleted": 0, "unchanged": 10}
+    assert second == {
+        "inserted": 0,
+        "updated": 0,
+        "deleted": 0,
+        "unchanged": len(before),
+    }
     after = {row.knowledge_point_id: (tuple(getattr(row, field) for field in MASTERY_FIELDS), row.updated_at)
              for row in db.scalars(select(StudentMastery).where(StudentMastery.student_id == student.id))}
     assert before == after and counts(db)[:4] == before_counts

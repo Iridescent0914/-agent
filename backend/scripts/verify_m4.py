@@ -16,8 +16,8 @@ def main() -> None:
     errors: list[str] = []
     with SessionLocal() as db:
         migration = db.scalar(text("SELECT version_num FROM alembic_version"))
-        if migration != "0023":
-            errors.append(f"migration is {migration}, expected 0023")
+        if migration != "0024":
+            errors.append(f"migration is {migration}, expected 0024")
 
         submissions = list(db.scalars(select(Submission)))
         attempts = list(db.scalars(select(Attempt)))
@@ -111,7 +111,7 @@ def main() -> None:
             "operator_errors": operator_errors,
             "mastery_mismatches": mastery_mismatches,
             "validation_errors": len(errors),
-            "warnings": ["尚无 M4 教师提交"] if not any(
+            "warnings": ["尚无教师提交"] if not any(
                 value.request_fingerprint for value in submissions
             ) else [],
             "errors": errors,

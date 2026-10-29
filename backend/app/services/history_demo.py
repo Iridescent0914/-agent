@@ -134,6 +134,7 @@ def prepare_history_demo(
     *,
     class_name: str = DEFAULT_CLASS_NAME,
     seed_prefix: str = DEFAULT_SEED_PREFIX,
+    title_prefix: str = "历史回顾测试：已批改必做题",
     scenario_count: int = 2,
     question_count: int = 4,
     as_of: datetime = DEFAULT_AS_OF,
@@ -169,7 +170,7 @@ def prepare_history_demo(
         ]
         assignment = Assignment(
             seed_key=seed_key,
-            title=f"历史回顾测试：已批改必做题 {scenario_index + 1}",
+            title=f"{title_prefix} {scenario_index + 1}",
             class_id=school_class.id,
             chapter_code="math.g6.rational",
             teaching_scope={

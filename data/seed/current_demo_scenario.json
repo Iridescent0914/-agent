@@ -1,0 +1,35 @@
+{
+  "schema_version": "current-demo-v1",
+  "class": {
+    "name": "六年级 Demo 班",
+    "grade": "六年级",
+    "school_year": "2026-2027",
+    "teacher_name": "演示教师"
+  },
+  "students": [
+    {"student_code": "DEMO-S001", "display_name": "演示学生甲"},
+    {"student_code": "DEMO-S002", "display_name": "演示学生乙"},
+    {"student_code": "DEMO-S003", "display_name": "演示学生丙"},
+    {"student_code": "DEMO-S004", "display_name": "演示学生丁"},
+    {"student_code": "DEMO-S005", "display_name": "演示学生戊"}
+  ],
+  "required_sources": {
+    "seed_prefix": "CURRENT-DEMO-REQUIRED",
+    "title_prefix": "演示作业：已批改必做题",
+    "scenario_count": 2,
+    "question_count": 4
+  },
+  "history_assignment": {
+    "seed_key": "CURRENT-DEMO-HISTORY",
+    "idempotency_key": "current-demo-history-v1",
+    "title": "演示作业：必做题与历史回顾",
+    "wrong_student_codes": ["DEMO-S001", "DEMO-S002", "DEMO-S005"]
+  },
+  "weekly_summary": {
+    "seed_key": "CURRENT-DEMO-WEEKLY",
+    "idempotency_key": "current-demo-weekly-v1",
+    "title": "演示周总结",
+    "weak_student_codes": ["DEMO-S001"],
+    "leave_draft_student_codes": ["DEMO-S002"]
+  }
+}
