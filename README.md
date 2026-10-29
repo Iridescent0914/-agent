@@ -5,9 +5,9 @@
 ## 当前功能
 
 - FastAPI + SQLAlchemy + PostgreSQL 后端；
-- Alembic 十三段迁移、推荐审计、发布试卷快照保护、版本生命周期、批改审计和图片识别守卫；
-- 180 组完整题库（有理数 139 组、简单的代数式 41 组）、初始 54 组自动组卷题和 5 名虚拟学生的幂等导入；
-- 3 次历史作业、15 份发布试卷、150 条确认作答及修订记录；
+- Alembic 迁移、推荐审计、发布试卷快照保护、版本生命周期、批改审计和图片识别守卫；
+- 180 组完整题库（有理数 139 组、简单的代数式 41 组）和初始 54 组自动组卷题的幂等导入；
+- 题库种子与班级、学生、作业、作答等业务演示数据分离，默认导入不会创建旧 Demo 数据；
 - 题库列表、筛选、分页、详情、教师录题和业务删除 API / 页面；
 - 选择题、填空题支持教师修改答案、保存审核草稿、确认入池、撤回后重新编辑和版本冲突保护；
 - 填空题支持普通文本、数值和可视化公式输入；公式区内置分数、根号、幂、下标等常用按钮以及完整公式键盘，表达式以 ASCII Math 或 LaTeX 文本保存，不保存为图片；
@@ -73,11 +73,10 @@ cd "D:\desktop\math-agent\code"
 Copy-Item .env.example .env
 docker compose up -d --build
 docker compose exec backend python -m scripts.seed_database --chapter all
-docker compose exec backend python -m scripts.rebuild_mastery --all
 docker compose ps
 ```
 
-`seed_database` 和 `rebuild_mastery` 是首次初始化业务数据，不需要在日常启动时重复执行。后端容器每次启动都会自动执行 `alembic upgrade head`。M1～M6 验收不是启动前置条件，需要时按“测试与验收”章节执行。
+`seed_database` 默认只初始化知识点和题库，不创建班级、学生、作业、试卷、作答或画像。后端容器每次启动都会自动执行 `alembic upgrade head`。业务演示数据应通过单独的显式脚本创建；没有学生时不需要执行 `rebuild_mastery --all`。M1～M6 验收不是启动前置条件，需要时在准备好对应隔离测试数据后执行。
 
 #### 日常启动
 
@@ -159,13 +158,12 @@ cd "D:\desktop\math-agent\code"
 docker compose up -d
 docker compose exec backend python -m alembic upgrade head
 docker compose exec backend python -m scripts.seed_database --chapter all
-docker compose exec backend python -m scripts.rebuild_mastery --all
 docker compose ps
 docker compose exec backend python -m alembic current
 docker compose exec backend python -m scripts.verify_expr
 ```
 
-`alembic upgrade head`、`seed_database` 和 `rebuild_mastery --all` 均可重复执行。后端容器从停止状态启动时本身也会执行迁移；显式运行迁移可以覆盖“容器原本已经运行，拉取代码后没有重新触发启动命令”的情况。
+`alembic upgrade head` 和默认的 `seed_database` 均可重复执行，并且不会创建或覆盖班级、学生和作答数据。已有学生且确实需要重建画像时，再单独执行 `python -m scripts.rebuild_mastery --all`。后端容器从停止状态启动时本身也会执行迁移；显式运行迁移可以覆盖“容器原本已经运行，拉取代码后没有重新触发启动命令”的情况。
 
 ##### 修改后端依赖
 
@@ -305,6 +303,36 @@ docker compose exec -w /app backend python scripts/validate_m0.py
 
 ## 种子导入规则
 
+默认命令只导入知识点与题库：
+
+```powershell
+docker compose exec backend python -m scripts.seed_database --chapter all
+```
+
+阶段一旧版 S001～S005、未设置年级/学年的 Demo 班和三次旧历史作答不再属于默认种子。只为兼容旧版 M1～M5 隔离演示库保留显式开关：
+
+```powershell
+docker compose exec backend python -m scripts.seed_database --chapter rational --include-legacy-demo
+```
+
+不要在默认开发库或正式环境使用 `--include-legacy-demo`。新的演示数据应由符合当前筛选、组卷和画像规则的独立脚本创建。
+
+### 清理旧业务与演示数据
+
+清理脚本默认只预览当前数据库、保留表、待清理表和各表数量，不写数据库：
+
+```powershell
+docker compose exec backend python -m scripts.cleanup_business_data
+```
+
+确认预览中的数据库名和数量后，必须同时传入 `--confirm` 和完全一致的数据库名：
+
+```powershell
+docker compose exec backend python -m scripts.cleanup_business_data --confirm --expected-database math_agent
+```
+
+脚本只清空班级、学生、作业、试卷、提交、作答、修订、画像、知识点状态和识别业务表，保留 `questions`、`knowledge_points` 与 `alembic_version`。它不使用 `CASCADE`，在同一事务内执行并复核保留表数量；如果数据库名不一致、必需表缺失或出现尚未分类的新表，会拒绝执行并回滚。该命令只影响当前连接的数据库，不会通过 Git 清理其他协作者的数据库。
+
 稳定身份键：
 
 - `KnowledgePoint.code`；
@@ -313,7 +341,7 @@ docker compose exec -w /app backend python scripts/validate_m0.py
 - `Assignment.seed_key`；
 - `PaperInstance.instance_code`。
 
-第二次执行 `seed_database` 不会生成重复题目、学生、作业、试卷或作答。题目的 `correct_answer`、多空 `items`、归一化规则和资源列表均按 JSONB 原样保存。
+第二次执行默认 `seed_database` 不会生成重复知识点或题目，也不会创建学生、作业、试卷或作答。题目的 `correct_answer`、多空 `items`、归一化规则和资源列表均按 JSONB 原样保存。
 
 虚拟学生历史完整经过：
 
@@ -361,7 +389,7 @@ docker compose exec -w /app backend python scripts/convert_seed_assets.py
 - `data/seed/expr_knowledge_tree.json`：第 2 章 4 个节、8 个正式知识点；
 - `data/audit/expr_import_audit.csv` 和 `data/audit/expr_m0_report.json`：审计结果。
 
-题库导入支持按章节执行。第一章默认行为不变；第二章导入使用独立命令，不会创建第二套历史演示作业：
+题库导入支持按章节执行。各章节默认都只导入知识点与题目，不创建学生或历史演示作业：
 
 ```powershell
 cd "D:\desktop\math-agent\code"

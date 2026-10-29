@@ -2,13 +2,22 @@ from __future__ import annotations
 
 import json
 import re
+from inspect import signature
 from pathlib import Path
+
+from app.services.seed_importer import import_seed_data
 
 
 CODE_ROOT = Path(__file__).resolve().parents[2]
 QUESTIONS_PATH = CODE_ROOT / "data" / "seed" / "rational_questions.json"
 MANIFEST_PATH = CODE_ROOT / "data" / "web" / "rational" / "asset_manifest.json"
 ASSET_PATTERN = re.compile(r"\[ASSET:([^\]]+)\]")
+
+
+def test_catalog_import_does_not_enable_legacy_demo_by_default() -> None:
+    parameters = signature(import_seed_data).parameters
+    assert parameters["include_demo_students"].default is False
+    assert parameters["include_demo_history"].default is False
 
 
 def test_m0_seed_contract_is_preserved() -> None:

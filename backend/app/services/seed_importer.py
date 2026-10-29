@@ -483,8 +483,11 @@ def import_seed_data(
     min_seed_questions: int = 30,
     max_seed_questions: int = 50,
     expected_catalog_count: int | None = None,
-    include_demo_history: bool = True,
+    include_demo_students: bool = False,
+    include_demo_history: bool = False,
 ) -> ImportStats:
+    if include_demo_history and not include_demo_students:
+        raise ValueError("demo history requires demo students")
     seed_data = _load_json(questions_path)
     catalog_data = _load_json(catalog_path) if catalog_path is not None else seed_data
     tree_data = _load_json(knowledge_tree_path)
@@ -515,7 +518,11 @@ def import_seed_data(
         )
         by_qid = {question.original_qid: question for question in catalog_questions}
         questions = [by_qid[item["original_qid"]] for item in seed_data]
-        students = _import_students(session, stats)
+        students = (
+            _import_students(session, stats)
+            if include_demo_students
+            else []
+        )
         if include_demo_history:
             _import_demo_history(session, stats, students, questions)
         session.commit()

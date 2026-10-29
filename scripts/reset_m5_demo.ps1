@@ -44,9 +44,9 @@ try {
     try {
         & $Python -m alembic upgrade head
         if ($LASTEXITCODE -ne 0) { throw "Database migration failed." }
-        & $Python -m scripts.seed_database
+        & $Python -m scripts.seed_database --include-legacy-demo
         if ($LASTEXITCODE -ne 0) { throw "Seed import failed." }
-        & $Python -m scripts.rebuild_mastery
+        & $Python -m scripts.rebuild_mastery --all
         if ($LASTEXITCODE -ne 0) { throw "Mastery rebuild failed." }
         & $Python -m scripts.prepare_m5_demo --scenario $Scenario
         if ($LASTEXITCODE -ne 0) { throw "M5 scenario preparation failed." }

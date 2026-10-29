@@ -16,7 +16,6 @@ CHAPTERS = {
         "catalog": CODE_ROOT / "data" / "interim" / "rational_all.json",
         "catalog_count": 139,
         "min_seed": 30,
-        "include_demo_history": True,
     },
     "expr": {
         "questions": CODE_ROOT / "data" / "seed" / "expr_questions.json",
@@ -24,7 +23,6 @@ CHAPTERS = {
         "catalog": CODE_ROOT / "data" / "interim" / "expr_all.json",
         "catalog_count": 41,
         "min_seed": 1,
-        "include_demo_history": False,
     },
 }
 
@@ -35,9 +33,19 @@ def main() -> None:
         "--chapter",
         choices=["rational", "expr", "all"],
         default="rational",
-        help="要导入的章节；默认保持原有行为，只导入第一章",
+        help="要导入的章节；默认只导入第一章题库",
+    )
+    parser.add_argument(
+        "--include-legacy-demo",
+        action="store_true",
+        help=(
+            "显式导入阶段一旧版 S001-S005 演示班及三次历史作答；"
+            "默认只导入题库和知识点"
+        ),
     )
     args = parser.parse_args()
+    if args.include_legacy_demo and args.chapter == "expr":
+        parser.error("--include-legacy-demo requires --chapter rational or --chapter all")
     chapter_names = list(CHAPTERS) if args.chapter == "all" else [args.chapter]
     output = {}
     with SessionLocal() as session:
@@ -50,7 +58,12 @@ def main() -> None:
                 config["catalog"],
                 min_seed_questions=config["min_seed"],
                 expected_catalog_count=config["catalog_count"],
-                include_demo_history=config["include_demo_history"],
+                include_demo_students=(
+                    args.include_legacy_demo and chapter_name == "rational"
+                ),
+                include_demo_history=(
+                    args.include_legacy_demo and chapter_name == "rational"
+                ),
             )
             output[chapter_name] = stats.as_dict()
     print(json.dumps(output, ensure_ascii=False, indent=2))
