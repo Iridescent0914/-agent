@@ -80,6 +80,14 @@ def test_class_overview_contract_and_drilldown(client):
     assert demo["student_count"] == 5
 
     body = _overview(client)
+    assert len(body["literacies"]) == 8
+    assert all(
+        item["score_source"] == "computed"
+        and item["rule_version"] == "literacy-dynamic-v1"
+        for item in body["literacies"]
+    )
+    assert any(item["score"] != 60 for item in body["literacies"])
+    assert all(isinstance(item["score"], int) for item in body["literacies"])
     assert body["summary"]["student_count"] == 5
     assert body["summary"]["confirmed_attempt_count"] == sum(
         item["confirmed_attempt_count"] for item in body["knowledge_points"]

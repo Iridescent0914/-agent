@@ -24,6 +24,7 @@ from app.services.paper_snapshots import (
     copy_item, current_knowledge_point_snapshot, current_selection_audit, load_question,
     snapshot_payload, student_safe_question_snapshot, student_safe_value,
 )
+from app.services.literacy_catalog import normalize_literacy_label
 from app.services.recommendations import (
     Candidate, history_source_question_ids, recent_completed_assignment_ids,
     score_candidate,
@@ -692,6 +693,14 @@ def publish_paper(db: Session, paper_id: UUID, *, expected_revision: int,
     if any(not item.question_snapshot or not item.answer_rule_snapshot or
            not item.knowledge_point_snapshot.get("id") for item in items):
         raise PaperValidation("paper contains incomplete snapshots")
+    for item in items:
+        try:
+            normalize_literacy_label(item.question_snapshot.get("core_literacy"))
+        except ValueError as exc:
+            original_qid = item.question_snapshot.get("original_qid") or item.question_id
+            raise PaperValidation(
+                f"题目 {original_qid} 的核心素养标签无效：{exc}"
+            ) from exc
     requested = (paper.recommendation_audit or {}).get("requested_count", len(items))
     if len(items) < requested:
         if not acknowledge_shortfall or not (acknowledgement_reason or "").strip():

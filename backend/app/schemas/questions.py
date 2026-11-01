@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.services.literacy_catalog import normalize_literacy_label
+
 
 class TagOut(BaseModel):
     code: str
@@ -101,6 +103,11 @@ class QuestionCreateRequest(BaseModel):
         if not clean:
             raise ValueError('字段不能为空')
         return clean
+
+    @field_validator('core_literacy')
+    @classmethod
+    def validate_core_literacy(cls, value: str) -> str:
+        return normalize_literacy_label(value, allow_unlabeled=True)
 
     @field_validator('original_qid', 'solution', 'wrong_analysis', 'estimated_score_rate')
     @classmethod

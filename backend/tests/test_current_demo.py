@@ -1,9 +1,11 @@
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core.database import SessionLocal
-from app.models import Assignment, SchoolClass, Student, StudentKnowledgeStatus
+from app.models import (
+    Assignment, SchoolClass, Student, StudentKnowledgeStatus, StudentLiteracyScore,
+)
 from app.services.current_demo import load_demo_config, prepare_current_demo
 
 
@@ -46,6 +48,9 @@ def test_current_demo_is_complete_and_idempotent() -> None:
                 Student, Student.id == StudentKnowledgeStatus.student_id
             ).where(Student.class_id == school_class.id)))
             assert {"yes", "no", "weak"} <= statuses
+            assert db.scalar(select(func.count(StudentLiteracyScore.student_id)).join(
+                Student, Student.id == StudentLiteracyScore.student_id
+            ).where(Student.class_id == school_class.id)) == 40
 
             assert first["student_count"] == 5
             assert second["class_created"] is False
@@ -55,5 +60,12 @@ def test_current_demo_is_complete_and_idempotent() -> None:
             assert second["history_submissions_created"] == 0
             assert second["weekly_assignment_created"] is False
             assert second["weekly_submissions_created"] == 0
+            assert all(
+                stats == {
+                    "inserted": 0, "updated": 0,
+                    "deleted": 0, "unchanged": 8,
+                }
+                for stats in second["literacy_score_stats"].values()
+            )
         finally:
             db.rollback()

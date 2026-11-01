@@ -13,6 +13,8 @@ test('class analytics explains evidence and drills down to a student', async ({ 
   await expect(page.getByText('确认作答', { exact: true })).toBeVisible()
   await expect(page.getByText('正确率只统计有效确认作答', { exact: false })).toBeVisible()
   await expect(page.getByRole('img', { name: '班级知识点正确率条形图' })).toBeVisible()
+  await expect(page.getByRole('img', { name: '班级素养能力平均水平雷达图' })).toBeVisible()
+  await expect(page.getByText(/显示班级平均|隐藏班级平均/)).toHaveCount(0)
   await expect(page.getByRole('table').first()).toBeVisible()
   await noOverflow(page)
 

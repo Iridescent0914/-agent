@@ -16,7 +16,7 @@ from app.main import app
 from app.models import (
     Assignment, Attempt, AttemptRevision, KnowledgePoint,
     PaperInstance, PaperInstanceItem, Question, Student,
-    StudentMastery, Submission,
+    StudentLiteracyScore, StudentMastery, Submission,
 )
 from app.schemas.submissions import ManualSubmissionRequest
 from app.services import submission_workflow
@@ -68,6 +68,7 @@ def _create_published_single_item_paper(factory):
                 chapter_name="M4 测试",
                 section="事务",
                 sort_order=1,
+                core_competencies=["运算能力"],
             ),
             Student(
                 id=student_id,
@@ -106,6 +107,7 @@ def _create_published_single_item_paper(factory):
             solution=None,
             wrong_analysis=None,
             estimated_score_rate=None,
+            core_literacy="运算能力",
             has_image=False,
             has_equation=False,
             assets=[],
@@ -148,6 +150,7 @@ def _create_published_single_item_paper(factory):
                 "question_text": "请选择 A",
                 "question_type": "choice",
                 "difficulty": 1,
+                "core_literacy": "运算能力",
                 "assets": [],
                 "solution": None,
                 "wrong_analysis": None,
@@ -239,6 +242,11 @@ def test_concurrent_identical_submission_creates_one_evidence_set(
                 StudentMastery.student_id == ids["student_id"],
             )
         ) == 1
+        assert db.scalar(
+            select(func.count(StudentLiteracyScore.student_id)).where(
+                StudentLiteracyScore.student_id == ids["student_id"],
+            )
+        ) == 8
 
 
 def test_failure_after_attempt_flush_rolls_back_submission_revision_and_mastery(
@@ -264,7 +272,7 @@ def test_failure_after_attempt_flush_rolls_back_submission_revision_and_mastery(
         finally:
             db.close()
 
-    monkeypatch.setattr(submission_workflow, "persist_mastery", fail_mastery)
+    monkeypatch.setattr(submission_workflow, "refresh_student_profiles", fail_mastery)
     app.dependency_overrides[get_db] = isolated_get_db
     try:
         with TestClient(app) as client:
@@ -291,5 +299,10 @@ def test_failure_after_attempt_flush_rolls_back_submission_revision_and_mastery(
         assert db.scalar(
             select(func.count(StudentMastery.student_id)).where(
                 StudentMastery.student_id == ids["student_id"],
+            )
+        ) == 0
+        assert db.scalar(
+            select(func.count(StudentLiteracyScore.student_id)).where(
+                StudentLiteracyScore.student_id == ids["student_id"],
             )
         ) == 0

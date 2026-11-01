@@ -20,8 +20,11 @@ from app.schemas.analytics import (
     KnowledgePointStudentAnalytics,
     KnowledgePointStudentListOut,
 )
+from app.schemas.profile import LiteracyScoreOut
 from app.services.mastery import RULE_VERSION
-from app.services.literacy_catalog import baseline_literacies
+from app.services.literacy_catalog import LITERACY_DIMENSIONS
+from app.services.literacy_scoring import RULE_VERSION as LITERACY_RULE_VERSION
+from app.services.literacy_rules import rounded_display_score
 from app.services.student_profile import (
     ProfileContext,
     knowledge_point_catalog,
@@ -52,6 +55,22 @@ def _mean(values: list[float]) -> float | None:
             Decimal("0.0001"), rounding=ROUND_HALF_UP
         )
     )
+
+
+def _class_literacies(contexts: list[ProfileContext]) -> list[LiteracyScoreOut]:
+    by_student = [
+        context.literacy_values
+        for context in contexts
+    ]
+    return [
+        LiteracyScoreOut(
+            name=name,
+            score=rounded_display_score(_mean([scores[name] for scores in by_student])),
+            score_source="computed",
+            rule_version=LITERACY_RULE_VERSION,
+        )
+        for name in LITERACY_DIMENSIONS
+    ]
 
 
 def _active_students(db: Session, class_name: str) -> list[Student]:
@@ -231,7 +250,7 @@ def build_class_overview(
             uncovered_knowledge_point_count=len(knowledge_rows) - covered,
         ),
         knowledge_points=knowledge_rows,
-        literacies=baseline_literacies(),
+        literacies=_class_literacies(contexts),
         focus_points=focus_points,
     )
 

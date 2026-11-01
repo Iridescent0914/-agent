@@ -12,7 +12,7 @@ from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import (
     Assignment, Attempt, AttemptRevision, PaperInstance, PaperInstanceItem, Question, Student,
-    StudentMastery, Submission,
+    StudentLiteracyScore, StudentMastery, Submission,
 )
 from app.services.student_profile import load_context
 
@@ -77,6 +77,12 @@ def _answers(paper):
 
 def test_manual_submission_is_idempotent_and_updates_mastery(client, db):
     student, paper = _published_paper(client, db)
+    literacy_before = {
+        row.literacy_name: row.score
+        for row in db.scalars(select(StudentLiteracyScore).where(
+            StudentLiteracyScore.student_id == student.id
+        ))
+    }
     before_attempts = int(db.scalar(select(func.count(Attempt.id))) or 0)
     body = {
         "idempotency_key": "m4-submit-" + uuid4().hex,
@@ -101,6 +107,15 @@ def test_manual_submission_is_idempotent_and_updates_mastery(client, db):
     assert db.scalar(select(func.count(AttemptRevision.id)).join(
         Attempt, Attempt.id == AttemptRevision.attempt_id
     ).where(Attempt.paper_instance_item_id.in_([item["id"] for item in paper["items"]]))) == 3
+    literacy_after = list(db.scalars(select(StudentLiteracyScore).where(
+        StudentLiteracyScore.student_id == student.id
+    )))
+    assert len(literacy_after) == 8
+    assert all(row.rule_version == "literacy-dynamic-v1" for row in literacy_after)
+    assert not literacy_before or any(
+        literacy_before[row.literacy_name] != row.score
+        for row in literacy_after
+    )
 
     repeated = client.post(
         f"/api/v1/paper-instances/{paper['id']}/submissions/manual", json=body,

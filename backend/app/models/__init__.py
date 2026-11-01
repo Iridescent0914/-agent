@@ -11,6 +11,7 @@ from app.models.entities import (
     SchoolClass,
     Student,
     StudentKnowledgeStatus,
+    StudentLiteracyScore,
     StudentMastery,
     Submission,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "SchoolClass",
     "Student",
     "StudentKnowledgeStatus",
+    "StudentLiteracyScore",
     "StudentMastery",
     "Submission",
 ]

@@ -50,6 +50,7 @@ def test_teacher_can_create_review_and_archive_question(client, db):
         'question_text': '计算：1+1=____。',
         'reference_answer_raw': '2',
         'main_knowledge_point_code': knowledge_point.code,
+        'core_literacy': '运算能力',
         'solution': '直接计算。',
         'operator_name': '测试教师',
     })
@@ -83,6 +84,7 @@ def test_teacher_can_create_review_and_archive_question(client, db):
         'question_text': '计算：1+2=____。',
         'reference_answer_raw': '3',
         'main_knowledge_point_code': alternative_knowledge_point.code,
+        'core_literacy': '运算能力',
         'solution': '直接计算得到 3。',
         'wrong_analysis': '注意加法符号。',
         'estimated_score_rate': '65%',

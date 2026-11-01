@@ -8,6 +8,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.services.literacy_catalog import normalize_literacy_label
+
 from app.models import KnowledgePoint, Question
 
 
@@ -72,6 +74,14 @@ def _validate_inputs(
         if item.get("grading_readiness") == "machine_ready":
             if item.get("correct_answer") is None or item.get("answer_match_type") is None:
                 raise ValueError(f"{item['original_qid']} lacks a structured answer")
+            try:
+                item["core_literacy"] = normalize_literacy_label(
+                    item.get("core_literacy")
+                )
+            except ValueError as exc:
+                raise ValueError(
+                    f"{item['original_qid']} has invalid core_literacy: {exc}"
+                ) from exc
         if item.get("source_review_status") != "reviewed":
             raise ValueError(f"{item['original_qid']} is not source-reviewed")
     if not tree.get("knowledge_points"):

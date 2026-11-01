@@ -324,7 +324,7 @@ docker compose exec backend python -m scripts.prepare_current_demo
 - 1 份独立周总结；
 - 可由真实 Attempt 和修订记录回放的“是 / 否 / 弱”状态及学生画像。
 
-演示构造器调用当前组卷、发布、提交、确定性判分、知识点状态和周总结服务，不生成尚未实现的个性化题。重复执行不会重复创建班级、学生、作业或作答。它不会随 `docker compose up` 自动运行；其他协作者拉取代码后需要在自己的数据库显式执行一次。
+演示构造器调用当前组卷、发布、提交、确定性判分、动态素养评分、知识点状态和周总结服务，不生成尚未实现的个性化题。重复执行不会重复创建班级、学生、作业或作答，并会幂等同步每名学生的 8 条动态素养分。它不会随 `docker compose up` 自动运行；其他协作者拉取代码后需要在自己的数据库显式执行一次。
 
 ### 清理旧业务与演示数据
 
@@ -425,7 +425,37 @@ docker compose exec backend python -m scripts.rebuild_mastery --student-code DEM
 docker compose exec backend python -m scripts.rebuild_mastery --all
 ```
 
-查询画像和推荐预览不会写入数据库。新提交、改判和撤销确认会在同一事务中复用现有重放与汇总写入服务。
+查询画像和推荐预览不会写入数据库。新提交、图片确认、改判、撤销确认和重新判分会在同一事务中刷新知识点掌握度、动态素养分和知识点状态。
+
+## 动态素养分重建
+
+`StudentLiteracyScore` 是由当前有效 Attempt、AttemptRevision 和已发布题目快照确定性回放得到的物化结果。计算使用发布时保存的题目难度、题型和核心素养，按 `Asia/Shanghai` 自然日执行单日限幅与未练回归。数据库内部保留 4 位小数；学生画像和班级学情接口使用 `ROUND_HALF_UP` 返回整数，个性化基础星级也按同一个显示整数分档。
+
+后端维护任务会在服务启动时立即补算，并在上海时区跨日后刷新仍停留在旧日期的 `student_literacy_scores`。正在提交或改判、已持有学生行锁的记录会被本轮跳过，由业务事务自身或下一次维护刷新，维护任务不会阻塞作答业务。
+
+先预演一个学生或全部学生：
+
+```powershell
+docker compose exec backend python -m scripts.rebuild_literacy_scores --student-code DEMO-S001 --dry-run
+docker compose exec backend python -m scripts.rebuild_literacy_scores --all --dry-run
+```
+
+确认输出后写入当前数据库：
+
+```powershell
+docker compose exec backend python -m scripts.rebuild_literacy_scores --all
+```
+
+需要固定验收时点时，可以提供带时区的 ISO 时间：
+
+```powershell
+docker compose exec backend python -m scripts.rebuild_literacy_scores --all `
+  --as-of 2026-10-31T12:00:00+08:00 --dry-run
+```
+
+命令会为每名学生同步 8 条素养分记录；重复使用相同证据和相同日期执行时不会重复创建或修改数据。学生画像和班级学情接口读取该物化结果并返回 `score_source=computed`、`rule_version=literacy-dynamic-v1`；若服务器刚迁移尚未重建，接口会只读回放当前有效证据作为兜底，不会在 GET 请求中写数据库。
+
+题目核心素养只允许八个正式维度，多个维度使用 `、` 分隔。题目草稿可以暂存为“待标注”，但进入可机判题池和发布试卷前必须完成正式标注；非法标签会在题目审核或发布阶段被拒绝，不会延迟到学生提交时才触发画像重算失败。
 
 ## 组卷与发布
 

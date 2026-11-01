@@ -6,10 +6,12 @@ import { ProfileChart } from './ProfileChart'
 export function LiteracyRadarChart({
   student,
   classAverage,
+  seriesName = '学生',
   label = '核心素养能力雷达图',
 }: {
   student: LiteracyScore[]
   classAverage?: LiteracyScore[]
+  seriesName?: string
   label?: string
 }) {
   const [showClass, setShowClass] = useState(true)
@@ -21,7 +23,7 @@ export function LiteracyRadarChart({
   const option = useMemo(() => ({
     animation: false,
     tooltip: { trigger: 'item' },
-    legend: { bottom: 0, data: showClass && classAverage?.length ? ['学生', '班级平均'] : ['学生'] },
+    legend: { bottom: 0, data: showClass && classAverage?.length ? [seriesName, '班级平均'] : [seriesName] },
     radar: {
       radius: '62%',
       indicator: names.map((name) => ({ name, max: 100 })),
@@ -32,7 +34,7 @@ export function LiteracyRadarChart({
       type: 'radar',
       data: [
         {
-          name: '学生',
+          name: seriesName,
           value: student.map((item) => item.score),
           lineStyle: { color: '#176c61', width: 2 },
           itemStyle: { color: '#176c61' },
@@ -47,7 +49,7 @@ export function LiteracyRadarChart({
         }] : []),
       ],
     }],
-  }), [classAverage, classByName, names, showClass, student])
+  }), [classAverage, classByName, names, seriesName, showClass, student])
 
   if (!student.length) return <Empty description="暂无素养能力数据" />
   return <div>

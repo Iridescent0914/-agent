@@ -23,6 +23,7 @@ from app.schemas.submissions import (
 )
 from app.schemas.weekly_summary import WeeklySummaryCreateRequest
 from app.services.history_demo import prepare_history_demo
+from app.services.literacy_scoring import persist_literacy_scores
 from app.services.paper_generation import create_assignment
 from app.services.paper_workflow import paper_items, publish_paper
 from app.services.recommendations import assignment_is_fully_graded
@@ -375,6 +376,13 @@ def prepare_current_demo(
         .group_by(Student.student_code, StudentKnowledgeStatus.status)
         .order_by(Student.student_code, StudentKnowledgeStatus.status)
     ).all()
+    literacy_score_stats = {}
+    literacy_as_of = datetime.now(timezone.utc)
+    for student in students:
+        stats, _ = persist_literacy_scores(
+            db, student.id, as_of=literacy_as_of
+        )
+        literacy_score_stats[student.student_code] = stats
     return {
         "schema_version": RULE_VERSION,
         "class_id": str(school_class.id),
@@ -394,4 +402,5 @@ def prepare_current_demo(
             {"student_code": code, "status": status, "count": int(count)}
             for code, status, count in status_rows
         ],
+        "literacy_score_stats": literacy_score_stats,
     }

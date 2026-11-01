@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Question
 from app.schemas.questions import QuestionReviewRequest, QuestionWithdrawRequest
+from app.services.literacy_catalog import normalize_literacy_label
 
 
 class QuestionReviewConflict(RuntimeError):
@@ -109,6 +110,13 @@ def _mutate(
 
     items = [item.model_dump() for item in request.items]
     validate_review_items(question.question_type, items)
+    if promote:
+        try:
+            question.core_literacy = normalize_literacy_label(question.core_literacy)
+        except ValueError as exc:
+            raise QuestionReviewValidation(
+                "题目进入自动组卷池前必须标注正式核心素养：" + str(exc)
+            ) from exc
     before_revision = question.review_revision
     before_answer = question.correct_answer
     answer = _answer_payload(request)

@@ -9,7 +9,7 @@ def test_cleanup_allowlists_are_disjoint_and_preserve_catalog() -> None:
     assert {
         "school_classes", "students", "assignments", "paper_instances",
         "paper_instance_items", "submissions", "attempts", "attempt_revisions",
-        "student_masteries", "student_knowledge_statuses",
+        "student_masteries", "student_literacy_scores", "student_knowledge_statuses",
         "recognition_runs", "recognition_items",
     } == set(BUSINESS_TABLES)
 
@@ -19,7 +19,7 @@ def test_cleanup_report_exposes_database_and_targets() -> None:
         database="math_agent",
         user="math_agent",
         mode="preview",
-        snapshot={"preserved": {}, "business": {}, "alembic_versions": ["0024"]},
+        snapshot={"preserved": {}, "business": {}, "alembic_versions": ["0025"]},
         unclassified_tables=[],
     )
     assert report["mode"] == "preview"

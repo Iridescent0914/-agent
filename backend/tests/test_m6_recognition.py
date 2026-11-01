@@ -16,7 +16,9 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import engine, get_db
 from app.main import app
-from app.models import Attempt, RecognitionRun, Student, StudentMastery
+from app.models import (
+    Attempt, RecognitionRun, Student, StudentLiteracyScore, StudentMastery,
+)
 from app.services.recognition_workflow import (
     _expected_vision_item,
     extract_run,
@@ -267,6 +269,12 @@ def test_image_submission_waits_for_teacher_before_mastery(client, db):
         row.knowledge_point_id: (row.mastery, row.attempt_count)
         for row in db.scalars(select(StudentMastery).where(StudentMastery.student_id == student.id))
     }
+    literacy_before = {
+        row.literacy_name: row.score
+        for row in db.scalars(select(StudentLiteracyScore).where(
+            StudentLiteracyScore.student_id == student.id
+        ))
+    }
     upload = client.post(
         f"/api/v1/paper-instances/{paper['id']}/recognition-runs",
         data={
@@ -306,6 +314,13 @@ def test_image_submission_waits_for_teacher_before_mastery(client, db):
             for row in db.scalars(select(StudentMastery).where(StudentMastery.student_id == student.id))
         }
         assert mastery_pending == mastery_before
+        literacy_pending = {
+            row.literacy_name: row.score
+            for row in db.scalars(select(StudentLiteracyScore).where(
+                StudentLiteracyScore.student_id == student.id
+            ))
+        }
+        assert literacy_pending == literacy_before
 
         first = submission["items"][0]
         second = submission["items"][1]
@@ -369,6 +384,18 @@ def test_image_submission_waits_for_teacher_before_mastery(client, db):
         updated = next(row for row in reviewed.json()["items"] if row["id"] == first["id"])
         assert updated["attempt"]["grade_status"] == "teacher_confirmed"
         assert updated["attempt"]["revision_no"] == 2
+        literacy_reviewed = list(db.scalars(select(StudentLiteracyScore).where(
+            StudentLiteracyScore.student_id == student.id
+        )))
+        assert len(literacy_reviewed) == 8
+        assert all(
+            row.rule_version == "literacy-dynamic-v1"
+            for row in literacy_reviewed
+        )
+        assert not literacy_before or any(
+            literacy_before[row.literacy_name] != row.score
+            for row in literacy_reviewed
+        )
         remaining = [
             row for row in reviewed.json()["items"]
             if row["attempt"]["grade_status"] == "needs_review"

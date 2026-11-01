@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -14,14 +14,19 @@ from app.models import (
 )
 from app.schemas.profile import (
     AttemptEvidenceOut, EvidenceRef, ExcludedEvidence, FocusPoint, KnowledgePointOut,
-    HistoryPointOut, MasteryHistoryOut, MasteryOut, ProfileOut, ProfileSummary, RecentWrong,
+    HistoryPointOut, LiteracyScoreOut, MasteryHistoryOut, MasteryOut, ProfileOut,
+    ProfileSummary, RecentWrong,
 )
 from app.schemas.students import StudentAttemptOut
 from app.services.assets import resolve_assets
 from app.services.mastery import (
     Evidence, MasteryResult, RECENT_WINDOW_SIZE, RULE_VERSION, evidence_problem, replay,
 )
-from app.services.literacy_catalog import baseline_literacies
+from app.services.literacy_scoring import (
+    default_computed_literacies,
+    effective_literacy_scores,
+    literacy_outputs_from_scores,
+)
 
 
 @dataclass
@@ -43,6 +48,10 @@ class ProfileContext:
     records: list[AttemptRecord]
     results: dict[tuple[UUID, UUID], MasteryResult]
     knowledge_statuses: dict[UUID, StudentKnowledgeStatus]
+    literacies: list[LiteracyScoreOut] = field(
+        default_factory=default_computed_literacies
+    )
+    literacy_values: dict[str, float] = field(default_factory=dict)
 
 
 def knowledge_point_catalog(
@@ -234,6 +243,12 @@ def load_contexts(db: Session, student_ids: list[UUID]) -> dict[UUID, ProfileCon
         )
         for student in students
     }
+    literacy_as_of = datetime.now(timezone.utc)
+    for student_id, context in by_student.items():
+        context.literacy_values = effective_literacy_scores(
+            db, student_id, as_of=literacy_as_of
+        )
+        context.literacies = literacy_outputs_from_scores(context.literacy_values)
     return {student_id: by_student[student_id] for student_id in ids}
 
 
@@ -316,7 +331,8 @@ def build_profile(context: ProfileContext, *, computed_at: datetime | None = Non
             invalid_evidence_count=len(invalid), distinct_question_count=len({r.attempt.question_id for r in valid}),
             assessed_knowledge_point_count=assessed,
             unassessed_knowledge_point_count=len(items) - assessed,
-        ), masteries=items, literacies=baseline_literacies(), focus_points=focus, recent_errors=recent_errors[:10],
+        ), masteries=items, literacies=context.literacies,
+        focus_points=focus, recent_errors=recent_errors[:10],
         excluded_evidence=[ExcludedEvidence(attempt_id=r.attempt.id, revision_no=r.attempt.revision_no,
                                             reason=r.problem) for r in context.records if r.problem],
     )

@@ -1,11 +1,8 @@
-"""Static literacy dimensions used before dynamic scoring is available.
-
-The values are deliberately not persisted yet.  This keeps the dashboard
-useful while the scoring algorithm is still being specified, and gives the
-future computed-score implementation a stable response contract.
-"""
+"""Canonical literacy dimensions and label validation."""
 
 from __future__ import annotations
+
+import re
 
 from app.schemas.profile import LiteracyScoreOut
 
@@ -20,6 +17,8 @@ LITERACY_DIMENSIONS: tuple[str, ...] = (
     "应用意识",
     "创新意识",
 )
+LITERACY_SEPARATOR = re.compile(r"[、,，;；/|]+")
+UNLABELED_LITERACY = "待标注"
 BASELINE_SCORE = 60.0
 BASELINE_SOURCE = "baseline"
 BASELINE_RULE_VERSION = "literacy-baseline-v1"
@@ -35,3 +34,29 @@ def baseline_literacies() -> list[LiteracyScoreOut]:
         )
         for name in LITERACY_DIMENSIONS
     ]
+
+
+def parse_literacy_names(value: object) -> tuple[str, ...]:
+    """Normalize a persisted label and reject values outside the formal catalog."""
+
+    if not isinstance(value, str):
+        raise ValueError("核心素养必须是文本")
+    names = [name.strip() for name in LITERACY_SEPARATOR.split(value) if name.strip()]
+    names = list(dict.fromkeys(names))
+    if not names:
+        raise ValueError("核心素养不能为空")
+    unknown = [name for name in names if name not in LITERACY_DIMENSIONS]
+    if unknown:
+        raise ValueError(
+            "未知核心素养：" + "、".join(unknown)
+            + "；仅允许：" + "、".join(LITERACY_DIMENSIONS)
+        )
+    return tuple(names)
+
+
+def normalize_literacy_label(value: object, *, allow_unlabeled: bool = False) -> str:
+    """Return the canonical separator form used by question records."""
+
+    if allow_unlabeled and isinstance(value, str) and value.strip() == UNLABELED_LITERACY:
+        return UNLABELED_LITERACY
+    return "、".join(parse_literacy_names(value))

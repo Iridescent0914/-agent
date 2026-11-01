@@ -27,6 +27,7 @@ BUSINESS_TABLES: tuple[str, ...] = (
     "paper_instances",
     "assignments",
     "student_knowledge_statuses",
+    "student_literacy_scores",
     "student_masteries",
     "students",
     "school_classes",

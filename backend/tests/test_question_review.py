@@ -8,7 +8,8 @@ from sqlalchemy import select
 
 from app.core.database import SessionLocal, get_db
 from app.main import app
-from app.models import Question
+from app.models import Assignment, PaperInstance, Question, Student
+from app.services.paper_snapshots import new_item, snapshot_payload
 from app.services.question_review import QuestionReviewValidation, validate_review_items
 from app.services.seed_importer import _preserve_reviewed_answer
 
@@ -120,6 +121,93 @@ def test_teacher_can_save_draft_then_promote_fill_blank(client, db):
     )
     assert resaved.status_code == 200, resaved.text
     assert resaved.json()["review_history"][-1]["type"] == "draft_saved"
+
+
+def test_question_cannot_enter_machine_ready_pool_with_unlabeled_literacy(client, db):
+    question = db.scalar(
+        select(Question)
+        .where(
+            Question.grading_readiness == "raw_answer_only",
+            Question.question_type == "fill_blank",
+        )
+        .order_by(Question.source_question_number)
+        .limit(1)
+    )
+    assert question is not None
+    question.core_literacy = "待标注"
+    db.flush()
+
+    response = client.post(
+        f"/api/v1/questions/{question.id}/promote",
+        json={
+            "expected_review_revision": question.review_revision,
+            "reviewer_name": "测试教师",
+            "review_note": "核心素养准入校验",
+            "items": [
+                {"item_id": "blank_1", "answer": "1", "answer_match_type": "numeric"}
+            ],
+        },
+    )
+    assert response.status_code == 422, response.text
+    assert "正式核心素养" in response.json()["message"]
+    db.refresh(question)
+    assert question.grading_readiness == "raw_answer_only"
+
+
+def test_paper_publish_rejects_invalid_literacy_snapshot(client, db):
+    student = db.scalar(
+        select(Student)
+        .where(Student.archived_at.is_(None), Student.class_id.is_not(None))
+        .order_by(Student.student_code)
+    )
+    question = db.scalar(
+        select(Question)
+        .where(
+            Question.grading_readiness == "machine_ready",
+            Question.archived_at.is_(None),
+        )
+        .order_by(Question.original_qid)
+    )
+    assert student is not None and question is not None
+    assignment = Assignment(
+        title="非法素养快照发布测试",
+        class_id=student.class_id,
+        chapter_code=question.chapter_code,
+        teaching_scope={},
+        generation_config={},
+        assignment_type="practice",
+    )
+    db.add(assignment)
+    db.flush()
+    paper = PaperInstance(
+        assignment_id=assignment.id,
+        student_id=student.id,
+        version_no=1,
+        status="draft",
+        recommendation_audit={"requested_count": 1},
+        edit_history=[],
+        edit_revision=1,
+    )
+    db.add(paper)
+    db.flush()
+    payload = snapshot_payload(question)
+    payload["question_snapshot"]["core_literacy"] = "待标注"
+    db.add(new_item(
+        paper_id=paper.id,
+        order_no=1,
+        payload=payload,
+        selection_audit={"source_module": "required"},
+    ))
+    db.flush()
+
+    response = client.post(
+        f"/api/v1/paper-instances/{paper.id}/publish",
+        json={"expected_edit_revision": 1},
+    )
+    assert response.status_code == 422, response.text
+    assert "核心素养标签无效" in response.json()["message"]
+    db.refresh(paper)
+    assert paper.status == "draft"
 
 
 def test_choice_answer_must_be_single_option():

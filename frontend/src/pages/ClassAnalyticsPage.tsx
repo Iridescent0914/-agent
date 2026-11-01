@@ -125,7 +125,7 @@ export function ClassAnalyticsPage() {
         }))} showClassAverage={false} label="班级知识点平均正确率柱状图" />
       </Card>
       <Card title="素养能力平均水平">
-        <LiteracyRadarChart student={overview.literacies ?? []} classAverage={overview.literacies ?? []} label="班级素养能力平均水平雷达图" />
+        <LiteracyRadarChart student={overview.literacies ?? []} seriesName="班级平均" label="班级素养能力平均水平雷达图" />
       </Card>
       <Card title={`${className} · 作业进度`} extra={assignments.length > 0 && <Select aria-label="选择作业" value={assignmentId || undefined} onChange={setAssignmentId} options={assignments.map((item) => ({ value: item.id, label: item.title }))} style={{ width: 280, maxWidth: '70vw' }} />}>
         <AssignmentProgressPanel data={assignment} />

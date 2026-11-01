@@ -13,7 +13,10 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.router import api_router
 from app.core.config import get_settings
-from app.services.maintenance import run_file_maintenance
+from app.services.maintenance import (
+    run_system_maintenance,
+    seconds_until_next_business_midnight,
+)
 
 
 settings = get_settings()
@@ -28,12 +31,16 @@ logger = logging.getLogger(__name__)
 async def _maintenance_loop(stop: asyncio.Event) -> None:
     while not stop.is_set():
         try:
-            await asyncio.to_thread(run_file_maintenance)
+            await asyncio.to_thread(run_system_maintenance)
         except Exception:
-            logger.exception("file maintenance failed")
+            logger.exception("system maintenance failed")
+        timeout = min(
+            max(settings.maintenance_interval_seconds, 60),
+            seconds_until_next_business_midnight() + 1,
+        )
         with suppress(asyncio.TimeoutError):
             await asyncio.wait_for(
-                stop.wait(), timeout=max(settings.maintenance_interval_seconds, 60)
+                stop.wait(), timeout=timeout
             )
 
 

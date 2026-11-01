@@ -49,7 +49,7 @@ class MasteryOut(BaseModel):
 
 class LiteracyScoreOut(BaseModel):
     name: str
-    score: float
+    score: int = Field(ge=0, le=100)
     score_source: Literal["baseline", "computed"]
     rule_version: str
 

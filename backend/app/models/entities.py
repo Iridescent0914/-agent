@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -9,6 +9,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -168,6 +169,27 @@ class StudentMastery(Base):
     correct_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     recent_wrong_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_practiced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class StudentLiteracyScore(Base):
+    __tablename__ = "student_literacy_scores"
+    __table_args__ = (
+        CheckConstraint("score BETWEEN 0 AND 100", name="ck_literacy_score_range"),
+        CheckConstraint("attempt_count >= 0", name="ck_literacy_attempt_count_nonnegative"),
+    )
+
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE"), primary_key=True
+    )
+    literacy_name: Mapped[str] = mapped_column(String(40), primary_key=True)
+    score: Mapped[Decimal] = mapped_column(Numeric(7, 4), nullable=False)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_practiced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    score_as_of_date: Mapped[date] = mapped_column(Date, nullable=False)
+    rule_version: Mapped[str] = mapped_column(String(64), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
