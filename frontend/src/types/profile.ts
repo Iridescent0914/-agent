@@ -86,17 +86,22 @@ export interface RecommendationParams {
   avoid_recent_days: number; max_knowledge_point_ratio: number
 }
 export interface ScoreParts { weakness: number; recent_wrong: number; difficulty_match: number; forgetting: number }
+export interface PersonalizedItemAudit {
+  slot_no: number; literacy_name: string; literacy_score: number; score_source: 'computed'; rule_version: string
+  base_star: number; target_star: number; target_stars: number[]; generated_at: string
+}
 export interface RecommendedQuestion {
   question_id: string; original_qid: string; question_type: string; difficulty: number
   knowledge_point_code: string; knowledge_point_name: string; bucket: 'new' | 'review'
   strategy: 'diagnostic' | 'personalized'; score: number; target_difficulty: number
   components: ScoreParts; contributions: ScoreParts; reason_codes: string[]; reason_text: string; evidence: EvidenceRef[]
   source_module?: 'required' | 'personalized' | 'history' | 'weekly_summary' | 'legacy_recommendation'
+  personalized_audit?: PersonalizedItemAudit | null
 }
 export interface Recommendation {
   student_id: string; as_of: string; rule_version: string; parameters: RecommendationParams; weights: ScoreParts
   status: 'ready' | 'insufficient_candidates'; requested_count: number; selected_count: number; shortfall: number
-  new_shortfall: number; review_shortfall: number; max_per_knowledge_point: number; selected_per_knowledge_point: Record<string, number>
+  new_shortfall: number; review_shortfall: number; personalized_shortfall: number; max_per_knowledge_point: number; selected_per_knowledge_point: Record<string, number>
   diagnostics: Array<{ bucket: 'new' | 'review'; knowledge_point_codes: string[]; requested_count: number; selected_count: number
     shortfall: number; stages: Array<{ code: string; remaining: number; removed: number }>
     reason_codes: string[]; capped_knowledge_point_codes: string[] }>

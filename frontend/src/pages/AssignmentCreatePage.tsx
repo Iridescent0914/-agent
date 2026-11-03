@@ -54,6 +54,26 @@ const ALL_GRADES = '__all_grades__'
 const ALL_CHAPTERS = '__all_chapters__'
 const ALL_GRADE_CHAPTERS = '__all_grade_chapters__:'
 
+const personalizedReasonLabels: Record<string, string> = {
+  insufficient_exact_difficulty_inventory: '精确星级题量不足',
+  no_exact_difficulty_candidates: '没有该星级题目',
+  insufficient_machine_ready_inventory: '可机判且已审核题不足',
+  excluded_question_conflict: '与必做题或历史回顾题冲突',
+}
+
+const personalizedShortfallText = (row: AssignmentPreviewStudent) => {
+  if (!row.personalized?.shortfall) return '无'
+  return row.personalized.diagnostics
+    .filter((item) => item.shortfall > 0)
+    .map((item) => {
+      const reasons = item.reason_codes
+        .map((code) => personalizedReasonLabels[code] ?? code)
+        .join('、')
+      return `${item.difficulty} 星缺 ${item.shortfall} 道${reasons ? `（${reasons}）` : ''}`
+    })
+    .join('；')
+}
+
 const isConfiguredGrade = (value: string | null | undefined): value is string => {
   const normalized = value?.trim()
   return Boolean(normalized) && normalized !== '未设置'
@@ -385,6 +405,11 @@ export function AssignmentCreatePage() {
     const values = form.getFieldsValue(true) as FormValues
     const validationError = validateNewFilters(values)
     if (validationError) { setError(validationError); return }
+    const personalizedShortfalls = preview?.students.filter((item) => item.personalized?.shortfall) ?? []
+    if (personalizedShortfalls.length) {
+      setError(`有 ${personalizedShortfalls.length} 名学生的个性化题不足 3 道，请调整知识点范围后重新预检`)
+      return
+    }
     setLoading(true); setError(null)
     try {
       const created = await apiPost<AssignmentDetail>('/assignments', { ...build(values), title: values.title, idempotency_key: key.current })
@@ -396,13 +421,26 @@ export function AssignmentCreatePage() {
   const columns: ColumnsType<AssignmentPreviewStudent> = [
     { title: '学生', render: (_, row) => `${row.student_code} · ${row.student_name}` },
     { title: '结果', render: (_, row) => <Tag color={row.recommendation.shortfall ? 'orange' : 'green'}>{row.recommendation.selected_count} / {row.recommendation.requested_count} 题</Tag> },
-    { title: '题目来源', render: (_, row) => `${row.recommendation.items.filter((item) => item.source_module === 'required').length} 道必做 · ${row.recommendation.items.filter((item) => item.source_module === 'history').length} 道历史回顾 · 个性化待接入` },
-    { title: '缺口', render: (_, row) => row.recommendation.shortfall ? `缺 ${row.recommendation.shortfall} 题` : '无' },
+    { title: '个性化依据', width: 230, render: (_, row) => row.personalized ? <Space direction="vertical" size={0}>
+      <span>{row.personalized.literacy_name} <strong>{row.personalized.literacy_score}</strong> 分 · 基础 {row.personalized.base_star} 星</span>
+      <Typography.Text type="secondary">题位 {row.personalized.target_stars.join(' → ')} 星</Typography.Text>
+    </Space> : '未启用' },
+    { title: '题目来源', width: 260, render: (_, row) => `${row.recommendation.items.filter((item) => item.source_module === 'required').length} 道必做 · ${row.recommendation.items.filter((item) => item.source_module === 'history').length} 道历史回顾 · ${row.recommendation.items.filter((item) => item.source_module === 'personalized').length} 道个性化` },
+    { title: '个性化缺口', width: 320, render: (_, row) => row.personalized?.shortfall
+      ? <Typography.Text type="warning">{personalizedShortfallText(row)}</Typography.Text>
+      : <Tag color="green">三题完整</Tag> },
   ]
   const requiredQuestionColumns: ColumnsType<RecommendedQuestion> = [
     { title: '题号', dataIndex: 'original_qid', width: 180 },
     { title: '知识点', dataIndex: 'knowledge_point_name' },
     { title: '难度', dataIndex: 'difficulty', width: 80 },
+    { title: '题型', dataIndex: 'question_type', width: 100 },
+  ]
+  const personalizedQuestionColumns: ColumnsType<RecommendedQuestion> = [
+    { title: '题位', width: 70, render: (_, item) => item.personalized_audit?.slot_no ?? '-' },
+    { title: '题号', dataIndex: 'original_qid', width: 180 },
+    { title: '知识点', dataIndex: 'knowledge_point_name' },
+    { title: '目标题星', width: 100, render: (_, item) => `${item.personalized_audit?.target_star ?? item.difficulty} 星` },
     { title: '题型', dataIndex: 'question_type', width: 100 },
   ]
   const moduleButton = (
@@ -421,6 +459,10 @@ export function AssignmentCreatePage() {
   const sharedRequiredItems = preview?.students[0]?.recommendation.items.filter(
     (item) => item.source_module === 'required',
   ) ?? []
+  const personalizedShortfallStudentCount = preview?.students.filter(
+    (item) => Boolean(item.personalized?.shortfall),
+  ).length ?? 0
+  const personalizedReadyCount = (preview?.student_count ?? 0) - personalizedShortfallStudentCount
 
   return <Space direction="vertical" size="large" className="page-stack assignment-workspace">
     <Typography.Title level={2}>创建班级作业</Typography.Title>
@@ -471,10 +513,10 @@ export function AssignmentCreatePage() {
 
         <div hidden={activeModule !== 'personalized'}>
           <Card size="small" className="assignment-filter-panel" title="个性化筛选" extra={<Button type="link" onClick={() => setActiveModule(null)}>收起</Button>}>
-          <Alert type="info" showIcon message="当前阶段只保存筛选条件，个性化出题算法将在后续接入" />
+          <Alert type="info" showIcon message="每名学生按当前最新素养整数分生成 3 道个性化题" description="题位固定为基础星级、+1、+2（最高 5 星）。预检不冻结结果，正式创建时会重新读取最新分数；精确星级库存不足时不会跨级补题。" />
           <Form.Item label="节（知识点，必选）" name="personalized_knowledge_point_codes" rules={[{ required: true, type: 'array', min: 1, message: '请选择至少一个知识点' }]}><Select mode="multiple" showSearch optionFilterProp="label" options={personalizedKnowledgePointSelectOptions} onChange={handlePersonalizedKnowledgePointChange} placeholder="请先选择知识点" /></Form.Item>
           <Form.Item label="主要能力（任选其一）" name="primary_competency" rules={[{ required: true, message: '请选择主要能力' }]}><Select allowClear disabled={!personalizedCompetencies.length} options={competencyOptions} placeholder={personalizedCompetencies.length ? '请选择所选知识点对应的一项能力' : '请先选择知识点'} /></Form.Item>
-          <Typography.Text type="secondary">个性化模块固定预留 3 道题。</Typography.Text>
+          <Typography.Text type="secondary">个性化模块固定 3 道题，正式创建后保存当时使用的整数分、星级和规则版本。</Typography.Text>
           </Card>
         </div>
 
@@ -497,10 +539,29 @@ export function AssignmentCreatePage() {
         <div><span>班级学生</span><strong>{preview.student_count}</strong><small>人</small></div>
         <div><span>可完整生成</span><strong>{preview.ready_count}</strong><small>人</small></div>
         <div className={preview.shortfall_student_count ? 'warning' : ''}><span>存在缺口</span><strong>{preview.shortfall_student_count}</strong><small>人</small></div>
-        <div><span>统一必做题</span><strong>{sharedRequiredItems.length}</strong><small>道</small></div>
+        <div className={personalizedShortfallStudentCount ? 'warning' : ''}><span>个性化三题完整</span><strong>{personalizedReadyCount}</strong><small>人</small></div>
       </div>
       <Alert type={preview.shortfall_student_count ? 'warning' : 'success'} showIcon message={`${preview.ready_count} / ${preview.student_count} 名学生可完整生成`} description={`统一基准时间：${new Date(preview.as_of).toLocaleString('zh-CN')}`} />
-      <Table className="preview-table" rowKey="student_id" columns={columns} dataSource={preview.students} pagination={{ pageSize: 20, showSizeChanger: true }} scroll={{ x: 720 }} />
+      {personalizedShortfallStudentCount > 0 && <Alert className="personalized-shortfall-alert" type="error" showIcon message={`有 ${personalizedShortfallStudentCount} 名学生的个性化题不足 3 道，暂不能创建正式作业`} description="请根据表格中的缺失星级补充可机判题，或调整个性化知识点范围后重新预检。系统不会跨知识点范围或跨星级自动补题。" />}
+      <Table
+        className="preview-table"
+        rowKey="student_id"
+        columns={columns}
+        dataSource={preview.students}
+        pagination={{ pageSize: 20, showSizeChanger: true }}
+        scroll={{ x: 1180 }}
+        expandable={{
+          rowExpandable: (row) => row.recommendation.items.some((item) => item.source_module === 'personalized'),
+          expandedRowRender: (row) => <Table
+            size="small"
+            rowKey="question_id"
+            columns={personalizedQuestionColumns}
+            dataSource={row.recommendation.items.filter((item) => item.source_module === 'personalized')}
+            pagination={false}
+          />,
+          expandRowByClick: true,
+        }}
+      />
       {sharedRequiredItems.length > 0 && <Card size="small" title={`必做题草稿（${sharedRequiredItems.length} 题，所有学生相同）`}>
         <Table
           size="small"
@@ -511,7 +572,7 @@ export function AssignmentCreatePage() {
         />
       </Card>}
       {sharedRequiredItems.length === 0 && <Alert type="warning" showIcon message="当前筛选条件没有可用的必做题" description="请减少难度题量，或放宽年级、章节、知识点和核心素养筛选范围。" />}
-      <div className="assignment-generate-action"><Typography.Text type="secondary">确认预检结果后，为当前班级生成可继续编辑的试卷草稿。</Typography.Text><Button type="primary" size="large" onClick={generate} loading={loading}>确认并生成草稿</Button></div>
+      <div className="assignment-generate-action"><Typography.Text type="secondary">{personalizedShortfallStudentCount ? '请先处理个性化缺题；完整后才能生成正式草稿。' : '确认预检结果后，系统将按创建时的最新素养分重新选题并冻结审计。'}</Typography.Text><Button type="primary" size="large" onClick={generate} loading={loading} disabled={personalizedShortfallStudentCount > 0}>确认并生成草稿</Button></div>
     </Card>}
   </Space>
 }

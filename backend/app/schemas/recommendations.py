@@ -61,6 +61,18 @@ class ScoreParts(BaseModel):
     forgetting: float
 
 
+class PersonalizedItemAudit(BaseModel):
+    slot_no: int = Field(ge=1, le=3)
+    literacy_name: str
+    literacy_score: int = Field(ge=0, le=100)
+    score_source: Literal["computed"] = "computed"
+    rule_version: str
+    base_star: int = Field(ge=1, le=5)
+    target_star: int = Field(ge=1, le=5)
+    target_stars: list[int] = Field(min_length=3, max_length=3)
+    generated_at: datetime
+
+
 class RecommendedQuestion(BaseModel):
     question_id: UUID
     original_qid: str
@@ -82,6 +94,7 @@ class RecommendedQuestion(BaseModel):
     ] = (
         "legacy_recommendation"
     )
+    personalized_audit: PersonalizedItemAudit | None = None
 
 
 class FilterStage(BaseModel):
@@ -101,6 +114,31 @@ class BucketDiagnostic(BaseModel):
     capped_knowledge_point_codes: list[str]
 
 
+class PersonalizedDifficultyDiagnosticOut(BaseModel):
+    difficulty: int = Field(ge=1, le=5)
+    requested_count: int
+    exact_candidate_count: int
+    ready_candidate_count: int
+    available_candidate_count: int
+    selected_count: int
+    shortfall: int
+    reason_codes: list[str]
+
+
+class PersonalizedSelectionPreviewOut(BaseModel):
+    literacy_name: str
+    literacy_score: int = Field(ge=0, le=100)
+    score_source: Literal["computed"] = "computed"
+    rule_version: str
+    base_star: int = Field(ge=1, le=5)
+    target_stars: list[int] = Field(min_length=3, max_length=3)
+    requested_count: int = 3
+    selected_count: int
+    shortfall: int
+    status: Literal["ready", "insufficient_candidates"]
+    diagnostics: list[PersonalizedDifficultyDiagnosticOut]
+
+
 class RecommendationOut(BaseModel):
     student_id: UUID
     as_of: datetime
@@ -113,6 +151,7 @@ class RecommendationOut(BaseModel):
     shortfall: int
     new_shortfall: int
     review_shortfall: int
+    personalized_shortfall: int = 0
     max_per_knowledge_point: int
     selected_per_knowledge_point: dict[str, int]
     diagnostics: list[BucketDiagnostic]

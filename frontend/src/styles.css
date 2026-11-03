@@ -303,6 +303,7 @@ a { color: inherit; }
 .assignment-preview-summary .warning strong { color: #c56524; }
 .assignment-generate-action { margin-top: 18px; background: linear-gradient(105deg, #f4faf8, #f2f6fb); }
 .preview-table { margin-block: 18px; }
+.personalized-shortfall-alert { margin-top: 14px; }
 .paper-workspace .ant-card-extra { max-width: 100%; }
 .paper-workspace details { margin-top: 16px; }
 .answer-editor, .attempt-result, .revision-list, .modal-form-stack { width: 100%; }

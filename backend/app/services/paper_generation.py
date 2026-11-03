@@ -14,7 +14,16 @@ from app.schemas.assignments import (
     AssignmentCreateRequest, AssignmentPlanRequest, AssignmentPreviewOut,
     StudentRecommendationPreview,
 )
+from app.schemas.recommendations import (
+    PersonalizedDifficultyDiagnosticOut,
+    PersonalizedItemAudit,
+    PersonalizedSelectionPreviewOut,
+    RecommendedQuestion,
+    ScoreParts,
+)
 from app.services.paper_snapshots import load_questions, new_item, snapshot_payload
+from app.services.personalized_preview import preview_personalized_questions
+from app.services.personalized_selection import PersonalizedSelectionResult
 from app.services.recommendations import (
     history_recommendation_candidates, history_source_question_ids,
     history_wrong_answers, preview,
@@ -23,6 +32,14 @@ from app.services.recommendations import (
     select_required_recommendations,
 )
 from app.services.student_profile import load_contexts
+
+
+ZERO_SCORE_PARTS = ScoreParts(
+    weakness=0,
+    recent_wrong=0,
+    difficulty_match=0,
+    forgetting=0,
+)
 
 
 def _students(db: Session, student_ids: Iterable[UUID]) -> list[Student]:
@@ -104,6 +121,90 @@ def _validate_personalized_filter(db: Session, request: AssignmentPlanRequest) -
         raise ValueError("主要能力不属于所选知识点")
 
 
+def _personalized_preview_out(
+    selection: PersonalizedSelectionResult,
+    *,
+    rule_version: str,
+) -> PersonalizedSelectionPreviewOut:
+    return PersonalizedSelectionPreviewOut(
+        literacy_name=selection.literacy_name,
+        literacy_score=selection.literacy_score,
+        score_source="computed",
+        rule_version=rule_version,
+        base_star=selection.base_star,
+        target_stars=list(selection.target_stars),
+        requested_count=3,
+        selected_count=selection.selected_count,
+        shortfall=selection.shortfall,
+        status=selection.status,
+        diagnostics=[
+            PersonalizedDifficultyDiagnosticOut(
+                difficulty=item.difficulty,
+                requested_count=item.requested_count,
+                exact_candidate_count=item.exact_candidate_count,
+                ready_candidate_count=item.ready_candidate_count,
+                available_candidate_count=item.available_candidate_count,
+                selected_count=item.selected_count,
+                shortfall=item.shortfall,
+                reason_codes=list(item.reason_codes),
+            )
+            for item in selection.diagnostics
+        ],
+    )
+
+
+def _personalized_items(
+    selection: PersonalizedSelectionResult,
+    *,
+    as_of: datetime,
+    rule_version: str,
+) -> list[RecommendedQuestion]:
+    result: list[RecommendedQuestion] = []
+    for slot in selection.slots:
+        candidate = slot.candidate
+        if candidate is None:
+            continue
+        audit = PersonalizedItemAudit(
+            slot_no=slot.slot_no,
+            literacy_name=selection.literacy_name,
+            literacy_score=selection.literacy_score,
+            score_source="computed",
+            rule_version=rule_version,
+            base_star=selection.base_star,
+            target_star=slot.target_star,
+            target_stars=list(selection.target_stars),
+            generated_at=as_of,
+        )
+        result.append(RecommendedQuestion(
+            question_id=candidate.question_id,
+            original_qid=candidate.original_qid,
+            question_type=candidate.question_type,
+            difficulty=candidate.difficulty,
+            knowledge_point_code=candidate.knowledge_point_code,
+            knowledge_point_name=candidate.knowledge_point_name,
+            bucket="new",
+            strategy="personalized",
+            score=1,
+            components=ZERO_SCORE_PARTS,
+            contributions=ZERO_SCORE_PARTS,
+            target_difficulty=slot.target_star,
+            reason_codes=[
+                "personalized_literacy_score",
+                "teacher_knowledge_scope",
+                "exact_target_difficulty",
+            ],
+            reason_text=(
+                f"{selection.literacy_name}当前整数分 {selection.literacy_score}，"
+                f"基础 {selection.base_star} 星；第 {slot.slot_no} 题按"
+                f" {slot.target_star} 星精确选题。"
+            ),
+            evidence=[],
+            source_module="personalized",
+            personalized_audit=audit,
+        ))
+    return result
+
+
 def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                        as_of: datetime | None = None) -> AssignmentPreviewOut:
     at = as_of or datetime.now(timezone.utc)
@@ -165,7 +266,8 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                 db, history_knowledge_point_codes,
             )
         required_ids = {item.question_id for item in template.items}
-        results = []
+        history_by_student = {}
+        personalized_exclusions = {}
         for student in students:
             wrong_answers = history_errors[student.id]
             history_items, history_diagnostic = select_history_recommendations(
@@ -179,19 +281,59 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                 params=params,
                 as_of=at,
             )
+            history_by_student[student.id] = (
+                wrong_answers,
+                history_items,
+                history_diagnostic,
+            )
+            personalized_exclusions[student.id] = required_ids | {
+                item.question_id for item in history_items
+            }
+
+        personalized_filter = request.filter_config.personalized
+        personalized_batch = preview_personalized_questions(
+            db,
+            student_ids=[student.id for student in students],
+            grade_codes=request.filter_config.grade_codes,
+            chapter_codes=chapter_codes,
+            knowledge_point_codes=personalized_filter.knowledge_point_codes,
+            literacy_name=personalized_filter.primary_competency or "",
+            excluded_question_ids=personalized_exclusions,
+            as_of=at,
+        )
+        personalized_by_student = {
+            item.student_id: item.selection
+            for item in personalized_batch.students
+        }
+
+        results = []
+        for student in students:
+            wrong_answers, history_items, history_diagnostic = history_by_student[
+                student.id
+            ]
+            personalized_selection = personalized_by_student[student.id]
+            personalized_items = _personalized_items(
+                personalized_selection,
+                as_of=at,
+                rule_version=personalized_batch.rule_version,
+            )
             required_diagnostics = [
                 diagnostic for diagnostic in template.diagnostics
                 if diagnostic.bucket != "review"
             ]
-            all_items = [*template.items, *history_items]
+            all_items = [*template.items, *history_items, *personalized_items]
             selected_per_knowledge = dict(template.selected_per_knowledge_point)
-            for item in history_items:
+            for item in [*history_items, *personalized_items]:
                 selected_per_knowledge[item.knowledge_point_code] = (
                     selected_per_knowledge.get(item.knowledge_point_code, 0) + 1
                 )
-            requested_count = template.requested_count + len(wrong_answers)
+            requested_count = template.requested_count + len(wrong_answers) + 3
             selected_count = len(all_items)
-            shortfall = template.new_shortfall + history_diagnostic.shortfall
+            shortfall = (
+                template.new_shortfall
+                + history_diagnostic.shortfall
+                + personalized_selection.shortfall
+            )
             recommendation = template.model_copy(update={
                 "student_id": student.id,
                 "status": "ready" if shortfall == 0 else "insufficient_candidates",
@@ -199,6 +341,7 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                 "selected_count": selected_count,
                 "shortfall": shortfall,
                 "review_shortfall": history_diagnostic.shortfall,
+                "personalized_shortfall": personalized_selection.shortfall,
                 "selected_per_knowledge_point": selected_per_knowledge,
                 "diagnostics": [*required_diagnostics, history_diagnostic],
                 "items": all_items,
@@ -208,6 +351,10 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                 student_code=student.student_code,
                 student_name=student.display_name,
                 recommendation=recommendation,
+                personalized=_personalized_preview_out(
+                    personalized_selection,
+                    rule_version=personalized_batch.rule_version,
+                ),
             ))
     else:
         contexts = load_contexts(db, [student.id for student in students])
@@ -259,6 +406,20 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
         filter_config=request.filter_config,
     )
     result = preview_assignment(db, plan, as_of=as_of)
+    personalized_shortfalls = [
+        student
+        for student in result.students
+        if student.personalized is not None and student.personalized.shortfall > 0
+    ]
+    if personalized_shortfalls:
+        sample = "、".join(
+            student.student_code for student in personalized_shortfalls[:5]
+        )
+        suffix = "等" if len(personalized_shortfalls) > 5 else ""
+        raise ValueError(
+            f"个性化题库存不足：{len(personalized_shortfalls)} 名学生无法生成完整三题"
+            f"（{sample}{suffix}）；请调整知识点范围或补充对应星级可机判题"
+        )
     students = _students_for_request(db, request)
     school_class = _school_class(db, students, request.class_id)
     params = (
@@ -291,6 +452,16 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
             "resolved_student_ids": [str(value.student_id) for value in result.students],
             "recommendation_parameters": params,
             "filter_config": filter_config,
+            "personalized_score_policy": {
+                "score_source": "computed",
+                "score_type": "rounded_integer",
+                "rule_version": (
+                    result.students[0].personalized.rule_version
+                    if result.students and result.students[0].personalized is not None
+                    else None
+                ),
+                "recomputed_at_creation": True,
+            },
         },
         assignment_type="practice",
     )
@@ -311,6 +482,11 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
             recommendation_audit={
                 "schema_version": "m3-recommendation-audit-v1",
                 **output.model_dump(mode="json"),
+                "personalized": (
+                    student_result.personalized.model_dump(mode="json")
+                    if student_result.personalized is not None
+                    else None
+                ),
             },
             edit_history=[],
             edit_revision=1,

@@ -25,11 +25,37 @@ export interface AssignmentFilterConfig {
   history: HistoryQuestionFilter
 }
 
+export interface PersonalizedDifficultyDiagnostic {
+  difficulty: number
+  requested_count: number
+  exact_candidate_count: number
+  ready_candidate_count: number
+  available_candidate_count: number
+  selected_count: number
+  shortfall: number
+  reason_codes: string[]
+}
+
+export interface PersonalizedSelectionPreview {
+  literacy_name: string
+  literacy_score: number
+  score_source: 'computed'
+  rule_version: string
+  base_star: number
+  target_stars: number[]
+  requested_count: number
+  selected_count: number
+  shortfall: number
+  status: 'ready' | 'insufficient_candidates'
+  diagnostics: PersonalizedDifficultyDiagnostic[]
+}
+
 export interface AssignmentPreviewStudent {
   student_id: string
   student_code: string
   student_name: string
   recommendation: Recommendation
+  personalized: PersonalizedSelectionPreview | null
 }
 
 export interface AssignmentPreview {
@@ -141,7 +167,7 @@ export interface PaperItem {
 }
 
 export interface PaperInstance extends PaperSummary {
-  recommendation_audit: (Recommendation & { schema_version?: string }) | null
+  recommendation_audit: (Recommendation & { schema_version?: string; personalized?: PersonalizedSelectionPreview | null }) | null
   edit_history: Array<Record<string, unknown>>
   items: PaperItem[]
 }

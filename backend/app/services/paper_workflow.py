@@ -18,7 +18,7 @@ from app.schemas.papers import (
     AlternativeOut, PaperByCodeOut, PaperInstanceStudentOut,
     PaperInstanceTeacherOut, PaperItemOut, PaperSummaryOut, StudentPaperItemOut,
 )
-from app.schemas.recommendations import RecommendationRequest
+from app.schemas.recommendations import PersonalizedItemAudit, RecommendationRequest
 from app.services.assets import resolve_assets
 from app.services.paper_snapshots import (
     copy_item, current_knowledge_point_snapshot, current_selection_audit, load_question,
@@ -382,11 +382,26 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
     source_module = audit.get("source_module")
     is_history = source_module == "history"
     is_fixed_review = source_module in {"history", "weekly_summary"}
+    is_personalized = source_module == "personalized"
+    personalized_audit = (
+        PersonalizedItemAudit.model_validate(audit["personalized_audit"])
+        if is_personalized and audit.get("personalized_audit")
+        else None
+    )
     target_knowledge_code = target.knowledge_point_snapshot.get("id")
     target_difficulty = target.question_snapshot.get("difficulty")
+    assignment = db.get(Assignment, paper.assignment_id)
+    generation_config = (assignment.generation_config if assignment else None) or {}
+    personalized_scope = (
+        (generation_config.get("filter_config") or {})
+        .get("personalized", {})
+        .get("knowledge_point_codes", [])
+    )
     allowed_codes = (
         [target_knowledge_code]
         if is_fixed_review and target_knowledge_code
+        else personalized_scope
+        if is_personalized
         else params.new_knowledge_point_codes
         if bucket == "new"
         else params.review_knowledge_point_codes
@@ -445,13 +460,13 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
     for question, knowledge_point in rows:
         if question.id in existing_ids or question.id in source_question_ids:
             continue
-        if not is_fixed_review and question.id in practiced:
+        if not is_fixed_review and not is_personalized and question.id in practiced:
             continue
         if (
             knowledge_point.code not in allowed_codes
         ):
             continue
-        if is_fixed_review:
+        if is_fixed_review or is_personalized:
             if question.difficulty != target_difficulty:
                 continue
         elif (
@@ -463,19 +478,31 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
             continue
         if question.grading_readiness != "machine_ready" or question.source_review_status != "reviewed":
             continue
-        if not is_fixed_review and per_knowledge[knowledge_point.code] >= cap:
+        if (
+            not is_fixed_review
+            and not is_personalized
+            and per_knowledge[knowledge_point.code] >= cap
+        ):
             continue
         candidate = Candidate(
             question.id, question.original_qid, question.question_type, question.difficulty,
             knowledge_point.id, knowledge_point.code, knowledge_point.name,
         )
-        ranked.append(score_candidate(
+        scored = score_candidate(
             candidate,
             context.results.get((paper.student_id, knowledge_point.id)),
             params,
             bucket,
             as_of,
-        ))
+        )
+        if is_personalized:
+            scored = scored.model_copy(update={
+                "strategy": "personalized",
+                "source_module": "personalized",
+                "target_difficulty": target_difficulty,
+                "personalized_audit": personalized_audit,
+            })
+        ranked.append(scored)
     ranked.sort(key=lambda item: (-item.score, item.original_qid, item.question_id.int))
     return AlternativeOut(items=ranked[:20])
 
@@ -519,6 +546,13 @@ def replace_item(db: Session, paper_id: UUID, item_id: UUID, *, replacement_id: 
     choice_audit["reason_codes"] = reason_codes
     if previous_module in {"history", "weekly_summary"}:
         choice_audit["evidence"] = deepcopy(previous_audit.get("evidence") or [])
+        choice_audit["reason_text"] = previous_audit.get(
+            "reason_text", choice_audit.get("reason_text", "")
+        )
+    if previous_module == "personalized":
+        choice_audit["personalized_audit"] = deepcopy(
+            previous_audit.get("personalized_audit")
+        )
         choice_audit["reason_text"] = previous_audit.get(
             "reason_text", choice_audit.get("reason_text", "")
         )

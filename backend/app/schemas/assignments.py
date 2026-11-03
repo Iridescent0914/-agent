@@ -7,7 +7,11 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.papers import PaperSummaryOut
-from app.schemas.recommendations import RecommendationOut, RecommendationRequest
+from app.schemas.recommendations import (
+    PersonalizedSelectionPreviewOut,
+    RecommendationOut,
+    RecommendationRequest,
+)
 
 
 class RequiredQuestionFilter(BaseModel):
@@ -120,6 +124,7 @@ class StudentRecommendationPreview(BaseModel):
     student_code: str
     student_name: str
     recommendation: RecommendationOut
+    personalized: PersonalizedSelectionPreviewOut | None = None
 
 
 class AssignmentPreviewOut(BaseModel):

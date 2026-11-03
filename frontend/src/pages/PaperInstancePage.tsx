@@ -8,6 +8,14 @@ import { RichQuestionText } from '../components/RichQuestionText'
 import { QuestionOptions } from '../components/QuestionOptions'
 import type { Alternatives, PaperInstance, PaperItem } from '../types/assignment'
 
+const sourceModuleLabels: Record<string, string> = {
+  required: '必做题',
+  personalized: '个性化',
+  history: '历史回顾',
+  weekly_summary: '周总结',
+  legacy_recommendation: '历史推荐',
+}
+
 export function PaperInstancePage() {
   const { paperInstanceId } = useParams()
   const navigate = useNavigate()
@@ -117,10 +125,16 @@ export function PaperInstancePage() {
       <Button aria-label={`下移第${item.order_no}题`} icon={<ArrowDownOutlined />} disabled={index === paper.items.length - 1} onClick={() => move(item, 1)} />
       <Button onClick={() => openAlternatives(item)}>换题</Button><Button danger icon={<DeleteOutlined />} onClick={() => remove(item)}>删除</Button>
     </Space>}>
-      <Space wrap><Tag>{item.question_snapshot.question_type === 'choice' ? '选择题' : item.question_snapshot.question_type === 'true_false' ? '判断题' : '填空题'}</Tag><Tag>难度 {item.question_snapshot.difficulty}</Tag><Tag color={item.selection_audit?.bucket === 'new' ? 'cyan' : 'gold'}>{item.selection_audit?.bucket === 'new' ? '新知识' : '回顾'}</Tag><Tag>{item.knowledge_point_snapshot.name}</Tag></Space>
+      <Space wrap><Tag>{item.question_snapshot.question_type === 'choice' ? '选择题' : item.question_snapshot.question_type === 'true_false' ? '判断题' : '填空题'}</Tag><Tag>难度 {item.question_snapshot.difficulty}</Tag><Tag color={item.selection_audit?.source_module === 'personalized' ? 'purple' : item.selection_audit?.bucket === 'new' ? 'cyan' : 'gold'}>{sourceModuleLabels[item.selection_audit?.source_module ?? ''] ?? (item.selection_audit?.bucket === 'new' ? '新知识' : '回顾')}</Tag><Tag>{item.knowledge_point_snapshot.name}</Tag></Space>
       <RichQuestionText text={item.question_snapshot.question_text ?? ''} assets={item.assets} />
       {item.options_snapshot != null && <QuestionOptions options={item.options_snapshot} assets={item.assets} />}
       <Typography.Paragraph type="secondary">推荐理由：{item.selection_audit?.reason_text ?? '来自历史版本快照'}</Typography.Paragraph>
+      {item.selection_audit?.personalized_audit && <Descriptions size="small" bordered column={{ xs: 1, sm: 2, md: 4 }}>
+        <Descriptions.Item label="生成依据">{item.selection_audit.personalized_audit.literacy_name} {item.selection_audit.personalized_audit.literacy_score} 分</Descriptions.Item>
+        <Descriptions.Item label="星级题位">基础 {item.selection_audit.personalized_audit.base_star} 星 · 第 {item.selection_audit.personalized_audit.slot_no} 题目标 {item.selection_audit.personalized_audit.target_star} 星</Descriptions.Item>
+        <Descriptions.Item label="规则版本">{item.selection_audit.personalized_audit.rule_version}</Descriptions.Item>
+        <Descriptions.Item label="生成时间">{new Date(item.selection_audit.personalized_audit.generated_at).toLocaleString('zh-CN')}</Descriptions.Item>
+      </Descriptions>}
       <details><summary>教师答案与判分规则</summary><AnswerView answer={item.answer_snapshot} /><pre className="json-block">{JSON.stringify(item.answer_rule_snapshot, null, 2)}</pre></details>
     </Card>)}
     <Drawer title={`替换第 ${target?.order_no ?? ''} 题`} width={720} open={Boolean(target)} onClose={() => { setTarget(null); setAlternatives(null) }}>

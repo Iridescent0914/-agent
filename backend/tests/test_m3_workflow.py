@@ -173,6 +173,64 @@ def completed_required_source(
     return assignment, source_question, knowledge_point
 
 
+def complete_personalized_scope(db, template_question, *, competency="运算能力"):
+    """Create an isolated all-star pool so unrelated workflow tests stay focused."""
+
+    suffix = uuid4().hex
+    knowledge_point = KnowledgePoint(
+        code=f"test.personalized.{suffix}.kp",
+        name="Complete personalized test pool",
+        chapter_code=template_question.chapter_code,
+        chapter_name=template_question.chapter_name,
+        section=template_question.section,
+        sort_order=999,
+        core_competencies=[competency],
+    )
+    db.add(knowledge_point)
+    db.flush()
+    for difficulty in range(1, 6):
+        for copy_no in range(1, 4):
+            db.add(Question(
+                original_qid=(
+                    f"test.personalized.{suffix}.{difficulty}.{copy_no}"
+                ),
+                schema_version=template_question.schema_version,
+                chapter_code=template_question.chapter_code,
+                chapter_name=template_question.chapter_name,
+                grade=template_question.grade,
+                section=template_question.section,
+                question_type=template_question.question_type,
+                difficulty=difficulty,
+                main_knowledge_point_id=knowledge_point.id,
+                question_text=template_question.question_text,
+                options=deepcopy(template_question.options),
+                correct_answer=deepcopy(template_question.correct_answer),
+                reference_answer_raw=template_question.reference_answer_raw,
+                answer_match_type=template_question.answer_match_type,
+                answer_normalization_rule=deepcopy(
+                    template_question.answer_normalization_rule
+                ),
+                solution=template_question.solution,
+                wrong_analysis=template_question.wrong_analysis,
+                estimated_score_rate=template_question.estimated_score_rate,
+                core_literacy=competency,
+                is_required=False,
+                has_image=template_question.has_image,
+                has_equation=template_question.has_equation,
+                assets=deepcopy(template_question.assets),
+                source_file="personalized-workflow-test",
+                source_question_number=difficulty * 10 + copy_no,
+                source_review_status="reviewed",
+                grading_readiness="machine_ready",
+                import_status="parsed",
+                import_issues=[],
+                review_revision=1,
+                review_history=[],
+            ))
+    db.flush()
+    return knowledge_point
+
+
 def test_preview_create_idempotency_and_audit(client, db):
     body = request_body(db, key="test-" + uuid4().hex)
     before = counts(db)
@@ -245,6 +303,9 @@ def test_required_and_selected_history_are_combined_per_student(client, db):
         Student.archived_at.is_(None), Student.class_id.is_not(None),
     ).order_by(Student.student_code))
     source, source_question, knowledge_point = completed_required_source(db, student)
+    personalized_knowledge_point = complete_personalized_scope(
+        db, source_question,
+    )
     request = {
         "class_id": str(student.class_id),
         "student_scope": "all_class",
@@ -269,11 +330,8 @@ def test_required_and_selected_history_are_combined_per_student(client, db):
                 "difficulty_counts": {str(source_question.difficulty): 1},
             },
             "personalized": {
-                "knowledge_point_codes": [knowledge_point.code],
-                "primary_competency": (
-                    knowledge_point.core_competencies[0]
-                    if knowledge_point.core_competencies else "运算能力"
-                ),
+                "knowledge_point_codes": [personalized_knowledge_point.code],
+                "primary_competency": "运算能力",
                 "question_count": 3,
             },
             "history": {"assignment_id": str(source.id)},
@@ -285,7 +343,7 @@ def test_required_and_selected_history_are_combined_per_student(client, db):
     source_student = next(item for item in students if item["student_id"] == str(student.id))
     assert [
         item["source_module"] for item in source_student["recommendation"]["items"]
-    ] == ["required", "history"]
+    ] == ["required", "history", "personalized", "personalized", "personalized"]
     history_item = source_student["recommendation"]["items"][1]
     assert history_item["question_id"] != str(source_question.id)
     assert history_item["difficulty"] == source_question.difficulty
@@ -293,7 +351,7 @@ def test_required_and_selected_history_are_combined_per_student(client, db):
     assert history_item["evidence"]
     assert all(
         len(item["recommendation"]["items"]) == (
-            2 if item["student_id"] == str(student.id) else 1
+            5 if item["student_id"] == str(student.id) else 4
         )
         for item in students
     )
@@ -329,7 +387,7 @@ def test_required_and_selected_history_are_combined_per_student(client, db):
     )
     paper = client.get(f"/api/v1/paper-instances/{source_paper['id']}").json()
     assert [item["selection_audit"]["source_module"] for item in paper["items"]] == [
-        "required", "history",
+        "required", "history", "personalized", "personalized", "personalized",
     ]
 
 
@@ -349,7 +407,7 @@ def test_history_scope_is_independent_from_current_grade_and_chapter(client, db)
         chapter_name="Cross-scope current chapter",
         section="Cross-scope section",
         sort_order=1,
-        core_competencies=["Cross-scope competency"],
+        core_competencies=["运算能力"],
     )
     db.add(target_knowledge_point)
     db.flush()
@@ -388,6 +446,9 @@ def test_history_scope_is_independent_from_current_grade_and_chapter(client, db)
     )
     db.add(target_question)
     db.flush()
+    personalized_knowledge_point = complete_personalized_scope(
+        db, target_question,
+    )
     request = {
         "class_id": str(student.class_id),
         "student_scope": "all_class",
@@ -412,8 +473,8 @@ def test_history_scope_is_independent_from_current_grade_and_chapter(client, db)
                 "difficulty_counts": {str(target_question.difficulty): 1},
             },
             "personalized": {
-                "knowledge_point_codes": [target_knowledge_point.code],
-                "primary_competency": target_knowledge_point.core_competencies[0],
+                "knowledge_point_codes": [personalized_knowledge_point.code],
+                "primary_competency": "运算能力",
                 "question_count": 3,
             },
             "history": {"assignment_id": str(source.id)},
@@ -464,6 +525,9 @@ def test_required_and_history_replacements_preserve_module_and_history_evidence(
         db, student, minimum_group_size=6, minimum_required_count=4,
         additional_source_questions=2,
     )
+    personalized_knowledge_point = complete_personalized_scope(
+        db, source_question,
+    )
     source_question_ids = history_source_question_ids(
         db,
         source_assignment_id=source.id,
@@ -495,8 +559,8 @@ def test_required_and_history_replacements_preserve_module_and_history_evidence(
                 "difficulty_counts": {str(source_question.difficulty): 1},
             },
             "personalized": {
-                "knowledge_point_codes": [knowledge_point.code],
-                "primary_competency": competency,
+                "knowledge_point_codes": [personalized_knowledge_point.code],
+                "primary_competency": "运算能力",
                 "question_count": 3,
             },
             "history": {"assignment_id": str(source.id)},
