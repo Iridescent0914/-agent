@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Collection, Iterable
+from collections.abc import Collection, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Literal
 from uuid import UUID
@@ -80,10 +80,17 @@ def _validate_business_inputs(
     return codes
 
 
-def _stable_unique(candidates: Iterable[Candidate]) -> list[Candidate]:
+def _stable_unique(
+    candidates: Iterable[Candidate],
+    usage_counts: Mapping[UUID, int],
+) -> list[Candidate]:
     ordered = sorted(
         candidates,
-        key=lambda item: (item.original_qid, item.question_id.int),
+        key=lambda item: (
+            usage_counts.get(item.question_id, 0),
+            item.original_qid,
+            item.question_id.int,
+        ),
     )
     unique: dict[UUID, Candidate] = {}
     for candidate in ordered:
@@ -118,6 +125,7 @@ def select_personalized_questions(
     knowledge_point_codes: Iterable[str],
     candidates: Iterable[Candidate],
     excluded_question_ids: Collection[UUID] = (),
+    candidate_usage_counts: Mapping[UUID, int] | None = None,
 ) -> PersonalizedSelectionResult:
     """Select the exact base/+1/+2-star slots without fallback or duplicates.
 
@@ -131,7 +139,7 @@ def select_personalized_questions(
     )
     knowledge_scope = set(codes)
     excluded = set(excluded_question_ids)
-    unique = _stable_unique(candidates)
+    unique = _stable_unique(candidates, candidate_usage_counts or {})
     scoped = [
         candidate
         for candidate in unique

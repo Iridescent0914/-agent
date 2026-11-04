@@ -2,14 +2,21 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Iterable
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Assignment, KnowledgePoint, PaperInstance, SchoolClass, Student
+from app.models import (
+    Assignment,
+    KnowledgePoint,
+    PaperInstance,
+    PaperInstanceItem,
+    SchoolClass,
+    Student,
+)
 from app.schemas.assignments import (
     AssignmentCreateRequest, AssignmentPlanRequest, AssignmentPreviewOut,
     StudentRecommendationPreview,
@@ -125,6 +132,7 @@ def _personalized_preview_out(
     selection: PersonalizedSelectionResult,
     *,
     rule_version: str,
+    usage_counts: dict[UUID, int],
 ) -> PersonalizedSelectionPreviewOut:
     return PersonalizedSelectionPreviewOut(
         literacy_name=selection.literacy_name,
@@ -150,6 +158,17 @@ def _personalized_preview_out(
             )
             for item in selection.diagnostics
         ],
+        reused_question_count=sum(
+            usage_counts.get(question_id, 0) > 1
+            for question_id in selection.selected_question_ids
+        ),
+        max_class_usage_count=max(
+            (
+                usage_counts.get(question_id, 1)
+                for question_id in selection.selected_question_ids
+            ),
+            default=1,
+        ),
     )
 
 
@@ -158,6 +177,7 @@ def _personalized_items(
     *,
     as_of: datetime,
     rule_version: str,
+    usage_counts: dict[UUID, int],
 ) -> list[RecommendedQuestion]:
     result: list[RecommendedQuestion] = []
     for slot in selection.slots:
@@ -174,6 +194,7 @@ def _personalized_items(
             target_star=slot.target_star,
             target_stars=list(selection.target_stars),
             generated_at=as_of,
+            class_usage_count=usage_counts.get(candidate.question_id, 1),
         )
         result.append(RecommendedQuestion(
             question_id=candidate.question_id,
@@ -268,6 +289,30 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
         required_ids = {item.question_id for item in template.items}
         history_by_student = {}
         personalized_exclusions = {}
+        profile_contexts = (
+            load_contexts(db, [student.id for student in students])
+            if params.avoid_recent_days
+            else {}
+        )
+        recently_assigned_by_student: dict[UUID, set[UUID]] = {
+            student.id: set() for student in students
+        }
+        if params.avoid_recent_days:
+            recent_cutoff = at - timedelta(days=params.avoid_recent_days)
+            for student_id, question_id in db.execute(
+                select(PaperInstance.student_id, PaperInstanceItem.question_id)
+                .join(Assignment, Assignment.id == PaperInstance.assignment_id)
+                .join(
+                    PaperInstanceItem,
+                    PaperInstanceItem.paper_instance_id == PaperInstance.id,
+                )
+                .where(
+                    PaperInstance.student_id.in_([student.id for student in students]),
+                    Assignment.created_at >= recent_cutoff,
+                    Assignment.created_at <= at,
+                )
+            ):
+                recently_assigned_by_student[student_id].add(question_id)
         for student in students:
             wrong_answers = history_errors[student.id]
             history_items, history_diagnostic = select_history_recommendations(
@@ -286,9 +331,20 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                 history_items,
                 history_diagnostic,
             )
-            personalized_exclusions[student.id] = required_ids | {
-                item.question_id for item in history_items
-            }
+            recent_practiced_ids: set[UUID] = set()
+            if params.avoid_recent_days:
+                recent_cutoff = at - timedelta(days=params.avoid_recent_days)
+                recent_practiced_ids = {
+                    record.attempt.question_id
+                    for record in profile_contexts[student.id].records
+                    if recent_cutoff <= record.attempt.answered_at <= at
+                }
+            personalized_exclusions[student.id] = (
+                required_ids
+                | {item.question_id for item in history_items}
+                | recent_practiced_ids
+                | recently_assigned_by_student[student.id]
+            )
 
         personalized_filter = request.filter_config.personalized
         personalized_batch = preview_personalized_questions(
@@ -316,6 +372,7 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                 personalized_selection,
                 as_of=at,
                 rule_version=personalized_batch.rule_version,
+                usage_counts=dict(personalized_batch.question_usage_counts),
             )
             required_diagnostics = [
                 diagnostic for diagnostic in template.diagnostics
@@ -354,6 +411,7 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
                 personalized=_personalized_preview_out(
                     personalized_selection,
                     rule_version=personalized_batch.rule_version,
+                    usage_counts=dict(personalized_batch.question_usage_counts),
                 ),
             ))
     else:
@@ -379,6 +437,16 @@ def preview_assignment(db: Session, request: AssignmentPlanRequest, *,
         student_count=len(results),
         ready_count=sum(item.recommendation.shortfall == 0 for item in results),
         shortfall_student_count=sum(item.recommendation.shortfall > 0 for item in results),
+        personalized_reused_question_count=(
+            personalized_batch.reused_question_count
+            if request.filter_config is not None
+            else 0
+        ),
+        personalized_max_class_usage_count=(
+            personalized_batch.max_class_usage_count
+            if request.filter_config is not None
+            else 1
+        ),
         students=results,
     )
 
@@ -415,10 +483,18 @@ def create_assignment(db: Session, request: AssignmentCreateRequest, *,
         sample = "、".join(
             student.student_code for student in personalized_shortfalls[:5]
         )
+        first = personalized_shortfalls[0]
+        missing = "、".join(
+            f"{item.difficulty}星缺{item.shortfall}道"
+            for item in first.personalized.diagnostics
+            if item.shortfall > 0
+        )
         suffix = "等" if len(personalized_shortfalls) > 5 else ""
         raise ValueError(
             f"个性化题库存不足：{len(personalized_shortfalls)} 名学生无法生成完整三题"
-            f"（{sample}{suffix}）；请调整知识点范围或补充对应星级可机判题"
+            f"（{sample}{suffix}）；{first.student_code}：{missing}。"
+            "请补充同时匹配主要素养、目标星级且可机判已审核的题目，"
+            "或调整知识点范围；近期已布置或作答题也会按避免重复天数排除。"
         )
     students = _students_for_request(db, request)
     school_class = _school_class(db, students, request.class_id)

@@ -88,7 +88,7 @@ export interface RecommendationParams {
 export interface ScoreParts { weakness: number; recent_wrong: number; difficulty_match: number; forgetting: number }
 export interface PersonalizedItemAudit {
   slot_no: number; literacy_name: string; literacy_score: number; score_source: 'computed'; rule_version: string
-  base_star: number; target_star: number; target_stars: number[]; generated_at: string
+  base_star: number; target_star: number; target_stars: number[]; generated_at: string; class_usage_count: number
 }
 export interface RecommendedQuestion {
   question_id: string; original_qid: string; question_type: string; difficulty: number

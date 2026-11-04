@@ -132,6 +132,8 @@ class AssignmentPreviewOut(BaseModel):
     student_count: int
     ready_count: int
     shortfall_student_count: int
+    personalized_reused_question_count: int = 0
+    personalized_max_class_usage_count: int = 1
     students: list[StudentRecommendationPreview]
 
 

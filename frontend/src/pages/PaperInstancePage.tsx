@@ -123,7 +123,9 @@ export function PaperInstancePage() {
     {paper?.items.map((item, index) => <Card key={item.id} loading={loading} title={`第 ${item.order_no} 题 · ${item.question_snapshot.original_qid ?? ''}`} extra={paper.status === 'draft' && <Space>
       <Button aria-label={`上移第${item.order_no}题`} icon={<ArrowUpOutlined />} disabled={index === 0} onClick={() => move(item, -1)} />
       <Button aria-label={`下移第${item.order_no}题`} icon={<ArrowDownOutlined />} disabled={index === paper.items.length - 1} onClick={() => move(item, 1)} />
-      <Button onClick={() => openAlternatives(item)}>换题</Button><Button danger icon={<DeleteOutlined />} onClick={() => remove(item)}>删除</Button>
+      <Button onClick={() => openAlternatives(item)}>换题</Button>{item.selection_audit?.source_module === 'personalized'
+        ? <Button disabled title="个性化部分固定为 3 道，请使用换题">固定题位</Button>
+        : <Button danger icon={<DeleteOutlined />} onClick={() => remove(item)}>删除</Button>}
     </Space>}>
       <Space wrap><Tag>{item.question_snapshot.question_type === 'choice' ? '选择题' : item.question_snapshot.question_type === 'true_false' ? '判断题' : '填空题'}</Tag><Tag>难度 {item.question_snapshot.difficulty}</Tag><Tag color={item.selection_audit?.source_module === 'personalized' ? 'purple' : item.selection_audit?.bucket === 'new' ? 'cyan' : 'gold'}>{sourceModuleLabels[item.selection_audit?.source_module ?? ''] ?? (item.selection_audit?.bucket === 'new' ? '新知识' : '回顾')}</Tag><Tag>{item.knowledge_point_snapshot.name}</Tag></Space>
       <RichQuestionText text={item.question_snapshot.question_text ?? ''} assets={item.assets} />
@@ -134,11 +136,18 @@ export function PaperInstancePage() {
         <Descriptions.Item label="星级题位">基础 {item.selection_audit.personalized_audit.base_star} 星 · 第 {item.selection_audit.personalized_audit.slot_no} 题目标 {item.selection_audit.personalized_audit.target_star} 星</Descriptions.Item>
         <Descriptions.Item label="规则版本">{item.selection_audit.personalized_audit.rule_version}</Descriptions.Item>
         <Descriptions.Item label="生成时间">{new Date(item.selection_audit.personalized_audit.generated_at).toLocaleString('zh-CN')}</Descriptions.Item>
+        <Descriptions.Item label="班级复用">{item.selection_audit.personalized_audit.class_usage_count > 1 ? `该题本次被 ${item.selection_audit.personalized_audit.class_usage_count} 名学生使用` : '本次未与其他学生重复'}</Descriptions.Item>
       </Descriptions>}
       <details><summary>教师答案与判分规则</summary><AnswerView answer={item.answer_snapshot} /><pre className="json-block">{JSON.stringify(item.answer_rule_snapshot, null, 2)}</pre></details>
     </Card>)}
     <Drawer title={`替换第 ${target?.order_no ?? ''} 题`} width={720} open={Boolean(target)} onClose={() => { setTarget(null); setAlternatives(null) }}>
-      <List loading={!alternatives} dataSource={alternatives?.items ?? []} locale={{ emptyText: '当前约束下没有可替换题目' }} renderItem={(item) => <List.Item actions={[<Button key="select" type="primary" onClick={() => replace(item.question_id)}>选用</Button>]}><List.Item.Meta title={`${item.original_qid} · 难度 ${item.difficulty}`} description={<><div>{item.knowledge_point_name}</div><div>{item.reason_text}</div></>} /></List.Item>} />
+      {alternatives?.diagnostic && <Alert
+        type={alternatives.items.length ? 'info' : 'warning'}
+        showIcon
+        message={alternatives.diagnostic.message}
+        description={`范围内目标星级 ${alternatives.diagnostic.scope_candidate_count} 道 · 主要素养匹配 ${alternatives.diagnostic.literacy_matched_count} 道 · 可机判已审核 ${alternatives.diagnostic.ready_candidate_count} 道 · 当前可替换 ${alternatives.diagnostic.available_candidate_count} 道`}
+      />}
+      <List loading={!alternatives} dataSource={alternatives?.items ?? []} locale={{ emptyText: alternatives?.diagnostic?.message ?? '当前约束下没有可替换题目' }} renderItem={(item) => <List.Item actions={[<Button key="select" type="primary" onClick={() => replace(item.question_id)}>选用</Button>]}><List.Item.Meta title={`${item.original_qid} · 难度 ${item.difficulty}`} description={<><div>{item.knowledge_point_name}</div><div>{item.reason_text}</div></>} /></List.Item>} />
     </Drawer>
   </Space>
 }

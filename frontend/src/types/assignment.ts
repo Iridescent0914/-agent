@@ -48,6 +48,8 @@ export interface PersonalizedSelectionPreview {
   shortfall: number
   status: 'ready' | 'insufficient_candidates'
   diagnostics: PersonalizedDifficultyDiagnostic[]
+  reused_question_count: number
+  max_class_usage_count: number
 }
 
 export interface AssignmentPreviewStudent {
@@ -63,6 +65,8 @@ export interface AssignmentPreview {
   student_count: number
   ready_count: number
   shortfall_student_count: number
+  personalized_reused_question_count: number
+  personalized_max_class_usage_count: number
   students: AssignmentPreviewStudent[]
 }
 
@@ -172,5 +176,18 @@ export interface PaperInstance extends PaperSummary {
   items: PaperItem[]
 }
 
-export interface Alternatives { items: RecommendedQuestion[] }
+export interface AlternativeDiagnostic {
+  source_module: string
+  target_difficulty: number | null
+  literacy_name: string | null
+  scope_candidate_count: number
+  literacy_matched_count: number
+  ready_candidate_count: number
+  excluded_current_paper_count: number
+  excluded_recent_count: number
+  available_candidate_count: number
+  reason_codes: string[]
+  message: string
+}
+export interface Alternatives { items: RecommendedQuestion[]; diagnostic: AlternativeDiagnostic | null }
 export type AssignmentPage = Page<AssignmentListItem>

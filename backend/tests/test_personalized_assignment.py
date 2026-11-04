@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import Assignment, KnowledgePoint, PaperInstance, PaperInstanceItem, Question, Student
+from app.services.literacy_catalog import parse_literacy_names
 
 
 PERSONALIZED_KP = "math.g6.rational.kp.08_multiply_divide"
@@ -141,6 +142,8 @@ def test_unified_preview_returns_three_personalized_items_and_integer_summary(
     assert [item["difficulty"] for item in personalized_items] == [2, 3, 4]
     assert len({item["question_id"] for item in items}) == len(items)
     assert student["recommendation"]["personalized_shortfall"] == 0
+    assert response.json()["personalized_reused_question_count"] == 0
+    assert response.json()["personalized_max_class_usage_count"] == 1
 
 
 def test_create_recomputes_score_and_freezes_personalized_audit(
@@ -196,24 +199,70 @@ def test_create_recomputes_score_and_freezes_personalized_audit(
         assert audit["base_star"] == 2
         assert audit["target_stars"] == [2, 3, 4]
         assert audit["rule_version"] == "literacy-dynamic-v1"
+        assert audit["class_usage_count"] == 1
         assert datetime.fromisoformat(
             audit["generated_at"].replace("Z", "+00:00")
         ) == datetime.fromisoformat(detail["generation_config"]["as_of"])
         assert "internal_score" not in audit
 
     replaceable = personalized_items[0]
+    delete_rejected = client.request(
+        "DELETE",
+        f"/api/v1/paper-instances/{paper['id']}/items/{replaceable['id']}",
+        json={"expected_edit_revision": paper["edit_revision"]},
+    )
+    assert delete_rejected.status_code == 422, delete_rejected.text
+    assert "固定为 3 道" in delete_rejected.text
+    unchanged = client.get(f"/api/v1/paper-instances/{paper['id']}").json()
+    assert unchanged["edit_revision"] == paper["edit_revision"]
+    assert len([
+        item for item in unchanged["items"]
+        if item["selection_audit"]["source_module"] == "personalized"
+    ]) == 3
+
     alternatives = client.get(
         f"/api/v1/paper-instances/{paper['id']}/items/{replaceable['id']}/alternatives"
     )
     assert alternatives.status_code == 200, alternatives.text
     choices = alternatives.json()["items"]
+    diagnostic = alternatives.json()["diagnostic"]
     assert choices
+    assert diagnostic["source_module"] == "personalized"
+    assert diagnostic["literacy_name"] == LITERACY
+    assert diagnostic["target_difficulty"] == 2
+    assert diagnostic["available_candidate_count"] >= len(choices)
+    assert "同主要素养、同星级" in diagnostic["message"]
     assert all(
         item["knowledge_point_code"] == PERSONALIZED_KP
         and item["difficulty"] == replaceable["question_snapshot"]["difficulty"]
         and item["target_difficulty"] == replaceable["selection_audit"]["personalized_audit"]["target_star"]
         and item["strategy"] == "personalized"
         and item["source_module"] == "personalized"
+        for item in choices
+    )
+    choice_ids = [item["question_id"] for item in choices]
+    choice_rows = db.execute(
+        select(Question, KnowledgePoint)
+        .join(KnowledgePoint, KnowledgePoint.id == Question.main_knowledge_point_id)
+        .where(Question.id.in_(choice_ids))
+    ).all()
+    assert len(choice_rows) == len(choice_ids)
+    assert all(
+        LITERACY in (knowledge_point.core_competencies or [])
+        and LITERACY in parse_literacy_names(question.core_literacy)
+        for question, knowledge_point in choice_rows
+    )
+    assert all("证据不足" not in item["reason_text"] for item in choices)
+    assert all(
+        item["reason_codes"] == [
+            "personalized_literacy_score",
+            "teacher_knowledge_scope",
+            "exact_target_difficulty",
+            "teacher_replacement_candidate",
+        ]
+        and "当前整数分64" in item["reason_text"]
+        and "保持2星" in item["reason_text"]
+        and item["evidence"] == []
         for item in choices
     )
     replaced = client.post(
@@ -231,6 +280,23 @@ def test_create_recomputes_score_and_freezes_personalized_audit(
     assert replaced_item["selection_audit"]["personalized_audit"] == (
         replaceable["selection_audit"]["personalized_audit"]
     )
+
+    # Even a malformed/legacy draft cannot bypass the three-item invariant
+    # by acknowledging a generic total-count shortfall at publish time.
+    persisted = db.get(PaperInstanceItem, UUID(personalized_items[-1]["id"]))
+    assert persisted is not None
+    db.delete(persisted)
+    db.flush()
+    publish_rejected = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/publish",
+        json={
+            "expected_edit_revision": replaced.json()["edit_revision"],
+            "acknowledge_shortfall": True,
+            "acknowledgement_reason": "教师确认当前题量",
+        },
+    )
+    assert publish_rejected.status_code == 422, publish_rejected.text
+    assert "必须保留完整 3 道题" in publish_rejected.text
 
 
 def test_personalized_shortfall_previews_but_blocks_create_without_writes(
@@ -266,3 +332,39 @@ def test_personalized_shortfall_previews_but_blocks_create_without_writes(
     assert rejected.status_code == 422, rejected.text
     assert "个性化题库存不足" in rejected.text
     assert _business_counts(db) == before
+
+
+def test_preview_excludes_questions_from_recent_assignments(client, db, monkeypatch):
+    monkeypatch.setattr(
+        "app.services.personalized_preview.effective_literacy_scores",
+        lambda session, student_id, *, as_of: {LITERACY: 64.0},
+    )
+    created = client.post(
+        "/api/v1/assignments",
+        json=_request(
+            db,
+            key="personalized-recent-source-" + uuid4().hex,
+            create=True,
+        ),
+    )
+    assert created.status_code == 201, created.text
+    source_paper = client.get(
+        f"/api/v1/paper-instances/{created.json()['papers'][0]['id']}"
+    ).json()
+    source_ids = {
+        item["question_id"]
+        for item in source_paper["items"]
+        if item["selection_audit"]["source_module"] == "personalized"
+    }
+    assert len(source_ids) == 3
+
+    request = _request(db, key="unused")
+    request["recommendation_parameters"]["avoid_recent_days"] = 3650
+    preview = client.post("/api/v1/assignments/preview", json=request)
+    assert preview.status_code == 200, preview.text
+    next_ids = {
+        item["question_id"]
+        for item in preview.json()["students"][0]["recommendation"]["items"]
+        if item["source_module"] == "personalized"
+    }
+    assert source_ids.isdisjoint(next_ids)

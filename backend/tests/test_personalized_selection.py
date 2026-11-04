@@ -1,3 +1,4 @@
+from collections import Counter
 from uuid import UUID, uuid4
 
 import pytest
@@ -66,6 +67,25 @@ def test_five_star_cap_selects_three_distinct_questions_deterministically():
     )
     assert reversed_result.selected_question_ids == forward.selected_question_ids
     assert len(set(forward.selected_question_ids)) == 3
+
+
+def test_prefers_least_used_candidates_before_reusing_across_students():
+    pool = [
+        candidate(20, 2), candidate(21, 2),
+        candidate(30, 3), candidate(31, 3),
+        candidate(40, 4), candidate(41, 4),
+    ]
+    first = select(64, pool)
+    usage = Counter(first.selected_question_ids)
+    second = select(64, list(reversed(pool)), candidate_usage_counts=usage)
+
+    assert first.selected_question_ids == (
+        UUID(int=20), UUID(int=30), UUID(int=40),
+    )
+    assert second.selected_question_ids == (
+        UUID(int=21), UUID(int=31), UUID(int=41),
+    )
+    assert set(first.selected_question_ids).isdisjoint(second.selected_question_ids)
 
 
 def test_four_star_base_uses_one_four_star_and_two_distinct_five_star_questions():

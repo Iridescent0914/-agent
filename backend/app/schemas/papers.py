@@ -147,5 +147,20 @@ class BatchPublishRequest(BaseModel):
         return self
 
 
+class AlternativeDiagnostic(BaseModel):
+    source_module: str
+    target_difficulty: int | None = None
+    literacy_name: str | None = None
+    scope_candidate_count: int = 0
+    literacy_matched_count: int = 0
+    ready_candidate_count: int = 0
+    excluded_current_paper_count: int = 0
+    excluded_recent_count: int = 0
+    available_candidate_count: int = 0
+    reason_codes: list[str] = Field(default_factory=list)
+    message: str
+
+
 class AlternativeOut(BaseModel):
     items: list[RecommendedQuestion]
+    diagnostic: AlternativeDiagnostic | None = None

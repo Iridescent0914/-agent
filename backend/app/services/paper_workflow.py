@@ -15,11 +15,16 @@ from app.models import (
 )
 from app.schemas.assignments import AssignmentDetailOut, AssignmentListItem
 from app.schemas.papers import (
-    AlternativeOut, PaperByCodeOut, PaperInstanceStudentOut,
+    AlternativeDiagnostic, AlternativeOut, PaperByCodeOut, PaperInstanceStudentOut,
     PaperInstanceTeacherOut, PaperItemOut, PaperSummaryOut, StudentPaperItemOut,
 )
-from app.schemas.recommendations import PersonalizedItemAudit, RecommendationRequest
+from app.schemas.recommendations import (
+    PersonalizedItemAudit,
+    RecommendationRequest,
+    ScoreParts,
+)
 from app.services.assets import resolve_assets
+from app.services.literacy_catalog import parse_literacy_names
 from app.services.paper_snapshots import (
     copy_item, current_knowledge_point_snapshot, current_selection_audit, load_question,
     snapshot_payload, student_safe_question_snapshot, student_safe_value,
@@ -437,6 +442,22 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
     practiced = {record.attempt.question_id for record in context.records
                  if params.avoid_recent_days and
                  as_of - timedelta(days=params.avoid_recent_days) <= record.attempt.answered_at <= as_of}
+    if params.avoid_recent_days:
+        recent_cutoff = as_of - timedelta(days=params.avoid_recent_days)
+        practiced.update(db.scalars(
+            select(PaperInstanceItem.question_id)
+            .join(
+                PaperInstance,
+                PaperInstance.id == PaperInstanceItem.paper_instance_id,
+            )
+            .join(Assignment, Assignment.id == PaperInstance.assignment_id)
+            .where(
+                PaperInstance.student_id == paper.student_id,
+                PaperInstance.id != paper.id,
+                Assignment.created_at >= recent_cutoff,
+                Assignment.created_at <= as_of,
+            )
+        ))
     question_filters = [Question.archived_at.is_(None)]
     if not is_fixed_review:
         question_filters.append(Question.chapter_code.in_(
@@ -457,26 +478,65 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
             * params.max_knowledge_point_ratio
         ),
     )
+    scope_candidate_count = 0
+    literacy_matched_count = 0
+    ready_candidate_count = 0
+    excluded_current_paper_count = 0
+    excluded_recent_count = 0
     for question, knowledge_point in rows:
-        if question.id in existing_ids or question.id in source_question_ids:
+        if knowledge_point.code not in allowed_codes:
             continue
-        if not is_fixed_review and not is_personalized and question.id in practiced:
-            continue
-        if (
-            knowledge_point.code not in allowed_codes
-        ):
-            continue
-        if is_fixed_review or is_personalized:
+        if is_personalized:
             if question.difficulty != target_difficulty:
                 continue
-        elif (
+            scope_candidate_count += 1
+            if (
+                personalized_audit is None
+                or personalized_audit.literacy_name
+                not in (knowledge_point.core_competencies or [])
+            ):
+                continue
+            try:
+                question_literacies = parse_literacy_names(question.core_literacy)
+            except ValueError:
+                continue
+            if personalized_audit.literacy_name not in question_literacies:
+                continue
+            literacy_matched_count += 1
+            if (
+                question.grading_readiness != "machine_ready"
+                or question.source_review_status != "reviewed"
+            ):
+                continue
+            ready_candidate_count += 1
+            if question.id in existing_ids or question.id in source_question_ids:
+                excluded_current_paper_count += 1
+                continue
+            if question.id in practiced:
+                excluded_recent_count += 1
+                continue
+        else:
+            if question.id in existing_ids or question.id in source_question_ids:
+                continue
+            if not is_fixed_review and question.id in practiced:
+                continue
+        if is_fixed_review:
+            if question.difficulty != target_difficulty:
+                continue
+        elif not is_personalized and (
             question.question_type not in params.question_types
             or not params.min_difficulty <= question.difficulty <= params.max_difficulty
         ):
             continue
         if source_module == "required" and not question.is_required:
             continue
-        if question.grading_readiness != "machine_ready" or question.source_review_status != "reviewed":
+        if (
+            not is_personalized
+            and (
+                question.grading_readiness != "machine_ready"
+                or question.source_review_status != "reviewed"
+            )
+        ):
             continue
         if (
             not is_fixed_review
@@ -496,15 +556,78 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
             as_of,
         )
         if is_personalized:
+            if personalized_audit is None:
+                raise PaperValidation("个性化题缺少生成审计，无法安全换题")
+            zero_parts = ScoreParts(
+                weakness=0.0,
+                recent_wrong=0.0,
+                difficulty_match=0.0,
+                forgetting=0.0,
+            )
             scored = scored.model_copy(update={
                 "strategy": "personalized",
                 "source_module": "personalized",
+                "score": 1.0,
+                "components": zero_parts,
+                "contributions": zero_parts,
                 "target_difficulty": target_difficulty,
+                "reason_codes": [
+                    "personalized_literacy_score",
+                    "teacher_knowledge_scope",
+                    "exact_target_difficulty",
+                    "teacher_replacement_candidate",
+                ],
+                "reason_text": (
+                    f"基于{personalized_audit.literacy_name}当前整数分"
+                    f"{personalized_audit.literacy_score}，基础"
+                    f"{personalized_audit.base_star}星；本题用于替换第"
+                    f"{personalized_audit.slot_no}个性化题位，保持"
+                    f"{personalized_audit.target_star}星和教师所选知识点范围。"
+                ),
+                "evidence": [],
                 "personalized_audit": personalized_audit,
             })
         ranked.append(scored)
     ranked.sort(key=lambda item: (-item.score, item.original_qid, item.question_id.int))
-    return AlternativeOut(items=ranked[:20])
+    diagnostic = None
+    if is_personalized:
+        reason_codes: list[str] = []
+        if literacy_matched_count == 0:
+            reason_codes.append("no_literacy_matched_exact_difficulty")
+        elif ready_candidate_count == 0:
+            reason_codes.append("no_machine_ready_candidates")
+        if excluded_current_paper_count:
+            reason_codes.append("excluded_by_current_paper")
+        if excluded_recent_count:
+            reason_codes.append("excluded_by_recent_attempts")
+        if ranked:
+            message = (
+                f"找到 {len(ranked)} 道同主要素养、同星级且可机判的替换题。"
+            )
+        elif literacy_matched_count == 0:
+            message = "教师范围内没有同时匹配主要素养与目标星级的题目。"
+        elif ready_candidate_count == 0:
+            message = "匹配题目尚未达到可机判且已审核状态。"
+        elif excluded_recent_count or excluded_current_paper_count:
+            message = "匹配题目已被当前试卷占用，或属于该生近期已布置或作答题。"
+        else:
+            message = "当前严格约束下没有可替换题目。"
+        diagnostic = AlternativeDiagnostic(
+            source_module="personalized",
+            target_difficulty=target_difficulty,
+            literacy_name=(
+                personalized_audit.literacy_name if personalized_audit else None
+            ),
+            scope_candidate_count=scope_candidate_count,
+            literacy_matched_count=literacy_matched_count,
+            ready_candidate_count=ready_candidate_count,
+            excluded_current_paper_count=excluded_current_paper_count,
+            excluded_recent_count=excluded_recent_count,
+            available_candidate_count=len(ranked),
+            reason_codes=reason_codes,
+            message=message,
+        )
+    return AlternativeOut(items=ranked[:20], diagnostic=diagnostic)
 
 
 def replace_item(db: Session, paper_id: UUID, item_id: UUID, *, replacement_id: UUID,
@@ -585,6 +708,8 @@ def delete_item(db: Session, paper_id: UUID, item_id: UUID, *, expected_revision
     target = next((item for item in items if item.id == item_id), None)
     if target is None:
         raise LookupError("paper item not found")
+    if (target.selection_audit or {}).get("source_module") == "personalized":
+        raise PaperValidation("个性化部分固定为 3 道；请使用换题，不能直接删除")
     if len(items) <= 1:
         raise PaperValidation("a paper must keep at least one item")
     details = {"item_id": str(target.id), "question_id": str(target.question_id),
@@ -735,6 +860,19 @@ def publish_paper(db: Session, paper_id: UUID, *, expected_revision: int,
             raise PaperValidation(
                 f"题目 {original_qid} 的核心素养标签无效：{exc}"
             ) from exc
+    personalized_plan = (paper.recommendation_audit or {}).get("personalized")
+    if personalized_plan is not None:
+        expected_personalized_count = int(
+            personalized_plan.get("requested_count", 3)
+        )
+        actual_personalized_count = sum(
+            (item.selection_audit or {}).get("source_module") == "personalized"
+            for item in items
+        )
+        if actual_personalized_count != expected_personalized_count:
+            raise PaperValidation(
+                "个性化部分必须保留完整 3 道题；普通题量不足确认不能绕过此规则"
+            )
     requested = (paper.recommendation_audit or {}).get("requested_count", len(items))
     if len(items) < requested:
         if not acknowledge_shortfall or not (acknowledgement_reason or "").strip():

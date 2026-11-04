@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -11,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import KnowledgePoint, Question, Student
-from app.services.literacy_catalog import LITERACY_DIMENSIONS
+from app.services.literacy_catalog import LITERACY_DIMENSIONS, parse_literacy_names
 from app.services.literacy_rules import rounded_display_score
 from app.services.literacy_scoring import (
     RULE_VERSION as LITERACY_RULE_VERSION,
@@ -41,6 +42,7 @@ class PersonalizedBatchPreview:
     knowledge_point_codes: tuple[str, ...]
     candidate_count: int
     ready_candidate_count: int
+    question_usage_counts: Mapping[UUID, int]
     students: tuple[PersonalizedStudentPreview, ...]
 
     @property
@@ -50,6 +52,14 @@ class PersonalizedBatchPreview:
     @property
     def shortfall_student_count(self) -> int:
         return len(self.students) - self.ready_count
+
+    @property
+    def reused_question_count(self) -> int:
+        return sum(count > 1 for count in self.question_usage_counts.values())
+
+    @property
+    def max_class_usage_count(self) -> int:
+        return max(self.question_usage_counts.values(), default=1)
 
 
 def _unique_nonempty(values: Sequence[str], *, field_name: str) -> tuple[str, ...]:
@@ -121,8 +131,18 @@ def personalized_question_candidates(
         )
         .order_by(Question.original_qid, Question.id)
     ).all()
-    return [
-        Candidate(
+    result: list[Candidate] = []
+    for question, knowledge_point in rows:
+        if literacy_name not in (knowledge_point.core_competencies or []):
+            continue
+        try:
+            question_literacies = parse_literacy_names(question.core_literacy)
+        except ValueError:
+            # Legacy invalid labels are not eligible for personalized selection.
+            continue
+        if literacy_name not in question_literacies:
+            continue
+        result.append(Candidate(
             question_id=question.id,
             original_qid=question.original_qid,
             question_type=question.question_type,
@@ -134,9 +154,8 @@ def personalized_question_candidates(
                 question.grading_readiness == "machine_ready"
                 and question.source_review_status == "reviewed"
             ),
-        )
-        for question, knowledge_point in rows
-    ]
+        ))
+    return result
 
 
 def _students(db: Session, student_ids: Sequence[UUID]) -> list[Student]:
@@ -185,8 +204,13 @@ def preview_personalized_questions(
     if unknown_exclusion_students:
         raise ValueError("排除题目中包含本次预览范围外的学生")
 
-    previews: list[PersonalizedStudentPreview] = []
-    for student in students:
+    previews_by_student: dict[UUID, PersonalizedStudentPreview] = {}
+    usage_counts: Counter[UUID] = Counter()
+    # Allocation order is stable even if the caller submits selected students
+    # in a different order.  This makes preview/create reproducible.
+    for student in sorted(
+        students, key=lambda item: (item.student_code, item.id.int)
+    ):
         internal_scores = effective_literacy_scores(db, student.id, as_of=at)
         public_score = rounded_display_score(internal_scores[literacy_name])
         selection = select_personalized_questions(
@@ -196,13 +220,17 @@ def preview_personalized_questions(
             knowledge_point_codes=knowledge_codes,
             candidates=candidates,
             excluded_question_ids=exclusions.get(student.id, ()),
+            candidate_usage_counts=usage_counts,
         )
-        previews.append(PersonalizedStudentPreview(
+        usage_counts.update(selection.selected_question_ids)
+        previews_by_student[student.id] = PersonalizedStudentPreview(
             student_id=student.id,
             student_code=student.student_code,
             student_name=student.display_name,
             selection=selection,
-        ))
+        )
+
+    previews = [previews_by_student[student.id] for student in students]
 
     return PersonalizedBatchPreview(
         as_of=at,
@@ -212,5 +240,6 @@ def preview_personalized_questions(
         knowledge_point_codes=knowledge_codes,
         candidate_count=len(candidates),
         ready_candidate_count=sum(candidate.ready for candidate in candidates),
+        question_usage_counts=dict(usage_counts),
         students=tuple(previews),
     )

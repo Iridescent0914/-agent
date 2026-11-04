@@ -56,9 +56,9 @@ const ALL_GRADE_CHAPTERS = '__all_grade_chapters__:'
 
 const personalizedReasonLabels: Record<string, string> = {
   insufficient_exact_difficulty_inventory: '精确星级题量不足',
-  no_exact_difficulty_candidates: '没有该星级题目',
+  no_exact_difficulty_candidates: '所选主要素养下没有该星级题目',
   insufficient_machine_ready_inventory: '可机判且已审核题不足',
-  excluded_question_conflict: '与必做题或历史回顾题冲突',
+  excluded_question_conflict: '与本卷已选题或近期布置、作答题冲突',
 }
 
 const personalizedShortfallText = (row: AssignmentPreviewStudent) => {
@@ -543,6 +543,7 @@ export function AssignmentCreatePage() {
       </div>
       <Alert type={preview.shortfall_student_count ? 'warning' : 'success'} showIcon message={`${preview.ready_count} / ${preview.student_count} 名学生可完整生成`} description={`统一基准时间：${new Date(preview.as_of).toLocaleString('zh-CN')}`} />
       {personalizedShortfallStudentCount > 0 && <Alert className="personalized-shortfall-alert" type="error" showIcon message={`有 ${personalizedShortfallStudentCount} 名学生的个性化题不足 3 道，暂不能创建正式作业`} description="请根据表格中的缺失星级补充可机判题，或调整个性化知识点范围后重新预检。系统不会跨知识点范围或跨星级自动补题。" />}
+      {preview.personalized_reused_question_count > 0 && <Alert className="personalized-shortfall-alert" type="warning" showIcon message={`班级内有 ${preview.personalized_reused_question_count} 道个性化题被复用`} description={`系统已优先分配未使用题目；受主要素养、目标星级、可机判状态和近期作答排除限制，单题最多分配给 ${preview.personalized_max_class_usage_count} 名学生。该提示不阻止创建。`} />}
       <Table
         className="preview-table"
         rowKey="student_id"

@@ -13,6 +13,7 @@ from app.services.personalized_preview import (
     personalized_question_candidates,
     preview_personalized_questions,
 )
+from app.services.recommendations import Candidate
 
 
 TZ = ZoneInfo("Asia/Shanghai")
@@ -109,6 +110,54 @@ def test_preview_rounds_internal_score_once_and_remains_read_only(db, monkeypatc
     assert not db.new
     assert not db.dirty
     assert not db.deleted
+
+
+def test_batch_preview_balances_inventory_and_reports_unavoidable_reuse(
+    db, monkeypatch,
+):
+    students = demo_students(db, count=3)
+    assert len(students) == 3
+    knowledge_point_id = uuid4()
+    pool = [
+        Candidate(
+            question_id=uuid4(),
+            original_qid=f"BALANCED-{difficulty}-{copy_no}",
+            question_type="fill_blank",
+            difficulty=difficulty,
+            knowledge_point_id=knowledge_point_id,
+            knowledge_point_code=KNOWLEDGE_POINT,
+            knowledge_point_name="班级均衡测试知识点",
+        )
+        for difficulty in (2, 3, 4)
+        for copy_no in (1, 2)
+    ]
+    monkeypatch.setattr(
+        "app.services.personalized_preview.personalized_question_candidates",
+        lambda *args, **kwargs: pool,
+    )
+    monkeypatch.setattr(
+        "app.services.personalized_preview.effective_literacy_scores",
+        lambda session, student_id, *, as_of: {LITERACY: 64.0},
+    )
+
+    preview = preview_personalized_questions(
+        db,
+        student_ids=[student.id for student in reversed(students)],
+        grade_codes=[GRADE],
+        chapter_codes=[CHAPTER],
+        knowledge_point_codes=[KNOWLEDGE_POINT],
+        literacy_name=LITERACY,
+        as_of=AS_OF,
+    )
+
+    by_code = {item.student_code: item.selection for item in preview.students}
+    first_ids = set(by_code[students[0].student_code].selected_question_ids)
+    second_ids = set(by_code[students[1].student_code].selected_question_ids)
+    third_ids = set(by_code[students[2].student_code].selected_question_ids)
+    assert first_ids.isdisjoint(second_ids)
+    assert third_ids == first_ids
+    assert preview.reused_question_count == 3
+    assert preview.max_class_usage_count == 2
 
 
 def test_preview_reads_current_effective_demo_score(db):

@@ -71,6 +71,7 @@ class PersonalizedItemAudit(BaseModel):
     target_star: int = Field(ge=1, le=5)
     target_stars: list[int] = Field(min_length=3, max_length=3)
     generated_at: datetime
+    class_usage_count: int = Field(default=1, ge=1)
 
 
 class RecommendedQuestion(BaseModel):
@@ -137,6 +138,8 @@ class PersonalizedSelectionPreviewOut(BaseModel):
     shortfall: int
     status: Literal["ready", "insufficient_candidates"]
     diagnostics: list[PersonalizedDifficultyDiagnosticOut]
+    reused_question_count: int = 0
+    max_class_usage_count: int = 1
 
 
 class RecommendationOut(BaseModel):
