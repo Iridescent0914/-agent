@@ -176,6 +176,7 @@ def list_student_attempts(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     is_correct: bool | None = None,
+    chapter_code: str | None = None,
     knowledge_point_code: str | None = None,
     db: Session = Depends(get_db),
 ) -> Page[StudentAttemptOut]:
@@ -187,6 +188,16 @@ def list_student_attempts(
 
     context = load_context(db, student_id)
     items = [attempt_summary(record) for record in reversed(context.records)]
+    if chapter_code is not None:
+        chapter_knowledge_codes = {
+            point.code
+            for point in context.catalog
+            if point.chapter_code == chapter_code
+        }
+        items = [
+            item for item in items
+            if item.main_knowledge_point_code in chapter_knowledge_codes
+        ]
     if is_correct is not None:
         items = [item for item in items if item.is_correct is is_correct]
     if knowledge_point_code is not None:

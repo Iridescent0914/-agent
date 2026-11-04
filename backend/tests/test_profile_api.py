@@ -121,6 +121,31 @@ def test_snapshot_source_survives_current_question_changes(client, db):
     ]
 
 
+def test_attempt_history_can_share_profile_chapter_scope(client, db):
+    student = first_student(db)
+    endpoint = f"/api/v1/students/{student.id}/attempts"
+    all_history = client.get(endpoint, params={"page_size": 100}).json()
+    rational = client.get(endpoint, params={
+        "page_size": 100,
+        "chapter_code": "math.g6.rational",
+    }).json()
+    expr = client.get(endpoint, params={
+        "page_size": 100,
+        "chapter_code": "math.g6.expr",
+    }).json()
+
+    assert rational["total"] + expr["total"] == all_history["total"]
+    assert rational["total"] > 0 and expr["total"] > 0
+    assert all(
+        item["main_knowledge_point_code"].startswith("math.g6.rational.")
+        for item in rational["items"]
+    )
+    assert all(
+        item["main_knowledge_point_code"].startswith("math.g6.expr.")
+        for item in expr["items"]
+    )
+
+
 def test_true_false_snapshot_is_valid_profile_evidence(db):
     student = first_student(db)
     context = load_context(db, student.id)

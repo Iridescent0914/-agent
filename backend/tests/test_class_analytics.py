@@ -119,6 +119,26 @@ def test_class_overview_contract_and_drilldown(client):
     )
 
 
+def test_class_overview_keeps_all_chapter_points_without_evidence(client):
+    response = client.get(
+        "/api/v1/analytics/class-overview",
+        params={
+            "class_name": "六年级 Demo 班",
+            "chapter_code": "math.g6.expr",
+            "grade": "六年级上册",
+        },
+    )
+    assert response.status_code == 200, response.text
+    rows = response.json()["knowledge_points"]
+    assert len(rows) == 8
+    assert sum(item["available_question_count"] == 0 for item in rows) >= 2
+    assert all(
+        item["accuracy"] is None
+        for item in rows
+        if item["confirmed_attempt_count"] == 0
+    )
+
+
 def test_unassessed_student_does_not_lower_class_mastery(client, db):
     before = _overview(client)
     db.add(Student(

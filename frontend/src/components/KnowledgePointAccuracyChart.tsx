@@ -1,4 +1,4 @@
-import { Empty } from 'antd'
+import { Empty, Typography } from 'antd'
 import { useMemo } from 'react'
 import { ProfileChart } from './ProfileChart'
 
@@ -19,7 +19,10 @@ export function KnowledgePointAccuracyChart({
   showClassAverage?: boolean
   label?: string
 }) {
-  const visible = useMemo(() => rows.filter((row) => row.accuracy !== null || row.classAverage !== null), [rows])
+  const unassessedCount = useMemo(
+    () => rows.filter((row) => row.accuracy === null).length,
+    [rows],
+  )
   const option = useMemo(() => ({
     animation: false,
     grid: { left: 170, right: 70, top: 18, bottom: 34 },
@@ -32,7 +35,7 @@ export function KnowledgePointAccuracyChart({
     xAxis: { type: 'value', min: 0, max: 100, interval: 20, axisLabel: { formatter: '{value}%' } },
     yAxis: {
       type: 'category', inverse: true,
-      data: visible.map((row) => row.section ? `${row.section} · ${row.name}` : row.name),
+      data: rows.map((row) => row.section ? `${row.section} · ${row.name}` : row.name),
       axisLabel: { width: 150, overflow: 'truncate', fontSize: 12 },
       axisTick: { show: false },
     },
@@ -40,17 +43,26 @@ export function KnowledgePointAccuracyChart({
     series: [
       {
         type: 'bar', name: '学生', barMaxWidth: 18,
-        data: visible.map((row) => row.accuracy === null ? '-' : Number((row.accuracy * 100).toFixed(1))),
-        itemStyle: { color: '#176c61' },
+        data: rows.map((row) => ({
+          value: Number(((row.accuracy ?? 0) * 100).toFixed(1)),
+          itemStyle: { color: row.accuracy === null ? '#c8d0ce' : '#176c61' },
+        })),
       },
       ...(showClassAverage ? [{
         type: 'bar', name: '班级平均', barMaxWidth: 18,
-        data: visible.map((row) => row.classAverage === null ? '-' : Number((row.classAverage * 100).toFixed(1))),
-        itemStyle: { color: '#315b8a' },
+        data: rows.map((row) => ({
+          value: Number(((row.classAverage ?? 0) * 100).toFixed(1)),
+          itemStyle: { color: row.classAverage === null ? '#d7dce3' : '#315b8a' },
+        })),
       }] : []),
     ],
-  }), [showClassAverage, visible])
+  }), [rows, showClassAverage])
 
-  if (!visible.length) return <Empty description="当前章节暂无已确认的作答证据" />
-  return <ProfileChart option={option} height={Math.max(280, visible.length * 42 + 72)} label={label} onPoint={() => undefined} />
+  if (!rows.length) return <Empty description="当前章节暂无知识点" />
+  return <div>
+    <ProfileChart option={option} height={Math.max(280, rows.length * 42 + 72)} label={label} onPoint={() => undefined} />
+    {unassessedCount > 0 && <Typography.Text type="secondary">
+      本章共 {rows.length} 个知识点，其中 {unassessedCount} 个暂无有效确认作答，图中按 0% 展示且不计入正确率分母。
+    </Typography.Text>}
+  </div>
 }

@@ -476,12 +476,15 @@ def question_catalog_stats(db: Session = Depends(get_db)) -> QuestionCatalogStat
 
 @router.get('/catalog', response_model=list[QuestionCatalogChapter])
 def question_filter_catalog(db: Session = Depends(get_db)) -> list[QuestionCatalogChapter]:
-    active_knowledge_point_ids = select(Question.main_knowledge_point_id).where(
+    active_chapter_codes = select(Question.chapter_code).where(
         Question.archived_at.is_(None)
-    )
+    ).distinct()
     knowledge_points = db.scalars(
         select(KnowledgePoint)
-        .where(KnowledgePoint.id.in_(active_knowledge_point_ids))
+        # The catalog also drives profile chapter filters.  Include formal
+        # points without a current question so the selected chapter remains
+        # complete and those points can be shown as 0% / unassessed.
+        .where(KnowledgePoint.chapter_code.in_(active_chapter_codes))
         .order_by(
             KnowledgePoint.chapter_name,
             KnowledgePoint.sort_order,

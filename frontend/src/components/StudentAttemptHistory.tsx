@@ -1,12 +1,12 @@
 import { Alert, Button, Empty, Segmented, Select, Space, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { apiGet, queryString } from '../api/client'
 import type { Page, StudentAttempt } from '../types'
 import type { KnowledgePoint } from '../types/profile'
 import { AnswerView } from './AnswerView'
 
-export function StudentAttemptHistory({ studentId, catalog, onEvidence }: { studentId: string; catalog: KnowledgePoint[]; onEvidence: (id: string) => void }) {
+export function StudentAttemptHistory({ studentId, catalog, chapterCode, onEvidence }: { studentId: string; catalog: KnowledgePoint[]; chapterCode: string; onEvidence: (id: string) => void }) {
   const [filter, setFilter] = useState('all')
   const [knowledgePoint, setKnowledgePoint] = useState<string | undefined>()
   const [page, setPage] = useState(1)
@@ -14,19 +14,27 @@ export function StudentAttemptHistory({ studentId, catalog, onEvidence }: { stud
   const [attempts, setAttempts] = useState<Page<StudentAttempt> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const chapterCatalog = useMemo(
+    () => catalog.filter((item) => !chapterCode || item.chapter_code === chapterCode),
+    [catalog, chapterCode],
+  )
+  useEffect(() => {
+    setKnowledgePoint(undefined)
+    setPage(1)
+  }, [chapterCode])
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true); setError(null); setAttempts(null)
-    apiGet<Page<StudentAttempt>>(`/students/${studentId}/attempts${queryString({ page, page_size: pageSize, knowledge_point_code: knowledgePoint, is_correct: filter === 'all' ? undefined : filter === 'correct' })}`, controller.signal)
+    apiGet<Page<StudentAttempt>>(`/students/${studentId}/attempts${queryString({ page, page_size: pageSize, chapter_code: chapterCode || undefined, knowledge_point_code: knowledgePoint, is_correct: filter === 'all' ? undefined : filter === 'correct' })}`, controller.signal)
       .then((data) => { if (!controller.signal.aborted) setAttempts(data) })
       .catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [studentId, filter, knowledgePoint, page, pageSize])
+  }, [studentId, chapterCode, filter, knowledgePoint, page, pageSize])
   const columns: ColumnsType<StudentAttempt> = [
     { title: '时间', dataIndex: 'answered_at', width: 170, render: (value: string) => new Date(value).toLocaleString('zh-CN') },
     { title: '题目', dataIndex: 'original_qid', width: 230, render: (_, item) => <Button type="link" className="table-link" onClick={() => onEvidence(item.id)}>{item.original_qid || '快照缺失'}</Button> },
-    { title: '当时主知识点', dataIndex: 'main_knowledge_point_name', width: 210 },
+    { title: '主知识点', dataIndex: 'main_knowledge_point_name', width: 210 },
     { title: '难度', dataIndex: 'difficulty', width: 70, render: (value: number | null) => value ?? '-' },
     { title: '学生答案', dataIndex: 'student_answer', width: 240, render: (value: unknown) => <AnswerView answer={value} /> },
     { title: '结论', dataIndex: 'is_correct', width: 100, render: (value: boolean | null) => <Tag color={value === null ? 'default' : value ? 'success' : 'error'}>{value === null ? '待复核' : value ? '正确' : '错误'}</Tag> },
@@ -36,7 +44,7 @@ export function StudentAttemptHistory({ studentId, catalog, onEvidence }: { stud
     <Space wrap className="section-toolbar">
       <Segmented value={filter} options={[{ label: '全部', value: 'all' }, { label: '正确', value: 'correct' }, { label: '错误', value: 'wrong' }]} onChange={(value) => { setFilter(value); setPage(1) }} />
       <Select aria-label="历史知识点筛选" className="knowledge-point-select" value={knowledgePoint} onChange={(value) => { setKnowledgePoint(value); setPage(1) }} allowClear showSearch optionFilterProp="label" placeholder="全部知识点"
-        options={catalog.map((item) => ({ value: item.code, label: item.name }))} />
+        options={chapterCatalog.map((item) => ({ value: item.code, label: item.name }))} />
     </Space>
     {error && <Alert message={error} type="error" showIcon />}
     <Table rowKey="id" columns={columns} dataSource={attempts?.items ?? []} loading={loading} scroll={{ x: 1140 }}

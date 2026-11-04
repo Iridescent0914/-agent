@@ -112,6 +112,17 @@ def test_expr_question_and_catalog_filters(expr_seeded: dict[str, object]) -> No
                 )
             )
         )
+        used_knowledge_codes = set(
+            db.scalars(
+                select(KnowledgePoint.code)
+                .join(Question, Question.main_knowledge_point_id == KnowledgePoint.id)
+                .where(
+                    Question.chapter_code == CHAPTER_CODE,
+                    Question.archived_at.is_(None),
+                )
+                .distinct()
+            )
+        )
 
     # The list response intentionally exposes the main knowledge-point tag,
     # while the database assertion above verifies that every returned ID is
@@ -123,16 +134,24 @@ def test_expr_question_and_catalog_filters(expr_seeded: dict[str, object]) -> No
     assert catalog.status_code == 200
     expr_chapters = [item for item in catalog.json() if item["code"] == CHAPTER_CODE]
     assert len(expr_chapters) == 1
-    # Eight points exist in the chapter seed; six currently have active
-    # questions and therefore appear in the question catalog.
-    assert len(expr_chapters[0]["knowledge_points"]) == 6
+    # The curriculum catalog remains complete even though only six points
+    # currently have active questions.
+    assert len(expr_chapters[0]["knowledge_points"]) == 8
 
     knowledge_points = client.get(
         "/api/v1/knowledge-points", params={"chapter_code": CHAPTER_CODE}
     )
     assert knowledge_points.status_code == 200
-    assert len(knowledge_points.json()) == 6
-    assert all(item["chapter_code"] == CHAPTER_CODE for item in knowledge_points.json())
+    knowledge_point_rows = knowledge_points.json()
+    assert len(knowledge_point_rows) == 8
+    assert all(item["chapter_code"] == CHAPTER_CODE for item in knowledge_point_rows)
+    by_code = {item["code"]: item for item in knowledge_point_rows}
+    unused_knowledge_codes = expr_knowledge_codes - used_knowledge_codes
+    assert len(unused_knowledge_codes) == 2
+    assert all(
+        by_code[code]["available_question_count"] == 0
+        for code in unused_knowledge_codes
+    )
 
 
 def test_expr_recommendation_is_chapter_scoped(

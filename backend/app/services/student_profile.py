@@ -60,8 +60,8 @@ def knowledge_point_catalog(
     active_filters = [Question.archived_at.is_(None)]
     if grade is not None:
         active_filters.append(Question.grade == grade)
-    active = (
-        select(Question.main_knowledge_point_id)
+    active_chapters = (
+        select(Question.chapter_code)
         .where(*active_filters)
         .distinct()
         .subquery()
@@ -97,7 +97,14 @@ def knowledge_point_catalog(
     )
     query = (
         select(KnowledgePoint, counts.c.count, required_counts.c.required_count)
-        .join(active, active.c.main_knowledge_point_id == KnowledgePoint.id)
+        # A chapter profile is a curriculum view, not merely a list of points
+        # already referenced by questions.  Keep every formal knowledge point
+        # in an active chapter so unpractised / currently unstocked points can
+        # still be represented as unassessed.
+        .join(
+            active_chapters,
+            active_chapters.c.chapter_code == KnowledgePoint.chapter_code,
+        )
         .outerjoin(counts, counts.c.main_knowledge_point_id == KnowledgePoint.id)
         .outerjoin(
             required_counts,

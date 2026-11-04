@@ -171,6 +171,7 @@ a { color: inherit; }
 .knowledge-point-select { width: 300px; max-width: 100%; }
 .table-link.ant-btn { height: auto; padding: 0; white-space: normal; text-align: left; line-height: 1.6; }
 .section-toolbar { margin-bottom: 18px; }
+.knowledge-status-note { display: block; margin-top: 12px; font-size: 12px; }
 .compact-divider { margin-block: 8px; }
 .evidence-details { width: 100%; }
 .evidence-details summary { cursor: pointer; margin-bottom: 10px; }
