@@ -101,31 +101,7 @@ def _local_date(value: datetime) -> date:
     return value.astimezone(BUSINESS_TIMEZONE).date()
 
 
-def load_literacy_evidence(
-    db: Session,
-    student_id: UUID,
-    *,
-    as_of: datetime,
-) -> LiteracyEvidenceSet:
-    """Load current Attempt states and validate immutable ownership snapshots."""
-
-    student = db.get(Student, student_id)
-    if student is None or student.archived_at is not None:
-        raise LookupError("student not found")
-    rows = db.execute(
-        select(Attempt, PaperInstanceItem, PaperInstance, Submission, AttemptRevision)
-        .outerjoin(PaperInstanceItem, PaperInstanceItem.id == Attempt.paper_instance_item_id)
-        .outerjoin(PaperInstance, PaperInstance.id == PaperInstanceItem.paper_instance_id)
-        .outerjoin(Submission, Submission.id == Attempt.submission_id)
-        .outerjoin(
-            AttemptRevision,
-            (AttemptRevision.attempt_id == Attempt.id)
-            & (AttemptRevision.revision_no == Attempt.revision_no),
-        )
-        .where(Attempt.student_id == student_id, Attempt.answered_at <= as_of)
-        .order_by(Attempt.answered_at, Attempt.id)
-    ).all()
-
+def _literacy_evidence_from_rows(rows: Iterable[tuple[Any, ...]]) -> LiteracyEvidenceSet:
     valid: list[LiteracyEvidence] = []
     invalid: list[InvalidLiteracyEvidence] = []
     pending = 0
@@ -143,6 +119,11 @@ def load_literacy_evidence(
             reason = "ownership_mismatch"
         elif paper.status != "published":
             reason = "unpublished_paper"
+        elif paper.invalidated_at is not None:
+            # An invalidated paper is valid historical/audit data, not broken
+            # evidence. Keep it out of the current score without failing a
+            # profile rebuild.
+            continue
         elif not isinstance(snapshot, dict):
             reason = "invalid_question_snapshot"
         elif revision is None:
@@ -181,6 +162,65 @@ def load_literacy_evidence(
                 reason=reason,
             ))
     return LiteracyEvidenceSet(tuple(valid), tuple(invalid), pending)
+
+
+def load_literacy_evidence_many(
+    db: Session,
+    student_ids: Iterable[UUID],
+    *,
+    as_of: datetime,
+) -> dict[UUID, LiteracyEvidenceSet]:
+    """Load and validate current attempt evidence for multiple students."""
+
+    ids = list(dict.fromkeys(student_ids))
+    if not ids:
+        return {}
+    existing_ids = set(db.scalars(
+        select(Student.id).where(
+            Student.id.in_(ids), Student.archived_at.is_(None)
+        )
+    ))
+    if existing_ids != set(ids):
+        raise LookupError("one or more students not found")
+
+    grouped: dict[UUID, list[tuple[Any, ...]]] = {
+        student_id: [] for student_id in ids
+    }
+    rows = db.execute(
+        select(Attempt, PaperInstanceItem, PaperInstance, Submission, AttemptRevision)
+        .outerjoin(PaperInstanceItem, PaperInstanceItem.id == Attempt.paper_instance_item_id)
+        .outerjoin(PaperInstance, PaperInstance.id == PaperInstanceItem.paper_instance_id)
+        .outerjoin(Submission, Submission.id == Attempt.submission_id)
+        .outerjoin(
+            AttemptRevision,
+            (AttemptRevision.attempt_id == Attempt.id)
+            & (AttemptRevision.revision_no == Attempt.revision_no),
+        )
+        .where(Attempt.student_id.in_(ids), Attempt.answered_at <= as_of)
+        .order_by(Attempt.student_id, Attempt.answered_at, Attempt.id)
+    ).all()
+    for row in rows:
+        grouped[row[0].student_id].append(row)
+    return {
+        student_id: _literacy_evidence_from_rows(grouped[student_id])
+        for student_id in ids
+    }
+
+
+def load_literacy_evidence(
+    db: Session,
+    student_id: UUID,
+    *,
+    as_of: datetime,
+) -> LiteracyEvidenceSet:
+    """Load current Attempt states and validate immutable ownership snapshots."""
+
+    try:
+        return load_literacy_evidence_many(
+            db, [student_id], as_of=as_of
+        )[student_id]
+    except LookupError as exc:
+        raise LookupError("student not found") from exc
 
 
 def replay_literacy_scores(
@@ -273,6 +313,87 @@ def default_computed_literacies() -> list[LiteracyScoreOut]:
     return literacy_outputs_from_scores({})
 
 
+def _effective_materialized_scores(
+    rows: list[StudentLiteracyScore],
+    *,
+    target_date: date,
+) -> dict[str, float] | None:
+    """Read a complete materialized score set and regress it to ``target_date``."""
+
+    by_name = {row.literacy_name: row for row in rows}
+    complete = (
+        set(by_name) == set(LITERACY_DIMENSIONS)
+        and all(row.rule_version == RULE_VERSION for row in rows)
+        and all(row.score_as_of_date <= target_date for row in rows)
+    )
+    if not complete:
+        return None
+
+    scores: dict[str, float] = {}
+    for name in LITERACY_DIMENSIONS:
+        row = by_name[name]
+        value = float(row.score)
+        for _ in range((target_date - row.score_as_of_date).days):
+            value = regress_score(value)
+        scores[name] = value
+    return scores
+
+
+def effective_literacy_scores_many(
+    db: Session,
+    student_ids: Iterable[UUID],
+    *,
+    as_of: datetime,
+) -> dict[UUID, dict[str, float]]:
+    """Return effective scores for multiple students with one materialized-row query.
+
+    Students whose materialization is missing, stale, or from another rule version
+    fall back to one batch evidence query and are replayed independently in memory.
+    """
+
+    ids = list(dict.fromkeys(student_ids))
+    if not ids:
+        return {}
+
+    grouped: dict[UUID, list[StudentLiteracyScore]] = {
+        student_id: [] for student_id in ids
+    }
+    for row in db.scalars(
+        select(StudentLiteracyScore).where(
+            StudentLiteracyScore.student_id.in_(ids)
+        )
+    ):
+        grouped[row.student_id].append(row)
+
+    target_date = _local_date(as_of)
+    result: dict[UUID, dict[str, float]] = {}
+    fallback_ids: list[UUID] = []
+    for student_id in ids:
+        scores = _effective_materialized_scores(
+            grouped[student_id], target_date=target_date
+        )
+        if scores is None:
+            fallback_ids.append(student_id)
+        else:
+            result[student_id] = scores
+
+    fallback_evidence = load_literacy_evidence_many(
+        db, fallback_ids, as_of=as_of
+    )
+    for student_id in fallback_ids:
+        loaded = fallback_evidence[student_id]
+        if loaded.invalid:
+            raise ValueError(
+                "Cannot compute literacy profile: "
+                f"{len(loaded.invalid)} invalid evidence records"
+            )
+        replayed = replay_literacy_scores(loaded.evidence, as_of=as_of)
+        result[student_id] = {
+            name: state.score for name, state in replayed.states.items()
+        }
+    return result
+
+
 def effective_literacy_scores(
     db: Session,
     student_id: UUID,
@@ -281,37 +402,9 @@ def effective_literacy_scores(
 ) -> dict[str, float]:
     """Return internal decimal scores effective at ``as_of`` without writing."""
 
-    target_date = _local_date(as_of)
-    rows = list(db.scalars(
-        select(StudentLiteracyScore).where(
-            StudentLiteracyScore.student_id == student_id
-        )
-    ))
-    by_name = {row.literacy_name: row for row in rows}
-    complete = (
-        set(by_name) == set(LITERACY_DIMENSIONS)
-        and all(row.rule_version == RULE_VERSION for row in rows)
-        and all(row.score_as_of_date <= target_date for row in rows)
-    )
-    if complete:
-        scores: dict[str, float] = {}
-        for name in LITERACY_DIMENSIONS:
-            row = by_name[name]
-            value = float(row.score)
-            for _ in range((target_date - row.score_as_of_date).days):
-                value = regress_score(value)
-            scores[name] = value
-        return scores
-
-    loaded = load_literacy_evidence(db, student_id, as_of=as_of)
-    if loaded.invalid:
-        raise ValueError(
-            f"Cannot compute literacy profile: {len(loaded.invalid)} invalid evidence records"
-        )
-    replayed = replay_literacy_scores(loaded.evidence, as_of=as_of)
-    return {
-        name: state.score for name, state in replayed.states.items()
-    }
+    return effective_literacy_scores_many(
+        db, [student_id], as_of=as_of
+    )[student_id]
 
 
 def literacy_score_outputs(

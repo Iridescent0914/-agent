@@ -5,12 +5,12 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import event, select
 
 from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import Student
-from app.services.class_analytics import _record_knowledge_code
+from app.services.class_analytics import _active_students, _contexts, _record_knowledge_code
 
 
 @pytest.fixture
@@ -219,6 +219,61 @@ def test_class_analytics_uses_direct_knowledge_point():
         },
     )
     assert _record_knowledge_code(record) == "math.g6.rational.kp.03_number_line"
+
+
+def test_class_contexts_batch_load_materialized_literacy_scores(db):
+    students = _active_students(db, "六年级 Demo 班")
+    statements: list[str] = []
+
+    def record_statement(_connection, _cursor, statement, *_args):
+        statements.append(statement.lower())
+
+    engine = db.get_bind()
+    event.listen(engine, "before_cursor_execute", record_statement)
+    try:
+        contexts = _contexts(db, students)
+    finally:
+        event.remove(engine, "before_cursor_execute", record_statement)
+
+    assert [context.student.id for context in contexts] == [
+        student.id for student in students
+    ]
+    assert all(len(context.literacy_values) == 8 for context in contexts)
+    literacy_queries = [
+        statement for statement in statements
+        if "student_literacy_scores" in statement
+    ]
+    assert len(literacy_queries) == 1
+
+
+def test_class_contexts_batch_loads_missing_literacy_materializations(db):
+    students = [
+        Student(
+            student_code="M5-BATCH-" + uuid4().hex[:12],
+            display_name=f"批量回退学生 {index}",
+            class_name="批量回退测试班",
+            is_demo=True,
+        )
+        for index in range(3)
+    ]
+    db.add_all(students)
+    db.flush()
+    statements: list[str] = []
+
+    def record_statement(_connection, _cursor, statement, *_args):
+        statements.append(statement.lower())
+
+    engine = db.get_bind()
+    event.listen(engine, "before_cursor_execute", record_statement)
+    try:
+        contexts = _contexts(db, students)
+    finally:
+        event.remove(engine, "before_cursor_execute", record_statement)
+
+    assert len(contexts) == 3
+    assert all(set(context.literacy_values.values()) == {60.0} for context in contexts)
+    assert sum("student_literacy_scores" in value for value in statements) == 1
+    assert sum("from attempts" in value for value in statements) == 2
 
 
 def test_superseded_version_is_not_a_second_assignment_target(client, db):

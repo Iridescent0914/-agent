@@ -132,12 +132,32 @@ export function PaperInstancePage() {
       {item.options_snapshot != null && <QuestionOptions options={item.options_snapshot} assets={item.assets} />}
       <Typography.Paragraph type="secondary">推荐理由：{item.selection_audit?.reason_text ?? '来自历史版本快照'}</Typography.Paragraph>
       {item.selection_audit?.personalized_audit && <Descriptions size="small" bordered column={{ xs: 1, sm: 2, md: 4 }}>
-        <Descriptions.Item label="生成依据">{item.selection_audit.personalized_audit.literacy_name} {item.selection_audit.personalized_audit.literacy_score} 分</Descriptions.Item>
+        <Descriptions.Item label="初始生成依据">{item.selection_audit.personalized_audit.literacy_name} {item.selection_audit.personalized_audit.literacy_score} 分</Descriptions.Item>
         <Descriptions.Item label="星级题位">基础 {item.selection_audit.personalized_audit.base_star} 星 · 第 {item.selection_audit.personalized_audit.slot_no} 题目标 {item.selection_audit.personalized_audit.target_star} 星</Descriptions.Item>
         <Descriptions.Item label="规则版本">{item.selection_audit.personalized_audit.rule_version}</Descriptions.Item>
-        <Descriptions.Item label="生成时间">{new Date(item.selection_audit.personalized_audit.generated_at).toLocaleString('zh-CN')}</Descriptions.Item>
-        <Descriptions.Item label="班级复用">{item.selection_audit.personalized_audit.class_usage_count > 1 ? `该题本次被 ${item.selection_audit.personalized_audit.class_usage_count} 名学生使用` : '本次未与其他学生重复'}</Descriptions.Item>
+        <Descriptions.Item label="初始生成时间">{new Date(item.selection_audit.personalized_audit.generated_at).toLocaleString('zh-CN')}</Descriptions.Item>
+        <Descriptions.Item label="初始分配复用">{item.selection_audit.personalized_audit.class_usage_count > 1 ? `初始题分配给 ${item.selection_audit.personalized_audit.class_usage_count} 名学生` : '初始题未与其他学生重复'}</Descriptions.Item>
       </Descriptions>}
+      {item.selection_audit?.initial_selection && <Alert
+        type="info"
+        showIcon
+        message={`初始推荐题：${item.selection_audit.initial_selection.original_qid ?? item.selection_audit.initial_selection.question_id}`}
+        description={item.selection_audit.initial_selection.reason_text}
+      />}
+      {Boolean(item.selection_audit?.replacement_history?.length) && <List
+        size="small"
+        header="个性化换题审计"
+        dataSource={item.selection_audit?.replacement_history ?? []}
+        renderItem={(audit) => <List.Item>
+          <List.Item.Meta
+            title={`第 ${audit.sequence_no} 次换题：${audit.previous_original_qid ?? audit.previous_question_id} → ${audit.replacement_original_qid ?? audit.replacement_question_id}`}
+            description={<Space direction="vertical" size={2}>
+              <span>{audit.reason_text}</span>
+              <Typography.Text type="secondary">换题时该题用于 {audit.class_usage_count_at_replacement} 名学生 · {new Date(audit.replaced_at).toLocaleString('zh-CN')}</Typography.Text>
+            </Space>}
+          />
+        </List.Item>}
+      />}
       <details><summary>教师答案与判分规则</summary><AnswerView answer={item.answer_snapshot} /><pre className="json-block">{JSON.stringify(item.answer_rule_snapshot, null, 2)}</pre></details>
     </Card>)}
     <Drawer title={`替换第 ${target?.order_no ?? ''} 题`} width={720} open={Boolean(target)} onClose={() => { setTarget(null); setAlternatives(null) }}>

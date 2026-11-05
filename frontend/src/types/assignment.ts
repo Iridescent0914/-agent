@@ -151,6 +151,27 @@ export interface AssignmentDetail extends AssignmentListItem {
   papers: PaperSummary[]
 }
 
+export interface PersonalizedInitialSelectionAudit {
+  question_id: string
+  original_qid?: string | null
+  reason_text: string
+  reason_codes: string[]
+  selected_at?: string | null
+  class_usage_count: number
+}
+
+export interface PersonalizedReplacementAudit {
+  sequence_no: number
+  replaced_at: string
+  previous_question_id: string
+  previous_original_qid?: string | null
+  replacement_question_id: string
+  replacement_original_qid?: string | null
+  reason_text: string
+  reason_codes: string[]
+  class_usage_count_at_replacement: number
+}
+
 export interface PaperItem {
   id: string
   question_id: string
@@ -167,7 +188,11 @@ export interface PaperItem {
   answer_rule_snapshot: Record<string, unknown>
   knowledge_point_snapshot: { id: string; name: string }
   assets: AssetInfo[]
-  selection_audit: (RecommendedQuestion & { source?: string }) | null
+  selection_audit: (RecommendedQuestion & {
+    source?: string
+    initial_selection?: PersonalizedInitialSelectionAudit
+    replacement_history?: PersonalizedReplacementAudit[]
+  }) | null
 }
 
 export interface PaperInstance extends PaperSummary {

@@ -24,9 +24,12 @@ from app.services.mastery import (
 )
 from app.services.literacy_scoring import (
     default_computed_literacies,
-    effective_literacy_scores,
+    effective_literacy_scores_many,
     literacy_outputs_from_scores,
 )
+
+
+EXPECTED_EVIDENCE_EXCLUSIONS = frozenset({"needs_review", "invalidated_paper"})
 
 
 @dataclass
@@ -166,6 +169,10 @@ def _context_from_rows(
             problem = "ownership_mismatch"
         elif paper.status != "published":
             problem = "unpublished_paper"
+        elif paper.invalidated_at is not None:
+            # Withdrawn and superseded papers remain available for audit, but
+            # their attempts no longer contribute to the current profile.
+            problem = "invalidated_paper"
         elif knowledge_point is None:
             problem = "unmapped_knowledge_point"
         elif (not isinstance(snapshot, dict) or not isinstance(snapshot.get("question_text"), str)
@@ -251,10 +258,11 @@ def load_contexts(db: Session, student_ids: list[UUID]) -> dict[UUID, ProfileCon
         for student in students
     }
     literacy_as_of = datetime.now(timezone.utc)
+    literacy_values = effective_literacy_scores_many(
+        db, ids, as_of=literacy_as_of
+    )
     for student_id, context in by_student.items():
-        context.literacy_values = effective_literacy_scores(
-            db, student_id, as_of=literacy_as_of
-        )
+        context.literacy_values = literacy_values[student_id]
         context.literacies = literacy_outputs_from_scores(context.literacy_values)
     return {student_id: by_student[student_id] for student_id in ids}
 
@@ -318,7 +326,11 @@ def build_profile(context: ProfileContext, *, computed_at: datetime | None = Non
                                     knowledge_point_name=item.knowledge_point_name,
                                     category=category, reason=reason, evidence=refs))
     valid = [record for record in context.records if record.problem is None]
-    invalid = [record for record in context.records if record.problem not in (None, "needs_review")]
+    invalid = [
+        record for record in context.records
+        if record.problem is not None
+        and record.problem not in EXPECTED_EVIDENCE_EXCLUSIONS
+    ]
     recent_errors = []
     for record in reversed(valid):
         if record.attempt.is_correct is False:
@@ -404,7 +416,11 @@ MASTERY_FIELDS = ("mastery", "confidence_level", "attempt_count", "correct_count
 
 
 def persist_mastery(db: Session, context: ProfileContext) -> dict[str, int]:
-    invalid = [record for record in context.records if record.problem not in (None, "needs_review")]
+    invalid = [
+        record for record in context.records
+        if record.problem is not None
+        and record.problem not in EXPECTED_EVIDENCE_EXCLUSIONS
+    ]
     if invalid:
         raise ValueError(f"Cannot rebuild: {len(invalid)} invalid evidence records")
     existing = {row.knowledge_point_id: row for row in db.scalars(

@@ -1,4 +1,4 @@
-import { Card, Space, Switch, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Space, Switch, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useMemo, useState } from 'react'
 import { apiGet, queryString } from '../api/client'
@@ -65,15 +65,31 @@ export function StudentProfileOverview({
   )
   const [showClassAverage, setShowClassAverage] = useState(true)
   const [classOverview, setClassOverview] = useState<ClassOverview | null>(null)
+  const [classOverviewLoading, setClassOverviewLoading] = useState(false)
+  const [classOverviewError, setClassOverviewError] = useState<string | null>(null)
+  const [classOverviewReload, setClassOverviewReload] = useState(0)
 
   useEffect(() => {
-    if (!className || !chapterCode) { setClassOverview(null); return }
+    if (!className || !chapterCode) {
+      setClassOverview(null)
+      setClassOverviewLoading(false)
+      setClassOverviewError(null)
+      return
+    }
     const controller = new AbortController()
+    setClassOverview(null)
+    setClassOverviewLoading(true)
+    setClassOverviewError(null)
     apiGet<ClassOverview>(`/analytics/class-overview${queryString({ class_name: className, chapter_code: chapterCode, grade })}`, controller.signal)
       .then((value) => { if (!controller.signal.aborted) setClassOverview(value) })
-      .catch(() => { if (!controller.signal.aborted) setClassOverview(null) })
+      .catch((reason: Error) => {
+        if (!controller.signal.aborted) setClassOverviewError(reason.message)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setClassOverviewLoading(false)
+      })
     return () => controller.abort()
-  }, [chapterCode, className, grade])
+  }, [chapterCode, className, grade, classOverviewReload])
 
   const chapterCatalog = useMemo(
     () => visibleChapters.find((item) => item.code === chapterCode)?.knowledge_points ?? [],
@@ -111,10 +127,18 @@ export function StudentProfileOverview({
         <Typography.Text type="secondary">按章节查看学生与班级平均的已确认作答正确率。</Typography.Text>
       </div>
       <Space wrap>
-        <Space><Switch checked={showClassAverage} onChange={setShowClassAverage} /><Typography.Text>显示班级平均</Typography.Text></Space>
+        {classOverview ? <Space><Switch checked={showClassAverage} onChange={setShowClassAverage} /><Typography.Text>显示班级平均</Typography.Text></Space> : null}
       </Space>
     </div>
-    <KnowledgePointAccuracyChart rows={accuracyRows} showClassAverage={showClassAverage} />
+    {classOverviewLoading ? <Alert type="info" showIcon message="正在加载班级平均数据" /> : null}
+    {classOverviewError ? <Alert
+      type="warning"
+      showIcon
+      message="班级平均加载失败，当前仅展示学生数据"
+      description={classOverviewError}
+      action={<Button size="small" onClick={() => setClassOverviewReload((value) => value + 1)}>重新加载</Button>}
+    /> : null}
+    <KnowledgePointAccuracyChart rows={accuracyRows} showClassAverage={showClassAverage && classOverview !== null} />
     <Card title="知识点回顾标签">
       <Table<LearningStatusRow>
         rowKey="code"
@@ -130,7 +154,7 @@ export function StudentProfileOverview({
       </Typography.Text>
     </Card>
     <Card title="素养能力水平">
-      <LiteracyRadarChart student={literacies} classAverage={classOverview?.literacies ?? literacies} />
+      <LiteracyRadarChart student={literacies} classAverage={classOverview?.literacies} />
     </Card>
   </Space>
 }

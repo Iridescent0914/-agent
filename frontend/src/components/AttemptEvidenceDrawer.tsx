@@ -7,6 +7,21 @@ import { AnswerView } from './AnswerView'
 import { RichQuestionText } from './RichQuestionText'
 import { QuestionOptions } from './QuestionOptions'
 
+const exclusionReasonLabels: Record<string, string> = {
+  invalidated_paper: '试卷已撤回或被新版替代',
+  needs_review: '作答仍待教师复核',
+  unpublished_paper: '试卷尚未发布',
+  missing_ownership_record: '作答归属记录缺失',
+  ownership_mismatch: '作答归属不一致',
+  unmapped_knowledge_point: '知识点无法映射',
+  invalid_question_snapshot: '发布时题目快照无效',
+  missing_current_revision: '当前修订记录缺失',
+}
+
+const exclusionReasonText = (reason: string | null) => reason
+  ? exclusionReasonLabels[reason] ?? reason
+  : '未形成有效画像证据'
+
 export function AttemptEvidenceDrawer({ studentId, attemptId, onClose }: {
   studentId: string; attemptId: string | null; onClose: () => void
 }) {
@@ -30,7 +45,7 @@ export function AttemptEvidenceDrawer({ studentId, attemptId, onClose }: {
         <Descriptions.Item label="试卷编号">{value.instance_code ?? '缺失'}</Descriptions.Item>
         <Descriptions.Item label="当时主知识点">{value.knowledge_point_snapshot.name ?? '缺失'}</Descriptions.Item>
         <Descriptions.Item label="确认状态">{({ teacher_confirmed: '教师确认', auto_confirmed: '自动确认', needs_review: '待复核' } as Record<string, string>)[value.grade_status] ?? value.grade_status}</Descriptions.Item>
-        <Descriptions.Item label="计入画像">{value.used_in_profile ? '是' : `否：${value.exclusion_reason}`}</Descriptions.Item>
+        <Descriptions.Item label="计入画像">{value.used_in_profile ? '是' : `否：${exclusionReasonText(value.exclusion_reason)}`}</Descriptions.Item>
       </Descriptions>
       <Typography.Title level={5}>原题快照</Typography.Title>
       <RichQuestionText text={value.question_snapshot.question_text ?? '题目快照缺失'} assets={value.assets} />

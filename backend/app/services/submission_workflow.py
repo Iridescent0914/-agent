@@ -170,7 +170,9 @@ def _validate_answer(
         raise GradingValidation("group item answer must be text or null")
 
 
-def _attempt_out(attempt: Attempt, order_no: int) -> AttemptOut:
+def _attempt_out(
+    attempt: Attempt, order_no: int, *, paper_is_active: bool,
+) -> AttemptOut:
     return AttemptOut(
         id=attempt.id, paper_instance_item_id=attempt.paper_instance_item_id,
         order_no=order_no, student_answer=attempt.student_answer,
@@ -179,7 +181,10 @@ def _attempt_out(attempt: Attempt, order_no: int) -> AttemptOut:
         is_correct=attempt.is_correct, manual_override=attempt.manual_override,
         revision_no=attempt.revision_no, answered_at=attempt.answered_at,
         reviewed_at=attempt.reviewed_at,
-        used_in_profile=attempt.grade_status in {"auto_confirmed", "teacher_confirmed"},
+        used_in_profile=(
+            paper_is_active
+            and attempt.grade_status in {"auto_confirmed", "teacher_confirmed"}
+        ),
         recognition_status=attempt.recognition_status,
         ocr_confidence=(
             float(attempt.ocr_confidence) if attempt.ocr_confidence is not None else None
@@ -214,6 +219,7 @@ def submission_view(db: Session, paper_id: UUID, *, replayed: bool = False,
         }
     output_items = []
     answer_key_update_count = 0
+    paper_is_active = paper.status == "published" and paper.invalidated_at is None
     for item in _items(db, paper.id):
         attempt = attempts.get(item.id)
         question = db.get(Question, item.question_id)
@@ -246,7 +252,12 @@ def submission_view(db: Session, paper_id: UUID, *, replayed: bool = False,
                 db, item.question_id, item.knowledge_point_snapshot
             ),
             assets=resolve_assets(item.question_snapshot.get("assets", [])),
-            attempt=_attempt_out(attempt, item.order_no) if attempt else None,
+            attempt=(
+                _attempt_out(
+                    attempt, item.order_no, paper_is_active=paper_is_active,
+                )
+                if attempt else None
+            ),
         ))
     values = list(attempts.values())
     return SubmissionDetailOut(
@@ -254,8 +265,8 @@ def submission_view(db: Session, paper_id: UUID, *, replayed: bool = False,
         paper_instance_id=paper.id, assignment_id=assignment.id,
         assignment_title=assignment.title, instance_code=paper.instance_code,
         version_no=paper.version_no, paper_status=paper.status,
-        is_active=paper.status == "published" and paper.invalidated_at is None,
-        can_submit=(submission is None and paper.status == "published" and paper.invalidated_at is None),
+        is_active=paper_is_active,
+        can_submit=(submission is None and paper_is_active),
         student_id=student.id, student_code=student.student_code,
         student_name=student.display_name, source=submission.source if submission else None,
         recognition_run_id=recognition_run.id if recognition_run else None,

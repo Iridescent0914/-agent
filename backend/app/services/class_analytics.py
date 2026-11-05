@@ -28,7 +28,7 @@ from app.services.literacy_rules import rounded_display_score
 from app.services.student_profile import (
     ProfileContext,
     knowledge_point_catalog,
-    load_context,
+    load_contexts,
     mastery_items,
 )
 
@@ -102,10 +102,8 @@ def list_classes(db: Session) -> list[ClassOption]:
 
 
 def _contexts(db: Session, students: list[Student]) -> list[ProfileContext]:
-    # The demo has five students. Reusing load_context keeps class and individual
-    # evidence semantics identical. A future batch loader should sit underneath
-    # load_context instead of creating a second definition of valid evidence.
-    return [load_context(db, student.id) for student in students]
+    by_student = load_contexts(db, [student.id for student in students])
+    return [by_student[student.id] for student in students]
 
 
 def build_class_overview(

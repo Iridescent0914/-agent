@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 import pytest
@@ -96,6 +96,7 @@ def _completed_assignment_with_wrong_history(db, student):
     required_question, point = group[0]
     history_question = group[1][0]
     now = datetime.now(timezone.utc)
+    required_attempt_id = uuid4()
     assignment = Assignment(
         title="周总结来源作业",
         class_id=student.class_id,
@@ -135,6 +136,10 @@ def _completed_assignment_with_wrong_history(db, student):
             "source": "recommendation",
             "source_module": "history",
             "reason_codes": ["history_review", "source_required_wrong"],
+            "evidence": [{
+                "attempt_id": str(required_attempt_id),
+                "revision_no": 1,
+            }],
         },
     )
     db.add_all([required_item, history_item])
@@ -153,11 +158,12 @@ def _completed_assignment_with_wrong_history(db, student):
     )
     db.add(submission)
     db.flush()
-    for item, question, is_correct in (
-        (required_item, required_question, True),
-        (history_item, history_question, False),
+    for item, question, is_correct, attempt_id, answered_at in (
+        (required_item, required_question, False, required_attempt_id, now),
+        (history_item, history_question, False, uuid4(), now + timedelta(microseconds=1)),
     ):
         attempt = Attempt(
+            id=attempt_id,
             submission_id=submission.id,
             student_id=student.id,
             paper_instance_item_id=item.id,
@@ -169,8 +175,8 @@ def _completed_assignment_with_wrong_history(db, student):
             is_correct=is_correct,
             manual_override=True,
             revision_no=1,
-            answered_at=now,
-            reviewed_at=now,
+            answered_at=answered_at,
+            reviewed_at=answered_at,
         )
         db.add(attempt)
         db.flush()
@@ -216,6 +222,47 @@ def test_weekly_summary_generation_shortfall_contract_and_weak_status(client, db
     student = _isolated_student(db)
     assert student is not None and student.class_id is not None
     source, point = _completed_assignment_with_wrong_history(db, student)
+    rebuild_knowledge_statuses(db, student.id)
+    status = db.get(StudentKnowledgeStatus, (student.id, point.id))
+    assert status is not None and status.status == "no"
+
+    source_attempt = next(
+        attempt
+        for attempt, item in db.execute(
+            select(Attempt, PaperInstanceItem)
+            .join(PaperInstanceItem, PaperInstanceItem.id == Attempt.paper_instance_item_id)
+            .join(PaperInstance, PaperInstance.id == PaperInstanceItem.paper_instance_id)
+            .where(PaperInstance.assignment_id == source.id)
+        )
+        if (item.selection_audit or {}).get("source_module") == "required"
+    )
+    source_attempt.is_correct = True
+    source_attempt.revision_no += 1
+    db.add(AttemptRevision(
+        attempt_id=source_attempt.id,
+        revision_no=source_attempt.revision_no,
+        before_state={"is_correct": False},
+        after_state={"is_correct": True},
+        operator_type="teacher",
+        operator_id="weekly-source-test",
+        reason="来源错题改判为正确",
+    ))
+    db.flush()
+    rebuild_knowledge_statuses(db, student.id)
+    assert db.get(StudentKnowledgeStatus, (student.id, point.id)) is None
+
+    source_attempt.is_correct = False
+    source_attempt.revision_no += 1
+    db.add(AttemptRevision(
+        attempt_id=source_attempt.id,
+        revision_no=source_attempt.revision_no,
+        before_state={"is_correct": True},
+        after_state={"is_correct": False},
+        operator_type="teacher",
+        operator_id="weekly-source-test",
+        reason="恢复连续错误测试前置条件",
+    ))
+    db.flush()
     rebuild_knowledge_statuses(db, student.id)
     status = db.get(StudentKnowledgeStatus, (student.id, point.id))
     assert status is not None and status.status == "no"

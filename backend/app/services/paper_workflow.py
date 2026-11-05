@@ -29,6 +29,7 @@ from app.services.paper_snapshots import (
     copy_item, current_knowledge_point_snapshot, current_selection_audit, load_question,
     snapshot_payload, student_safe_question_snapshot, student_safe_value,
 )
+from app.services.profile_refresh import refresh_student_profiles
 from app.services.literacy_catalog import normalize_literacy_label
 from app.services.recommendations import (
     Candidate, history_source_question_ids, recent_completed_assignment_ids,
@@ -51,6 +52,37 @@ def paper_items(db: Session, paper_id: UUID) -> list[PaperInstanceItem]:
         .where(PaperInstanceItem.paper_instance_id == paper_id)
         .order_by(PaperInstanceItem.order_no, PaperInstanceItem.id)
     ))
+
+
+def _assignment_question_usage_count(
+    db: Session,
+    *,
+    assignment_id: UUID,
+    question_id: UUID,
+    include_student_id: UUID,
+) -> int:
+    """Snapshot how many students currently use a question in an assignment.
+
+    Distinct students prevent an active published version and its draft revision
+    from being counted twice. Invalidated historical versions are excluded.
+    ``include_student_id`` represents the replacement that is about to be saved.
+    """
+
+    student_ids = set(db.scalars(
+        select(PaperInstance.student_id)
+        .join(
+            PaperInstanceItem,
+            PaperInstanceItem.paper_instance_id == PaperInstance.id,
+        )
+        .where(
+            PaperInstance.assignment_id == assignment_id,
+            PaperInstance.invalidated_at.is_(None),
+            PaperInstanceItem.question_id == question_id,
+        )
+        .distinct()
+    ))
+    student_ids.add(include_student_id)
+    return len(student_ids)
 
 
 def _paper(db: Session, paper_id: UUID, *, lock: bool = False) -> PaperInstance:
@@ -654,6 +686,8 @@ def replace_item(db: Session, paper_id: UUID, item_id: UUID, *, replacement_id: 
     item.knowledge_point_snapshot = payload["knowledge_point_snapshot"]
     item.answer_region = None
     choice_audit = choice.model_dump(mode="json")
+    replacement_reason_text = choice_audit.get("reason_text", "")
+    replacement_reason_codes = deepcopy(choice_audit.get("reason_codes") or [])
     previous_module = previous_audit.get("source_module")
     if previous_module in {
         "required", "personalized", "history", "weekly_summary", "legacy_recommendation"
@@ -673,12 +707,50 @@ def replace_item(db: Session, paper_id: UUID, item_id: UUID, *, replacement_id: 
             "reason_text", choice_audit.get("reason_text", "")
         )
     if previous_module == "personalized":
+        replaced_at = datetime.now(timezone.utc).isoformat()
+        personalized_audit = deepcopy(previous_audit.get("personalized_audit"))
+        initial_selection = deepcopy(previous_audit.get("initial_selection"))
+        if initial_selection is None:
+            initial_selection = {
+                "question_id": old["question_id"],
+                "original_qid": old["original_qid"],
+                "reason_text": previous_audit.get("reason_text", ""),
+                "reason_codes": deepcopy(previous_audit.get("reason_codes") or []),
+                "selected_at": previous_audit.get("selected_at"),
+                "class_usage_count": (
+                    personalized_audit.get("class_usage_count", 1)
+                    if isinstance(personalized_audit, dict)
+                    else 1
+                ),
+            }
+        replacement_history = deepcopy(
+            previous_audit.get("replacement_history") or []
+        )
+        replacement_history.append({
+            "sequence_no": len(replacement_history) + 1,
+            "replaced_at": replaced_at,
+            "previous_question_id": old["question_id"],
+            "previous_original_qid": old["original_qid"],
+            "replacement_question_id": str(replacement_id),
+            "replacement_original_qid": payload["question_snapshot"].get(
+                "original_qid"
+            ),
+            "reason_text": replacement_reason_text,
+            "reason_codes": replacement_reason_codes,
+            "class_usage_count_at_replacement": (
+                _assignment_question_usage_count(
+                    db,
+                    assignment_id=paper.assignment_id,
+                    question_id=replacement_id,
+                    include_student_id=paper.student_id,
+                )
+            ),
+        })
         choice_audit["personalized_audit"] = deepcopy(
-            previous_audit.get("personalized_audit")
+            personalized_audit
         )
-        choice_audit["reason_text"] = previous_audit.get(
-            "reason_text", choice_audit.get("reason_text", "")
-        )
+        choice_audit["initial_selection"] = initial_selection
+        choice_audit["replacement_history"] = replacement_history
     item.selection_audit = {
         "schema_version": "m3-selection-audit-v1", "source": "teacher_replacement",
         "selected_at": datetime.now(timezone.utc).isoformat(), "replaces": old,
@@ -799,6 +871,7 @@ def withdraw_paper(db: Session, paper_id: UUID, *, expected_revision: int,
     paper.invalidated_by = 'demo_teacher'
     _event(paper, 'withdraw', {'reason': clean_reason})
     db.flush()
+    refresh_student_profiles(db, paper.student_id)
     return paper
 
 
@@ -834,6 +907,7 @@ def republish_paper(db: Session, paper_id: UUID, *, expected_revision: int) -> P
     paper.invalidated_by = None
     _event(paper, 'republish', previous)
     db.flush()
+    refresh_student_profiles(db, paper.student_id)
     return paper
 
 
@@ -902,6 +976,8 @@ def publish_paper(db: Session, paper_id: UUID, *, expected_revision: int,
     paper.published_at = datetime.now(timezone.utc)
     paper.status = "published"
     db.flush()
+    if paper.supersedes_instance_id is not None:
+        refresh_student_profiles(db, paper.student_id)
     return paper
 
 

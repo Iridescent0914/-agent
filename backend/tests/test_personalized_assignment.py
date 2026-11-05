@@ -280,6 +280,60 @@ def test_create_recomputes_score_and_freezes_personalized_audit(
     assert replaced_item["selection_audit"]["personalized_audit"] == (
         replaceable["selection_audit"]["personalized_audit"]
     )
+    first_audit = replaced_item["selection_audit"]
+    assert first_audit["reason_text"] == choices[0]["reason_text"]
+    assert first_audit["initial_selection"] == {
+        "question_id": replaceable["question_id"],
+        "original_qid": replaceable["question_snapshot"]["original_qid"],
+        "reason_text": replaceable["selection_audit"]["reason_text"],
+        "reason_codes": replaceable["selection_audit"]["reason_codes"],
+        "selected_at": replaceable["selection_audit"]["selected_at"],
+        "class_usage_count": replaceable["selection_audit"][
+            "personalized_audit"
+        ]["class_usage_count"],
+    }
+    assert len(first_audit["replacement_history"]) == 1
+    assert first_audit["replacement_history"][0]["replacement_question_id"] == (
+        choices[0]["question_id"]
+    )
+    assert first_audit["replacement_history"][0]["reason_text"] == (
+        choices[0]["reason_text"]
+    )
+    assert first_audit["replacement_history"][0][
+        "class_usage_count_at_replacement"
+    ] >= 1
+
+    second_alternatives = client.get(
+        f"/api/v1/paper-instances/{paper['id']}/items/{replaceable['id']}/alternatives"
+    )
+    assert second_alternatives.status_code == 200, second_alternatives.text
+    second_choice = second_alternatives.json()["items"][0]
+    replaced = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/items/{replaceable['id']}/replace",
+        json={
+            "replacement_question_id": second_choice["question_id"],
+            "expected_edit_revision": replaced.json()["edit_revision"],
+        },
+    )
+    assert replaced.status_code == 200, replaced.text
+    replaced_item = next(
+        item for item in replaced.json()["items"] if item["id"] == replaceable["id"]
+    )
+    second_audit = replaced_item["selection_audit"]
+    assert second_audit["reason_text"] == second_choice["reason_text"]
+    assert second_audit["initial_selection"] == first_audit["initial_selection"]
+    assert second_audit["personalized_audit"] == first_audit["personalized_audit"]
+    assert len(second_audit["replacement_history"]) == 2
+    assert second_audit["replacement_history"][0] == first_audit[
+        "replacement_history"
+    ][0]
+    assert second_audit["replacement_history"][1]["sequence_no"] == 2
+    assert second_audit["replacement_history"][1]["replacement_question_id"] == (
+        second_choice["question_id"]
+    )
+    assert second_audit["replacement_history"][1]["reason_text"] == (
+        second_choice["reason_text"]
+    )
 
     # Even a malformed/legacy draft cannot bypass the three-item invariant
     # by acknowledging a generic total-count shortfall at publish time.

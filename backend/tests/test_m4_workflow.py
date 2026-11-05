@@ -75,6 +75,18 @@ def _answers(paper):
     ]
 
 
+def _profile_state(client, student_id):
+    response = client.get(f"/api/v1/students/{student_id}/profile")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    return body, {
+        "valid_attempt_count": body["summary"]["valid_attempt_count"],
+        "invalid_evidence_count": body["summary"]["invalid_evidence_count"],
+        "masteries": body["masteries"],
+        "literacies": body["literacies"],
+    }
+
+
 def test_manual_submission_is_idempotent_and_updates_mastery(client, db):
     student, paper = _published_paper(client, db)
     literacy_before = {
@@ -388,6 +400,93 @@ def test_invalidated_paper_cannot_start_but_existing_submission_can_be_reviewed(
         },
     )
     assert rejected.status_code == 422
+
+
+def test_withdraw_and_republish_replay_current_profile_without_losing_history(client, db):
+    student, paper = _published_paper(client, db)
+    before_body, before = _profile_state(client, student.id)
+    submitted = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/submissions/manual",
+        json={
+            "idempotency_key": "m4-withdraw-profile-" + uuid4().hex,
+            "student_id": str(student.id),
+            "answers": _answers(paper),
+        },
+    )
+    assert submitted.status_code == 201, submitted.text
+    _, after_submission = _profile_state(client, student.id)
+    assert after_submission["valid_attempt_count"] == before["valid_attempt_count"] + 3
+    assert after_submission["literacies"] != before["literacies"]
+
+    withdrawn = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/withdraw",
+        json={
+            "expected_edit_revision": paper["edit_revision"],
+            "reason": "作业发布有误，撤回并重算画像",
+        },
+    )
+    assert withdrawn.status_code == 200, withdrawn.text
+    withdrawn_submission = client.get(
+        f"/api/v1/paper-instances/{paper['id']}/submission"
+    )
+    assert withdrawn_submission.status_code == 200, withdrawn_submission.text
+    assert all(
+        item["attempt"]["used_in_profile"] is False
+        for item in withdrawn_submission.json()["items"]
+    )
+    withdrawn_body, after_withdrawal = _profile_state(client, student.id)
+    assert after_withdrawal == before
+    assert withdrawn_body["summary"]["total_attempt_count"] == (
+        before_body["summary"]["total_attempt_count"] + 3
+    )
+    target_records = [
+        record for record in load_context(db, student.id).records
+        if record.item is not None
+        and str(record.item.paper_instance_id) == paper["id"]
+    ]
+    assert len(target_records) == 3
+    assert all(record.problem == "invalidated_paper" for record in target_records)
+
+    republished = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/republish",
+        json={"expected_edit_revision": withdrawn.json()["edit_revision"]},
+    )
+    assert republished.status_code == 200, republished.text
+    _, after_republish = _profile_state(client, student.id)
+    assert after_republish == after_submission
+
+
+def test_superseding_submitted_paper_removes_old_evidence_from_current_profile(client, db):
+    student, paper = _published_paper(client, db)
+    _, before = _profile_state(client, student.id)
+    submitted = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/submissions/manual",
+        json={
+            "idempotency_key": "m4-supersede-profile-" + uuid4().hex,
+            "student_id": str(student.id),
+            "answers": _answers(paper),
+        },
+    )
+    assert submitted.status_code == 201, submitted.text
+
+    revised = client.post(f"/api/v1/paper-instances/{paper['id']}/revise")
+    assert revised.status_code == 201, revised.text
+    revised_body = revised.json()
+    published_revision = client.post(
+        f"/api/v1/paper-instances/{revised_body['id']}/publish",
+        json={"expected_edit_revision": revised_body["edit_revision"]},
+    )
+    assert published_revision.status_code == 200, published_revision.text
+
+    _, after_supersede = _profile_state(client, student.id)
+    assert after_supersede == before
+    old_records = [
+        record for record in load_context(db, student.id).records
+        if record.item is not None
+        and str(record.item.paper_instance_id) == paper["id"]
+    ]
+    assert len(old_records) == 3
+    assert all(record.problem == "invalidated_paper" for record in old_records)
 
 
 def test_queue_and_submission_view(client, db):
