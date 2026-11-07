@@ -884,6 +884,9 @@ def test_edit_publish_lookup_and_revise(client, db):
     assert published_revision.status_code == 200, published_revision.text
     new_body = published_revision.json()
     assert new_body['is_active'] is True
+    assert new_body['has_graded_attempts'] is False
+    assert new_body['can_withdraw'] is True
+    assert new_body['withdraw_block_reason'] is None
 
     old_body = client.get(f'/api/v1/paper-instances/{paper_id}').json()
     assert old_body['is_active'] is False

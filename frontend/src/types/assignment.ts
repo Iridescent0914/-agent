@@ -123,6 +123,9 @@ export interface PaperSummary {
   supersedes_instance_id: string | null
   superseded_by_instance_id: string | null
   is_active: boolean
+  has_graded_attempts: boolean
+  can_withdraw: boolean
+  withdraw_block_reason: string | null
   invalidated_at: string | null
   invalidation_type: 'withdrawn' | 'superseded' | null
   invalidation_reason: string | null

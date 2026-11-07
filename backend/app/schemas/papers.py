@@ -48,6 +48,9 @@ class PaperSummaryOut(BaseModel):
     supersedes_instance_id: UUID | None
     superseded_by_instance_id: UUID | None
     is_active: bool
+    has_graded_attempts: bool
+    can_withdraw: bool
+    withdraw_block_reason: str | None
     invalidated_at: datetime | None
     invalidation_type: str | None
     invalidation_reason: str | None

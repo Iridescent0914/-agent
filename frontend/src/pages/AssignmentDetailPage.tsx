@@ -143,7 +143,9 @@ export function AssignmentDetailPage() {
         {row.status === 'draft' && <Button type='link' size='small' onClick={() => publishPapers([row])}>发布</Button>}
         {row.status === 'published' && <Link to={`/paper-instances/${row.id}/grading`}>批改</Link>}
         {row.status === 'draft' && <Button type='link' danger size='small' icon={<DeleteOutlined />} onClick={() => deleteDraft(row)}>删除草稿</Button>}
-        {row.status === 'published' && row.is_active && <Button type='link' danger size='small' icon={<StopOutlined />} onClick={() => withdrawPaper(row)}>撤回</Button>}
+        {row.status === 'published' && row.is_active && (row.can_withdraw !== false
+          ? <Button type='link' danger size='small' icon={<StopOutlined />} onClick={() => withdrawPaper(row)}>撤回</Button>
+          : <Button type='link' danger size='small' icon={<StopOutlined />} disabled title={row.withdraw_block_reason ?? undefined}>已批改，不能撤回</Button>)}
         {row.status === 'published' && row.invalidation_type === 'withdrawn' && <Button type='link' size='small' icon={<RedoOutlined />} onClick={() => republishPaper(row)}>重新发布</Button>}
       </Space>,
     },

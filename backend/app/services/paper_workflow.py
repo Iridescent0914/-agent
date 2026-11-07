@@ -10,8 +10,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Assignment, Attempt, KnowledgePoint, PaperInstance, PaperInstanceItem, Question,
-    SchoolClass, Student,
+    Assignment, Attempt, AttemptRevision, KnowledgePoint, PaperInstance,
+    PaperInstanceItem, Question, SchoolClass, Student,
 )
 from app.schemas.assignments import AssignmentDetailOut, AssignmentListItem
 from app.schemas.papers import (
@@ -44,6 +44,10 @@ class PaperConflict(RuntimeError):
 
 class PaperValidation(ValueError):
     pass
+
+
+CONFIRMED_GRADE_STATUSES = frozenset({"auto_confirmed", "teacher_confirmed"})
+GRADED_WITHDRAW_BLOCK_REASON = "该试卷已有批改结果，不能撤回"
 
 
 def paper_items(db: Session, paper_id: UUID) -> list[PaperInstanceItem]:
@@ -115,14 +119,99 @@ def _event(paper: PaperInstance, event_type: str, details: dict) -> None:
     paper.edit_history = history
 
 
-def _summary(db: Session, paper: PaperInstance, student: Student | None = None,
-             item_count: int | None = None) -> PaperSummaryOut:
+def _graded_paper_ids(db: Session, paper_ids: list[UUID]) -> set[UUID]:
+    """Return papers that currently or historically contain confirmed grading."""
+
+    if not paper_ids:
+        return set()
+    rows = db.execute(
+        select(
+            PaperInstanceItem.paper_instance_id,
+            Attempt.id,
+            Attempt.grade_status,
+        )
+        .join(Attempt, Attempt.paper_instance_item_id == PaperInstanceItem.id)
+        .where(PaperInstanceItem.paper_instance_id.in_(paper_ids))
+    ).all()
+    graded = {
+        paper_id
+        for paper_id, _attempt_id, grade_status in rows
+        if grade_status in CONFIRMED_GRADE_STATUSES
+    }
+    unresolved_attempt_to_paper = {
+        attempt_id: paper_id
+        for paper_id, attempt_id, grade_status in rows
+        if grade_status not in CONFIRMED_GRADE_STATUSES
+    }
+    if unresolved_attempt_to_paper:
+        revisions = db.execute(
+            select(AttemptRevision.attempt_id, AttemptRevision.after_state)
+            .where(
+                AttemptRevision.attempt_id.in_(
+                    list(unresolved_attempt_to_paper)
+                )
+            )
+        ).all()
+        graded.update(
+            unresolved_attempt_to_paper[attempt_id]
+            for attempt_id, after_state in revisions
+            if isinstance(after_state, dict)
+            and after_state.get("grade_status") in CONFIRMED_GRADE_STATUSES
+        )
+    return graded
+
+
+def _lock_and_check_graded_attempts(db: Session, paper_id: UUID) -> bool:
+    """Serialize with attempt review and preserve historical confirmed states."""
+
+    attempts = list(db.scalars(
+        select(Attempt)
+        .join(
+            PaperInstanceItem,
+            PaperInstanceItem.id == Attempt.paper_instance_item_id,
+        )
+        .where(PaperInstanceItem.paper_instance_id == paper_id)
+        .order_by(Attempt.id)
+        .with_for_update()
+    ))
+    if any(
+        attempt.grade_status in CONFIRMED_GRADE_STATUSES
+        for attempt in attempts
+    ):
+        return True
+    if not attempts:
+        return False
+    revision_states = db.scalars(
+        select(AttemptRevision.after_state).where(
+            AttemptRevision.attempt_id.in_([attempt.id for attempt in attempts])
+        )
+    )
+    return any(
+        isinstance(after_state, dict)
+        and after_state.get("grade_status") in CONFIRMED_GRADE_STATUSES
+        for after_state in revision_states
+    )
+
+
+def _summary(
+    db: Session,
+    paper: PaperInstance,
+    student: Student | None = None,
+    item_count: int | None = None,
+    has_graded_attempts: bool | None = None,
+) -> PaperSummaryOut:
     student = student or db.get(Student, paper.student_id)
     if student is None:
         raise LookupError("paper student not found")
     count = item_count if item_count is not None else int(db.scalar(
         select(func.count(PaperInstanceItem.id)).where(PaperInstanceItem.paper_instance_id == paper.id)
     ) or 0)
+    graded = (
+        has_graded_attempts
+        if has_graded_attempts is not None
+        else paper.id in _graded_paper_ids(db, [paper.id])
+    )
+    is_active = paper.status == 'published' and paper.invalidated_at is None
     audit = paper.recommendation_audit or {}
     return PaperSummaryOut(
         id=paper.id, assignment_id=paper.assignment_id, student_id=paper.student_id,
@@ -132,7 +221,11 @@ def _summary(db: Session, paper: PaperInstance, student: Student | None = None,
         edit_revision=paper.edit_revision, instance_code=paper.instance_code,
         supersedes_instance_id=paper.supersedes_instance_id,
         superseded_by_instance_id=paper.superseded_by_instance_id,
-        is_active=paper.status == 'published' and paper.invalidated_at is None,
+        is_active=is_active, has_graded_attempts=graded,
+        can_withdraw=is_active and not graded,
+        withdraw_block_reason=(
+            GRADED_WITHDRAW_BLOCK_REASON if is_active and graded else None
+        ),
         invalidated_at=paper.invalidated_at, invalidation_type=paper.invalidation_type,
         invalidation_reason=paper.invalidation_reason, invalidated_by=paper.invalidated_by,
         created_at=paper.created_at, published_at=paper.published_at,
@@ -251,8 +344,17 @@ def assignment_paper_summaries(
     if limit is not None:
         query = query.limit(limit)
     rows = db.execute(query).all()
+    graded_paper_ids = _graded_paper_ids(
+        db, [paper.id for paper, _student, _item_count in rows]
+    )
     return [
-        _summary(db, paper, student=student, item_count=int(item_count or 0))
+        _summary(
+            db,
+            paper,
+            student=student,
+            item_count=int(item_count or 0),
+            has_graded_attempts=paper.id in graded_paper_ids,
+        )
         for paper, student, item_count in rows
     ], total
 
@@ -862,6 +964,8 @@ def withdraw_paper(db: Session, paper_id: UUID, *, expected_revision: int,
         raise PaperConflict('paper was changed; refresh before withdrawing')
     if paper.invalidated_at is not None:
         raise PaperConflict('paper is already invalidated')
+    if _lock_and_check_graded_attempts(db, paper.id):
+        raise PaperConflict(GRADED_WITHDRAW_BLOCK_REASON)
     clean_reason = reason.strip()
     if not clean_reason:
         raise PaperValidation('withdrawal reason is required')

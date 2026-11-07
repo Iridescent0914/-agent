@@ -402,9 +402,9 @@ def test_invalidated_paper_cannot_start_but_existing_submission_can_be_reviewed(
     assert rejected.status_code == 422
 
 
-def test_withdraw_and_republish_replay_current_profile_without_losing_history(client, db):
+def test_graded_paper_cannot_be_withdrawn_and_keeps_profile_evidence(client, db):
     student, paper = _published_paper(client, db)
-    before_body, before = _profile_state(client, student.id)
+    _before_body, before = _profile_state(client, student.id)
     submitted = client.post(
         f"/api/v1/paper-instances/{paper['id']}/submissions/manual",
         json={
@@ -418,42 +418,75 @@ def test_withdraw_and_republish_replay_current_profile_without_losing_history(cl
     assert after_submission["valid_attempt_count"] == before["valid_attempt_count"] + 3
     assert after_submission["literacies"] != before["literacies"]
 
+    paper_after_grading = client.get(
+        f"/api/v1/paper-instances/{paper['id']}"
+    )
+    assert paper_after_grading.status_code == 200, paper_after_grading.text
+    paper_after_grading_body = paper_after_grading.json()
+    assert paper_after_grading_body["has_graded_attempts"] is True
+    assert paper_after_grading_body["can_withdraw"] is False
+    assert paper_after_grading_body["withdraw_block_reason"] == (
+        "该试卷已有批改结果，不能撤回"
+    )
+
     withdrawn = client.post(
         f"/api/v1/paper-instances/{paper['id']}/withdraw",
         json={
             "expected_edit_revision": paper["edit_revision"],
-            "reason": "作业发布有误，撤回并重算画像",
+            "reason": "尝试撤回已批改作业",
         },
     )
-    assert withdrawn.status_code == 200, withdrawn.text
-    withdrawn_submission = client.get(
-        f"/api/v1/paper-instances/{paper['id']}/submission"
-    )
-    assert withdrawn_submission.status_code == 200, withdrawn_submission.text
-    assert all(
-        item["attempt"]["used_in_profile"] is False
-        for item in withdrawn_submission.json()["items"]
-    )
-    withdrawn_body, after_withdrawal = _profile_state(client, student.id)
-    assert after_withdrawal == before
-    assert withdrawn_body["summary"]["total_attempt_count"] == (
-        before_body["summary"]["total_attempt_count"] + 3
-    )
-    target_records = [
-        record for record in load_context(db, student.id).records
-        if record.item is not None
-        and str(record.item.paper_instance_id) == paper["id"]
-    ]
-    assert len(target_records) == 3
-    assert all(record.problem == "invalidated_paper" for record in target_records)
+    assert withdrawn.status_code == 409, withdrawn.text
+    assert withdrawn.json()["message"] == "该试卷已有批改结果，不能撤回"
+    _, after_rejected_withdrawal = _profile_state(client, student.id)
+    assert after_rejected_withdrawal == after_submission
 
-    republished = client.post(
-        f"/api/v1/paper-instances/{paper['id']}/republish",
-        json={"expected_edit_revision": withdrawn.json()["edit_revision"]},
+
+def test_reopened_grades_cannot_bypass_withdrawal_guard(client, db):
+    student, paper = _published_paper(client, db)
+    submitted = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/submissions/manual",
+        json={
+            "idempotency_key": "m4-reopen-withdraw-" + uuid4().hex,
+            "student_id": str(student.id),
+            "answers": _answers(paper),
+        },
     )
-    assert republished.status_code == 200, republished.text
-    _, after_republish = _profile_state(client, student.id)
-    assert after_republish == after_submission
+    assert submitted.status_code == 201, submitted.text
+
+    for item in submitted.json()["items"]:
+        attempt = item["attempt"]
+        reopened = client.patch(
+            f"/api/v1/attempts/{attempt['id']}/review",
+            json={
+                "action": "reopen",
+                "expected_revision_no": attempt["revision_no"],
+                "is_correct": None,
+                "reason": "验证撤销确认不能绕过撤回限制",
+            },
+        )
+        assert reopened.status_code == 200, reopened.text
+
+    paper_after_reopen = client.get(
+        f"/api/v1/paper-instances/{paper['id']}"
+    )
+    assert paper_after_reopen.status_code == 200, paper_after_reopen.text
+    summary = paper_after_reopen.json()
+    assert summary["has_graded_attempts"] is True
+    assert summary["can_withdraw"] is False
+    _, before_rejected_withdrawal = _profile_state(client, student.id)
+
+    withdrawn = client.post(
+        f"/api/v1/paper-instances/{paper['id']}/withdraw",
+        json={
+            "expected_edit_revision": paper["edit_revision"],
+            "reason": "尝试在撤销确认后撤回",
+        },
+    )
+    assert withdrawn.status_code == 409, withdrawn.text
+    assert withdrawn.json()["message"] == "该试卷已有批改结果，不能撤回"
+    _, after_rejected_withdrawal = _profile_state(client, student.id)
+    assert after_rejected_withdrawal == before_rejected_withdrawal
 
 
 def test_superseding_submitted_paper_removes_old_evidence_from_current_profile(client, db):
