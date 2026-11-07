@@ -3,7 +3,13 @@ import { useState } from 'react'
 import type { AnswerDraft, SubmissionPaperItem } from '../types/submission'
 import { MathAnswerInput } from './MathAnswerInput'
 
-interface GroupAnswerItem { item_id: string; answer: string | null; answer_match_type?: string }
+interface GroupAnswerItem {
+  item_id: string
+  subquestion_no?: number
+  blank_no?: number
+  answer: string | null
+  answer_match_type?: string
+}
 interface GroupAnswer { kind: 'group'; items: GroupAnswerItem[] }
 
 function isGroup(value: unknown): value is GroupAnswer {
@@ -63,8 +69,9 @@ export function ManualAnswerEditor({ item, value, onChange, disabled = false }: 
   disabled?: boolean
 }) {
   const matchType = item.answer_rule_snapshot.answer_match_type
-  const options = item.options_snapshot && typeof item.options_snapshot === 'object'
-    ? Object.entries(item.options_snapshot as Record<string, unknown>) : []
+  const optionSnapshot = item.options_snapshot
+  const options = optionSnapshot && typeof optionSnapshot === 'object' && !Array.isArray(optionSnapshot)
+    ? Object.entries(optionSnapshot as Record<string, unknown>) : []
   const group = isGroup(item.answer_snapshot)
   const groupValue = isGroup(value.answer) ? value.answer : null
   const expectedTypeById = new Map(
@@ -72,6 +79,14 @@ export function ManualAnswerEditor({ item, value, onChange, disabled = false }: 
       ? item.answer_snapshot.items.map((part) => [part.item_id, part.answer_match_type])
       : [],
   )
+  const expectedPartById = new Map(
+    group && isGroup(item.answer_snapshot)
+      ? item.answer_snapshot.items.map((part) => [part.item_id, part])
+      : [],
+  )
+  const choiceLabels = Array.isArray(optionSnapshot)
+    ? optionSnapshot.map((_, index) => String.fromCharCode(65 + index))
+    : options.length ? options.map(([key]) => key) : ['A', 'B', 'C', 'D']
 
   const setBlank = (checked: boolean) => {
     if (checked) onChange({ response_status: 'blank', answer: null })
@@ -92,9 +107,21 @@ export function ManualAnswerEditor({ item, value, onChange, disabled = false }: 
     <Checkbox checked={value.response_status === 'blank'} disabled={disabled} onChange={(event) => setBlank(event.target.checked)}>学生整题留空</Checkbox>
     {value.response_status !== 'blank' && group && groupValue && <Space direction="vertical" className="group-answer-editor">
       {groupValue.items.map((part) => <Space key={part.item_id} align="start" className="group-answer-row">
-        <Typography.Text strong>小题 {part.item_id}</Typography.Text>
+        <Typography.Text strong>{(() => {
+          const expected = expectedPartById.get(part.item_id)
+          const subquestion = `第 ${expected?.subquestion_no ?? 1} 小题`
+          return item.question_snapshot.question_type === 'fill_blank'
+            ? `${subquestion} · 第 ${expected?.blank_no ?? 1} 空`
+            : subquestion
+        })()}</Typography.Text>
         <div className="manual-answer-field">
-          {item.question_snapshot.question_type === 'true_false' ? <Radio.Group
+          {item.question_snapshot.question_type === 'choice' ? <Radio.Group
+            value={part.answer ?? undefined}
+            disabled={disabled}
+            onChange={(event) => setGroupPart(part.item_id, event.target.value)}
+          >
+            {choiceLabels.map((label) => <Radio.Button key={label} value={label}>{label}</Radio.Button>)}
+          </Radio.Group> : item.question_snapshot.question_type === 'true_false' ? <Radio.Group
             value={part.answer ?? undefined}
             disabled={disabled}
             onChange={(event) => setGroupPart(part.item_id, event.target.value)}

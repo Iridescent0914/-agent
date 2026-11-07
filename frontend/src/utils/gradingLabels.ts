@@ -4,6 +4,7 @@ const answerMatchTypeLabels: Record<string, string> = {
   exact: '精确文本',
   latex_exact: '公式匹配',
   group: '多答案项',
+  manual: '教师人工评分',
 }
 
 export function answerMatchTypeLabel(value: string | null | undefined): string {

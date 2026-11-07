@@ -155,8 +155,13 @@ class QuestionAnswerItemInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     item_id: str = Field(min_length=1, max_length=64)
+    subquestion_no: int | None = Field(default=None, ge=1, le=99)
+    blank_no: int | None = Field(default=None, ge=1, le=99)
     answer: str = Field(min_length=1, max_length=2000)
-    answer_match_type: Literal["choice", "numeric", "exact", "latex_exact"]
+    accepted_answers: list[str] = Field(default_factory=list, max_length=20)
+    answer_match_type: Literal[
+        "choice", "numeric", "exact", "latex_exact", "manual"
+    ]
 
     @field_validator("item_id", "answer")
     @classmethod
@@ -165,6 +170,14 @@ class QuestionAnswerItemInput(BaseModel):
         if not value:
             raise ValueError("答案项编号和答案不能为空")
         return value
+
+    @field_validator("accepted_answers")
+    @classmethod
+    def clean_accepted_answers(cls, values: list[str]) -> list[str]:
+        cleaned = [value.strip() for value in values]
+        if any(not value for value in cleaned):
+            raise ValueError("可接受答案不能为空")
+        return list(dict.fromkeys(cleaned))
 
 
 class QuestionReviewRequest(BaseModel):
@@ -188,6 +201,13 @@ class QuestionReviewRequest(BaseModel):
         item_ids = [item.item_id for item in self.items]
         if len(set(item_ids)) != len(item_ids):
             raise ValueError("答案项编号不能重复")
+        coordinates = [
+            (item.subquestion_no, item.blank_no)
+            for item in self.items
+            if item.subquestion_no is not None and item.blank_no is not None
+        ]
+        if len(coordinates) != len(set(coordinates)):
+            raise ValueError("同一小题中的空号不能重复")
         return self
 
 

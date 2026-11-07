@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+  "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
   "total_extracted": 139,
   "seed_candidate_count": 45,
   "eligible_count_before_limit": 45,
@@ -34,6 +34,9 @@
   "seed_machine_ready_count": 45,
   "seed_raw_answer_only_count": 0,
   "answer_structure_override_count": 12,
+  "answer_unit_split_count": 29,
+  "answer_unit_manual_count": 249,
+  "answer_unit_unresolved_count": 105,
   "exported_asset_references": 564,
   "asset_extension_counts": {
     ".jpeg": 1,
@@ -42,6 +45,7 @@
   },
   "issue_counts": {
     "answer_items_not_structured": 18,
+    "answer_units_need_review": 24,
     "asset_needs_web_conversion": 529,
     "asset_relationship_missing": 2,
     "contains_asset": 109,

@@ -43,6 +43,10 @@ def test_review_validation_is_scoped_and_rejects_unresolved_assets():
             "solution",
             [{"item_id": "1", "answer": "42", "answer_match_type": "exact"}],
         )
+    validate_review_items(
+        "solution",
+        [{"item_id": "1", "answer": "解题过程", "answer_match_type": "manual"}],
+    )
     with pytest.raises(QuestionReviewValidation):
         validate_review_items(
             "fill_blank",

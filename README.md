@@ -352,6 +352,38 @@ docker compose exec backend python -m scripts.cleanup_business_data --confirm --
 
 第二次执行默认 `seed_database` 不会生成重复知识点或题目，也不会创建学生、作业、试卷或作答。题目的 `correct_answer`、多空 `items`、归一化规则和资源列表均按 JSONB 原样保存。
 
+### 题目答案的小题—空统一格式
+
+选择、填空、判断、计算和简答题的题库答案统一使用 `answer-units-v1`。每个可独立作答的位置都是一个叶子项，稳定编号为 `sub_{小题号}.blank_{空号}`；同一空的同义答案放在 `accepted_answers`，不能再用数组表示多个空。计算题和简答题使用 `manual`，保存分小题的人工评分参考答案，不进入自动判分池。
+
+```json
+{
+  "kind": "group",
+  "schema_version": "answer-units-v1",
+  "items": [
+    {
+      "item_id": "sub_2.blank_1",
+      "subquestion_no": 2,
+      "blank_no": 1,
+      "order_no": 1,
+      "answer": "这个数",
+      "accepted_answers": ["这个数", "原数"],
+      "answer_match_type": "exact"
+    }
+  ]
+}
+```
+
+迁移脚本默认只预演；确认后显式提交数据库。它会同步整理仓库 JSON，缺失或无法可靠对应的答案保留为空、标记 `answer_units_need_review` 并退出自动判分池，不猜测答案。已发布试卷继续使用生成时的答案快照，不随题库迁移变化。
+
+```powershell
+python backend/scripts/normalize_answer_units.py --skip-database
+docker compose exec backend python -m scripts.normalize_answer_units --skip-files
+docker compose exec backend python -m scripts.normalize_answer_units --skip-files --apply-database
+```
+
+完整的待人工核对清单见 `data/audit/answer_unit_normalization_report.json`。
+
 虚拟学生历史完整经过：
 
 ```text
@@ -394,7 +426,7 @@ docker compose exec -w /app backend python scripts/convert_seed_assets.py
 产物为：
 
 - `data/interim/expr_all.json`：41 组完整题目；
-- `data/seed/expr_questions.json`：9 组 `machine_ready` 题目；
+- `data/seed/expr_questions.json`：8 组 `machine_ready` 题目；原第 28 题缺少第 10 小题答案，保留在完整题库并等待人工核对；
 - `data/seed/expr_knowledge_tree.json`：第 2 章 4 个节、8 个正式知识点；
 - `data/audit/expr_import_audit.csv` 和 `data/audit/expr_m0_report.json`：审计结果。
 

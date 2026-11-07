@@ -16,27 +16,48 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "正",
           "answer_match_type": "exact",
           "reference_answer_raw": "正"
         },
         {
-          "item_id": "blank_2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
           "answer": "负",
           "answer_match_type": "exact",
           "reference_answer_raw": "负"
         },
         {
-          "item_id": "blank_3",
+          "item_id": "sub_1.blank_3",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 3,
           "answer": "负",
           "answer_match_type": "exact",
           "reference_answer_raw": "负"
         },
         {
-          "item_id": "blank_4",
+          "item_id": "sub_1.blank_4",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_4",
+          "blank_no": 4,
+          "order_no": 4,
           "answer": "正",
           "answer_match_type": "exact",
           "reference_answer_raw": "正"
@@ -48,7 +69,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": false
+      "unparsed_items_use_reference_answer_raw": false,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -77,7 +99,7 @@
     "has_image": false,
     "has_equation": false,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 60,
     "source_review_status": "reviewed",
     "import_status": "parsed",
@@ -85,7 +107,7 @@
       "multiple_subquestions"
     ],
     "is_seed_candidate": true,
-    "answer_structure_source": "source_derived_override"
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -104,9 +126,15 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "6.96×10⁸",
           "answer_match_type": "exact",
           "reference_answer_raw": "6.96×10⁸"
@@ -118,7 +146,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": false
+      "unparsed_items_use_reference_answer_raw": false,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -147,13 +176,13 @@
     "has_image": false,
     "has_equation": false,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 128,
     "source_review_status": "reviewed",
     "import_status": "parsed",
     "import_issues": [],
     "is_seed_candidate": true,
-    "answer_structure_source": "source_derived_override"
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -172,51 +201,88 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "符号",
           "answer_match_type": "exact",
           "reference_answer_raw": "符号"
         },
         {
-          "item_id": "blank_2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
           "answer": "绝对值",
           "answer_match_type": "exact",
           "reference_answer_raw": "绝对值"
         },
         {
-          "item_id": "blank_3",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "0",
           "answer_match_type": "numeric",
           "reference_answer_raw": "0"
         },
         {
-          "item_id": "blank_4",
+          "item_id": "sub_2.blank_2",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 4,
           "answer": "较大",
           "answer_match_type": "exact",
           "reference_answer_raw": "较大"
         },
         {
-          "item_id": "blank_5",
+          "item_id": "sub_2.blank_3",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 5,
           "answer": "较小",
           "answer_match_type": "exact",
           "reference_answer_raw": "较小"
         },
         {
-          "item_id": "blank_6",
+          "item_id": "sub_2.blank_4",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_4",
+          "blank_no": 4,
+          "order_no": 6,
           "answer": "较大",
           "answer_match_type": "exact",
           "reference_answer_raw": "较大"
         },
         {
-          "item_id": "blank_7",
-          "answer": [
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 7,
+          "answer": "这个数",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "这个数（原数）",
+          "accepted_answers": [
             "这个数",
             "原数"
-          ],
-          "answer_match_type": "set",
-          "reference_answer_raw": "这个数（原数）"
+          ]
         }
       ]
     },
@@ -225,7 +291,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": false
+      "unparsed_items_use_reference_answer_raw": false,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -254,7 +321,7 @@
     "has_image": false,
     "has_equation": false,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 35,
     "source_review_status": "reviewed",
     "import_status": "parsed",
@@ -262,7 +329,7 @@
       "multiple_subquestions"
     ],
     "is_seed_candidate": true,
-    "answer_structure_source": "source_derived_override"
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -281,51 +348,92 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "乘方",
           "answer_match_type": "exact",
           "reference_answer_raw": "乘方"
         },
         {
-          "item_id": "blank_2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
           "answer": "乘除",
           "answer_match_type": "exact",
           "reference_answer_raw": "乘除"
         },
         {
-          "item_id": "blank_3",
+          "item_id": "sub_1.blank_3",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 3,
           "answer": "加减",
           "answer_match_type": "exact",
           "reference_answer_raw": "加减"
         },
         {
-          "item_id": "blank_4",
+          "item_id": "sub_1.blank_4",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_4",
+          "blank_no": 4,
+          "order_no": 4,
           "answer": "左",
           "answer_match_type": "exact",
           "reference_answer_raw": "左"
         },
         {
-          "item_id": "blank_5",
+          "item_id": "sub_1.blank_5",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_5",
+          "blank_no": 5,
+          "order_no": 5,
           "answer": "右",
           "answer_match_type": "exact",
           "reference_answer_raw": "右"
         },
         {
-          "item_id": "blank_6",
+          "item_id": "sub_1.blank_6",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_6",
+          "blank_no": 6,
+          "order_no": 6,
           "answer": "小括号",
           "answer_match_type": "exact",
           "reference_answer_raw": "小括号"
         },
         {
-          "item_id": "blank_7",
+          "item_id": "sub_1.blank_7",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_7",
+          "blank_no": 7,
+          "order_no": 7,
           "answer": "中括号",
           "answer_match_type": "exact",
           "reference_answer_raw": "中括号"
         },
         {
-          "item_id": "blank_8",
+          "item_id": "sub_1.blank_8",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_8",
+          "blank_no": 8,
+          "order_no": 8,
           "answer": "大括号",
           "answer_match_type": "exact",
           "reference_answer_raw": "大括号"
@@ -337,7 +445,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": false
+      "unparsed_items_use_reference_answer_raw": false,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -364,7 +473,7 @@
     "has_image": false,
     "has_equation": false,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 109,
     "source_review_status": "reviewed",
     "import_status": "parsed",
@@ -372,7 +481,7 @@
       "multiple_subquestions"
     ],
     "is_seed_candidate": true,
-    "answer_structure_source": "source_derived_override"
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -389,16 +498,35 @@
     "difficulty": 2,
     "question_text": "2、所有绝对值小于14.8的整数的和是________.",
     "options": null,
-    "correct_answer": "0",
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "0",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "0。\n绝对值小于 14.8 的整数为 −14, −13, …, 13, 14，正负成对抵消，故和为 0。"
+        }
+      ]
+    },
     "reference_answer_raw": "0。\n绝对值小于 14.8 的整数为 −14, −13, …, 13, 14，正负成对抵消，故和为 0。",
-    "answer_match_type": "numeric",
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
       "normalize_fullwidth_symbols": true,
       "allow_fraction_decimal_equivalence": false,
       "allow_equivalent_fraction": false,
       "require_simplified_fraction": false,
-      "require_unit": false
+      "require_unit": false,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -427,12 +555,13 @@
     "has_image": false,
     "has_equation": false,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 42,
     "source_review_status": "reviewed",
     "import_status": "parsed",
     "import_issues": [],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -451,21 +580,37 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
@@ -477,7 +622,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -512,7 +658,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 27,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -522,7 +668,8 @@
       "question_type_mismatch",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -539,13 +686,30 @@
     "difficulty": 5,
     "question_text": "6、（选做）如图，数轴上点A表示的数是1，现将点A沿数轴做如下移动：第一次将点A向左移动3个单位长度到达点A1，第二次将点A1向右移动6个单位长度到达点A2，第三次将点A2向左移动9个单位长度到达点A3，…，按照这种规律移动下去，则点A2024表示的数是___________.",
     "options": null,
-    "correct_answer": "3037",
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "3037",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "每两次移动合起来向右3个单位，2024次共有1012组，所以从1开始最终到1+1012×3=3037。"
+        }
+      ]
+    },
     "reference_answer_raw": "每两次移动合起来向右3个单位，2024次共有1012组，所以从1开始最终到1+1012×3=3037。",
-    "answer_match_type": "numeric",
+    "answer_match_type": "group",
     "answer_normalization_rule": {
-      "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true,
-      "allow_fraction_decimal_equivalence": false
+      "item_order_matters": true,
+      "partial_credit": true,
+      "unparsed_items_use_reference_answer_raw": false,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -574,7 +738,7 @@
     "has_image": false,
     "has_equation": false,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 19,
     "source_review_status": "reviewed",
     "import_status": "parsed",
@@ -582,7 +746,7 @@
       "contains_asset"
     ],
     "is_seed_candidate": true,
-    "answer_structure_source": "source_derived_override"
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -599,12 +763,31 @@
     "difficulty": 3,
     "question_text": "3、如果[ASSET:assets/rational/q.math.g6.rational.school.043_rId381.wmf]，[ASSET:assets/rational/q.math.g6.rational.school.043_rId383.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.043_rId385.wmf]________.",
     "options": null,
-    "correct_answer": "所有可能值为 −4,−2,2,4",
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "所有可能值为 −4,−2,2,4",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "所有可能值为 −4,−2,2,4"
+        }
+      ]
+    },
     "reference_answer_raw": "所有可能值为 −4,−2,2,4",
-    "answer_match_type": "exact",
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -649,7 +832,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 43,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -659,7 +842,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -678,33 +862,59 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "-1℃",
           "answer_match_type": "numeric",
           "reference_answer_raw": "-1℃"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
           "answer": "38个",
           "answer_match_type": "exact",
           "reference_answer_raw": "38个"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_1.blank_3",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 3,
           "answer": "21℃",
           "answer_match_type": "numeric",
           "reference_answer_raw": "21℃"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_1.blank_4",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_4",
+          "blank_no": 4,
+          "order_no": 4,
           "answer": "P=Q",
           "answer_match_type": "exact",
           "reference_answer_raw": "P=Q"
         },
         {
-          "item_id": "5",
+          "item_id": "sub_1.blank_5",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_5",
+          "blank_no": 5,
+          "order_no": 5,
           "answer": "d<b<c<a",
           "answer_match_type": "exact",
           "reference_answer_raw": "d<b<c<a"
@@ -716,7 +926,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -786,7 +997,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 131,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -802,7 +1013,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -821,15 +1033,26 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D。互为相反数即“只有符号不同的两个数”（含 0，0 的相反数是 0）"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B。相反数大于本身的数是负数（设 x，−x＞x ⟺ x＜0）"
@@ -841,7 +1064,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -868,7 +1092,7 @@
     "has_image": false,
     "has_equation": false,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 15,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -876,7 +1100,8 @@
       "multiple_subquestions",
       "question_type_mismatch"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -895,67 +1120,150 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "-5.6",
           "answer_match_type": "numeric",
           "reference_answer_raw": "-5.6"
         },
         {
-          "item_id": "2",
-          "answer": [
-            "高于",
-            "低于"
-          ],
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
+          "answer": "高于",
           "answer_match_type": "exact",
-          "reference_answer_raw": "高于；低于"
+          "reference_answer_raw": "高于"
         },
         {
-          "item_id": "3",
-          "answer": [
-            "+2000",
-            "-1000"
-          ],
+          "item_id": "sub_2.blank_2",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 3,
+          "answer": "低于",
           "answer_match_type": "exact",
-          "reference_answer_raw": "+2000；-1000"
+          "reference_answer_raw": "低于"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
+          "answer": "+2000",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "+2000"
+        },
+        {
+          "item_id": "sub_3.blank_2",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 5,
+          "answer": "-1000",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "-1000"
+        },
+        {
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 6,
           "answer": "负数",
           "answer_match_type": "exact",
           "reference_answer_raw": "负数"
         },
         {
-          "item_id": "5",
-          "answer": [
-            "-1",
-            "1",
-            "0"
-          ],
+          "item_id": "sub_5.blank_1",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 7,
+          "answer": "-1",
           "answer_match_type": "exact",
-          "reference_answer_raw": "-1；1；0"
+          "reference_answer_raw": "-1"
         },
         {
-          "item_id": "6",
+          "item_id": "sub_5.blank_2",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 8,
+          "answer": "1",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "1"
+        },
+        {
+          "item_id": "sub_5.blank_3",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 9,
+          "answer": "0",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "0"
+        },
+        {
+          "item_id": "sub_6.blank_1",
+          "subquestion_id": "sub_6",
+          "subquestion_no": 6,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 10,
           "answer": "-1",
           "answer_match_type": "numeric",
           "reference_answer_raw": "-1"
         },
         {
-          "item_id": "7",
+          "item_id": "sub_7.blank_1",
+          "subquestion_id": "sub_7",
+          "subquestion_no": 7,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 11,
           "answer": "-2，-1",
           "answer_match_type": "exact",
           "reference_answer_raw": "-2，-1"
         },
         {
-          "item_id": "8",
-          "answer": [
-            "不存在",
-            "不存在"
-          ],
+          "item_id": "sub_8.blank_1",
+          "subquestion_id": "sub_8",
+          "subquestion_no": 8,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 12,
+          "answer": "不存在",
           "answer_match_type": "exact",
-          "reference_answer_raw": "不存在；不存在"
+          "reference_answer_raw": "不存在"
+        },
+        {
+          "item_id": "sub_8.blank_2",
+          "subquestion_id": "sub_8",
+          "subquestion_no": 8,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 13,
+          "answer": "不存在",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "不存在"
         }
       ]
     },
@@ -964,7 +1272,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1002,7 +1311,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 1,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -1012,7 +1321,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1031,27 +1341,48 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C。零下3摄氏度记作 −3℃（四个选项符号/单位均残缺，按规范答案应为 −3℃）"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "A",
           "answer_match_type": "choice",
           "reference_answer_raw": "A。有理数应分为正有理数、0、负有理数三类，A 漏掉了 0，故错误"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C（3 对）。相反意义的量需“意义相反且可量化”：存款/取款（相反）、海拔 856 米 与 −856 米（相反）、5 度 与 零下 5 度（相反）共 3 对；“往东 100 米/往南 100 米”方向不在同一直线上，不算相反意义"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C。没有最大的有理数，也没有最小的有理数"
@@ -1063,7 +1394,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1092,7 +1424,7 @@
     "has_image": false,
     "has_equation": true,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 2,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -1101,7 +1433,8 @@
       "question_type_mismatch",
       "source_contains_ai_draft_marker"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1120,33 +1453,59 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "正",
           "answer_match_type": "exact",
           "reference_answer_raw": "正"
         },
         {
-          "item_id": "blank_2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
           "answer": "负",
           "answer_match_type": "exact",
           "reference_answer_raw": "负"
         },
         {
-          "item_id": "blank_3",
+          "item_id": "sub_1.blank_3",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 3,
           "answer": "绝对值",
           "answer_match_type": "exact",
           "reference_answer_raw": "绝对值"
         },
         {
-          "item_id": "blank_4",
+          "item_id": "sub_1.blank_4",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_4",
+          "blank_no": 4,
+          "order_no": 4,
           "answer": "乘",
           "answer_match_type": "exact",
           "reference_answer_raw": "乘"
         },
         {
-          "item_id": "blank_5",
+          "item_id": "sub_1.blank_5",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_5",
+          "blank_no": 5,
+          "order_no": 5,
           "answer": "0",
           "answer_match_type": "numeric",
           "reference_answer_raw": "0"
@@ -1158,7 +1517,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": false
+      "unparsed_items_use_reference_answer_raw": false,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1187,7 +1547,7 @@
     "has_image": false,
     "has_equation": false,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 61,
     "source_review_status": "reviewed",
     "import_status": "parsed",
@@ -1195,7 +1555,7 @@
       "multiple_subquestions"
     ],
     "is_seed_candidate": true,
-    "answer_structure_source": "source_derived_override"
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1214,36 +1574,73 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "正数",
           "answer_match_type": "exact",
           "reference_answer_raw": "正数"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "负数",
           "answer_match_type": "exact",
           "reference_answer_raw": "负数"
         },
         {
-          "item_id": "3",
-          "answer": [
-            "正数",
-            "负数"
-          ],
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
+          "answer": "正数",
           "answer_match_type": "exact",
-          "reference_answer_raw": "正数；负数"
+          "reference_answer_raw": "正数"
         },
         {
-          "item_id": "4",
-          "answer": [
-            "正数",
-            "正数"
-          ],
+          "item_id": "sub_3.blank_2",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 4,
+          "answer": "负数",
           "answer_match_type": "exact",
-          "reference_answer_raw": "正数；正数"
+          "reference_answer_raw": "负数"
+        },
+        {
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 5,
+          "answer": "正数",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "正数"
+        },
+        {
+          "item_id": "sub_4.blank_2",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 6,
+          "answer": "正数",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "正数"
         }
       ]
     },
@@ -1252,7 +1649,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1337,7 +1735,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 104,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -1356,7 +1754,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1375,9 +1774,15 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "相反数",
           "answer_match_type": "exact",
           "reference_answer_raw": "相反数"
@@ -1389,7 +1794,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": false
+      "unparsed_items_use_reference_answer_raw": false,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1418,13 +1824,13 @@
     "has_image": false,
     "has_equation": false,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 49,
     "source_review_status": "reviewed",
     "import_status": "parsed",
     "import_issues": [],
     "is_seed_candidate": true,
-    "answer_structure_source": "source_derived_override"
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1446,13 +1852,32 @@
       "C": "-3",
       "D": "4."
     },
-    "correct_answer": "D",
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "D",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "D"
+        }
+      ]
+    },
     "reference_answer_raw": "D",
-    "answer_match_type": "choice",
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
       "normalize_fullwidth_symbols": true,
-      "uppercase": true
+      "uppercase": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1479,12 +1904,13 @@
     "has_image": false,
     "has_equation": true,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 111,
     "source_review_status": "reviewed",
     "import_status": "parsed",
     "import_issues": [],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1503,15 +1929,26 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "a+b=b+a",
           "answer_match_type": "exact",
           "reference_answer_raw": "a+b=b+a"
         },
         {
-          "item_id": "blank_2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "(a+b)+c=a+(b+c)",
           "answer_match_type": "exact",
           "reference_answer_raw": "(a+b)+c=a+(b+c)"
@@ -1523,7 +1960,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": false
+      "unparsed_items_use_reference_answer_raw": false,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1563,7 +2001,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 41,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -1574,7 +2012,7 @@
       "asset_needs_web_conversion"
     ],
     "is_seed_candidate": true,
-    "answer_structure_source": "source_derived_override"
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1593,38 +2031,92 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
-          "answer": [
-            "大于",
-            "大于",
-            "大于",
-            "大"
-          ],
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "大于",
           "answer_match_type": "exact",
-          "reference_answer_raw": "大于；大于；大于；大"
+          "reference_answer_raw": "大于"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
+          "answer": "大于",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "大于"
+        },
+        {
+          "item_id": "sub_1.blank_3",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 3,
+          "answer": "大于",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "大于"
+        },
+        {
+          "item_id": "sub_1.blank_4",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_4",
+          "blank_no": 4,
+          "order_no": 4,
+          "answer": "大",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "大"
+        },
+        {
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 5,
           "answer": "a < b",
           "answer_match_type": "exact",
           "reference_answer_raw": "a < b"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 6,
           "answer": "不一定",
           "answer_match_type": "exact",
           "reference_answer_raw": "不一定"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 7,
           "answer": "a = -4",
           "answer_match_type": "exact",
           "reference_answer_raw": "a = -4"
         },
         {
-          "item_id": "5",
+          "item_id": "sub_5.blank_1",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 8,
           "answer": "-5 ≤ x < -4",
           "answer_match_type": "exact",
           "reference_answer_raw": "-5 ≤ x < -4"
@@ -1636,7 +2128,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1751,7 +2244,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 28,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -1776,7 +2269,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1795,45 +2289,81 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
         },
         {
-          "item_id": "5",
+          "item_id": "sub_5.blank_1",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 5,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
         },
         {
-          "item_id": "6",
+          "item_id": "sub_6.blank_1",
+          "subquestion_id": "sub_6",
+          "subquestion_no": 6,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 6,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B"
         },
         {
-          "item_id": "7",
+          "item_id": "sub_7.blank_1",
+          "subquestion_id": "sub_7",
+          "subquestion_no": 7,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 7,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
@@ -1845,7 +2375,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1880,7 +2411,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 8,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -1890,7 +2421,8 @@
       "question_type_mismatch",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1907,16 +2439,35 @@
     "difficulty": 2,
     "question_text": "3、如果[ASSET:assets/rational/q.math.g6.rational.school.120_rId973.wmf]，那么[ASSET:assets/rational/q.math.g6.rational.school.120_rId975.wmf]的值为________.",
     "options": null,
-    "correct_answer": "2",
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "2",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "2"
+        }
+      ]
+    },
     "reference_answer_raw": "2",
-    "answer_match_type": "numeric",
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
       "normalize_fullwidth_symbols": true,
       "allow_fraction_decimal_equivalence": false,
       "allow_equivalent_fraction": false,
       "require_simplified_fraction": false,
-      "require_unit": false
+      "require_unit": false,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1956,7 +2507,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 120,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -1965,7 +2516,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1984,54 +2536,96 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "正",
           "answer_match_type": "exact",
           "reference_answer_raw": "正"
         },
         {
-          "item_id": "blank_2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
           "answer": "负",
           "answer_match_type": "exact",
           "reference_answer_raw": "负"
         },
         {
-          "item_id": "blank_3",
+          "item_id": "sub_1.blank_3",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 3,
           "answer": "绝对值",
           "answer_match_type": "exact",
           "reference_answer_raw": "绝对值"
         },
         {
-          "item_id": "blank_4",
+          "item_id": "sub_1.blank_4",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_4",
+          "blank_no": 4,
+          "order_no": 4,
           "answer": "除",
           "answer_match_type": "exact",
           "reference_answer_raw": "除"
         },
         {
-          "item_id": "blank_5",
-          "answer": [
+          "item_id": "sub_1.blank_5",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_5",
+          "blank_no": 5,
+          "order_no": 5,
+          "answer": "不为0",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "不为0（不等于零）",
+          "accepted_answers": [
             "不为0",
             "不等于零"
-          ],
-          "answer_match_type": "set",
-          "reference_answer_raw": "不为0（不等于零）"
+          ]
         },
         {
-          "item_id": "blank_6",
+          "item_id": "sub_1.blank_6",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_6",
+          "blank_no": 6,
+          "order_no": 6,
           "answer": "0",
           "answer_match_type": "numeric",
           "reference_answer_raw": "0"
         },
         {
-          "item_id": "blank_7",
+          "item_id": "sub_1.blank_7",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_7",
+          "blank_no": 7,
+          "order_no": 7,
           "answer": "分数",
           "answer_match_type": "exact",
           "reference_answer_raw": "分数"
         },
         {
-          "item_id": "blank_8",
+          "item_id": "sub_1.blank_8",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_8",
+          "blank_no": 8,
+          "order_no": 8,
           "answer": "假分数",
           "answer_match_type": "exact",
           "reference_answer_raw": "假分数"
@@ -2043,7 +2637,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": false
+      "unparsed_items_use_reference_answer_raw": false,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -2072,7 +2667,7 @@
     "has_image": false,
     "has_equation": false,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 82,
     "source_review_status": "reviewed",
     "import_status": "parsed",
@@ -2080,7 +2675,7 @@
       "multiple_subquestions"
     ],
     "is_seed_candidate": true,
-    "answer_structure_source": "source_derived_override"
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2099,34 +2694,106 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
-          "answer": [
-            "10",
-            "100",
-            "1000",
-            "10000",
-            "100000",
-            "1000000"
-          ],
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "10",
           "answer_match_type": "exact",
-          "reference_answer_raw": "10;100;1000;10000;100000;1000000"
+          "reference_answer_raw": "10"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
+          "answer": "100",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "100"
+        },
+        {
+          "item_id": "sub_1.blank_3",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 3,
+          "answer": "1000",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "1000"
+        },
+        {
+          "item_id": "sub_1.blank_4",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_4",
+          "blank_no": 4,
+          "order_no": 4,
+          "answer": "10000",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "10000"
+        },
+        {
+          "item_id": "sub_1.blank_5",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_5",
+          "blank_no": 5,
+          "order_no": 5,
+          "answer": "100000",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "100000"
+        },
+        {
+          "item_id": "sub_1.blank_6",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_6",
+          "blank_no": 6,
+          "order_no": 6,
+          "answer": "1000000",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "1000000"
+        },
+        {
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 7,
           "answer": "n",
           "answer_match_type": "exact",
           "reference_answer_raw": "n"
         },
         {
-          "item_id": "3",
-          "answer": [
-            "15 个",
-            "100000"
-          ],
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 8,
+          "answer": "15 个",
           "answer_match_type": "exact",
-          "reference_answer_raw": "15 个；100000"
+          "reference_answer_raw": "15 个"
+        },
+        {
+          "item_id": "sub_3.blank_2",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 9,
+          "answer": "100000",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "100000"
         }
       ]
     },
@@ -2135,7 +2802,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -2220,7 +2888,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 106,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -2239,7 +2907,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2258,21 +2927,37 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
@@ -2284,7 +2969,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -2334,7 +3020,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 37,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -2346,7 +3032,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2363,12 +3050,31 @@
     "difficulty": 2,
     "question_text": "2、在计算[ASSET:assets/rational/q.math.g6.rational.school.110_rId929.wmf]时，最先进行的运算是________.",
     "options": null,
-    "correct_answer": "乘方",
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "乘方",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "乘方"
+        }
+      ]
+    },
     "reference_answer_raw": "乘方",
-    "answer_match_type": "exact",
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -2401,7 +3107,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 110,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -2409,7 +3115,8 @@
       "contains_asset",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2428,27 +3135,48 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "错误",
           "answer_match_type": "exact",
           "reference_answer_raw": "×（错误）"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "正确",
           "answer_match_type": "exact",
           "reference_answer_raw": "√（正确）"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "正确",
           "answer_match_type": "exact",
           "reference_answer_raw": "√（正确）"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "错误",
           "answer_match_type": "exact",
           "reference_answer_raw": "×（错误"
@@ -2460,7 +3188,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -2510,7 +3239,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 122,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -2523,7 +3252,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2542,33 +3272,59 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "<",
           "answer_match_type": "exact",
           "reference_answer_raw": "<"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": ">",
           "answer_match_type": "exact",
           "reference_answer_raw": ">"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": ">",
           "answer_match_type": "exact",
           "reference_answer_raw": ">"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "=",
           "answer_match_type": "exact",
           "reference_answer_raw": "="
         },
         {
-          "item_id": "5",
+          "item_id": "sub_5.blank_1",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 5,
           "answer": ">",
           "answer_match_type": "exact",
           "reference_answer_raw": ">"
@@ -2580,7 +3336,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -2655,7 +3412,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 29,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -2672,7 +3429,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2691,24 +3449,62 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "-2",
           "answer_match_type": "numeric",
           "reference_answer_raw": "-2"
         },
         {
-          "item_id": "blank_2",
-          "answer": "1;3",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
+          "answer": "1",
           "answer_match_type": "exact",
-          "reference_answer_raw": "1;3"
+          "reference_answer_raw": "1"
         },
         {
-          "item_id": "blank_3",
+          "item_id": "sub_2.blank_2",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 3,
+          "answer": "3",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "3"
+        },
+        {
+          "item_id": "sub_2.blank_3",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 4,
           "answer": "0或4",
           "answer_match_type": "exact",
           "reference_answer_raw": "0或4"
+        },
+        {
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 5,
+          "answer": "0 或 4",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "0 或 4"
         }
       ]
     },
@@ -2717,7 +3513,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": false
+      "unparsed_items_use_reference_answer_raw": false,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -2787,7 +3584,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 16,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -2803,7 +3600,7 @@
       "asset_needs_web_conversion"
     ],
     "is_seed_candidate": true,
-    "answer_structure_source": "source_derived_override"
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2822,15 +3619,26 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "＋1和−1",
           "answer_match_type": "exact",
           "reference_answer_raw": "＋1 和 −1"
         },
         {
-          "item_id": "blank_2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
           "answer": "0",
           "answer_match_type": "numeric",
           "reference_answer_raw": "0"
@@ -2842,7 +3650,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": false
+      "unparsed_items_use_reference_answer_raw": false,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -2871,7 +3680,7 @@
     "has_image": false,
     "has_equation": false,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 84,
     "source_review_status": "reviewed",
     "import_status": "parsed",
@@ -2879,7 +3688,7 @@
       "multiple_subquestions"
     ],
     "is_seed_candidate": true,
-    "answer_structure_source": "source_derived_override"
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2898,15 +3707,26 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "2022",
           "answer_match_type": "numeric",
           "reference_answer_raw": "2022"
         },
         {
-          "item_id": "blank_2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
           "answer": "0",
           "answer_match_type": "numeric",
           "reference_answer_raw": "0"
@@ -2918,7 +3738,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -2973,7 +3794,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 121,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -2986,7 +3807,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3005,21 +3827,37 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "负",
           "answer_match_type": "exact",
           "reference_answer_raw": "负"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "正",
           "answer_match_type": "exact",
           "reference_answer_raw": "正"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "负",
           "answer_match_type": "exact",
           "reference_answer_raw": "负"
@@ -3031,7 +3869,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -3076,7 +3915,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 44,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -3087,7 +3926,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3106,15 +3946,26 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "正确",
           "answer_match_type": "exact",
           "reference_answer_raw": "正确（√）"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "正确",
           "answer_match_type": "exact",
           "reference_answer_raw": "正确（√）"
@@ -3126,7 +3977,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -3155,7 +4007,7 @@
     "has_image": false,
     "has_equation": false,
     "assets": [],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 97,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -3163,7 +4015,8 @@
       "multiple_subquestions",
       "question_type_mismatch"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3182,21 +4035,48 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "2",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "1) 5×104",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "1) 5×104"
+        },
+        {
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "−3.6×107",
           "answer_match_type": "exact",
           "reference_answer_raw": "−3.6×107"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "−6.2579×103",
           "answer_match_type": "exact",
           "reference_answer_raw": "−6.2579×103"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "5021×105",
           "answer_match_type": "exact",
           "reference_answer_raw": "5021×105"
@@ -3208,7 +4088,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -3258,7 +4139,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 127,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -3270,7 +4151,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3289,15 +4171,26 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B"
@@ -3309,7 +4202,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": false
+      "unparsed_items_use_reference_answer_raw": false,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -3354,7 +4248,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 50,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -3367,7 +4261,7 @@
       "asset_needs_web_conversion"
     ],
     "is_seed_candidate": true,
-    "answer_structure_source": "source_derived_override"
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3386,33 +4280,59 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": ">",
           "answer_match_type": "exact",
           "reference_answer_raw": ">"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "<",
           "answer_match_type": "exact",
           "reference_answer_raw": "<"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "<",
           "answer_match_type": "exact",
           "reference_answer_raw": "<"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": ">",
           "answer_match_type": "exact",
           "reference_answer_raw": ">"
         },
         {
-          "item_id": "5",
+          "item_id": "sub_5.blank_1",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 5,
           "answer": ">",
           "answer_match_type": "exact",
           "reference_answer_raw": ">"
@@ -3424,7 +4344,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -3524,7 +4445,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 63,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -3546,7 +4467,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3565,15 +4487,26 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "6",
           "answer_match_type": "numeric",
           "reference_answer_raw": "6"
         },
         {
-          "item_id": "blank_2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
           "answer": "4",
           "answer_match_type": "numeric",
           "reference_answer_raw": "4"
@@ -3585,7 +4518,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -3625,7 +4559,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 129,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -3635,7 +4569,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3654,15 +4589,37 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "2",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": ">",
           "answer_match_type": "exact",
           "reference_answer_raw": ">"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
+          "answer": ">",
+          "answer_match_type": "exact",
+          "reference_answer_raw": ">"
+        },
+        {
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "<",
           "answer_match_type": "exact",
           "reference_answer_raw": "<"
@@ -3674,7 +4631,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -3734,7 +4692,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 72,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -3748,7 +4706,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3765,16 +4724,35 @@
     "difficulty": 2,
     "question_text": "4、如果[ASSET:assets/rational/q.math.g6.rational.school.130_rId1059.wmf]有六个整数位，那么[ASSET:assets/rational/q.math.g6.rational.school.130_rId1061.wmf]________.",
     "options": null,
-    "correct_answer": "5",
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "5",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "5"
+        }
+      ]
+    },
     "reference_answer_raw": "5",
-    "answer_match_type": "numeric",
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
       "normalize_fullwidth_symbols": true,
       "allow_fraction_decimal_equivalence": false,
       "allow_equivalent_fraction": false,
       "require_simplified_fraction": false,
-      "require_unit": false
+      "require_unit": false,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -3814,7 +4792,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 130,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -3823,7 +4801,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3842,33 +4821,59 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
         },
         {
-          "item_id": "5",
+          "item_id": "sub_5.blank_1",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 5,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
@@ -3880,7 +4885,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -4025,7 +5031,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 73,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -4057,7 +5063,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4079,13 +5086,32 @@
       "C": "3",
       "D": "4."
     },
-    "correct_answer": "A",
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "A",
+          "answer_match_type": "choice",
+          "reference_answer_raw": "A"
+        }
+      ]
+    },
     "reference_answer_raw": "A",
-    "answer_match_type": "choice",
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
       "normalize_fullwidth_symbols": true,
-      "uppercase": true
+      "uppercase": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -4135,7 +5161,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 75,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -4147,7 +5173,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4166,27 +5193,48 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "<",
           "answer_match_type": "exact",
           "reference_answer_raw": "<"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": ">",
           "answer_match_type": "exact",
           "reference_answer_raw": ">"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "<",
           "answer_match_type": "exact",
           "reference_answer_raw": "<"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": ">",
           "answer_match_type": "exact",
           "reference_answer_raw": ">"
@@ -4198,7 +5246,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -4283,7 +5332,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 76,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -4302,7 +5351,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4319,16 +5369,35 @@
     "difficulty": 2,
     "question_text": "7、一个数的[ASSET:assets/rational/q.math.g6.rational.school.087_rId713.wmf]是−0.36，这个数是________.",
     "options": null,
-    "correct_answer": "−0.81",
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "−0.81",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "答案：−0.81"
+        }
+      ]
+    },
     "reference_answer_raw": "答案：−0.81",
-    "answer_match_type": "numeric",
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
       "normalize_fullwidth_symbols": true,
       "allow_fraction_decimal_equivalence": false,
       "allow_equivalent_fraction": false,
       "require_simplified_fraction": false,
-      "require_unit": false
+      "require_unit": false,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -4363,7 +5432,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 87,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -4371,7 +5440,8 @@
       "contains_asset",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4388,16 +5458,35 @@
     "difficulty": 2,
     "question_text": "8、如果a、b互为倒数，c、d互为相反数，那么[ASSET:assets/rational/q.math.g6.rational.school.088_rId715.wmf]_________.",
     "options": null,
-    "correct_answer": "4",
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "4",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "答案：4。解析：因为a、b互为倒数，所以ab=1；c、d互为相反数，所以c+d=0，故2ab-(c+d)+2=2×1-0+2=4。"
+        }
+      ]
+    },
     "reference_answer_raw": "答案：4。解析：因为a、b互为倒数，所以ab=1；c、d互为相反数，所以c+d=0，故2ab-(c+d)+2=2×1-0+2=4。",
-    "answer_match_type": "numeric",
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
       "normalize_fullwidth_symbols": true,
       "allow_fraction_decimal_equivalence": false,
       "allow_equivalent_fraction": false,
       "require_simplified_fraction": false,
-      "require_unit": false
+      "require_unit": false,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -4432,7 +5521,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 88,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -4440,7 +5529,8 @@
       "contains_asset",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4459,27 +5549,48 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "A",
           "answer_match_type": "choice",
           "reference_answer_raw": "A"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B"
@@ -4491,7 +5602,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -4581,7 +5693,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 90,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -4602,7 +5714,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4621,15 +5734,26 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
@@ -4641,7 +5765,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -4716,7 +5841,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 98,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -4734,7 +5859,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4753,33 +5879,59 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "3",
           "answer_match_type": "numeric",
           "reference_answer_raw": "3"
         },
         {
-          "item_id": "blank_2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
           "answer": "-4",
           "answer_match_type": "numeric",
           "reference_answer_raw": "-4"
         },
         {
-          "item_id": "blank_3",
+          "item_id": "sub_1.blank_3",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 3,
           "answer": "5",
           "answer_match_type": "numeric",
           "reference_answer_raw": "5"
         },
         {
-          "item_id": "blank_4",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "2023",
           "answer_match_type": "numeric",
           "reference_answer_raw": "2023"
         },
         {
-          "item_id": "blank_5",
+          "item_id": "sub_2.blank_2",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 5,
           "answer": "-2024",
           "answer_match_type": "numeric",
           "reference_answer_raw": "-2024"
@@ -4791,7 +5943,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -4846,7 +5999,7 @@
         "extension": ".wmf"
       }
     ],
-    "source_file": "code/六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 101,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
@@ -4859,6 +6012,7 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   }
 ]

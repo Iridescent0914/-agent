@@ -107,9 +107,27 @@ def _grade_group(student_answer: Any, expected: Any, rule: dict[str, Any]) -> Gr
             "answer_normalization_rule": rule,
         }
         answer = actual_by_id[item_id]
-        result = grade_answer(
-            answer, expected_item.get("answer"), item_rule,
-            response_status="blank" if answer is None else "answered",
+        expected_values = [expected_item.get("answer")]
+        accepted_answers = expected_item.get("accepted_answers")
+        if isinstance(accepted_answers, list):
+            expected_values.extend(accepted_answers)
+        unique_expected_values = []
+        for expected_value in expected_values:
+            if not any(
+                expected_value == existing
+                for existing in unique_expected_values
+            ):
+                unique_expected_values.append(expected_value)
+        candidate_results = [
+            grade_answer(
+                answer, expected_value, item_rule,
+                response_status="blank" if answer is None else "answered",
+            )
+            for expected_value in unique_expected_values
+        ]
+        result = next(
+            (candidate for candidate in candidate_results if candidate.is_correct is True),
+            candidate_results[0],
         )
         results.append({
             "item_id": item_id,

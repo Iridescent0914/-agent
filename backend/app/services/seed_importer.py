@@ -9,6 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.services.literacy_catalog import normalize_literacy_label
+from app.services.answer_units import (
+    AUTO_MATCH_TYPES,
+    is_canonical_answer_structure,
+)
 
 from app.models import KnowledgePoint, Question
 
@@ -71,9 +75,22 @@ def _validate_inputs(
             raise ValueError(f"{item['original_qid']} has unsupported question_type")
         if require_machine_ready and item.get("grading_readiness") != "machine_ready":
             raise ValueError(f"{item['original_qid']} is not machine_ready")
+        if not is_canonical_answer_structure(item.get("correct_answer")):
+            raise ValueError(
+                f"{item['original_qid']} does not use canonical subquestion/blank answers"
+            )
         if item.get("grading_readiness") == "machine_ready":
             if item.get("correct_answer") is None or item.get("answer_match_type") is None:
                 raise ValueError(f"{item['original_qid']} lacks a structured answer")
+            answer_items = item["correct_answer"]["items"]
+            if any(
+                part.get("answer") is None
+                or part.get("answer_match_type") not in AUTO_MATCH_TYPES
+                for part in answer_items
+            ):
+                raise ValueError(
+                    f"{item['original_qid']} has non-deterministic answer units"
+                )
             try:
                 item["core_literacy"] = normalize_literacy_label(
                     item.get("core_literacy")

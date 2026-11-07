@@ -13,12 +13,23 @@ import csv
 import json
 import posixpath
 import re
+import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
+
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1] / "backend"
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
+
+from app.services.answer_units import (  # noqa: E402
+    ANSWER_SCHEMA_VERSION,
+    normalize_answer_structure,
+)
 
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -899,6 +910,39 @@ def build(source: Path, output_root: Path, project_root: Path, limit: int) -> di
     records = [to_record(item, source, project_root) for item in parsed]
     structure_path = output_root / "config" / f"{OUTPUT_PREFIX}_answer_structures.json"
     answer_structure_override_count = apply_answer_structures(records, structure_path)
+    answer_unit_split_count = 0
+    answer_unit_manual_count = 0
+    answer_unit_unresolved_count = 0
+    for record in records:
+        normalized = normalize_answer_structure(
+            question_type=record["question_type"],
+            question_text=record["question_text"],
+            correct_answer=record["correct_answer"],
+            answer_match_type=record["answer_match_type"],
+            reference_answer_raw=record["reference_answer_raw"],
+        )
+        record["correct_answer"] = normalized.answer
+        record["answer_match_type"] = "group"
+        record["answer_normalization_rule"] = {
+            **(record.get("answer_normalization_rule") or {}),
+            "answer_schema_version": ANSWER_SCHEMA_VERSION,
+            "item_order_matters": True,
+            "partial_credit": True,
+        }
+        record["answer_structure_source"] = "normalized_answer_units_v1"
+        answer_unit_split_count += normalized.split_item_count
+        answer_unit_manual_count += normalized.manual_item_count
+        answer_unit_unresolved_count += normalized.unresolved_item_count
+        if normalized.manual_item_count or normalized.unresolved_item_count:
+            record["grading_readiness"] = "raw_answer_only"
+        if normalized.unresolved_item_count:
+            if "answer_units_need_review" not in record["import_issues"]:
+                record["import_issues"].append("answer_units_need_review")
+        else:
+            record["import_issues"] = [
+                issue for issue in record["import_issues"]
+                if issue != "answer_units_need_review"
+            ]
     qids = [record["original_qid"] for record in records]
     duplicate_qids = sorted(qid for qid, count in Counter(qids).items() if count > 1)
     if duplicate_qids:
@@ -921,6 +965,9 @@ def build(source: Path, output_root: Path, project_root: Path, limit: int) -> di
         "seed_machine_ready_count": sum(record["grading_readiness"] == "machine_ready" for record in selected),
         "seed_raw_answer_only_count": sum(record["grading_readiness"] == "raw_answer_only" for record in selected),
         "answer_structure_override_count": answer_structure_override_count,
+        "answer_unit_split_count": answer_unit_split_count,
+        "answer_unit_manual_count": answer_unit_manual_count,
+        "answer_unit_unresolved_count": answer_unit_unresolved_count,
         **asset_report,
         "issue_counts": dict(sorted(issue_counts.items())),
         "source_status_note": "新版校本审核 DOCX 作为权威来源；年级、章、主属节、节内主属 KP、核心素养和必做题标记均直接继承该文件。",

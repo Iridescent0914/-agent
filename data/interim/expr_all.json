@@ -16,45 +16,125 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "数（或任意数）",
           "answer_match_type": "exact",
           "reference_answer_raw": "数（或任意数）"
         },
         {
-          "item_id": "2",
-          "answer": "假分数，分数，括号",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
+          "answer": "假分数",
           "answer_match_type": "exact",
-          "reference_answer_raw": "假分数，分数，括号"
+          "reference_answer_raw": "假分数"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_2.blank_2",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 3,
+          "answer": "分数",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "分数"
+        },
+        {
+          "item_id": "sub_2.blank_3",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 4,
+          "answer": "括号",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "括号"
+        },
+        {
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 5,
           "answer": "1",
           "answer_match_type": "numeric",
           "reference_answer_raw": "1"
         },
         {
-          "item_id": "4",
-          "answer": "2(a+b)或2a+2b，ab",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 6,
+          "answer": "2(a+b)或2a+2b",
           "answer_match_type": "exact",
-          "reference_answer_raw": "2(a+b)或2a+2b，ab"
+          "reference_answer_raw": "2(a+b)或2a+2b"
         },
         {
-          "item_id": "5",
-          "answer": "(a-1)3，6(a-1)2",
+          "item_id": "sub_4.blank_2",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 7,
+          "answer": "ab",
           "answer_match_type": "exact",
-          "reference_answer_raw": "(a-1)3，6(a-1)2"
+          "reference_answer_raw": "ab"
         },
         {
-          "item_id": "6",
+          "item_id": "sub_5.blank_1",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 8,
+          "answer": "(a-1)3",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "(a-1)3"
+        },
+        {
+          "item_id": "sub_5.blank_2",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 9,
+          "answer": "6(a-1)2",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "6(a-1)2"
+        },
+        {
+          "item_id": "sub_6.blank_1",
+          "subquestion_id": "sub_6",
+          "subquestion_no": 6,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 10,
           "answer": "1000x+y",
           "answer_match_type": "exact",
           "reference_answer_raw": "1000x+y"
         },
         {
-          "item_id": "7",
+          "item_id": "sub_7.blank_1",
+          "subquestion_id": "sub_7",
+          "subquestion_no": 7,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 11,
           "answer": "12n",
           "answer_match_type": "exact",
           "reference_answer_raw": "12n"
@@ -66,7 +146,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -174,7 +255,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -193,45 +275,81 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B，"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B，"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "A",
           "answer_match_type": "choice",
           "reference_answer_raw": "A，"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B，"
         },
         {
-          "item_id": "5",
+          "item_id": "sub_5.blank_1",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 5,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B，"
         },
         {
-          "item_id": "6",
+          "item_id": "sub_6.blank_1",
+          "subquestion_id": "sub_6",
+          "subquestion_no": 6,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 6,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B，"
         },
         {
-          "item_id": "7",
+          "item_id": "sub_7.blank_1",
+          "subquestion_id": "sub_7",
+          "subquestion_no": 7,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 7,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
@@ -243,7 +361,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -335,7 +454,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -352,12 +472,31 @@
     "difficulty": 3,
     "question_text": "3、如图，将一个边长为a的正方形剪去两个小长方形，得到一个“S”形的图案，求这个“S”形的图案的周长.\n[ASSET:assets/expr/q.math.g6.expr.school.003_rId51.png]",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "S形图案的周长为8a-4b。过程：原正方形周长为4a；剪去两个小长方形后，每个凹口会多出两条深为a-b的边，两个凹口共增加4(a-b)，所以周长为4a+4(a-b)=8a-4b。",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "S形图案的周长为8a-4b。过程：原正方形周长为4a；剪去两个小长方形后，每个凹口会多出两条深为a-b的边，两个凹口共增加4(a-b)，所以周长为4a+4(a-b)=8a-4b。"
+        }
+      ]
+    },
     "reference_answer_raw": "S形图案的周长为8a-4b。过程：原正方形周长为4a；剪去两个小长方形后，每个凹口会多出两条深为a-b的边，两个凹口共增加4(a-b)，所以周长为4a+4(a-b)=8a-4b。",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -399,7 +538,8 @@
     "import_issues": [
       "contains_asset"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -416,12 +556,31 @@
     "difficulty": 2,
     "question_text": "4、楼梯的示意图如图所示，要在楼梯上铺一条地毯，则地毯至少需要多少米？用字母[ASSET:assets/expr/q.math.g6.expr.school.004_rId53.wmf]和[ASSET:assets/expr/q.math.g6.expr.school.004_rId55.wmf]表示地毯的长度，并简要说明理由.\n[ASSET:assets/expr/q.math.g6.expr.school.004_rId56.png]",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "地毯至少需要(a+h)米。理由：楼梯上所有水平部分的长度和等于底边长a米，所有竖直部分的长度和等于高h米，所以地毯总长为a+h",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "地毯至少需要(a+h)米。理由：楼梯上所有水平部分的长度和等于底边长a米，所有竖直部分的长度和等于高h米，所以地毯总长为a+h"
+        }
+      ]
+    },
     "reference_answer_raw": "地毯至少需要(a+h)米。理由：楼梯上所有水平部分的长度和等于底边长a米，所有竖直部分的长度和等于高h米，所以地毯总长为a+h",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -475,7 +634,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -492,12 +652,31 @@
     "difficulty": 2,
     "question_text": "5、全班共40人参加数学检测，班级中男生共18名平均得[ASSET:assets/expr/q.math.g6.expr.school.005_rId58.wmf]分，女生共22名平均得[ASSET:assets/expr/q.math.g6.expr.school.005_rId60.wmf]分，此次检测全班的平均分是多少？",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "全班平均分为[ASSET:assets/expr/q.math.g6.expr.school.005_rId62.wmf]，即[ASSET:assets/expr/q.math.g6.expr.school.005_rId64.wmf]。过程：总分=男生总分+女生总分=18a+22b，再除以全班40人",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "全班平均分为[ASSET:assets/expr/q.math.g6.expr.school.005_rId62.wmf]，即[ASSET:assets/expr/q.math.g6.expr.school.005_rId64.wmf]。过程：总分=男生总分+女生总分=18a+22b，再除以全班40人"
+        }
+      ]
+    },
     "reference_answer_raw": "全班平均分为[ASSET:assets/expr/q.math.g6.expr.school.005_rId62.wmf]，即[ASSET:assets/expr/q.math.g6.expr.school.005_rId64.wmf]。过程：总分=男生总分+女生总分=18a+22b，再除以全班40人",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -558,7 +737,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -575,12 +755,42 @@
     "difficulty": 3,
     "question_text": "[ASSET:assets/expr/q.math.g6.expr.school.006_rId65.png]6、按如图所示的方法搭等边三角形：\n（1）搭5个三角形需多少根火柴？\n（2）搭[ASSET:assets/expr/q.math.g6.expr.school.006_rId67.wmf]个三角形需多少根火柴？",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "搭5个三角形需11根火柴；",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "搭5个三角形需11根火柴；"
+        },
+        {
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
+          "answer": "搭n个三角形需2n+1根火柴。过程：第1个用3根，以后每增加1个三角形只增加2根，所以第n个为3+2(n-1)=2n+1",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "搭n个三角形需2n+1根火柴。过程：第1个用3根，以后每增加1个三角形只增加2根，所以第n个为3+2(n-1)=2n+1"
+        }
+      ]
+    },
     "reference_answer_raw": "（1）搭5个三角形需11根火柴；（2）搭n个三角形需2n+1根火柴。过程：第1个用3根，以后每增加1个三角形只增加2根，所以第n个为3+2(n-1)=2n+1",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -629,7 +839,8 @@
       "multiple_subquestions",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -646,12 +857,31 @@
     "difficulty": 3,
     "question_text": "7、某商品的成本价为a元，按成本价提高[ASSET:assets/expr/q.math.g6.expr.school.007_rId69.wmf]后标价，再以8折（即按标价的80%）销售，那么，求商品的售价.",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "1.04a或[ASSET:assets/expr/q.math.g6.expr.school.007_rId71.wmf]。过程：成本价为a元，按成本价提高[ASSET:assets/expr/q.math.g6.expr.school.007_rId69.wmf]后，标价为[ASSET:assets/expr/q.math.g6.expr.school.007_rId74.wmf]；再按标价的8折销售，售价为[ASSET:assets/expr/q.math.g6.expr.school.007_rId76.wmf]",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "1.04a或[ASSET:assets/expr/q.math.g6.expr.school.007_rId71.wmf]。过程：成本价为a元，按成本价提高[ASSET:assets/expr/q.math.g6.expr.school.007_rId69.wmf]后，标价为[ASSET:assets/expr/q.math.g6.expr.school.007_rId74.wmf]；再按标价的8折销售，售价为[ASSET:assets/expr/q.math.g6.expr.school.007_rId76.wmf]"
+        }
+      ]
+    },
     "reference_answer_raw": "1.04a或[ASSET:assets/expr/q.math.g6.expr.school.007_rId71.wmf]。过程：成本价为a元，按成本价提高[ASSET:assets/expr/q.math.g6.expr.school.007_rId69.wmf]后，标价为[ASSET:assets/expr/q.math.g6.expr.school.007_rId74.wmf]；再按标价的8折销售，售价为[ASSET:assets/expr/q.math.g6.expr.school.007_rId76.wmf]",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -712,7 +942,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -729,12 +960,31 @@
     "difficulty": 3,
     "question_text": "8、某水果店第一天以每千克3元的价格，出售x千克西瓜，第二天又以每千克2元的价格，出售y千克西瓜，求两天卖出的西瓜每千克平均售价.",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "两天平均售价 ＝ [ASSET:assets/expr/q.math.g6.expr.school.008_rId78.wmf]元/千克。（总售价 3x＋2y 元，总重量 x＋y千克，平均售价＝总售价÷总重量。）",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "两天平均售价 ＝ [ASSET:assets/expr/q.math.g6.expr.school.008_rId78.wmf]元/千克。（总售价 3x＋2y 元，总重量 x＋y千克，平均售价＝总售价÷总重量。）"
+        }
+      ]
+    },
     "reference_answer_raw": "两天平均售价 ＝ [ASSET:assets/expr/q.math.g6.expr.school.008_rId78.wmf]元/千克。（总售价 3x＋2y 元，总重量 x＋y千克，平均售价＝总售价÷总重量。）",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -777,7 +1027,8 @@
       "contains_asset",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -796,51 +1047,202 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
-          "answer": "运算符号，数或表示数的字母，数字，字母",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "运算符号",
           "answer_match_type": "exact",
-          "reference_answer_raw": "运算符号，数或表示数的字母，数字，字母"
+          "reference_answer_raw": "运算符号"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
+          "answer": "数或表示数的字母",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "数或表示数的字母"
+        },
+        {
+          "item_id": "sub_1.blank_3",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 3,
+          "answer": "数字",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "数字"
+        },
+        {
+          "item_id": "sub_1.blank_4",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_4",
+          "blank_no": 4,
+          "order_no": 4,
+          "answer": "字母",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "字母"
+        },
+        {
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 5,
           "answer": "6",
           "answer_match_type": "numeric",
           "reference_answer_raw": "6"
         },
         {
-          "item_id": "3",
-          "answer": null,
-          "answer_match_type": null,
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 6,
+          "answer": "5a-3，[ASSET:assets/expr/q.math.g6.expr.school.009_rId118.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId120.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId122.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId124.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId126.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId128.wmf]",
+          "answer_match_type": "exact",
           "reference_answer_raw": "5a-3，[ASSET:assets/expr/q.math.g6.expr.school.009_rId118.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId120.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId122.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId124.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId126.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId128.wmf]"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_3.blank_2",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 7,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
+        },
+        {
+          "item_id": "sub_3.blank_3",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 8,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
+        },
+        {
+          "item_id": "sub_3.blank_4",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_4",
+          "blank_no": 4,
+          "order_no": 9,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
+        },
+        {
+          "item_id": "sub_3.blank_5",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_5",
+          "blank_no": 5,
+          "order_no": 10,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
+        },
+        {
+          "item_id": "sub_3.blank_6",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_6",
+          "blank_no": 6,
+          "order_no": 11,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
+        },
+        {
+          "item_id": "sub_3.blank_7",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_7",
+          "blank_no": 7,
+          "order_no": 12,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
+        },
+        {
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 13,
           "answer": "18n+2",
           "answer_match_type": "exact",
           "reference_answer_raw": "18n+2"
         },
         {
-          "item_id": "5",
-          "answer": "5x+125，4.5x+135",
+          "item_id": "sub_5.blank_1",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 14,
+          "answer": "5x+125",
           "answer_match_type": "exact",
-          "reference_answer_raw": "5x+125，4.5x+135"
+          "reference_answer_raw": "5x+125"
         },
         {
-          "item_id": "6",
+          "item_id": "sub_5.blank_2",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 15,
+          "answer": "4.5x+135",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "4.5x+135"
+        },
+        {
+          "item_id": "sub_6.blank_1",
+          "subquestion_id": "sub_6",
+          "subquestion_no": 6,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 16,
           "answer": "[ASSET:assets/expr/q.math.g6.expr.school.009_rId130.wmf]",
           "answer_match_type": "exact",
           "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.009_rId130.wmf]"
         },
         {
-          "item_id": "7",
+          "item_id": "sub_7.blank_1",
+          "subquestion_id": "sub_7",
+          "subquestion_no": 7,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 17,
           "answer": "[ASSET:assets/expr/q.math.g6.expr.school.009_rId132.wmf]",
           "answer_match_type": "exact",
           "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.009_rId132.wmf]"
         },
         {
-          "item_id": "8",
+          "item_id": "sub_8.blank_1",
+          "subquestion_id": "sub_8",
+          "subquestion_no": 8,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 18,
           "answer": "[ASSET:assets/expr/q.math.g6.expr.school.009_rId134.wmf]",
           "answer_match_type": "exact",
           "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.009_rId134.wmf]"
@@ -852,7 +1254,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -1065,6 +1468,7 @@
       "contains_asset",
       "multiple_subquestions",
       "answer_items_not_structured",
+      "answer_units_need_review",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -1099,7 +1503,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1118,27 +1523,48 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
@@ -1150,7 +1576,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1296,7 +1723,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1313,12 +1741,31 @@
     "difficulty": 4,
     "question_text": "3、小丽为妈妈准备了一份生日礼物，礼物外包装盒为长方体，长、宽、高分别为a、b、[ASSET:assets/expr/q.math.g6.expr.school.011_rId189.wmf]为了美观，小丽决定在包装盒外用丝带打包装饰，她发现，可以用如图所示的三种方式打包所需带的长度分别为[ASSET:assets/expr/q.math.g6.expr.school.011_rId191.wmf]、[ASSET:assets/expr/q.math.g6.expr.school.011_rId193.wmf]、[ASSET:assets/expr/q.math.g6.expr.school.011_rId195.wmf]（不计打结处带的长度）.试用含a、b、c的代数式分别表示[ASSET:assets/expr/q.math.g6.expr.school.011_rId197.wmf]、[ASSET:assets/expr/q.math.g6.expr.school.011_rId199.wmf]、[ASSET:assets/expr/q.math.g6.expr.school.011_rId201.wmf].\n[ASSET:assets/expr/q.math.g6.expr.school.011_rId202.png]",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "[ASSET:assets/expr/q.math.g6.expr.school.011_rId204.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.011_rId206.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.011_rId208.wmf]",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.011_rId204.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.011_rId206.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.011_rId208.wmf]"
+        }
+      ]
+    },
     "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.011_rId204.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.011_rId206.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.011_rId208.wmf]",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -1420,7 +1867,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1437,12 +1885,31 @@
     "difficulty": 3,
     "question_text": "4、某市鼓励市民节约用水，如果每月每户用水不超过15立方米，那么每立方米水价按a元缴纳，如果超过15立方米，那么超过部分按每立方米(a＋1)元收费，若某户居民在一个月内用水35立方米，则应缴纳水费多少元?",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "35a ＋ 20（元）。前 15 立方米按 a 元/立方米：15a；超过的 20 立方米按 (a＋1) 元/立方米：20(a＋1)＝20a＋20；合计 15a ＋ 20a ＋ 20 ＝ 35a ＋ 20。",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "35a ＋ 20（元）。前 15 立方米按 a 元/立方米：15a；超过的 20 立方米按 (a＋1) 元/立方米：20(a＋1)＝20a＋20；合计 15a ＋ 20a ＋ 20 ＝ 35a ＋ 20。"
+        }
+      ]
+    },
     "reference_answer_raw": "35a ＋ 20（元）。前 15 立方米按 a 元/立方米：15a；超过的 20 立方米按 (a＋1) 元/立方米：20(a＋1)＝20a＋20；合计 15a ＋ 20a ＋ 20 ＝ 35a ＋ 20。",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -1476,7 +1943,8 @@
     "source_review_status": "reviewed",
     "import_status": "parsed",
     "import_issues": [],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1495,27 +1963,48 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "A",
           "answer_match_type": "choice",
           "reference_answer_raw": "A，26。由-a+2b+8=0得-a+2b=-8，所以2a-4b=16，2a-4b+10=26"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B，-1。a、b互为相反数，所以a+b=0；c、d互为倒数，所以cd=1，原式=0-1=-1"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B，-7。因为a-b=3，c+d=4，所以(b-c)-(a+d)=b-a-c-d=-(a-b)-(c+d)=-3-4=-7"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D，-5。由表格知，当x=2时，2k+b=5，所以-2k-b=-（2k+b）=-5"
@@ -1527,7 +2016,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -1635,7 +2125,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1652,12 +2143,31 @@
     "difficulty": 2,
     "question_text": "3、已知( a+2 )2+4|b-5|=0，求[ASSET:assets/expr/q.math.g6.expr.school.014_rId238.wmf]的值.",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "过程：由[ASSET:assets/expr/q.math.g6.expr.school.014_rId240.wmf]，得a+2=0，b-5=0，所以a=-2，b=5。原式[ASSET:assets/expr/q.math.g6.expr.school.014_rId238.wmf]=a2+2b，代入得4+10=14。",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "过程：由[ASSET:assets/expr/q.math.g6.expr.school.014_rId240.wmf]，得a+2=0，b-5=0，所以a=-2，b=5。原式[ASSET:assets/expr/q.math.g6.expr.school.014_rId238.wmf]=a2+2b，代入得4+10=14。"
+        }
+      ]
+    },
     "reference_answer_raw": "过程：由[ASSET:assets/expr/q.math.g6.expr.school.014_rId240.wmf]，得a+2=0，b-5=0，所以a=-2，b=5。原式[ASSET:assets/expr/q.math.g6.expr.school.014_rId238.wmf]=a2+2b，代入得4+10=14。",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -1704,7 +2214,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1721,12 +2232,31 @@
     "difficulty": 3,
     "question_text": "4、已知[ASSET:assets/expr/q.math.g6.expr.school.015_rId243.wmf]＝7，求[ASSET:assets/expr/q.math.g6.expr.school.015_rId245.wmf]的值.",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "10",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "10"
+        }
+      ]
+    },
     "reference_answer_raw": "10",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -1773,7 +2303,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1790,12 +2321,31 @@
     "difficulty": 3,
     "question_text": "5、当x＝1时，代数式3ax 2＋bx的值为2，则当x＝3时，求代数式ax 2＋bx的值.",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "由 x＝1 时 3ax²＋bx＝3a＋b＝2；当 x＝3 时 ax²＋bx＝9a＋3b＝3(3a＋b)＝3×2＝6。",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "由 x＝1 时 3ax²＋bx＝3a＋b＝2；当 x＝3 时 ax²＋bx＝9a＋3b＝3(3a＋b)＝3×2＝6。"
+        }
+      ]
+    },
     "reference_answer_raw": "由 x＝1 时 3ax²＋bx＝3a＋b＝2；当 x＝3 时 ax²＋bx＝9a＋3b＝3(3a＋b)＝3×2＝6。",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -1827,7 +2377,8 @@
     "source_review_status": "reviewed",
     "import_status": "parsed",
     "import_issues": [],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1846,15 +2397,26 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "blank_1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "[ASSET:assets/expr/q.math.g6.expr.school.017_rId259.wmf]",
           "answer_match_type": "exact",
           "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.017_rId259.wmf]"
         },
         {
-          "item_id": "blank_2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "其中n为自然数",
           "answer_match_type": "exact",
           "reference_answer_raw": "其中n为自然数"
@@ -1866,7 +2428,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -1947,7 +2510,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -1964,12 +2528,31 @@
     "difficulty": 3,
     "question_text": "[ASSET:assets/expr/q.math.g6.expr.school.018_rId260.png]7、一个长宽分别式a m、b m的长方形绿化用地，有几条宽为c m的横纵交错的步道，其余部分种草.若a=20，b=10，c=2.如图,求步道的总面积；",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "56过程：由图可知有1条横向步道和1条纵向步道，宽均为c。步道面积=横向步道面积+纵向步道面积-交叉重叠面积=ac+bc-c2。代入a=20，b=10，c=2，得20×2+10×2-22=40+20-4=56",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "56过程：由图可知有1条横向步道和1条纵向步道，宽均为c。步道面积=横向步道面积+纵向步道面积-交叉重叠面积=ac+bc-c2。代入a=20，b=10，c=2，得20×2+10×2-22=40+20-4=56"
+        }
+      ]
+    },
     "reference_answer_raw": "56过程：由图可知有1条横向步道和1条纵向步道，宽均为c。步道面积=横向步道面积+纵向步道面积-交叉重叠面积=ac+bc-c2。代入a=20，b=10，c=2，得20×2+10×2-22=40+20-4=56",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -2011,7 +2594,8 @@
     "import_issues": [
       "contains_asset"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2028,12 +2612,31 @@
     "difficulty": 1,
     "question_text": "4、已知一个代数式为[ASSET:assets/expr/q.math.g6.expr.school.019_rId262.wmf].若它是关于[ASSET:assets/expr/q.math.g6.expr.school.019_rId264.wmf]的一次式，求[ASSET:assets/expr/q.math.g6.expr.school.019_rId266.wmf]的值，并写出该一次式.",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "a=2，原式=-3x-5",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "a=2，原式=-3x-5"
+        }
+      ]
+    },
     "reference_answer_raw": "a=2，原式=-3x-5",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -2086,7 +2689,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2103,12 +2707,31 @@
     "difficulty": 2,
     "question_text": "5、若[ASSET:assets/expr/q.math.g6.expr.school.020_rId268.wmf]，且[ASSET:assets/expr/q.math.g6.expr.school.020_rId270.wmf]是关于x的一次式，求[ASSET:assets/expr/q.math.g6.expr.school.020_rId272.wmf]的值.",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "22023",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "22023"
+        }
+      ]
+    },
     "reference_answer_raw": "22023",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -2161,7 +2784,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2178,12 +2802,31 @@
     "difficulty": 2,
     "question_text": "6、关于x的代数式[ASSET:assets/expr/q.math.g6.expr.school.021_rId274.wmf]，无论x取何值代数式的值为1，求[ASSET:assets/expr/q.math.g6.expr.school.021_rId276.wmf].",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "9",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "9"
+        }
+      ]
+    },
     "reference_answer_raw": "9",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -2230,7 +2873,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2249,42 +2893,95 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "字母",
           "answer_match_type": "exact",
           "reference_answer_raw": "字母"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "1",
           "answer_match_type": "numeric",
           "reference_answer_raw": "1"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "0或2",
           "answer_match_type": "exact",
           "reference_answer_raw": "0或2"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "0或-2",
           "answer_match_type": "exact",
           "reference_answer_raw": "0或-2"
         },
         {
-          "item_id": "5",
-          "answer": "0或2，-1或-3",
+          "item_id": "sub_5.blank_1",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 5,
+          "answer": "0或2",
           "answer_match_type": "exact",
-          "reference_answer_raw": "0或2，-1或-3"
+          "reference_answer_raw": "0或2"
         },
         {
-          "item_id": "6",
-          "answer": "2(2a+b)(a-b)，22",
+          "item_id": "sub_5.blank_2",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 6,
+          "answer": "-1或-3",
           "answer_match_type": "exact",
-          "reference_answer_raw": "2(2a+b)(a-b)，22"
+          "reference_answer_raw": "-1或-3"
+        },
+        {
+          "item_id": "sub_6.blank_1",
+          "subquestion_id": "sub_6",
+          "subquestion_no": 6,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 7,
+          "answer": "2(2a+b)(a-b)",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "2(2a+b)(a-b)"
+        },
+        {
+          "item_id": "sub_6.blank_2",
+          "subquestion_id": "sub_6",
+          "subquestion_no": 6,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 8,
+          "answer": "22",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "22"
         }
       ]
     },
@@ -2293,7 +2990,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -2408,7 +3106,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2427,27 +3126,48 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "A",
           "answer_match_type": "choice",
           "reference_answer_raw": "A"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B"
@@ -2459,7 +3179,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -2593,7 +3314,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2610,12 +3332,31 @@
     "difficulty": 2,
     "question_text": "3、已知在代数式[ASSET:assets/expr/q.math.g6.expr.school.024_rId335.wmf]中，不论[ASSET:assets/expr/q.math.g6.expr.school.024_rId337.wmf]取什么值，这个代数式总是一个定值，求[ASSET:assets/expr/q.math.g6.expr.school.024_rId339.wmf]的值.\n4、任取一个两位数，例如52，若把它的个位和十位的数字位置对调得到25，则[ASSET:assets/expr/q.math.g6.expr.school.024_rId341.wmf]是11的倍数，是否一切两位数都有这种性质，为什么？",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "b=2。过程：-2x+bx-1=(b-2)x-1。要使它不论x取何值都是定值，必须b-2=0，所以b=2。\n一切两位数都有这种性质。设原两位数的十位数字为a，个位数字为b，则原数为10a+b，调换个位、十位后的数为10b+a，两数和为(10a+b)+(10b+a)=11a+11b=11(a+b)，所以一定是11的倍数。",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "b=2。过程：-2x+bx-1=(b-2)x-1。要使它不论x取何值都是定值，必须b-2=0，所以b=2。\n一切两位数都有这种性质。设原两位数的十位数字为a，个位数字为b，则原数为10a+b，调换个位、十位后的数为10b+a，两数和为(10a+b)+(10b+a)=11a+11b=11(a+b)，所以一定是11的倍数。"
+        }
+      ]
+    },
     "reference_answer_raw": "b=2。过程：-2x+bx-1=(b-2)x-1。要使它不论x取何值都是定值，必须b-2=0，所以b=2。\n一切两位数都有这种性质。设原两位数的十位数字为a，个位数字为b，则原数为10a+b，调换个位、十位后的数为10b+a，两数和为(10a+b)+(10b+a)=11a+11b=11(a+b)，所以一定是11的倍数。",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -2674,7 +3415,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2693,20 +3435,39 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
-          "answer": [
-            "2a",
-            "3a-1"
-          ],
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "2a",
           "answer_match_type": "exact",
-          "reference_answer_raw": "2a；3a-1"
+          "reference_answer_raw": "2a"
         },
         {
-          "item_id": "2",
-          "answer": null,
-          "answer_match_type": null,
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
+          "answer": "3a-1",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "3a-1"
+        },
+        {
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
+          "answer": "周长=24a-2，当a=3时，周长=70",
+          "answer_match_type": "exact",
           "reference_answer_raw": "周长=24a-2，当a=3时，周长=70"
         }
       ]
@@ -2716,7 +3477,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -2796,7 +3558,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2813,12 +3576,53 @@
     "difficulty": 2,
     "question_text": "6、小张去买水果，在第一个店苹果的价格[ASSET:assets/expr/q.math.g6.expr.school.026_rId356.wmf]元/千克，橘子的价格[ASSET:assets/expr/q.math.g6.expr.school.026_rId358.wmf]元/千克，小明买了3千克苹果和5千克橘子；在第二个店苹果的价格[ASSET:assets/expr/q.math.g6.expr.school.026_rId360.wmf]元/千克，橘子的价格[ASSET:assets/expr/q.math.g6.expr.school.026_rId362.wmf]元/千克，小明又买了4千克苹果和4千克橘子.\n（1）小明两次分别花了多少元？\n（2）小明两次的橘子的平均价格为多少？\n（3）两次一共花了41元，且[ASSET:assets/expr/q.math.g6.expr.school.026_rId364.wmf]为正整数，求[ASSET:assets/expr/q.math.g6.expr.school.026_rId364.wmf].",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "第一次：（3a+5b）元，第二次：4（b+1）+4（a-1）=（4a+4b）元",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "第一次：（3a+5b）元，第二次：4（b+1）+4（a-1）=（4a+4b）元"
+        },
+        {
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
+        },
+        {
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
+        }
+      ]
+    },
     "reference_answer_raw": "第一次：（3a+5b）元，第二次：4（b+1）+4（a-1）=（4a+4b）元；\n（2）[ASSET:assets/expr/q.math.g6.expr.school.026_rId367.wmf]（元/千克）",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -2885,6 +3689,7 @@
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
+      "answer_units_need_review",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -2892,7 +3697,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2909,12 +3715,53 @@
     "difficulty": 3,
     "question_text": "7、目前，上海市城市“一户一表”居民用电实行阶梯电价，具体收费标准如下：\n（1）若我市某户一年用电量为3600度，求该户应交电费多少？\n（2）若我市某户一年用电量为x度，请用含x的代数式表示该户一年应交的电费；\n（3）若我市某户一年电费平均为每度0.8元，那么该户1一年用电量为多少？",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
+        },
+        {
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
+        },
+        {
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
+        }
+      ]
+    },
     "reference_answer_raw": "按上海“一户一表”居民未分时阶梯电价：第一档0～3000度，0.6元/度；第二档3000～4800度，0.7元/度；第三档4800度以上，0.9元/度。\n（1）3600度电费=3000×0.6+(3600-3000)×0.7=2220元。\n年用电量为x度时，电费为：0≤x≤3000，0.6x；3000<x≤4800，3000×0.6+(x-3000)×0.7=0.7x-300；x>4800，3000×0.6+(4800-3000)×0.7+(x-4800)×0.9=0.9x-1260。\n（3）若平均每度0.8元，则应在第三档，(0.9x-1260)=0.8x，解得x=12600",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -2948,9 +3795,11 @@
     "source_review_status": "reviewed",
     "import_status": "parsed",
     "import_issues": [
-      "multiple_subquestions"
+      "multiple_subquestions",
+      "answer_units_need_review"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -2969,59 +3818,150 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "2",
-          "answer": [
-            "-a-1",
-            "-a+1",
-            "a-1",
-            "a+1"
-          ],
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "a+2",
           "answer_match_type": "exact",
-          "reference_answer_raw": "-a-1;-a+1;a-1;a+1"
+          "reference_answer_raw": "a+2"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
+          "answer": "-a-1",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "-a-1"
+        },
+        {
+          "item_id": "sub_2.blank_2",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 3,
+          "answer": "-a+1",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "-a+1"
+        },
+        {
+          "item_id": "sub_2.blank_3",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_3",
+          "blank_no": 3,
+          "order_no": 4,
+          "answer": "a-1",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "a-1"
+        },
+        {
+          "item_id": "sub_2.blank_4",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_4",
+          "blank_no": 4,
+          "order_no": 5,
+          "answer": "a+1",
+          "answer_match_type": "exact",
+          "reference_answer_raw": "a+1"
+        },
+        {
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 6,
           "answer": "8a",
           "answer_match_type": "exact",
           "reference_answer_raw": "8a"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 7,
           "answer": "-2a-3",
           "answer_match_type": "exact",
           "reference_answer_raw": "-2a-3"
         },
         {
-          "item_id": "5",
+          "item_id": "sub_5.blank_1",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 8,
           "answer": "4a-2",
           "answer_match_type": "exact",
           "reference_answer_raw": "4a-2"
         },
         {
-          "item_id": "6",
+          "item_id": "sub_6.blank_1",
+          "subquestion_id": "sub_6",
+          "subquestion_no": 6,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 9,
           "answer": "6a-5",
           "answer_match_type": "exact",
           "reference_answer_raw": "6a-5"
         },
         {
-          "item_id": "7",
+          "item_id": "sub_7.blank_1",
+          "subquestion_id": "sub_7",
+          "subquestion_no": 7,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 10,
           "answer": "3x+4y-3",
           "answer_match_type": "exact",
           "reference_answer_raw": "3x+4y-3"
         },
         {
-          "item_id": "8",
+          "item_id": "sub_8.blank_1",
+          "subquestion_id": "sub_8",
+          "subquestion_no": 8,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 11,
           "answer": "-8",
           "answer_match_type": "numeric",
           "reference_answer_raw": "-8"
         },
         {
-          "item_id": "9",
+          "item_id": "sub_9.blank_1",
+          "subquestion_id": "sub_9",
+          "subquestion_no": 9,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 12,
           "answer": "6x-5",
           "answer_match_type": "exact",
           "reference_answer_raw": "6x-5"
+        },
+        {
+          "item_id": "sub_10.blank_1",
+          "subquestion_id": "sub_10",
+          "subquestion_no": 10,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 13,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
         }
       ]
     },
@@ -3030,9 +3970,10 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
-    "grading_readiness": "machine_ready",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.expr.kp.07_remove_parentheses",
       "name": "去括号法则（数与一次式相乘）",
@@ -3202,6 +4143,7 @@
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
+      "answer_units_need_review",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -3230,7 +4172,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3249,15 +4192,26 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "B",
           "answer_match_type": "choice",
           "reference_answer_raw": "B；。图中小长方形的短边为a、长边为b。大长方形横向长度为左侧3个小长方形的宽加右侧1个小长方形的长，即3a+b；纵向高度为上面1个横放小长方形的宽加下面2个竖放小长方形的宽，即b+2a"
@@ -3269,7 +4223,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -3348,7 +4303,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3365,12 +4321,31 @@
     "difficulty": 3,
     "question_text": "3、已知[ASSET:assets/expr/q.math.g6.expr.school.030_rId436.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.030_rId438.wmf].求[ASSET:assets/expr/q.math.g6.expr.school.030_rId440.wmf]的值.",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "-7。过程：已知x-y=10，u+v=-3，目标式为(y-u)-(x+v)=y-u-x-v=-(x-y)-(u+v)，所以原式=-10-(-3)=-7",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "-7。过程：已知x-y=10，u+v=-3，目标式为(y-u)-(x+v)=y-u-x-v=-(x-y)-(u+v)，所以原式=-10-(-3)=-7"
+        }
+      ]
+    },
     "reference_answer_raw": "-7。过程：已知x-y=10，u+v=-3，目标式为(y-u)-(x+v)=y-u-x-v=-(x-y)-(u+v)，所以原式=-10-(-3)=-7",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -3423,7 +4398,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3440,12 +4416,42 @@
     "difficulty": 2,
     "question_text": "4、已知：[ASSET:assets/expr/q.math.g6.expr.school.031_rId442.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.031_rId444.wmf].\n（1）计算：[ASSET:assets/expr/q.math.g6.expr.school.031_rId446.wmf]；（2）若[ASSET:assets/expr/q.math.g6.expr.school.031_rId448.wmf]，求[ASSET:assets/expr/q.math.g6.expr.school.031_rId450.wmf]的值.",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "A+B=3x+y-1",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "A+B=3x+y-1"
+        },
+        {
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
+          "answer": "A+B=-5。过程：A=2x+2y-1，B=x-y，所以A+B=3x+y-1。由(x+2)2+|y-2|=0，得x=-2，y=2，代入得3×(-2)+2-1=-5",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "A+B=-5。过程：A=2x+2y-1，B=x-y，所以A+B=3x+y-1。由(x+2)2+|y-2|=0，得x=-2，y=2，代入得3×(-2)+2-1=-5"
+        }
+      ]
+    },
     "reference_answer_raw": "（1）A+B=3x+y-1。（2）A+B=-5。过程：A=2x+2y-1，B=x-y，所以A+B=3x+y-1。由(x+2)2+|y-2|=0，得x=-2，y=2，代入得3×(-2)+2-1=-5",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -3513,7 +4519,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3532,12 +4539,29 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "whole",
-          "answer": null,
-          "answer_match_type": null,
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "共同特征：每组一次式相加后，所有字母项系数和为0，即结果为0或常数项；\n2m-3n、-5m+9n、-3m-n能构成“0系整式组”，因为相加为-6n，不符合0系，故不能。（2）若ax+y、-2x+by、2x-5y构成“0系整式组”，则x项系数a-2+2=a，y项系数1+b-5=b-4，都应为0，所以a=0，b=4。",
+          "answer_match_type": "exact",
           "reference_answer_raw": "共同特征：每组一次式相加后，所有字母项系数和为0，即结果为0或常数项；\n2m-3n、-5m+9n、-3m-n能构成“0系整式组”，因为相加为-6n，不符合0系，故不能。（2）若ax+y、-2x+by、2x-5y构成“0系整式组”，则x项系数a-2+2=a，y项系数1+b-5=b-4，都应为0，所以a=0，b=4。"
+        },
+        {
+          "item_id": "sub_1.blank_2",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 2,
+          "answer": null,
+          "answer_match_type": "manual",
+          "reference_answer_raw": null
         }
       ]
     },
@@ -3546,7 +4570,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -3669,6 +4694,7 @@
       "contains_asset",
       "multiple_subquestions",
       "answer_items_not_structured",
+      "answer_units_need_review",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
       "asset_needs_web_conversion",
@@ -3687,7 +4713,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3704,12 +4731,31 @@
     "difficulty": 5,
     "question_text": "6、已知[ASSET:assets/expr/q.math.g6.expr.school.033_rId486.wmf],且[ASSET:assets/expr/q.math.g6.expr.school.033_rId488.wmf]，若无论[ASSET:assets/expr/q.math.g6.expr.school.033_rId490.wmf]取何值，代数式[ASSET:assets/expr/q.math.g6.expr.school.033_rId492.wmf]的值不变，求[ASSET:assets/expr/q.math.g6.expr.school.033_rId494.wmf]的值.",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "[ASSET:assets/expr/q.math.g6.expr.school.033_rId496.wmf]",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.033_rId496.wmf]"
+        }
+      ]
+    },
     "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.033_rId496.wmf]",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -3780,7 +4826,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3799,21 +4846,37 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "是",
           "answer_match_type": "exact",
           "reference_answer_raw": "是"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "-4",
           "answer_match_type": "numeric",
           "reference_answer_raw": "-4。过程：a与b互为相依数，得ab=a+b；b与c互为相反数，得c=-b。原式=5ab+7c-5a+2b-4=5(a+b)-7b-5a+2b-4=-4"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "[ASSET:assets/expr/q.math.g6.expr.school.034_rId500.wmf]",
           "answer_match_type": "exact",
           "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.034_rId500.wmf]"
@@ -3825,7 +4888,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -3874,7 +4938,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -3893,57 +4958,103 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "2x+4y-6",
           "answer_match_type": "exact",
           "reference_answer_raw": "2x+4y-6"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "[ASSET:assets/expr/q.math.g6.expr.school.035_rId533.wmf]",
           "answer_match_type": "exact",
           "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.035_rId533.wmf]"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
           "answer": "-14a-3b",
           "answer_match_type": "exact",
           "reference_answer_raw": "-14a-3b"
         },
         {
-          "item_id": "4",
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "4m-n",
           "answer_match_type": "exact",
           "reference_answer_raw": "4m-n"
         },
         {
-          "item_id": "5",
+          "item_id": "sub_5.blank_1",
+          "subquestion_id": "sub_5",
+          "subquestion_no": 5,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 5,
           "answer": "630-179a",
           "answer_match_type": "exact",
           "reference_answer_raw": "630-179a"
         },
         {
-          "item_id": "6",
+          "item_id": "sub_6.blank_1",
+          "subquestion_id": "sub_6",
+          "subquestion_no": 6,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 6,
           "answer": "-2",
           "answer_match_type": "numeric",
           "reference_answer_raw": "-2"
         },
         {
-          "item_id": "7",
+          "item_id": "sub_7.blank_1",
+          "subquestion_id": "sub_7",
+          "subquestion_no": 7,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 7,
           "answer": "8",
           "answer_match_type": "numeric",
           "reference_answer_raw": "8"
         },
         {
-          "item_id": "8",
+          "item_id": "sub_8.blank_1",
+          "subquestion_id": "sub_8",
+          "subquestion_no": 8,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 8,
           "answer": "2",
           "answer_match_type": "numeric",
           "reference_answer_raw": "2"
         },
         {
-          "item_id": "9",
+          "item_id": "sub_9.blank_1",
+          "subquestion_id": "sub_9",
+          "subquestion_no": 9,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 9,
           "answer": "[ASSET:assets/expr/q.math.g6.expr.school.035_rId535.wmf]",
           "answer_match_type": "exact",
           "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.035_rId535.wmf]"
@@ -3955,7 +5066,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -4096,7 +5208,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4115,27 +5228,48 @@
     "options": null,
     "correct_answer": {
       "kind": "group",
+      "schema_version": "answer-units-v1",
       "items": [
         {
-          "item_id": "1",
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
           "answer": "A",
           "answer_match_type": "choice",
           "reference_answer_raw": "A"
         },
         {
-          "item_id": "2",
+          "item_id": "sub_2.blank_2",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 3,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
         },
         {
-          "item_id": "3",
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 4,
           "answer": "D",
           "answer_match_type": "choice",
           "reference_answer_raw": "D"
@@ -4147,7 +5281,8 @@
     "answer_normalization_rule": {
       "item_order_matters": true,
       "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true
+      "unparsed_items_use_reference_answer_raw": true,
+      "answer_schema_version": "answer-units-v1"
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -4265,7 +5400,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4282,12 +5418,31 @@
     "difficulty": 1,
     "question_text": "3、已知[ASSET:assets/expr/q.math.g6.expr.school.037_rId563.wmf]的值是7，求代数式[ASSET:assets/expr/q.math.g6.expr.school.037_rId565.wmf]的值.",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "已知[ASSET:assets/expr/q.math.g6.expr.school.037_rId563.wmf]=7，即[ASSET:assets/expr/q.math.g6.expr.school.037_rId568.wmf]。原式=[ASSET:assets/expr/q.math.g6.expr.school.037_rId570.wmf]",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "已知[ASSET:assets/expr/q.math.g6.expr.school.037_rId563.wmf]=7，即[ASSET:assets/expr/q.math.g6.expr.school.037_rId568.wmf]。原式=[ASSET:assets/expr/q.math.g6.expr.school.037_rId570.wmf]"
+        }
+      ]
+    },
     "reference_answer_raw": "已知[ASSET:assets/expr/q.math.g6.expr.school.037_rId563.wmf]=7，即[ASSET:assets/expr/q.math.g6.expr.school.037_rId568.wmf]。原式=[ASSET:assets/expr/q.math.g6.expr.school.037_rId570.wmf]",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -4346,7 +5501,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4363,12 +5519,42 @@
     "difficulty": 3,
     "question_text": "4、已知[ASSET:assets/expr/q.math.g6.expr.school.038_rId572.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.038_rId574.wmf].\n（1）化简：[ASSET:assets/expr/q.math.g6.expr.school.038_rId576.wmf]；\n（2）若[ASSET:assets/expr/q.math.g6.expr.school.038_rId576.wmf]的值与字母[ASSET:assets/expr/q.math.g6.expr.school.038_rId579.wmf]的取值无关，求[ASSET:assets/expr/q.math.g6.expr.school.038_rId581.wmf]的值.",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "[ASSET:assets/expr/q.math.g6.expr.school.038_rId583.wmf]；",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.038_rId583.wmf]；"
+        },
+        {
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
+          "answer": "因为[ASSET:assets/expr/q.math.g6.expr.school.038_rId585.wmf]与x无关，所以11x-2=0，所以[ASSET:assets/expr/q.math.g6.expr.school.038_rId587.wmf]",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "因为[ASSET:assets/expr/q.math.g6.expr.school.038_rId585.wmf]与x无关，所以11x-2=0，所以[ASSET:assets/expr/q.math.g6.expr.school.038_rId587.wmf]"
+        }
+      ]
+    },
     "reference_answer_raw": "（1）[ASSET:assets/expr/q.math.g6.expr.school.038_rId583.wmf]；（2）因为[ASSET:assets/expr/q.math.g6.expr.school.038_rId585.wmf]与x无关，所以11x-2=0，所以[ASSET:assets/expr/q.math.g6.expr.school.038_rId587.wmf]",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -4454,7 +5640,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4471,12 +5658,42 @@
     "difficulty": 3,
     "question_text": "5、一艘轮船在静水中的速度是[ASSET:assets/expr/q.math.g6.expr.school.039_rId589.wmf][ASSET:assets/expr/q.math.g6.expr.school.039_rId591.wmf]，水流速度是[ASSET:assets/expr/q.math.g6.expr.school.039_rId593.wmf][ASSET:assets/expr/q.math.g6.expr.school.039_rId591.wmf]，该轮船先顺水航线了80分钟，又逆水航行了0.5小时.\n(1)这艘轮船一共航行了多少千米？\n(2)这艘轮船在顺水中航行比在逆水中航行多航行了多少千米？",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "一共航行[ASSET:assets/expr/q.math.g6.expr.school.039_rId596.wmf]千米；",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "一共航行[ASSET:assets/expr/q.math.g6.expr.school.039_rId596.wmf]千米；"
+        },
+        {
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
+          "answer": "顺水比逆水多航行[ASSET:assets/expr/q.math.g6.expr.school.039_rId598.wmf]千米。过程：静水速度为a km/h，水流速度为b km/h，则顺水速度为a+b，逆水速度为a-b。80分钟=[ASSET:assets/expr/q.math.g6.expr.school.039_rId600.wmf]小时，0.5小时=[ASSET:assets/expr/q.math.g6.expr.school.039_rId602.wmf]小时，所以总路程为[ASSET:assets/expr/q.math.g6.expr.school.039_rId600.wmf](a+b)+[ASSET:assets/expr/q.math.g6.expr.school.039_rId602.wmf](a-b)=[ASSET:assets/expr/q.math.g6.expr.school.039_rId596.wmf]；差为[ASSET:assets/expr/q.math.g6.expr.school.039_rId600.wmf](a+b)-[ASSET:assets/expr/q.math.g6.expr.school.039_rId602.wmf](a-b)=[ASSET:assets/expr/q.math.g6.expr.school.039_rId598.wmf]",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "顺水比逆水多航行[ASSET:assets/expr/q.math.g6.expr.school.039_rId598.wmf]千米。过程：静水速度为a km/h，水流速度为b km/h，则顺水速度为a+b，逆水速度为a-b。80分钟=[ASSET:assets/expr/q.math.g6.expr.school.039_rId600.wmf]小时，0.5小时=[ASSET:assets/expr/q.math.g6.expr.school.039_rId602.wmf]小时，所以总路程为[ASSET:assets/expr/q.math.g6.expr.school.039_rId600.wmf](a+b)+[ASSET:assets/expr/q.math.g6.expr.school.039_rId602.wmf](a-b)=[ASSET:assets/expr/q.math.g6.expr.school.039_rId596.wmf]；差为[ASSET:assets/expr/q.math.g6.expr.school.039_rId600.wmf](a+b)-[ASSET:assets/expr/q.math.g6.expr.school.039_rId602.wmf](a-b)=[ASSET:assets/expr/q.math.g6.expr.school.039_rId598.wmf]"
+        }
+      ]
+    },
     "reference_answer_raw": "（1）一共航行[ASSET:assets/expr/q.math.g6.expr.school.039_rId596.wmf]千米；（2）顺水比逆水多航行[ASSET:assets/expr/q.math.g6.expr.school.039_rId598.wmf]千米。过程：静水速度为a km/h，水流速度为b km/h，则顺水速度为a+b，逆水速度为a-b。80分钟=[ASSET:assets/expr/q.math.g6.expr.school.039_rId600.wmf]小时，0.5小时=[ASSET:assets/expr/q.math.g6.expr.school.039_rId602.wmf]小时，所以总路程为[ASSET:assets/expr/q.math.g6.expr.school.039_rId600.wmf](a+b)+[ASSET:assets/expr/q.math.g6.expr.school.039_rId602.wmf](a-b)=[ASSET:assets/expr/q.math.g6.expr.school.039_rId596.wmf]；差为[ASSET:assets/expr/q.math.g6.expr.school.039_rId600.wmf](a+b)-[ASSET:assets/expr/q.math.g6.expr.school.039_rId602.wmf](a-b)=[ASSET:assets/expr/q.math.g6.expr.school.039_rId598.wmf]",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -4556,7 +5773,8 @@
       "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4573,12 +5791,53 @@
     "difficulty": 3,
     "question_text": "6、一种长方形餐桌的四周可坐6人用餐，现把若干张这样的餐桌按如图方式进行拼接．\n（1）若把4张、8张这样的餐桌拼接起来，四周分别可坐多少人？\n（2）若把x[ASSET:assets/expr/q.math.g6.expr.school.040_rId610.wmf]张这样的餐桌拼接起来，四周分别可坐多少人？\n（3）若用餐的人数有90人，则需要多少张这样的餐桌？\n[ASSET:assets/expr/q.math.g6.expr.school.040_rId611.png]",
     "options": null,
-    "correct_answer": null,
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "4张可坐18人，8张可坐34人；",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "4张可坐18人，8张可坐34人；"
+        },
+        {
+          "item_id": "sub_2.blank_1",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 2,
+          "answer": "x张可坐4x+2人；",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "x张可坐4x+2人；"
+        },
+        {
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 3,
+          "answer": "需要22张。过程：一张餐桌坐6人，每增加一张拼接餐桌，增加4个座位，所以总人数为6+4(x-1)=4x+2。令4x+2=90，解得x=22",
+          "answer_match_type": "manual",
+          "reference_answer_raw": "需要22张。过程：一张餐桌坐6人，每增加一张拼接餐桌，增加4个座位，所以总人数为6+4(x-1)=4x+2。令4x+2=90，解得x=22"
+        }
+      ]
+    },
     "reference_answer_raw": "（1）4张可坐18人，8张可坐34人；（2）x张可坐4x+2人；（3）需要22张。过程：一张餐桌坐6人，每增加一张拼接餐桌，增加4个座位，所以总人数为6+4(x-1)=4x+2。令4x+2=90，解得x=22",
-    "answer_match_type": null,
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
-      "normalize_fullwidth_symbols": true
+      "normalize_fullwidth_symbols": true,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
@@ -4627,7 +5886,8 @@
       "multiple_subquestions",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false
+    "is_seed_candidate": false,
+    "answer_structure_source": "normalized_answer_units_v1"
   },
   {
     "schema_version": "2.0",
@@ -4644,16 +5904,35 @@
     "difficulty": 5,
     "question_text": "7、我们可以用符号f(a)表示代数式．当a是正整数时，我们规定如果a为偶数，f(a)＝0.5a；如果a为奇数，f(a)＝5a＋1．例如：f(20)＝10，f(5)＝26．设a1＝6，a2＝f(a1)，a3＝f(a2)…依此规律进行下去，得到一列数：a1，a2，a3，a4…an（n为正整数），则2a1－a2＋a3－a4＋a5－a6＋…＋a2023－a2024＝_________．",
     "options": null,
-    "correct_answer": "14",
+    "correct_answer": {
+      "kind": "group",
+      "schema_version": "answer-units-v1",
+      "items": [
+        {
+          "item_id": "sub_1.blank_1",
+          "subquestion_id": "sub_1",
+          "subquestion_no": 1,
+          "blank_id": "blank_1",
+          "blank_no": 1,
+          "order_no": 1,
+          "answer": "14",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "14。a₁＝6 起按规则得到周期为 7 的循环：6, 3, 16, 8, 4, 2, 1, 6, 3, …（即 a₇₊ₙ＝aₙ）。原式首项是 2a₁，其余按奇加偶减交替；计算得 2a₁－a₂＋a₃－a₄＋…＋a₂₀₂₃－a₂₀₂₄ ＝ 14。"
+        }
+      ]
+    },
     "reference_answer_raw": "14。a₁＝6 起按规则得到周期为 7 的循环：6, 3, 16, 8, 4, 2, 1, 6, 3, …（即 a₇₊ₙ＝aₙ）。原式首项是 2a₁，其余按奇加偶减交替；计算得 2a₁－a₂＋a₃－a₄＋…＋a₂₀₂₃－a₂₀₂₄ ＝ 14。",
-    "answer_match_type": "numeric",
+    "answer_match_type": "group",
     "answer_normalization_rule": {
       "trim_whitespace": true,
       "normalize_fullwidth_symbols": true,
       "allow_fraction_decimal_equivalence": false,
       "allow_equivalent_fraction": false,
       "require_simplified_fraction": false,
-      "require_unit": false
+      "require_unit": false,
+      "answer_schema_version": "answer-units-v1",
+      "item_order_matters": true,
+      "partial_credit": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -4685,6 +5964,7 @@
     "source_review_status": "reviewed",
     "import_status": "parsed",
     "import_issues": [],
-    "is_seed_candidate": true
+    "is_seed_candidate": true,
+    "answer_structure_source": "normalized_answer_units_v1"
   }
 ]

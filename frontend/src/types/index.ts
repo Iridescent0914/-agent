@@ -101,11 +101,14 @@ export interface QuestionDetail extends QuestionSummary {
   updated_at: string
 }
 
-export type QuestionAnswerMatchType = 'choice' | 'numeric' | 'exact' | 'latex_exact'
+export type QuestionAnswerMatchType = 'choice' | 'numeric' | 'exact' | 'latex_exact' | 'manual'
 
 export interface QuestionAnswerItemInput {
   item_id: string
+  subquestion_no?: number
+  blank_no?: number
   answer: string
+  accepted_answers: string[]
   answer_match_type: QuestionAnswerMatchType
 }
 

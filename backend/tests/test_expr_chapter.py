@@ -83,7 +83,9 @@ def test_expr_seed_contract(expr_seeded: dict[str, object]) -> None:
     assert len({question.original_qid for question in questions}) == 41
     assert knowledge_point_count == 8
     assert used_knowledge_point_count == 6
-    assert sum(question.grading_readiness == "machine_ready" for question in questions) == 9
+    # q.math.g6.expr.school.028 has a tenth answer slot in the stem but the
+    # source reference answer stops at subquestion 9, so it remains review-only.
+    assert sum(question.grading_readiness == "machine_ready" for question in questions) == 8
     assert sum(bool(question.is_required) for question in questions) == 35
     assert all(question.source_review_status == "reviewed" for question in questions)
 

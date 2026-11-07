@@ -135,3 +135,46 @@ def test_group_with_wrong_and_unreadable_item_is_wrong_without_losing_details():
     assert result.grade_status == "auto_confirmed"
     assert result.is_correct is False
     assert len(result.details()["item_results"]) == 2
+
+
+def test_group_accepts_declared_alternative_answers_without_creating_blanks():
+    expected = {
+        "kind": "group",
+        "schema_version": "answer-units-v1",
+        "items": [{
+            "item_id": "sub_1.blank_1",
+            "answer": "这个数",
+            "accepted_answers": ["这个数", "原数"],
+            "answer_match_type": "exact",
+        }],
+    }
+    actual = {
+        "kind": "group",
+        "items": [{"item_id": "sub_1.blank_1", "answer": "原数"}],
+    }
+    result = grade_answer(
+        actual, expected, rule("group", trim_whitespace=True),
+        response_status="answered",
+    )
+    assert result.grade_status == "auto_confirmed"
+    assert result.is_correct is True
+
+
+def test_legacy_published_group_array_defers_instead_of_crashing():
+    expected = {
+        "kind": "group",
+        "items": [{
+            "item_id": "2",
+            "answer": ["甲", "乙"],
+            "answer_match_type": "exact",
+        }],
+    }
+    actual = {
+        "kind": "group",
+        "items": [{"item_id": "2", "answer": "甲，乙"}],
+    }
+    result = grade_answer(
+        actual, expected, rule("group"), response_status="answered"
+    )
+    assert result.grade_status == "needs_review"
+    assert result.reason_code == "group_item_needs_review"

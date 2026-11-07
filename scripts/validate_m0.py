@@ -124,12 +124,20 @@ def main() -> int:
         answer = record.get("correct_answer")
         if record.get("answer_match_type") == "group":
             require(isinstance(answer, dict) and answer.get("kind") == "group", f"{record.get('original_qid')} 小题组答案结构无效", errors)
+            require(answer.get("schema_version") == "answer-units-v1", f"{record.get('original_qid')} 未使用统一小题-空答案版本", errors)
             require(bool(answer.get("items")), f"{record.get('original_qid')} 小题组答案项为空", errors)
             item_ids = [item.get("item_id") for item in answer.get("items", [])]
             require(len(item_ids) == len(set(item_ids)), f"{record.get('original_qid')} 小题组 item_id 不唯一", errors)
-            for item in answer.get("items", []):
+            for order_no, item in enumerate(answer.get("items", []), start=1):
                 require(item.get("answer") is not None, f"{record.get('original_qid')} 的 {item.get('item_id')} 缺少可判分答案", errors)
-                require(bool(item.get("answer_match_type")), f"{record.get('original_qid')} 的 {item.get('item_id')} 缺少判分方式", errors)
+                require(isinstance(item.get("answer"), str), f"{record.get('original_qid')} 的 {item.get('item_id')} 答案必须是单个字符串", errors)
+                require(item.get("answer_match_type") in {"choice", "numeric", "exact", "latex_exact"}, f"{record.get('original_qid')} 的 {item.get('item_id')} 判分方式无效", errors)
+                require(item.get("item_id") == f"sub_{item.get('subquestion_no')}.blank_{item.get('blank_no')}", f"{record.get('original_qid')} 的答案项未按小题-空编号", errors)
+                require(item.get("subquestion_id") == f"sub_{item.get('subquestion_no')}", f"{record.get('original_qid')} 的小题编号不一致", errors)
+                require(item.get("blank_id") == f"blank_{item.get('blank_no')}", f"{record.get('original_qid')} 的空编号不一致", errors)
+                require(item.get("order_no") == order_no, f"{record.get('original_qid')} 的答案项顺序号不连续", errors)
+                accepted = item.get("accepted_answers", [])
+                require(isinstance(accepted, list) and all(isinstance(value, str) for value in accepted), f"{record.get('original_qid')} 的可接受答案结构无效", errors)
         elif record.get("question_type") == "choice":
             options = record.get("options") or {}
             require(len(options) >= 2, f"{record.get('original_qid')} 选择题选项不足", errors)

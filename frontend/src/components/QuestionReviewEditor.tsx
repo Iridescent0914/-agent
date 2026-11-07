@@ -5,6 +5,7 @@ import {
   Drawer,
   Form,
   Input,
+  InputNumber,
   Popconfirm,
   Radio,
   Select,
@@ -25,7 +26,10 @@ import { MathAnswerInput } from './MathAnswerInput'
 
 interface StoredItem {
   item_id?: unknown
+  subquestion_no?: unknown
+  blank_no?: unknown
   answer?: unknown
+  accepted_answers?: unknown
   answer_match_type?: unknown
 }
 
@@ -47,15 +51,23 @@ function initialItems(question: QuestionDetail): QuestionAnswerItemInput[] {
     while (used.has(itemId)) itemId = `${base}_${suffix++}`
     used.add(itemId)
     const sourceType = String(item.answer_match_type || '')
+    const manual = question.question_type === 'calculation' || question.question_type === 'solution'
     const matchType: QuestionAnswerMatchType =
-      question.question_type === 'choice'
+      manual
+        ? 'manual'
+        : question.question_type === 'choice'
         ? 'choice'
         : sourceType === 'numeric' || sourceType === 'latex_exact'
           ? sourceType
           : 'exact'
     return {
       item_id: itemId,
+      subquestion_no: Number(item.subquestion_no) || index + 1,
+      blank_no: Number(item.blank_no) || 1,
       answer: item.answer === null || item.answer === undefined ? '' : String(item.answer),
+      accepted_answers: Array.isArray(item.accepted_answers)
+        ? item.accepted_answers.map(String)
+        : [],
       answer_match_type: matchType,
     }
   })
@@ -92,15 +104,25 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
   }
 
   function addItem() {
-    const existing = new Set(items.map((item) => item.item_id))
-    let number = items.length + 1
-    while (existing.has(String(number))) number += 1
+    const subquestionNo = Math.max(1, ...items.map((item) => item.subquestion_no ?? 1))
+    const blankNo = Math.max(
+      0,
+      ...items
+        .filter((item) => (item.subquestion_no ?? 1) === subquestionNo)
+        .map((item) => item.blank_no ?? 1),
+    ) + 1
     setItems((current) => [
       ...current,
       {
-        item_id: String(number),
+        item_id: `sub_${subquestionNo}.blank_${blankNo}`,
+        subquestion_no: subquestionNo,
+        blank_no: blankNo,
         answer: '',
-        answer_match_type: question.question_type === 'choice' ? 'choice' : 'exact',
+        accepted_answers: [],
+        answer_match_type:
+          question.question_type === 'calculation' || question.question_type === 'solution'
+            ? 'manual'
+            : question.question_type === 'choice' ? 'choice' : 'exact',
       },
     ])
   }
@@ -109,15 +131,16 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
     setError(null)
     const normalized = items.map((item) => ({
       ...item,
-      item_id: item.item_id.trim(),
+      item_id: `sub_${item.subquestion_no ?? 1}.blank_${item.blank_no ?? 1}`,
       answer: item.answer.trim(),
+      accepted_answers: item.accepted_answers.map((value) => value.trim()).filter(Boolean),
     }))
     if (!reviewerName.trim() || normalized.some((item) => !item.item_id || !item.answer)) {
       setError('请填写审核人、答案项编号和每一项答案。')
       return
     }
     if (new Set(normalized.map((item) => item.item_id)).size !== normalized.length) {
-      setError('答案项编号不能重复。')
+      setError('同一小题中的空号不能重复。')
       return
     }
 
@@ -135,7 +158,7 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
       onUpdated(updated)
       setRevision(updated.review_revision)
       setItems(initialItems(updated))
-      message.success(promote ? '已确认并进入自动组卷池' : '审核草稿已保存')
+      message.success(promote ? '已确认并进入自动组卷池' : '结构化答案已保存')
       if (promote) setOpen(false)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '提交失败')
@@ -146,6 +169,7 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
 
   const isChoice = question.question_type === 'choice'
   const isTrueFalse = question.question_type === 'true_false'
+  const isManual = question.question_type === 'calculation' || question.question_type === 'solution'
   const isReady = question.grading_readiness === 'machine_ready' && !withdrawn
 
   async function withdraw() {
@@ -187,7 +211,7 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
       >
         {question.grading_readiness === 'machine_ready'
           ? '撤回并重新编辑'
-          : '审核答案并进入组卷池'}
+          : isManual ? '整理结构化参考答案' : '审核答案并进入组卷池'}
       </Button>
       <Drawer
         title={`${isReady ? '撤回题目' : '审核答案'} · ${question.original_qid}`}
@@ -208,6 +232,8 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
                   ? '选择题使用选项匹配'
                   : isTrueFalse
                     ? '判断题逐小题选择正确或错误'
+                    : isManual
+                      ? '按小题整理人工评分参考答案'
                     : '填空题可使用数值、文本或公式匹配'
             }
             description={
@@ -217,6 +243,8 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
                   ? '每个小题选择一个 A-H 选项。'
                   : isTrueFalse
                     ? '每个小题选择“正确”或“错误”。'
+                    : isManual
+                      ? '每个小题至少建立一个作答区；参考答案用于教师人工评分，不进入自动判分池。'
                     : '普通数值优先选择“数值”；含分数、根式等公式时选择“公式（LaTeX 精确匹配）”。第一版暂不判断代数等价。'
             }
           />
@@ -268,11 +296,20 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
                 </Button>
               </div>
               <div className="answer-item-grid">
-                <Form.Item label="小题/空格编号" required>
-                  <Input
-                    value={item.item_id}
-                    maxLength={64}
-                    onChange={(event) => updateItem(index, { item_id: event.target.value })}
+                <Form.Item label="小题号" required>
+                  <InputNumber
+                    min={1}
+                    max={99}
+                    value={item.subquestion_no}
+                    onChange={(value) => updateItem(index, { subquestion_no: value ?? 1 })}
+                  />
+                </Form.Item>
+                <Form.Item label="空号 / 作答区号" required>
+                  <InputNumber
+                    min={1}
+                    max={99}
+                    value={item.blank_no}
+                    onChange={(value) => updateItem(index, { blank_no: value ?? 1 })}
                   />
                 </Form.Item>
                 <Form.Item label="判分方式" required>
@@ -280,7 +317,9 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
                     value={item.answer_match_type}
                     disabled={isChoice || isTrueFalse}
                     options={
-                      isChoice
+                      isManual
+                        ? [{ value: 'manual', label: '教师人工评分' }]
+                        : isChoice
                         ? [{ value: 'choice', label: '选项匹配' }]
                         : isTrueFalse
                           ? [{ value: 'exact', label: '判断匹配' }]
@@ -318,21 +357,31 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
                     onChange={(answer) => updateItem(index, { answer })}
                   />
                 ) : (
-                  <Input
+                  <Input.TextArea
                     value={item.answer}
-                    placeholder={item.answer_match_type === 'numeric' ? '例如：-2.5' : '输入标准答案'}
+                    rows={item.answer_match_type === 'manual' ? 4 : 1}
+                    placeholder={item.answer_match_type === 'numeric' ? '例如：-2.5' : '输入标准答案或参考解答'}
                     onChange={(event) => updateItem(index, { answer: event.target.value })}
                   />
                 )}
               </Form.Item>
+              {!isManual && <Form.Item label="其他可接受答案" extra="每行一个；不会增加空格数量">
+                <Input.TextArea
+                  rows={2}
+                  value={item.accepted_answers.join('\n')}
+                  onChange={(event) => updateItem(index, {
+                    accepted_answers: event.target.value.split('\n'),
+                  })}
+                />
+              </Form.Item>}
             </div>
           ))}
 
-          <Button icon={<PlusOutlined />} onClick={addItem}>添加答案项</Button>
+          <Button icon={<PlusOutlined />} onClick={addItem}>添加小题/空</Button>
           {error && <Alert type="error" showIcon message="无法提交" description={error} />}
           <Space wrap>
             <Button loading={submitting} onClick={() => void submit(false)}>保存审核草稿</Button>
-            <Popconfirm
+            {!isManual && <Popconfirm
               title="确认进入自动组卷池？"
               description="系统会再次校验答案；确认后，本题可以被后续自动组卷选中。"
               okText="确认入池"
@@ -340,7 +389,7 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
               onConfirm={() => void submit(true)}
             >
               <Button type="primary" loading={submitting}>校验并确认入池</Button>
-            </Popconfirm>
+            </Popconfirm>}
           </Space>
             </>
           )}
