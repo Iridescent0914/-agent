@@ -12,7 +12,7 @@ ANSWER_SCHEMA_VERSION = "answer-units-v1"
 AUTO_MATCH_TYPES = frozenset({"choice", "numeric", "exact", "latex_exact"})
 MANUAL_QUESTION_TYPES = frozenset({"calculation", "solution"})
 
-_MARKER_RE = re.compile(r"[（(]\s*(\d{1,2})\s*[）)]")
+_MARKER_RE = re.compile(r"(?<![/^_])[（(]\s*(\d{1,2})\s*[）)](?!\s*/)")
 _LINE_MARKER_TEMPLATE = r"(?m)^\s*[（(]\s*{number}\s*[）)]\s*"
 _BLANK_RE = re.compile(r"_{2,}")
 

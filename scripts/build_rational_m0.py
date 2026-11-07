@@ -30,6 +30,7 @@ from app.services.answer_units import (  # noqa: E402
     ANSWER_SCHEMA_VERSION,
     normalize_answer_structure,
 )
+from app.services.question_pool_corrections import apply_pool_corrections  # noqa: E402
 
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -140,6 +141,41 @@ def compact_space(value: str) -> str:
 def render_math(node: ET.Element) -> str:
     """Render common OMML constructs to readable plain math text."""
     name = local_name(node.tag)
+    if name == "p":
+        # Legacy Word EQ fields can span several runs and have no cached
+        # display text. Reading only w:t silently erased fractions.
+        parts: list[str] = []
+        field_parts: list[str] | None = None
+        for child in node:
+            begin = child.find("w:fldChar", NS)
+            field_type = begin.get(f"{{{W_NS}}}fldCharType") if begin is not None else None
+            if field_type == "begin":
+                field_parts = []
+            elif field_type == "end" and field_parts is not None:
+                instruction = "".join(field_parts).strip()
+                fraction = re.fullmatch(r"EQ\s+\\F\(\s*([^,]+),\s*([^)]+)\)", instruction, re.I)
+                if fraction:
+                    parts.append(f"({fraction[1].strip()})/({fraction[2].strip()})")
+                elif instruction:
+                    parts.append("[UNSUPPORTED_FIELD:" + instruction + "]")
+                field_parts = None
+            elif field_parts is not None:
+                field_parts.extend(item.text or "" for item in child.iter() if local_name(item.tag) == "instrText")
+            else:
+                parts.append(render_math(child))
+        text = "".join(parts)
+        # Word often splits one exponent/subscript across several runs.
+        while re.search(r"([\^_])\(([^()]*)\)\1\(([^()]*)\)", text):
+            text = re.sub(r"([\^_])\(([^()]*)\)\1\(([^()]*)\)", r"\1(\2\3)", text)
+        return text
+    if name == "r":
+        text = "".join(render_math(child) for child in node if local_name(child.tag) != "rPr")
+        alignment = node.find("w:rPr/w:vertAlign", NS)
+        if alignment is not None and text.strip():
+            value = alignment.get(f"{{{W_NS}}}val")
+            if value in {"superscript", "subscript"}:
+                return ("^" if value == "superscript" else "_") + f"({text.strip()})"
+        return text
     if name in {"t", "delText"}:
         return node.text or ""
     if name == "tab":
@@ -227,6 +263,10 @@ def parse_review_docx(source: Path) -> list[ParsedQuestion]:
                 current = ParsedQuestion(number=len(questions) + 1, metadata=metadata)
                 questions.append(current)
                 current_field = None
+            elif current is not None and current_field:
+                rows = [" | ".join(element_text(cell) for cell in row.findall("w:tc", NS))
+                        for row in node.findall("w:tr", NS)]
+                current.fields[current_field].append("\n".join(rows))
             continue
 
         if name != "p" or current is None:
@@ -683,6 +723,7 @@ def eligible_for_seed(record: dict) -> bool:
 def select_diverse(records: list[dict], limit: int) -> list[dict]:
     groups: dict[str, list[dict]] = defaultdict(list)
     for record in records:
+        record["is_seed_candidate"] = False
         if eligible_for_seed(record):
             groups[record["main_knowledge_point"]["id"]].append(record)
 
@@ -744,7 +785,8 @@ def build_knowledge_tree(records: Iterable[dict]) -> dict:
 
 def write_json(path: Path, payload: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    newline = "\r\n" if path.exists() and b"\r\n" in path.read_bytes() else "\n"
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline=newline)
 
 
 def replace_asset_markers(value, replacements: dict[str, str]):
@@ -859,8 +901,9 @@ def write_audit_csv(path: Path, records: list[dict]) -> None:
         "corrected_answer",
         "technical_note",
     ]
+    newline = "\r\n" if path.exists() and b"\r\n" in path.read_bytes() else "\n"
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=columns)
+        writer = csv.DictWriter(handle, fieldnames=columns, lineterminator=newline)
         writer.writeheader()
         for record in records:
             writer.writerow(
@@ -949,6 +992,9 @@ def build(source: Path, output_root: Path, project_root: Path, limit: int) -> di
         raise ValueError(f"发现重复题目 ID：{duplicate_qids}")
 
     asset_report = export_assets(source, output_root, records)
+    apply_pool_corrections(records, output_root / "config" / "question_pool_corrections.json")
+    answer_unit_manual_count = sum(item.get("answer_match_type") == "manual" for record in records for item in record["correct_answer"]["items"])
+    answer_unit_unresolved_count = sum(item.get("answer") is None for record in records for item in record["correct_answer"]["items"])
     selected = select_diverse(records, limit=limit)
     tree = build_knowledge_tree(records)
     issue_counts = Counter(issue for record in records for issue in record["import_issues"])

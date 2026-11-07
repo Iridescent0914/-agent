@@ -227,8 +227,8 @@ export function PaperGradingPage() {
         {!data.submission_id && <ManualAnswerEditor item={gradingEditorItem(item)} value={drafts[item.id] ?? initialDraft(gradingEditorItem(item))} onChange={(value) => setDrafts((current) => ({ ...current, [item.id]: value }))} />}
         {item.attempt && <Space direction="vertical" className="attempt-result" size="middle">
           <Descriptions bordered size="small" column={{ xs: 1, md: 2 }}>
-            <Descriptions.Item label="学生原始答案"><AnswerView answer={item.attempt.student_answer} /></Descriptions.Item>
-            <Descriptions.Item label="当前评分标准答案"><AnswerView answer={item.grading_answer_snapshot} /></Descriptions.Item>
+            <Descriptions.Item label="学生原始答案"><AnswerView answer={item.attempt.student_answer} assets={item.assets} /></Descriptions.Item>
+            <Descriptions.Item label="当前评分标准答案"><AnswerView answer={item.grading_answer_snapshot} assets={item.assets} /></Descriptions.Item>
             <Descriptions.Item label="归一化结果"><pre className="json-block compact-json">{JSON.stringify(item.attempt.normalized_answer, null, 2)}</pre></Descriptions.Item>
             <Descriptions.Item label="自动判定">{String(item.attempt.grading_details.reason_code ?? '—')} · {String(item.attempt.grading_details.auto_status ?? '—')}</Descriptions.Item>
             <Descriptions.Item label="当前状态">{gradeSource(item.attempt)}</Descriptions.Item>

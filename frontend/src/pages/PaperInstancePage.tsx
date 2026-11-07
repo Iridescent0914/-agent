@@ -159,7 +159,7 @@ export function PaperInstancePage() {
           />
         </List.Item>}
       />}
-      <details><summary>教师答案与判分规则</summary><AnswerView answer={item.answer_snapshot} /><pre className="json-block">{JSON.stringify(item.answer_rule_snapshot, null, 2)}</pre></details>
+      <details><summary>教师答案与判分规则</summary><AnswerView answer={item.answer_snapshot} assets={item.assets} /><pre className="json-block">{JSON.stringify(item.answer_rule_snapshot, null, 2)}</pre></details>
     </Card>)}
     <Drawer title={`替换第 ${target?.order_no ?? ''} 题`} width={720} open={Boolean(target)} onClose={() => { setTarget(null); setAlternatives(null) }}>
       {alternatives?.diagnostic && <Alert

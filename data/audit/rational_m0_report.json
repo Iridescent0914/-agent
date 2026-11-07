@@ -2,8 +2,8 @@
   "schema_version": "2.0",
   "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
   "total_extracted": 139,
-  "seed_candidate_count": 45,
-  "eligible_count_before_limit": 45,
+  "seed_candidate_count": 50,
+  "eligible_count_before_limit": 62,
   "question_type_counts": {
     "calculation": 24,
     "choice": 11,
@@ -12,31 +12,31 @@
     "true_false": 2
   },
   "seed_type_counts": {
-    "choice": 11,
-    "fill_blank": 32,
+    "fill_blank": 41,
+    "choice": 7,
     "true_false": 2
   },
   "seed_knowledge_point_count": 12,
   "seed_knowledge_point_counts": {
-    "数轴与用数轴上的点表示有理数": 3,
-    "有理数的乘方": 7,
-    "有理数的乘法法则与除法法则": 15,
-    "有理数的加法法则与减法法则": 5,
-    "有理数的意义与分类（整数、分数）": 1,
+    "有理数的乘法法则与除法法则": 8,
+    "有理数的乘方": 8,
+    "有理数的加法法则与减法法则": 6,
+    "数轴与用数轴上的点表示有理数": 6,
+    "比较有理数的大小": 4,
+    "绝对值的意义与求法": 4,
     "有理数的混合运算（以三步以内为主）": 3,
     "有理数的运算律及其简化运算的作用": 3,
-    "比较有理数的大小": 3,
+    "相反数的意义与求法": 3,
+    "有理数的意义与分类（整数、分数）": 3,
     "用有理数的运算解决简单实际问题": 1,
-    "相反数的意义与求法": 1,
-    "绝对值的意义与求法": 2,
     "负数与用正负数表示相反意义的量": 1
   },
-  "seed_machine_ready_count": 45,
+  "seed_machine_ready_count": 50,
   "seed_raw_answer_only_count": 0,
   "answer_structure_override_count": 12,
   "answer_unit_split_count": 29,
-  "answer_unit_manual_count": 249,
-  "answer_unit_unresolved_count": 105,
+  "answer_unit_manual_count": 183,
+  "answer_unit_unresolved_count": 40,
   "exported_asset_references": 564,
   "asset_extension_counts": {
     ".jpeg": 1,
@@ -44,15 +44,18 @@
     ".wmf": 529
   },
   "issue_counts": {
-    "answer_items_not_structured": 18,
-    "answer_units_need_review": 24,
-    "asset_needs_web_conversion": 529,
-    "asset_relationship_missing": 2,
     "contains_asset": 109,
-    "missing_reference_answer": 1,
     "multiple_subquestions": 85,
+    "asset_needs_web_conversion": 401,
     "question_type_mismatch": 29,
-    "source_contains_ai_draft_marker": 4
+    "source_contains_ai_draft_marker": 3,
+    "asset_relationship_missing": 2,
+    "answer_units_need_review": 12,
+    "answer_items_not_structured": 1,
+    "pool_missing_source_content": 1,
+    "missing_reference_answer": 1
   },
-  "source_status_note": "新版校本审核 DOCX 作为权威来源；年级、章、主属节、节内主属 KP、核心素养和必做题标记均直接继承该文件。"
+  "source_status_note": "新版校本审核 DOCX 作为权威来源；年级、章、主属节、节内主属 KP、核心素养和必做题标记均直接继承该文件。",
+  "catalog_machine_ready_count": 63,
+  "pool_governance_version": "question-pool-governance-v1"
 }

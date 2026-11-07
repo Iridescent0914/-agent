@@ -25,9 +25,13 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 1,
-          "answer": "数（或任意数）",
+          "answer": "数",
           "answer_match_type": "exact",
-          "reference_answer_raw": "数（或任意数）"
+          "reference_answer_raw": "数",
+          "accepted_answers": [
+            "数",
+            "任意数"
+          ]
         },
         {
           "item_id": "sub_2.blank_1",
@@ -80,9 +84,13 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 6,
-          "answer": "2(a+b)或2a+2b",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "2(a+b)或2a+2b"
+          "answer": "2(a+b)",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "2(a+b)",
+          "accepted_answers": [
+            "2(a+b)",
+            "2a+2b"
+          ]
         },
         {
           "item_id": "sub_4.blank_2",
@@ -92,7 +100,7 @@
           "blank_no": 2,
           "order_no": 7,
           "answer": "ab",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "ab"
         },
         {
@@ -102,9 +110,13 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 8,
-          "answer": "(a-1)3",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "(a-1)3"
+          "answer": "(a-1)^3",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "(a-1)^3",
+          "accepted_answers": [
+            "(a-1)^3",
+            "(a-1)^{3}"
+          ]
         },
         {
           "item_id": "sub_5.blank_2",
@@ -113,9 +125,13 @@
           "blank_id": "blank_2",
           "blank_no": 2,
           "order_no": 9,
-          "answer": "6(a-1)2",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "6(a-1)2"
+          "answer": "6(a-1)^2",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "6(a-1)^2",
+          "accepted_answers": [
+            "6(a-1)^2",
+            "6(a-1)^{2}"
+          ]
         },
         {
           "item_id": "sub_6.blank_1",
@@ -125,7 +141,7 @@
           "blank_no": 1,
           "order_no": 10,
           "answer": "1000x+y",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "1000x+y"
         },
         {
@@ -136,18 +152,23 @@
           "blank_no": 1,
           "order_no": 11,
           "answer": "12n",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "12n"
         }
       ]
     },
-    "reference_answer_raw": "（1）数（或任意数）；（2）假分数，分数，括号；（3）1；（4）2(a+b)或2a+2b，ab；（5）(a-1)3，6(a-1)2；（6）1000x+y；（7）12n",
+    "reference_answer_raw": "第1小题第1空：数\n第2小题第1空：假分数\n第2小题第2空：分数\n第2小题第3空：括号\n第3小题第1空：1\n第4小题第1空：2(a+b)\n第4小题第2空：ab\n第5小题第1空：(a-1)^3\n第5小题第2空：6(a-1)^2\n第6小题第1空：1000x+y\n第7小题第1空：12n",
     "answer_match_type": "group",
     "answer_normalization_rule": {
+      "answer_schema_version": "answer-units-v1",
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "ignore_whitespace": true,
+      "uppercase": true,
+      "allow_fraction_decimal_equivalence": true,
+      "allow_equivalent_fraction": true,
       "item_order_matters": true,
-      "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true,
-      "answer_schema_version": "answer-units-v1"
+      "partial_credit": true
     },
     "grading_readiness": "machine_ready",
     "main_knowledge_point": {
@@ -242,21 +263,15 @@
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
     "is_seed_candidate": true,
-    "answer_structure_source": "normalized_answer_units_v1"
+    "answer_structure_source": "question-pool-governance-v1",
+    "pool_governance": {
+      "version": "question-pool-governance-v1",
+      "note": "剥离“数（或任意数）”中的解释，并把同一空的等价表达放在accepted_answers；恢复立方、平方指数。",
+      "blocked_reasons": []
+    }
   },
   {
     "schema_version": "2.0",
@@ -1080,7 +1095,11 @@
           "order_no": 3,
           "answer": "数字",
           "answer_match_type": "exact",
-          "reference_answer_raw": "数字"
+          "reference_answer_raw": "数字",
+          "accepted_answers": [
+            "数字",
+            "数"
+          ]
         },
         {
           "item_id": "sub_1.blank_4",
@@ -1111,9 +1130,9 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 6,
-          "answer": "5a-3，[ASSET:assets/expr/q.math.g6.expr.school.009_rId118.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId120.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId122.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId124.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId126.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId128.wmf]",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "5a-3，[ASSET:assets/expr/q.math.g6.expr.school.009_rId118.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId120.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId122.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId124.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId126.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId128.wmf]"
+          "answer": "5a-3",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "5a-3"
         },
         {
           "item_id": "sub_3.blank_2",
@@ -1122,9 +1141,13 @@
           "blank_id": "blank_2",
           "blank_no": 2,
           "order_no": 7,
-          "answer": null,
-          "answer_match_type": "manual",
-          "reference_answer_raw": null
+          "answer": "-(3a/4+3)",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "-(3a/4+3)",
+          "accepted_answers": [
+            "-(3a/4+3)",
+            "-(3/4a+3)"
+          ]
         },
         {
           "item_id": "sub_3.blank_3",
@@ -1133,9 +1156,13 @@
           "blank_id": "blank_3",
           "blank_no": 3,
           "order_no": 8,
-          "answer": null,
-          "answer_match_type": "manual",
-          "reference_answer_raw": null
+          "answer": "-|a|/2",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "-|a|/2",
+          "accepted_answers": [
+            "-|a|/2",
+            "-1/2|a|"
+          ]
         },
         {
           "item_id": "sub_3.blank_4",
@@ -1144,9 +1171,13 @@
           "blank_id": "blank_4",
           "blank_no": 4,
           "order_no": 9,
-          "answer": null,
-          "answer_match_type": "manual",
-          "reference_answer_raw": null
+          "answer": "a^2+b^2",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "a^2+b^2",
+          "accepted_answers": [
+            "a^2+b^2",
+            "a^{2}+b^{2}"
+          ]
         },
         {
           "item_id": "sub_3.blank_5",
@@ -1155,9 +1186,13 @@
           "blank_id": "blank_5",
           "blank_no": 5,
           "order_no": 10,
-          "answer": null,
-          "answer_match_type": "manual",
-          "reference_answer_raw": null
+          "answer": "(a+b)^2",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "(a+b)^2",
+          "accepted_answers": [
+            "(a+b)^2",
+            "(a+b)^{2}"
+          ]
         },
         {
           "item_id": "sub_3.blank_6",
@@ -1166,9 +1201,13 @@
           "blank_id": "blank_6",
           "blank_no": 6,
           "order_no": 11,
-          "answer": null,
-          "answer_match_type": "manual",
-          "reference_answer_raw": null
+          "answer": "a^2+b",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "a^2+b",
+          "accepted_answers": [
+            "a^2+b",
+            "a^{2}+b"
+          ]
         },
         {
           "item_id": "sub_3.blank_7",
@@ -1177,9 +1216,13 @@
           "blank_id": "blank_7",
           "blank_no": 7,
           "order_no": 12,
-          "answer": null,
-          "answer_match_type": "manual",
-          "reference_answer_raw": null
+          "answer": "a+b^2",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "a+b^2",
+          "accepted_answers": [
+            "a+b^2",
+            "a+b^{2}"
+          ]
         },
         {
           "item_id": "sub_4.blank_1",
@@ -1189,7 +1232,7 @@
           "blank_no": 1,
           "order_no": 13,
           "answer": "18n+2",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "18n+2"
         },
         {
@@ -1200,7 +1243,7 @@
           "blank_no": 1,
           "order_no": 14,
           "answer": "5x+125",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "5x+125"
         },
         {
@@ -1211,7 +1254,7 @@
           "blank_no": 2,
           "order_no": 15,
           "answer": "4.5x+135",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "4.5x+135"
         },
         {
@@ -1221,9 +1264,9 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 16,
-          "answer": "[ASSET:assets/expr/q.math.g6.expr.school.009_rId130.wmf]",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.009_rId130.wmf]"
+          "answer": "(a-b)/2",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "(a-b)/2"
         },
         {
           "item_id": "sub_7.blank_1",
@@ -1232,9 +1275,9 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 17,
-          "answer": "[ASSET:assets/expr/q.math.g6.expr.school.009_rId132.wmf]",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.009_rId132.wmf]"
+          "answer": "(m-n)/2",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "(m-n)/2"
         },
         {
           "item_id": "sub_8.blank_1",
@@ -1243,21 +1286,30 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 18,
-          "answer": "[ASSET:assets/expr/q.math.g6.expr.school.009_rId134.wmf]",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.009_rId134.wmf]"
+          "answer": "12a/5",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "12a/5",
+          "accepted_answers": [
+            "12a/5",
+            "2.4a"
+          ]
         }
       ]
     },
-    "reference_answer_raw": "运算符号，数或表示数的字母，数字，字母\n6\n5a-3，[ASSET:assets/expr/q.math.g6.expr.school.009_rId118.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId120.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId122.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId124.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId126.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.009_rId128.wmf]\n18n+2\n5x+125，4.5x+135\n[ASSET:assets/expr/q.math.g6.expr.school.009_rId130.wmf]\n[ASSET:assets/expr/q.math.g6.expr.school.009_rId132.wmf]\n[ASSET:assets/expr/q.math.g6.expr.school.009_rId134.wmf]",
+    "reference_answer_raw": "第1小题第1空：运算符号\n第1小题第2空：数或表示数的字母\n第1小题第3空：数字\n第1小题第4空：字母\n第2小题第1空：6\n第3小题第1空：5a-3\n第3小题第2空：-(3a/4+3)\n第3小题第3空：-|a|/2\n第3小题第4空：a^2+b^2\n第3小题第5空：(a+b)^2\n第3小题第6空：a^2+b\n第3小题第7空：a+b^2\n第4小题第1空：18n+2\n第5小题第1空：5x+125\n第5小题第2空：4.5x+135\n第6小题第1空：(a-b)/2\n第7小题第1空：(m-n)/2\n第8小题第1空：12a/5",
     "answer_match_type": "group",
     "answer_normalization_rule": {
+      "answer_schema_version": "answer-units-v1",
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "ignore_whitespace": true,
+      "uppercase": true,
+      "allow_fraction_decimal_equivalence": true,
+      "allow_equivalent_fraction": true,
       "item_order_matters": true,
-      "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true,
-      "answer_schema_version": "answer-units-v1"
+      "partial_credit": true
     },
-    "grading_readiness": "raw_answer_only",
+    "grading_readiness": "machine_ready",
     "main_knowledge_point": {
       "id": "math.g6.expr.kp.03_expression_quantity",
       "name": "用代数式表示具体问题中的简单数量关系",
@@ -1467,44 +1519,15 @@
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_not_structured",
-      "answer_units_need_review",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false,
-    "answer_structure_source": "normalized_answer_units_v1"
+    "is_seed_candidate": true,
+    "answer_structure_source": "question-pool-governance-v1",
+    "pool_governance": {
+      "version": "question-pool-governance-v1",
+      "note": "逐空转录公式；第3小题共七空，不能把一行公式当一个答案。",
+      "blocked_reasons": []
+    }
   },
   {
     "schema_version": "2.0",
@@ -1959,7 +1982,7 @@
     "question_type": "choice",
     "question_type_source": "选择题",
     "difficulty": 3,
-    "question_text": "2、选择题：\n（1）已知[ASSET:assets/expr/q.math.g6.expr.school.013_rId210.wmf]＝0，则代数式[ASSET:assets/expr/q.math.g6.expr.school.013_rId212.wmf]的值为（ ）\nA．26； B．16； C．2； D．－6；\n（2）若a，b互为相反数，c，d互为倒数，则 [ASSET:assets/expr/q.math.g6.expr.school.013_rId214.wmf]的值是（ ）\nA．[ASSET:assets/expr/q.math.g6.expr.school.013_rId216.wmf]； B．－1； C．[ASSET:assets/expr/q.math.g6.expr.school.013_rId218.wmf]； D．1；\n（3）当[ASSET:assets/expr/q.math.g6.expr.school.013_rId220.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.013_rId222.wmf]时，[ASSET:assets/expr/q.math.g6.expr.school.013_rId224.wmf]的值是（ ）.\n（A）7 （B）-7 （C）1 （D）-1\n（4）在代数式[ASSET:assets/expr/q.math.g6.expr.school.013_rId226.wmf]中，当[ASSET:assets/expr/q.math.g6.expr.school.013_rId228.wmf]的取值分别为[ASSET:assets/expr/q.math.g6.expr.school.013_rId230.wmf]、0、1、2时，代数式对应的值如下表：\n则[ASSET:assets/expr/q.math.g6.expr.school.013_rId232.wmf]的值为（ ）.\n（A）-1 （B）2 （C）-3 （D）-5",
+    "question_text": "2、选择题：\n（1）已知[ASSET:assets/expr/q.math.g6.expr.school.013_rId210.wmf]＝0，则代数式[ASSET:assets/expr/q.math.g6.expr.school.013_rId212.wmf]的值为（ ）\nA．26； B．16； C．2； D．－6；\n（2）若a，b互为相反数，c，d互为倒数，则 [ASSET:assets/expr/q.math.g6.expr.school.013_rId214.wmf]的值是（ ）\nA．[ASSET:assets/expr/q.math.g6.expr.school.013_rId216.wmf]； B．－1； C．[ASSET:assets/expr/q.math.g6.expr.school.013_rId218.wmf]； D．1；\n（3）当[ASSET:assets/expr/q.math.g6.expr.school.013_rId220.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.013_rId222.wmf]时，[ASSET:assets/expr/q.math.g6.expr.school.013_rId224.wmf]的值是（ ）.\n（A）7 （B）-7 （C）1 （D）-1\n（4）在代数式[ASSET:assets/expr/q.math.g6.expr.school.013_rId226.wmf]中，当[ASSET:assets/expr/q.math.g6.expr.school.013_rId228.wmf]的取值分别为[ASSET:assets/expr/q.math.g6.expr.school.013_rId230.wmf]、0、1、2时，代数式对应的值如下表：\n则[ASSET:assets/expr/q.math.g6.expr.school.013_rId232.wmf]的值为（ ）.\nx | … | -1 | 0 | 1 | 2 | …\nkx+b | … | -1 | 0 | 3 | 5 | …\n（A）-1 （B）2 （C）-3 （D）-5",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -2019,7 +2042,7 @@
       "unparsed_items_use_reference_answer_raw": true,
       "answer_schema_version": "answer-units-v1"
     },
-    "grading_readiness": "machine_ready",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.expr.kp.04_expression_value",
       "name": "求代数式的值",
@@ -2113,20 +2136,17 @@
       "contains_asset",
       "multiple_subquestions",
       "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion"
+      "pool_source_conflict"
     ],
-    "is_seed_candidate": true,
-    "answer_structure_source": "normalized_answer_units_v1"
+    "is_seed_candidate": false,
+    "answer_structure_source": "question-pool-governance-v1",
+    "pool_governance": {
+      "version": "question-pool-governance-v1",
+      "note": "恢复源Word中被跳过的数据表。表中x=-1,0,1,2对应-1,0,3,5，四组数据不满足同一个一次式kx+b；原答案D无法据完整表格唯一成立，撤出池等待核对原表。",
+      "blocked_reasons": [
+        "pool_source_conflict"
+      ]
+    }
   },
   {
     "schema_version": "2.0",
@@ -2406,9 +2426,14 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 1,
-          "answer": "[ASSET:assets/expr/q.math.g6.expr.school.017_rId259.wmf]",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.017_rId259.wmf]"
+          "answer": "(2n+1)(2n-1)=(2n)^2-1",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "(2n+1)(2n-1)=(2n)^2-1",
+          "accepted_answers": [
+            "(2n+1)(2n-1)=(2n)^2-1",
+            "(2n+1)×(2n-1)=(2n)^2-1",
+            "(2n+1)(2n-1)=4n^2-1"
+          ]
         },
         {
           "item_id": "sub_2.blank_1",
@@ -2417,21 +2442,26 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 2,
-          "answer": "其中n为自然数",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "其中n为自然数"
+          "answer": "999999",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "999999"
         }
       ]
     },
-    "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.017_rId259.wmf]，其中n为自然数\n999999",
+    "reference_answer_raw": "第1小题第1空：(2n+1)(2n-1)=(2n)^2-1\n第2小题第1空：999999",
     "answer_match_type": "group",
     "answer_normalization_rule": {
+      "answer_schema_version": "answer-units-v1",
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "ignore_whitespace": true,
+      "uppercase": true,
+      "allow_fraction_decimal_equivalence": true,
+      "allow_equivalent_fraction": true,
       "item_order_matters": true,
-      "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true,
-      "answer_schema_version": "answer-units-v1"
+      "partial_credit": true
     },
-    "grading_readiness": "raw_answer_only",
+    "grading_readiness": "machine_ready",
     "main_knowledge_point": {
       "id": "math.g6.expr.kp.03_expression_quantity",
       "name": "用代数式表示具体问题中的简单数量关系",
@@ -2501,17 +2531,15 @@
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_not_structured",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false,
-    "answer_structure_source": "normalized_answer_units_v1"
+    "is_seed_candidate": true,
+    "answer_structure_source": "question-pool-governance-v1",
+    "pool_governance": {
+      "version": "question-pool-governance-v1",
+      "note": "第1题应为规律公式，而非把“其中n为自然数”错放到第2题；第2题为999999。公式不完全匹配时进入人工复核。",
+      "blocked_reasons": []
+    }
   },
   {
     "schema_version": "2.0",
@@ -3431,7 +3459,7 @@
     "question_type": "fill_blank",
     "question_type_source": "填空题",
     "difficulty": 4,
-    "question_text": "5、如图，用三种大小不等的正方形①②③和一个缺角的长方形拼成一个长方形ABCD（不重叠且没有缝隙），若[ASSET:assets/expr/q.math.g6.expr.school.025_rId343.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.025_rId345.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.025_rId347.wmf].\n（1）正方形②的边长为________，正方形③的边长为________；（用含[ASSET:assets/expr/q.math.g6.expr.school.025_rId349.wmf]的代数式表示）\n（2）用含[ASSET:assets/expr/q.math.g6.expr.school.025_rId351.wmf]的代数式表示长方形ABCD的周长，并求出当[ASSET:assets/expr/q.math.g6.expr.school.025_rId353.wmf]时，长方形ABCD的周长.\n[ASSET:assets/expr/q.math.g6.expr.school.025_rId354.png]",
+    "question_text": "5、如图，用三种大小不等的正方形①②③和一个缺角的长方形拼成一个长方形ABCD（不重叠且没有缝隙），若[ASSET:assets/expr/q.math.g6.expr.school.025_rId343.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.025_rId345.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.025_rId347.wmf].\n（1）正方形②的边长为________，正方形③的边长为________；（用含[ASSET:assets/expr/q.math.g6.expr.school.025_rId349.wmf]的代数式表示）\n（2）用含[ASSET:assets/expr/q.math.g6.expr.school.025_rId351.wmf]的代数式表示长方形ABCD的周长________，并求出当[ASSET:assets/expr/q.math.g6.expr.school.025_rId353.wmf]时，长方形ABCD的周长________.\n[ASSET:assets/expr/q.math.g6.expr.school.025_rId354.png]",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -3445,7 +3473,7 @@
           "blank_no": 1,
           "order_no": 1,
           "answer": "2a",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "2a"
         },
         {
@@ -3456,7 +3484,7 @@
           "blank_no": 2,
           "order_no": 2,
           "answer": "3a-1",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "3a-1"
         },
         {
@@ -3466,21 +3494,37 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 3,
-          "answer": "周长=24a-2，当a=3时，周长=70",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "周长=24a-2，当a=3时，周长=70"
+          "answer": "24a-2",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "24a-2"
+        },
+        {
+          "item_id": "sub_2.blank_2",
+          "subquestion_id": "sub_2",
+          "subquestion_no": 2,
+          "blank_id": "blank_2",
+          "blank_no": 2,
+          "order_no": 4,
+          "answer": "70",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "70"
         }
       ]
     },
-    "reference_answer_raw": "（1）2a；3a-1；（2）周长=24a-2，当a=3时，周长=70",
+    "reference_answer_raw": "第1小题第1空：2a\n第1小题第2空：3a-1\n第2小题第1空：24a-2\n第2小题第2空：70",
     "answer_match_type": "group",
     "answer_normalization_rule": {
+      "answer_schema_version": "answer-units-v1",
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "ignore_whitespace": true,
+      "uppercase": true,
+      "allow_fraction_decimal_equivalence": true,
+      "allow_equivalent_fraction": true,
       "item_order_matters": true,
-      "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true,
-      "answer_schema_version": "answer-units-v1"
+      "partial_credit": true
     },
-    "grading_readiness": "raw_answer_only",
+    "grading_readiness": "machine_ready",
     "main_knowledge_point": {
       "id": "math.g6.expr.kp.03_expression_quantity",
       "name": "用代数式表示具体问题中的简单数量关系",
@@ -3550,16 +3594,15 @@
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_not_structured",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false,
-    "answer_structure_source": "normalized_answer_units_v1"
+    "is_seed_candidate": true,
+    "answer_structure_source": "question-pool-governance-v1",
+    "pool_governance": {
+      "version": "question-pool-governance-v1",
+      "note": "第2小题要求周长表达式与a=3时的数值，分别设置作答空；图形及原答案核对一致。",
+      "blocked_reasons": []
+    }
   },
   {
     "schema_version": "2.0",
@@ -3828,7 +3871,7 @@
           "blank_no": 1,
           "order_no": 1,
           "answer": "a+2",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "a+2"
         },
         {
@@ -3839,7 +3882,7 @@
           "blank_no": 1,
           "order_no": 2,
           "answer": "-a-1",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "-a-1"
         },
         {
@@ -3850,7 +3893,7 @@
           "blank_no": 2,
           "order_no": 3,
           "answer": "-a+1",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "-a+1"
         },
         {
@@ -3861,7 +3904,7 @@
           "blank_no": 3,
           "order_no": 4,
           "answer": "a-1",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "a-1"
         },
         {
@@ -3872,7 +3915,7 @@
           "blank_no": 4,
           "order_no": 5,
           "answer": "a+1",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "a+1"
         },
         {
@@ -3883,7 +3926,7 @@
           "blank_no": 1,
           "order_no": 6,
           "answer": "8a",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "8a"
         },
         {
@@ -3894,7 +3937,7 @@
           "blank_no": 1,
           "order_no": 7,
           "answer": "-2a-3",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "-2a-3"
         },
         {
@@ -3905,7 +3948,7 @@
           "blank_no": 1,
           "order_no": 8,
           "answer": "4a-2",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "4a-2"
         },
         {
@@ -3915,9 +3958,13 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 9,
-          "answer": "6a-5",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "6a-5"
+          "answer": "-a^2+7a-3",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "-a^2+7a-3",
+          "accepted_answers": [
+            "-a^2+7a-3",
+            "-a^{2}+7a-3"
+          ]
         },
         {
           "item_id": "sub_7.blank_1",
@@ -3927,7 +3974,7 @@
           "blank_no": 1,
           "order_no": 10,
           "answer": "3x+4y-3",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "3x+4y-3"
         },
         {
@@ -3937,9 +3984,9 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 11,
-          "answer": "-8",
+          "answer": "-11",
           "answer_match_type": "numeric",
-          "reference_answer_raw": "-8"
+          "reference_answer_raw": "-11"
         },
         {
           "item_id": "sub_9.blank_1",
@@ -3948,9 +3995,15 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 12,
-          "answer": "6x-5",
+          "answer": "②④",
           "answer_match_type": "exact",
-          "reference_answer_raw": "6x-5"
+          "reference_answer_raw": "②④",
+          "accepted_answers": [
+            "②④",
+            "②、④",
+            "②和④",
+            "2,4"
+          ]
         },
         {
           "item_id": "sub_10.blank_1",
@@ -3959,21 +4012,26 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 13,
-          "answer": null,
-          "answer_match_type": "manual",
-          "reference_answer_raw": null
+          "answer": "6x-5",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "6x-5"
         }
       ]
     },
-    "reference_answer_raw": "a+2；（2）-a-1;-a+1;a-1;a+1；（3）8a；（4）-2a-3；（5）4a-2；（6）6a-5；\n（7）3x+4y-3；（8）-8；（9）6x-5",
+    "reference_answer_raw": "第1小题第1空：a+2\n第2小题第1空：-a-1\n第2小题第2空：-a+1\n第2小题第3空：a-1\n第2小题第4空：a+1\n第3小题第1空：8a\n第4小题第1空：-2a-3\n第5小题第1空：4a-2\n第6小题第1空：-a^2+7a-3\n第7小题第1空：3x+4y-3\n第8小题第1空：-11\n第9小题第1空：②④\n第10小题第1空：6x-5",
     "answer_match_type": "group",
     "answer_normalization_rule": {
+      "answer_schema_version": "answer-units-v1",
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "ignore_whitespace": true,
+      "uppercase": true,
+      "allow_fraction_decimal_equivalence": true,
+      "allow_equivalent_fraction": true,
       "item_order_matters": true,
-      "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true,
-      "answer_schema_version": "answer-units-v1"
+      "partial_credit": true
     },
-    "grading_readiness": "raw_answer_only",
+    "grading_readiness": "machine_ready",
     "main_knowledge_point": {
       "id": "math.g6.expr.kp.07_remove_parentheses",
       "name": "去括号法则（数与一次式相乘）",
@@ -4143,37 +4201,15 @@
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_units_need_review",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false,
-    "answer_structure_source": "normalized_answer_units_v1"
+    "is_seed_candidate": true,
+    "answer_structure_source": "question-pool-governance-v1",
+    "pool_governance": {
+      "version": "question-pool-governance-v1",
+      "note": "逐式核对题面：第6题为(5a-4)+1-(a^2-2a)=-a^2+7a-3，旧参考6a-5错误；第8题为-2(x-2y)-5=-11；第9题互为相反数的是②④，旧参考6x-5实际属于第10题植树总量。",
+      "blocked_reasons": []
+    }
   },
   {
     "schema_version": "2.0",
@@ -4696,25 +4732,19 @@
       "answer_items_not_structured",
       "answer_units_need_review",
       "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion"
+      "pool_manual_reasoning_required",
+      "pool_source_conflict"
     ],
     "is_seed_candidate": false,
-    "answer_structure_source": "normalized_answer_units_v1"
+    "answer_structure_source": "question-pool-governance-v1",
+    "pool_governance": {
+      "version": "question-pool-governance-v1",
+      "note": "包含“写出结论并说明理由”的人工论证任务，不整组自动入池。原参考把系数总和为0误解为每个字母项系数均为0；实际第二问得到a+b=4，不能分别断言a=0,b=4。",
+      "blocked_reasons": [
+        "pool_manual_reasoning_required",
+        "pool_source_conflict"
+      ]
+    }
   },
   {
     "schema_version": "2.0",
@@ -4842,7 +4872,7 @@
     "question_type": "fill_blank",
     "question_type_source": "填空题",
     "difficulty": 5,
-    "question_text": "7、若两个有理数的和等于这两个有理数的积，则称这两个有理数互为相依数，例如：有理数 与3，因为 ＋3＝ ×3，所以有理数 与3是互为相依数．\n（1）－3与 _________（填“是”或“不是”）互为相依数；\n（2）若有理数a与b互为相依数，b与c互为相反数，求代数式[ASSET:assets/expr/q.math.g6.expr.school.034_rId498.wmf]的值；\n（3）对于有理数a（a≠0，1），对它进行如下操作：取a的相依数，得到a1；取a1的倒数，得到a2；取a2的相依数，得到a3；取a3的倒数，得到a4；…；若a＝ ，求a1＋a2＋a3＋…＋a2024的值．",
+    "question_text": "7、若两个有理数的和等于这两个有理数的积，则称这两个有理数互为相依数，例如：有理数 (3)/(2) 与3，因为 (3)/(2) ＋3＝ (3)/(2)×3，所以有理数 (3)/(2) 与3是互为相依数．\n（1）－3与 (3)/(4) _________（填“是”或“不是”）互为相依数；\n（2）若有理数a与b互为相依数，b与c互为相反数，求代数式[ASSET:assets/expr/q.math.g6.expr.school.034_rId498.wmf]的值________；\n（3）对于有理数a（a≠0，1），对它进行如下操作：取a的相依数，得到a_(1)；取a_(1)的倒数，得到a_(2)；取a_(2)的相依数，得到a_(3)；取a_(3)的倒数，得到a_(4)；…；若a＝ (5)/(4)，求a_(1)＋a_(2)＋a_(3)＋…＋a_(2024)的值________．",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -4868,7 +4898,7 @@
           "order_no": 2,
           "answer": "-4",
           "answer_match_type": "numeric",
-          "reference_answer_raw": "-4。过程：a与b互为相依数，得ab=a+b；b与c互为相反数，得c=-b。原式=5ab+7c-5a+2b-4=5(a+b)-7b-5a+2b-4=-4"
+          "reference_answer_raw": "-4"
         },
         {
           "item_id": "sub_3.blank_1",
@@ -4877,21 +4907,26 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 3,
-          "answer": "[ASSET:assets/expr/q.math.g6.expr.school.034_rId500.wmf]",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.034_rId500.wmf]"
+          "answer": "5081/5",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "5081/5"
         }
       ]
     },
-    "reference_answer_raw": "（1）是；（2）-4。过程：a与b互为相依数，得ab=a+b；b与c互为相反数，得c=-b。原式=5ab+7c-5a+2b-4=5(a+b)-7b-5a+2b-4=-4。（3）[ASSET:assets/expr/q.math.g6.expr.school.034_rId500.wmf]",
+    "reference_answer_raw": "第1小题第1空：是\n第2小题第1空：-4\n第3小题第1空：5081/5",
     "answer_match_type": "group",
     "answer_normalization_rule": {
+      "answer_schema_version": "answer-units-v1",
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "ignore_whitespace": true,
+      "uppercase": true,
+      "allow_fraction_decimal_equivalence": true,
+      "allow_equivalent_fraction": true,
       "item_order_matters": true,
-      "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true,
-      "answer_schema_version": "answer-units-v1"
+      "partial_credit": true
     },
-    "grading_readiness": "raw_answer_only",
+    "grading_readiness": "machine_ready",
     "main_knowledge_point": {
       "id": "math.g6.expr.kp.04_expression_value",
       "name": "求代数式的值",
@@ -4934,12 +4969,15 @@
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_not_structured",
-      "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false,
-    "answer_structure_source": "normalized_answer_units_v1"
+    "is_seed_candidate": true,
+    "answer_structure_source": "question-pool-governance-v1",
+    "pool_governance": {
+      "version": "question-pool-governance-v1",
+      "note": "从EQ分数字段恢复3/2、3/4、5/4及下标；序列六项一周期和为3，2024项和为5081/5，与答案图1016又1/5一致。",
+      "blocked_reasons": []
+    }
   },
   {
     "schema_version": "2.0",
@@ -4954,7 +4992,7 @@
     "question_type": "fill_blank",
     "question_type_source": "填空题",
     "difficulty": 1,
-    "question_text": "1、填空：\n(1)计算：[ASSET:assets/expr/q.math.g6.expr.school.035_rId502.wmf]_________.\n(2)计算：[ASSET:assets/expr/q.math.g6.expr.school.035_rId504.wmf]_________.\n(3)计算：[ASSET:assets/expr/q.math.g6.expr.school.035_rId506.wmf]_________.、\n(4)已知长方形的周长是[ASSET:assets/expr/q.math.g6.expr.school.035_rId508.wmf]，其中一边长是[ASSET:assets/expr/q.math.g6.expr.school.035_rId510.wmf]，那么这个长方形的另一边长是_________.\n(5)如果一个三位数的个位数字是[ASSET:assets/expr/q.math.g6.expr.school.035_rId512.wmf]，十位数字是个位数字的2倍多3，百位数字是3与个位数字的差的2倍，那么这个三位数可以表示为_________(用含有[ASSET:assets/expr/q.math.g6.expr.school.035_rId512.wmf]的代数式表示，并化简).\n(6)若[ASSET:assets/expr/q.math.g6.expr.school.035_rId515.wmf]，则[ASSET:assets/expr/q.math.g6.expr.school.035_rId517.wmf]的值为________.\n(7)“整体思想”是数学解题中一种重要的思想方法，它在代数式的化简与求值中应用极为广泛.若[ASSET:assets/expr/q.math.g6.expr.school.035_rId519.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.035_rId521.wmf]，则[ASSET:assets/expr/q.math.g6.expr.school.035_rId523.wmf]的值为________.\n(8)形如[ASSET:assets/expr/q.math.g6.expr.school.035_rId525.wmf]的式子叫做二阶行列式，它的运算法则用公式表示为[ASSET:assets/expr/q.math.g6.expr.school.035_rId527.wmf].若[ASSET:assets/expr/q.math.g6.expr.school.035_rId529.wmf]，则[ASSET:assets/expr/q.math.g6.expr.school.035_rId531.wmf]的值为________.\n(9)已知2a－3b＋5＝0，则 b－a＝__________．",
+    "question_text": "1、填空：\n(1)计算：[ASSET:assets/expr/q.math.g6.expr.school.035_rId502.wmf]_________.\n(2)计算：[ASSET:assets/expr/q.math.g6.expr.school.035_rId504.wmf]_________.\n(3)计算：[ASSET:assets/expr/q.math.g6.expr.school.035_rId506.wmf]_________.、\n(4)已知长方形的周长是[ASSET:assets/expr/q.math.g6.expr.school.035_rId508.wmf]，其中一边长是[ASSET:assets/expr/q.math.g6.expr.school.035_rId510.wmf]，那么这个长方形的另一边长是_________.\n(5)如果一个三位数的个位数字是[ASSET:assets/expr/q.math.g6.expr.school.035_rId512.wmf]，十位数字是个位数字的2倍多3，百位数字是3与个位数字的差的2倍，那么这个三位数可以表示为_________(用含有[ASSET:assets/expr/q.math.g6.expr.school.035_rId512.wmf]的代数式表示，并化简).\n(6)若[ASSET:assets/expr/q.math.g6.expr.school.035_rId515.wmf]，则[ASSET:assets/expr/q.math.g6.expr.school.035_rId517.wmf]的值为________.\n(7)“整体思想”是数学解题中一种重要的思想方法，它在代数式的化简与求值中应用极为广泛.若[ASSET:assets/expr/q.math.g6.expr.school.035_rId519.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.035_rId521.wmf]，则[ASSET:assets/expr/q.math.g6.expr.school.035_rId523.wmf]的值为________.\n(8)形如[ASSET:assets/expr/q.math.g6.expr.school.035_rId525.wmf]的式子叫做二阶行列式，它的运算法则用公式表示为[ASSET:assets/expr/q.math.g6.expr.school.035_rId527.wmf].若[ASSET:assets/expr/q.math.g6.expr.school.035_rId529.wmf]，则[ASSET:assets/expr/q.math.g6.expr.school.035_rId531.wmf]的值为________.\n(9)已知2a－3b＋5＝0，则 (3)/(2) b－a＝__________．",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -4968,7 +5006,7 @@
           "blank_no": 1,
           "order_no": 1,
           "answer": "2x+4y-6",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "2x+4y-6"
         },
         {
@@ -4978,9 +5016,13 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 2,
-          "answer": "[ASSET:assets/expr/q.math.g6.expr.school.035_rId533.wmf]",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.035_rId533.wmf]"
+          "answer": "9x/2-6",
+          "answer_match_type": "latex_exact",
+          "reference_answer_raw": "9x/2-6",
+          "accepted_answers": [
+            "9x/2-6",
+            "4.5x-6"
+          ]
         },
         {
           "item_id": "sub_3.blank_1",
@@ -4990,7 +5032,7 @@
           "blank_no": 1,
           "order_no": 3,
           "answer": "-14a-3b",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "-14a-3b"
         },
         {
@@ -5001,7 +5043,7 @@
           "blank_no": 1,
           "order_no": 4,
           "answer": "4m-n",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "4m-n"
         },
         {
@@ -5012,7 +5054,7 @@
           "blank_no": 1,
           "order_no": 5,
           "answer": "630-179a",
-          "answer_match_type": "exact",
+          "answer_match_type": "latex_exact",
           "reference_answer_raw": "630-179a"
         },
         {
@@ -5055,21 +5097,26 @@
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 9,
-          "answer": "[ASSET:assets/expr/q.math.g6.expr.school.035_rId535.wmf]",
-          "answer_match_type": "exact",
-          "reference_answer_raw": "[ASSET:assets/expr/q.math.g6.expr.school.035_rId535.wmf]"
+          "answer": "5/2",
+          "answer_match_type": "numeric",
+          "reference_answer_raw": "5/2"
         }
       ]
     },
-    "reference_answer_raw": "（1）2x+4y-6；（2）[ASSET:assets/expr/q.math.g6.expr.school.035_rId533.wmf]；（3）-14a-3b；（4）4m-n；（5）630-179a；（6）-2；\n（7）8；（8）2；（9）[ASSET:assets/expr/q.math.g6.expr.school.035_rId535.wmf]",
+    "reference_answer_raw": "第1小题第1空：2x+4y-6\n第2小题第1空：9x/2-6\n第3小题第1空：-14a-3b\n第4小题第1空：4m-n\n第5小题第1空：630-179a\n第6小题第1空：-2\n第7小题第1空：8\n第8小题第1空：2\n第9小题第1空：5/2",
     "answer_match_type": "group",
     "answer_normalization_rule": {
+      "answer_schema_version": "answer-units-v1",
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "ignore_whitespace": true,
+      "uppercase": true,
+      "allow_fraction_decimal_equivalence": true,
+      "allow_equivalent_fraction": true,
       "item_order_matters": true,
-      "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true,
-      "answer_schema_version": "answer-units-v1"
+      "partial_credit": true
     },
-    "grading_readiness": "raw_answer_only",
+    "grading_readiness": "machine_ready",
     "main_knowledge_point": {
       "id": "math.g6.expr.kp.06_combine_like_terms",
       "name": "合并同类项",
@@ -5189,27 +5236,15 @@
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_not_structured",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false,
-    "answer_structure_source": "normalized_answer_units_v1"
+    "is_seed_candidate": true,
+    "answer_structure_source": "question-pool-governance-v1",
+    "pool_governance": {
+      "version": "question-pool-governance-v1",
+      "note": "第9题漏读EQ字段3/2，导致题面看起来条件不足；恢复为(3/2)b-a，答案5/2。其余公式转录并逐式核对。",
+      "blocked_reasons": []
+    }
   },
   {
     "schema_version": "2.0",
@@ -5224,7 +5259,7 @@
     "question_type": "choice",
     "question_type_source": "选择题",
     "difficulty": 2,
-    "question_text": "2、选择题：\n(1)下列计算中正确的是（ ）\nA.[ASSET:assets/expr/q.math.g6.expr.school.036_rId537.wmf]； B.[ASSET:assets/expr/q.math.g6.expr.school.036_rId539.wmf]； C.[ASSET:assets/expr/q.math.g6.expr.school.036_rId541.wmf]； D.[ASSET:assets/expr/q.math.g6.expr.school.036_rId543.wmf]；\n（2）若[ASSET:assets/expr/q.math.g6.expr.school.036_rId545.wmf]，则[ASSET:assets/expr/q.math.g6.expr.school.036_rId547.wmf]的值是（ ）.\n（A）-2 （B）2 （C）4 （D）-4\n(2)如果[ASSET:assets/expr/q.math.g6.expr.school.036_rId549.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.036_rId551.wmf]，那么[ASSET:assets/expr/q.math.g6.expr.school.036_rId553.wmf]的值是（ ）\nA.[ASSET:assets/expr/q.math.g6.expr.school.036_rId555.wmf]； B.[ASSET:assets/expr/q.math.g6.expr.school.036_rId557.wmf]； C.[ASSET:assets/expr/q.math.g6.expr.school.036_rId559.wmf]； D.[ASSET:assets/expr/q.math.g6.expr.school.036_rId561.wmf]；\n[ASSET:unknown][ASSET:unknown](3)观察图中正方形四个顶点所标的数字规律，可知2024应标在（ ）\nA．第506个正方形的左上角； B．第506个正方形的右下角；\nC．第507个正方形的左上角； D．第507个正方形的右下角；",
+    "question_text": "2、选择题：\n（1）下列计算中正确的是（ ）\nA.[ASSET:assets/expr/q.math.g6.expr.school.036_rId537.wmf]； B.[ASSET:assets/expr/q.math.g6.expr.school.036_rId539.wmf]； C.[ASSET:assets/expr/q.math.g6.expr.school.036_rId541.wmf]； D.[ASSET:assets/expr/q.math.g6.expr.school.036_rId543.wmf]；\n（2）若[ASSET:assets/expr/q.math.g6.expr.school.036_rId545.wmf]，则[ASSET:assets/expr/q.math.g6.expr.school.036_rId547.wmf]的值是（ ）.\n（A）-2 （B）2 （C）4 （D）-4\n（3）如果[ASSET:assets/expr/q.math.g6.expr.school.036_rId549.wmf]，[ASSET:assets/expr/q.math.g6.expr.school.036_rId551.wmf]，那么[ASSET:assets/expr/q.math.g6.expr.school.036_rId553.wmf]的值是（ ）\nA.[ASSET:assets/expr/q.math.g6.expr.school.036_rId555.wmf]； B.[ASSET:assets/expr/q.math.g6.expr.school.036_rId557.wmf]； C.[ASSET:assets/expr/q.math.g6.expr.school.036_rId559.wmf]； D.[ASSET:assets/expr/q.math.g6.expr.school.036_rId561.wmf]；\n[ASSET:assets/expr/q.math.g6.expr.school.036_canvas265.svg]\n（4）观察图中正方形四个顶点所标的数字规律，可知2024应标在（ ）\nA．第506个正方形的左上角； B．第506个正方形的右下角；\nC．第507个正方形的左上角； D．第507个正方形的右下角；",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -5253,20 +5288,20 @@
           "reference_answer_raw": "A"
         },
         {
-          "item_id": "sub_2.blank_2",
-          "subquestion_id": "sub_2",
-          "subquestion_no": 2,
-          "blank_id": "blank_2",
-          "blank_no": 2,
+          "item_id": "sub_3.blank_1",
+          "subquestion_id": "sub_3",
+          "subquestion_no": 3,
+          "blank_id": "blank_1",
+          "blank_no": 1,
           "order_no": 3,
           "answer": "C",
           "answer_match_type": "choice",
           "reference_answer_raw": "C"
         },
         {
-          "item_id": "sub_3.blank_1",
-          "subquestion_id": "sub_3",
-          "subquestion_no": 3,
+          "item_id": "sub_4.blank_1",
+          "subquestion_id": "sub_4",
+          "subquestion_no": 4,
           "blank_id": "blank_1",
           "blank_no": 1,
           "order_no": 4,
@@ -5276,15 +5311,20 @@
         }
       ]
     },
-    "reference_answer_raw": "（1）C；（2）A；(2)C；(3)D",
+    "reference_answer_raw": "第1小题第1空：C\n第2小题第1空：A\n第3小题第1空：C\n第4小题第1空：D",
     "answer_match_type": "group",
     "answer_normalization_rule": {
+      "answer_schema_version": "answer-units-v1",
+      "trim_whitespace": true,
+      "normalize_fullwidth_symbols": true,
+      "ignore_whitespace": true,
+      "uppercase": true,
+      "allow_fraction_decimal_equivalence": true,
+      "allow_equivalent_fraction": true,
       "item_order_matters": true,
-      "partial_credit": true,
-      "unparsed_items_use_reference_answer_raw": true,
-      "answer_schema_version": "answer-units-v1"
+      "partial_credit": true
     },
-    "grading_readiness": "raw_answer_only",
+    "grading_readiness": "machine_ready",
     "main_knowledge_point": {
       "id": "math.g6.expr.kp.06_combine_like_terms",
       "name": "合并同类项",
@@ -5375,6 +5415,11 @@
         "relationship_id": "rId561",
         "path": "assets/expr/q.math.g6.expr.school.036_rId561.wmf",
         "extension": ".wmf"
+      },
+      {
+        "relationship_id": "canvas265",
+        "path": "assets/expr/q.math.g6.expr.school.036_canvas265.svg",
+        "extension": ".svg"
       }
     ],
     "source_file": "六年级_数学_校本审核/新/expr_简单的代数式.docx",
@@ -5384,24 +5429,15 @@
     "import_issues": [
       "contains_asset",
       "multiple_subquestions",
-      "answer_items_not_structured",
-      "asset_relationship_missing",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
-      "asset_needs_web_conversion",
       "asset_needs_web_conversion"
     ],
-    "is_seed_candidate": false,
-    "answer_structure_source": "normalized_answer_units_v1"
+    "is_seed_candidate": true,
+    "answer_structure_source": "question-pool-governance-v1",
+    "pool_governance": {
+      "version": "question-pool-governance-v1",
+      "note": "从原始Word画布265恢复顶点数字图，并将重复编号统一为四个独立小题；逐项复核答案C、A、C、D：第2题3-5=-2，第3题(2m+n)-mn=3，第4题2024=4×506位于第507个正方形右下角。结构化答案改为sub_1至sub_4各一项后入池。",
+      "blocked_reasons": []
+    }
   },
   {
     "schema_version": "2.0",

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.models import Question
 from app.schemas.questions import QuestionReviewRequest, QuestionWithdrawRequest
 from app.services.literacy_catalog import normalize_literacy_label
+from app.services.question_pool_quality import pool_answer_issues
 
 
 class QuestionReviewConflict(RuntimeError):
@@ -25,7 +26,7 @@ _CHOICE_RE = re.compile(r"^[A-H]$")
 _NUMERIC_RE = re.compile(r"^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$")
 
 
-def validate_review_items(question_type: str, items: list[dict[str, Any]]) -> None:
+def validate_review_items(question_type: str, items: list[dict[str, Any]], *, final_answer_only: bool = False) -> None:
     if question_type not in {
         "choice", "fill_blank", "true_false", "calculation", "solution"
     }:
@@ -61,7 +62,10 @@ def validate_review_items(question_type: str, items: list[dict[str, Any]]) -> No
             ):
                 raise QuestionReviewValidation("判断题答案必须是“正确”或“错误”")
         elif question_type in {"calculation", "solution"}:
-            if match_type != "manual":
+            if question_type == "calculation" and final_answer_only:
+                if match_type not in {"numeric", "exact", "latex_exact"}:
+                    raise QuestionReviewValidation("仅判最终结果时必须设置可自动判分的答案")
+            elif match_type != "manual":
                 raise QuestionReviewValidation(
                     "计算题和简答题当前只能保存人工评分参考答案"
                 )
@@ -156,9 +160,10 @@ def _mutate(
         raise QuestionReviewConflict("题目已被其他人修改，请刷新后再提交")
 
     items = [item.model_dump() for item in request.items]
-    validate_review_items(question.question_type, items)
+    final_answer_only = request.final_answer_only and question.question_type == "calculation"
+    validate_review_items(question.question_type, items, final_answer_only=final_answer_only)
     if promote:
-        if question.question_type in {"calculation", "solution"}:
+        if question.question_type in {"calculation", "solution"} and not final_answer_only:
             raise QuestionReviewValidation(
                 "计算题和简答题可以保存结构化参考答案，但暂不进入自动判分池"
             )
@@ -171,10 +176,19 @@ def _mutate(
     before_revision = question.review_revision
     before_answer = question.correct_answer
     answer = _answer_payload(request)
+    rules = _normalization_rules(request)
+    if final_answer_only:
+        rules.update({"final_answer_only": True, "normalize_fullwidth_symbols": True, "allow_fraction_decimal_equivalence": True, "allow_equivalent_fraction": True})
+        if question.answer_normalization_rule.get("symbolic_variable"):
+            rules.update({key: question.answer_normalization_rule[key] for key in ("symbolic_variable", "symbolic_domain")})
+    if promote:
+        issues = pool_answer_issues(answer, "group", rules)
+        if issues:
+            raise QuestionReviewValidation("答案尚不能可靠自动判分：" + "、".join(issues))
 
     question.correct_answer = answer
     question.answer_match_type = "group"
-    question.answer_normalization_rule = _normalization_rules(request)
+    question.answer_normalization_rule = rules
     question.review_revision += 1
     question.reviewed_by = request.reviewer_name
     question.reviewed_at = datetime.now(timezone.utc)
@@ -222,7 +236,7 @@ def withdraw_question(
     question = _locked_question(db, question_id)
     if question.grading_readiness != "machine_ready":
         raise QuestionReviewConflict("该题当前不在自动组卷池中")
-    if question.question_type not in {"choice", "fill_blank", "true_false"}:
+    if question.question_type not in {"choice", "fill_blank", "true_false"} and not (question.question_type == "calculation" and question.answer_normalization_rule.get("final_answer_only")):
         raise QuestionReviewValidation("当前题型不在自动判分池中")
     if question.review_revision != request.expected_review_revision:
         raise QuestionReviewConflict("题目已被其他人修改，请刷新后再操作")

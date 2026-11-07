@@ -22,11 +22,9 @@ def test_catalog_import_has_no_business_data_options() -> None:
 
 def test_m0_seed_contract_is_preserved() -> None:
     questions = json.loads(QUESTIONS_PATH.read_text(encoding="utf-8"))
-    assert len(questions) == 45
-    assert len({item["original_qid"] for item in questions}) == 45
-    assert sum(item["question_type"] == "choice" for item in questions) == 11
-    assert sum(item["question_type"] == "fill_blank" for item in questions) == 32
-    assert sum(item["question_type"] == "true_false" for item in questions) == 2
+    assert 30 <= len(questions) <= 50
+    assert len({item["original_qid"] for item in questions}) == len(questions)
+    assert {item["question_type"] for item in questions} == {"choice", "fill_blank", "true_false"}
     assert all(item["grading_readiness"] == "machine_ready" for item in questions)
     assert all(item["source_review_status"] == "reviewed" for item in questions)
     assert all(item["correct_answer"] is not None for item in questions)

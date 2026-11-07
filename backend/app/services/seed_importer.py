@@ -13,6 +13,7 @@ from app.services.answer_units import (
     AUTO_MATCH_TYPES,
     is_canonical_answer_structure,
 )
+from app.services.question_pool_quality import pool_answer_issues
 
 from app.models import KnowledgePoint, Question
 
@@ -80,6 +81,9 @@ def _validate_inputs(
                 f"{item['original_qid']} does not use canonical subquestion/blank answers"
             )
         if item.get("grading_readiness") == "machine_ready":
+            quality_issues = pool_answer_issues(item.get("correct_answer"), item.get("answer_match_type"), item.get("answer_normalization_rule", {}))
+            if quality_issues:
+                raise ValueError(f"{item['original_qid']} cannot enter the automatic pool: {quality_issues}")
             if item.get("correct_answer") is None or item.get("answer_match_type") is None:
                 raise ValueError(f"{item['original_qid']} lacks a structured answer")
             answer_items = item["correct_answer"]["items"]

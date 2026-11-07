@@ -1,5 +1,7 @@
 import { Descriptions, Tag, Typography } from 'antd'
 import { answerMatchTypeLabel } from '../utils/gradingLabels'
+import type { AssetInfo } from '../types'
+import { RichQuestionText } from './RichQuestionText'
 
 function scalar(value: unknown): string {
   if (Array.isArray(value)) return value.map(scalar).join(' / ')
@@ -8,7 +10,13 @@ function scalar(value: unknown): string {
   return String(value)
 }
 
-export function AnswerView({ answer }: { answer: unknown }) {
+export function AnswerView({ answer, assets = [] }: { answer: unknown; assets?: AssetInfo[] }) {
+  function content(value: unknown) {
+    const text = scalar(value)
+    return /\[ASSET:|\\\(|\\\[/.test(text)
+      ? <RichQuestionText text={text} assets={assets} />
+      : <Typography.Text code>{text}</Typography.Text>
+  }
   if (
     typeof answer === 'object' &&
     answer !== null &&
@@ -27,7 +35,7 @@ export function AnswerView({ answer }: { answer: unknown }) {
       <Descriptions bordered size="small" column={1}>
         {items.map((item) => (
           <Descriptions.Item key={item.item_id} label={`第 ${item.subquestion_no ?? 1} 小题 · 第 ${item.blank_no ?? 1} 空`}>
-            <Typography.Text code>{scalar(item.answer)}</Typography.Text>{' '}
+            {content(item.answer)}{' '}
             {item.answer_match_type && <Tag>{answerMatchTypeLabel(item.answer_match_type)}</Tag>}
             {item.accepted_answers && item.accepted_answers.length > 1 && <Typography.Text type="secondary"> 可接受：{item.accepted_answers.join(' / ')}</Typography.Text>}
           </Descriptions.Item>
@@ -35,5 +43,5 @@ export function AnswerView({ answer }: { answer: unknown }) {
       </Descriptions>
     )
   }
-  return <Typography.Text code>{scalar(answer)}</Typography.Text>
+  return content(answer)
 }

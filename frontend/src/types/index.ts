@@ -49,7 +49,8 @@ export interface QuestionCatalogChapter extends Tag {
   core_literacies?: string[]
 }
 
-export interface QuestionCreateRequest {
+export interface QuestionUpdateRequest {
+  expected_review_revision: number
   original_qid?: string
   question_type: 'choice' | 'fill_blank' | 'calculation' | 'solution' | 'true_false'
   difficulty: number
@@ -66,10 +67,6 @@ export interface QuestionCreateRequest {
   is_required: boolean
   operator_name: string
   assets?: Array<{ path: string }>
-}
-
-export interface QuestionUpdateRequest extends QuestionCreateRequest {
-  expected_review_revision: number
 }
 
 export interface AssetInfo {
@@ -113,6 +110,7 @@ export interface QuestionAnswerItemInput {
 }
 
 export interface QuestionReviewRequest {
+  final_answer_only?: boolean
   expected_review_revision: number
   reviewer_name: string
   review_note?: string

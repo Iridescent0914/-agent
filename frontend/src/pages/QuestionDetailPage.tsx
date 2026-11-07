@@ -32,6 +32,11 @@ const importIssueLabel: Record<string, string> = {
   answer_items_not_structured: '答案尚未拆分为可判分结构',
   source_contains_ai_draft_marker: '原始资料包含待确认的 AI 草拟内容',
   asset_unavailable: '部分题目图片或公式资源无法访问',
+  answer_units_need_review: '部分小题或填空答案缺失，需要逐空核对',
+  pool_missing_source_content: '原题条件或图形不完整，补齐后才能入池',
+  pool_source_conflict: '原始题面或参考答案存在矛盾，需要核对',
+  pool_manual_reasoning_required: '包含说明理由等论证任务，整组需要人工评分',
+  pool_manual_calculation: '计算题参考答案已整理，当前由教师人工评分',
 }
 
 function describeImportIssue(issue: string) {
@@ -80,11 +85,12 @@ export function QuestionDetailPage() {
               description={
                 question.question_type === 'choice' || question.question_type === 'fill_blank'
                   ? '老师可以编辑或确认结构化答案；保存审核草稿并通过校验后，可确认进入自动组卷池。'
-                  : '当前阶段只开放选择题和填空题审核；计算题、解答题继续保留为待入库题。'
+                  : '选择题、填空题和判断题可审核入池；计算题、解答题的参考解答由教师人工评分。'
               }
             />
           )}
-          {(question.question_type === 'choice' || question.question_type === 'fill_blank' || question.question_type === 'true_false') && (
+          {question.answer_normalization_rule.final_answer_only === true && <Alert type="info" showIcon message="仅按最终答案自动判对错，不计计算过程分；本题含 n 的表达式按 n 为正整数核对等价性，无法可靠判定时进入复核。" />}
+          {(question.question_type === 'choice' || question.question_type === 'fill_blank' || question.question_type === 'true_false' || (question.question_type === 'calculation' && question.answer_normalization_rule.final_answer_only === true)) && (
               <div className={'question-review-action' + (question.grading_readiness === 'machine_ready' ? ' is-ready' : '')}>
                 <QuestionReviewEditor question={question} onUpdated={setQuestion} />
                 <Typography.Text type="secondary">
@@ -102,7 +108,7 @@ export function QuestionDetailPage() {
           <Typography.Title level={5}>结构化标准答案</Typography.Title>
           {question.correct_answer === null
             ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未完成结构化答案" />
-            : <AnswerView answer={question.correct_answer} />}
+            : <AnswerView answer={question.correct_answer} assets={question.assets} />}
           <Descriptions bordered size="small" column={{ xs: 1, md: 2 }}>
             <Descriptions.Item label="答案匹配类型">{answerMatchTypeLabel(question.answer_match_type)}</Descriptions.Item>
             <Descriptions.Item label="来源审核状态">{question.source_review_status}</Descriptions.Item>

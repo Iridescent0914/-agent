@@ -71,9 +71,10 @@ class QuestionCatalogChapter(TagOut):
     core_literacies: list[str] = Field(default_factory=list)
 
 
-class QuestionCreateRequest(BaseModel):
+class QuestionUpdateRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
+    expected_review_revision: int = Field(ge=1, strict=True)
     original_qid: str | None = Field(default=None, max_length=180)
     question_type: Literal[
         'choice', 'fill_blank', 'calculation', 'solution', 'true_false'
@@ -133,10 +134,6 @@ class QuestionCreateRequest(BaseModel):
         return self
 
 
-class QuestionUpdateRequest(QuestionCreateRequest):
-    expected_review_revision: int = Field(ge=1, strict=True)
-
-
 class QuestionArchiveRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
@@ -182,6 +179,8 @@ class QuestionAnswerItemInput(BaseModel):
 
 class QuestionReviewRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+    final_answer_only: bool = False
 
     expected_review_revision: int = Field(ge=1, strict=True)
     reviewer_name: str = Field(min_length=1, max_length=80)

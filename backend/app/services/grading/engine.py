@@ -54,6 +54,13 @@ def _grade_latex_exact(student_answer: Any, expected: Any, rule: dict[str, Any])
 
 
 def _grade_numeric(student_answer: Any, expected: Any, rule: dict[str, Any]) -> GradeResult:
+    if rule.get("symbolic_variable") is not None:
+        from app.services.grading.rational_expression import equivalent, ExpressionReview
+        try:
+            correct = equivalent(student_answer, expected, variable=rule["symbolic_variable"], domain=rule.get("symbolic_domain", ""))
+        except ExpressionReview as exc:
+            return _pending("numeric", str(exc), rule)
+        return _confirmed("numeric", correct, "equivalent_expression" if correct else "mismatched", rule, normalized=student_answer)
     if rule.get("require_unit", False):
         return _pending("numeric", "invalid_rule_snapshot", rule)
     try:

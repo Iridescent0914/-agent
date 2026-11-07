@@ -36,30 +36,52 @@ def client(db):
         app.dependency_overrides.pop(get_db, None)
 
 
-def test_teacher_can_create_review_and_archive_question(client, db):
+@pytest.fixture
+def catalog_question(db):
+    """An existing catalog row; tests never depend on the retired creation API."""
     knowledge_point = db.scalar(select(KnowledgePoint).order_by(KnowledgePoint.code))
-    qid = f'q.teacher.test.{uuid4().hex[:12]}'
+    question = Question(
+        original_qid=f'q.catalog.test.{uuid4().hex[:12]}',
+        schema_version='catalog-test-v1',
+        chapter_code=knowledge_point.chapter_code,
+        chapter_name=knowledge_point.chapter_name,
+        grade='六年级上册', section='测试', question_type='fill_blank', difficulty=3,
+        main_knowledge_point_id=knowledge_point.id,
+        question_text='计算：1+1=____。', reference_answer_raw='2',
+        answer_normalization_rule={}, core_literacy='运算能力',
+        source_file='catalog_test_fixture', source_question_number=1,
+        source_review_status='reviewed', grading_readiness='raw_answer_only',
+        import_issues=['answer_items_not_structured'],
+    )
+    db.add(question)
+    db.flush()
+    return question
+
+
+def test_single_question_creation_is_unavailable(client, db):
+    knowledge_point = db.scalar(select(KnowledgePoint).order_by(KnowledgePoint.code))
+    before = db.scalar(select(func.count(Question.id)))
+    response = client.post('/api/v1/questions', json={
+        'question_type': 'fill_blank', 'difficulty': 3,
+        'question_text': '1+1=____。', 'reference_answer_raw': '2',
+        'main_knowledge_point_code': knowledge_point.code, 'operator_name': '测试教师',
+    })
+    assert response.status_code == 405
+    assert db.scalar(select(func.count(Question.id))) == before
+    schema = client.get('/openapi.json').json()
+    assert 'post' not in schema['paths']['/api/v1/questions']
+
+
+def test_teacher_can_review_edit_and_archive_existing_question(client, db, catalog_question):
+    knowledge_point = db.get(KnowledgePoint, catalog_question.main_knowledge_point_id)
+    qid = catalog_question.original_qid
     before = int(db.scalar(
         select(func.count(Question.id)).where(Question.archived_at.is_(None))
     ) or 0)
-    created = client.post('/api/v1/questions', json={
-        'original_qid': qid,
-        'question_type': 'fill_blank',
-        'difficulty': 3,
-        'section': '教师测试',
-        'question_text': '计算：1+1=____。',
-        'reference_answer_raw': '2',
-        'main_knowledge_point_code': knowledge_point.code,
-        'core_literacy': '运算能力',
-        'solution': '直接计算。',
-        'operator_name': '测试教师',
-    })
-    assert created.status_code == 201, created.text
-    body = created.json()
+    body = client.get(f'/api/v1/questions/{catalog_question.id}').json()
     question_id = body['id']
     assert body['original_qid'] == qid
     assert body['grading_readiness'] == 'raw_answer_only'
-    assert body['review_history'][-1]['type'] == 'created'
 
     promoted = client.post(f'/api/v1/questions/{question_id}/promote', json={
         'expected_review_revision': body['review_revision'],
@@ -111,12 +133,12 @@ def test_teacher_can_create_review_and_archive_question(client, db):
     assert client.get('/api/v1/questions', params={'keyword': qid}).json()['total'] == 0
     assert int(db.scalar(
         select(func.count(Question.id)).where(Question.archived_at.is_(None))
-    ) or 0) == before
+    ) or 0) == before - 1
     archived = db.get(Question, body['id'])
     assert archived is not None and archived.archived_by == '测试教师'
 
 
-def test_teacher_can_upload_images_when_creating_question(client, db, tmp_path, monkeypatch):
+def test_teacher_can_upload_images_when_editing_existing_question(client, db, catalog_question, tmp_path, monkeypatch):
     settings = get_settings()
     monkeypatch.setattr(settings, 'teacher_asset_dir', tmp_path)
     monkeypatch.setattr(
@@ -138,7 +160,8 @@ def test_teacher_can_upload_images_when_creating_question(client, db, tmp_path, 
     assert (tmp_path / asset['path'].split('/')[-1]).is_file()
 
     knowledge_point = db.scalar(select(KnowledgePoint).order_by(KnowledgePoint.code))
-    created = client.post('/api/v1/questions', json={
+    updated = client.put(f'/api/v1/questions/{catalog_question.id}', json={
+        'expected_review_revision': catalog_question.review_revision,
         'question_type': 'fill_blank',
         'difficulty': 3,
         'section': '图片题测试',
@@ -148,8 +171,8 @@ def test_teacher_can_upload_images_when_creating_question(client, db, tmp_path, 
         'operator_name': '测试教师',
         'assets': [{'path': asset['path']}],
     })
-    assert created.status_code == 201, created.text
-    body = created.json()
+    assert updated.status_code == 200, updated.text
+    body = updated.json()
     assert body['has_image'] is True
     assert body['asset_count'] == 1
     assert f"[ASSET:{asset['path']}]" in body['question_text']

@@ -26,3 +26,4 @@ frontend/vite.config.d.ts
 data/uploads/
 data/eval/m6/private-images/
 data/eval/m6/results*.json
+data/audit/asset_previews/

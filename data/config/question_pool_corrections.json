@@ -1,0 +1,180 @@
+{
+  "schema_version": "question-pool-corrections-v1",
+  "description": "逐题核对新版校本 Word、公式图片及数学关系的修正。答案数组只在此配置中表示一小题的多个空；入库时展开为 answer-units-v1。未确认的题目保留阻塞原因，不猜测原题。",
+  "questions": {
+    "q.math.g6.rational.school.004": {
+      "note": "核对 rId26 为负循环小数、rId28 为 π；去掉 AI 提示，按三个分类空记录。π 不是有理数。多值按题干顺序填写。",
+      "append_instruction": "各分类中的数按题干出现顺序填写，用逗号分隔；循环小数可填写为 -404/999。",
+      "answers": {"1": [["2.6,0.35,25", "exact"], ["0,25", "exact"], ["-1,-404/999", "exact", "-1,-0.\\overline{404}"]]}
+    },
+    "q.math.g6.rational.school.007": {
+      "note": "逐一抄录并核对答案公式 rId61/63/65/67；对应第7、8、9、2022项，不将整段提示当作答案。",
+      "answers": {"1": [["-1/7", "numeric"], ["1/8", "numeric"], ["-1/9", "numeric"]], "2": [["1/2022", "numeric"]]}
+    },
+    "q.math.g6.rational.school.009": {
+      "note": "核对数轴 A-H 及三个分类圈；第二小题原来没有答案位置，补成三个有标签的分类空。各集合按从小到大填写。",
+      "append_text": "\n第（2）小题分类填写：整数________；负有理数________；非负数________。（每空内按从小到大填写，用逗号分隔。）",
+      "answers": {"1": [["-5/2", "numeric"], ["-2", "numeric"], ["-1/4", "numeric"], ["0", "numeric"], ["1/2", "numeric"], ["7/4", "numeric"], ["3", "numeric"], ["7/2", "numeric"]], "2": [["-2,0,3", "exact"], ["-5/2,-2,-1/4", "exact"], ["0,1/2,7/4,3,7/2", "exact"]]}
+    },
+    "q.math.g6.rational.school.011": {
+      "note": "去除无识别能力提示，按四小题重新对齐答案；补出第一题遗漏的填空线。第三题距离和为12。",
+      "replacements": [["则m= .", "则m=________." ]],
+      "append_instruction": "多值答案从小到大填写，用逗号分隔。",
+      "answers": {"1": [["-2,-1,0,1,2", "exact"]], "2": [["-5,1", "exact", "1或-5", "-5或1"]], "3": [["12", "numeric"]], "4": [["<", "exact"]]}
+    },
+    "q.math.g6.rational.school.014": {
+      "note": "按十小题逐空核对；第9小题原参考答案与数轴方向相反，按 b<0<a 且 |b|>|a| 改为 b<-a<a<-b；第7题重复的同一公式只显示一次。",
+      "replacements": [["[ASSET:assets/rational/q.math.g6.rational.school.014_rId135.wmf][ASSET:assets/rational/q.math.g6.rational.school.014_rId135.wmf]", "[ASSET:assets/rational/q.math.g6.rational.school.014_rId135.wmf]"]],
+      "answers": {"1": [["符号", "exact"], ["相反数", "exact"], ["互为相反数", "exact"], ["0", "numeric"]], "2": [["两侧", "exact"], ["相等", "exact"]], "3": [["-3", "numeric"], ["7/3", "numeric"], ["6", "numeric"]], "4": [["-8.5", "numeric"], ["31/8", "numeric"]], "5": [["-4", "numeric"]], "6": [["-a", "latex_exact"]], "7": [["0", "numeric"]], "8": [["6", "numeric"]], "9": [["b<-a<a<-b", "latex_exact", "-b>a>-a>b"]], "10": [["丙", "exact"]]}
+    },
+    "q.math.g6.rational.school.016": {
+      "note": "移除误放在第2小题的第3个空；第三小题保留完整的0或4两种可能。",
+      "answers": {"1": [["-2", "numeric"]], "2": [["1", "numeric"], ["3", "numeric"]], "3": [["0或4", "exact", "4或0", "0,4", "4,0"]]}
+    },
+    "q.math.g6.rational.school.018": {
+      "note": "两小题来自圈号编号，折叠中心为1；从原解析提取最终结果 -3、-1011，删除推导文字。",
+      "replacements": [["①", "（1）"], ["②", "（2）"]],
+      "answers": {"1": [["-3", "numeric"]], "2": [["-1011", "numeric"]]}
+    },
+    "q.math.g6.rational.school.020": {
+      "note": "抄录答案图片 rId208 的1-12题；第13题原答案写B与填空题不符，按(a+b)/x+x+cd=x+1得0或2；第14题四式负数共2个。",
+      "answers": {"1": [["原点", "exact"], ["|a|", "latex_exact"]], "2": [["本身", "exact"], ["相反数", "exact"], ["0", "numeric"]], "3": [[">", "exact", "大于"], [">", "exact", "大于"], [">", "exact", "大于"]], "4": [["大", "exact", "较大"]], "5": [["非负数", "exact", "正数和0"], ["非正数", "exact", "负数和0"]], "6": [["0", "numeric"]], "7": [["13/5", "numeric"], ["4.6", "numeric"], ["0", "numeric"]], "8": [["-8", "numeric"], ["8", "numeric"]], "9": [["±4", "exact", "4或-4", "-4或4", "-4,4"], ["1/3", "numeric"]], "10": [["a≤0", "latex_exact", "a<=0"]], "11": [["x≥2", "latex_exact", "x>=2"]], "12": [["-3", "numeric"]], "13": [["0或2", "exact", "2或0", "0,2"]], "14": [["2", "numeric"]]}
+    },
+    "q.math.g6.rational.school.021": {
+      "note": "核对数轴 c<b<0<a，六个空对应三处符号、三处绝对值化简。",
+      "answers": {"1": [[">", "exact"], ["<", "exact"], ["<", "exact"]], "2": [["a", "latex_exact"], ["-b", "latex_exact"], ["-c", "latex_exact"]]}
+    },
+    "q.math.g6.rational.school.030": {
+      "note": "数轴明确 b<0<a 且 |b|>|a|；第3题旧文字解析把两数符号颠倒，-b-a=3.5-1.5=2。",
+      "replacements": [["的值.", "的值________."]],
+      "answers": {"1": [["<", "exact"]], "2": [["a>0>-a>b", "latex_exact", "b<-a<0<a"]], "3": [["2", "numeric"]]}
+    },
+    "q.math.g6.rational.school.036": {
+      "note": "第5题-1/7+1/8=-1/56，原答案图片漏负号；第2题(-13)+(-17)应为-30而非30；第4题补充两数非零条件，排除0+0导致符号结论不成立。",
+      "replacements": [["如果两个有理数的和等于零，那么", "如果两个非零有理数的和等于零，那么"]],
+      "answers": {"1": [["-11", "numeric"]], "2": [["负", "exact", "负号"], ["30", "numeric"], ["-30", "numeric"]], "3": [["0", "numeric"]], "4": [["相等", "exact"], ["相反", "exact"]], "5": [["-1/56", "numeric"]], "6": [["-2", "numeric"]], "7": [["负", "exact", "负号"], ["32", "numeric"], ["-2", "numeric"]]}
+    },
+    "q.math.g6.rational.school.041": {
+      "note": "题干公式已包含等号和左式，答案仅保留应填右式，避免要求学生重复整个等式。",
+      "answers": {"1": [["b+a", "latex_exact"]], "2": [["a+(b+c)", "latex_exact"]]}
+    },
+    "q.math.g6.rational.school.043": {
+      "note": "删除“所有可能值为”解释前缀，明确多值填写顺序。",
+      "append_instruction": "将所有可能值从小到大填写，用逗号分隔。",
+      "answers": {"1": [["-4,-2,2,4", "exact"]]}
+    },
+    "q.math.g6.rational.school.050": {
+      "note": "第一题只列①②③④，选项D误写⑤，修复为④；选项答案D、B保持。",
+      "replacements": [["D.⑤.", "D.④."]] 
+    },
+    "q.math.g6.rational.school.065": {
+      "note": "一组题合并了原题6、7，按四个实际空对齐；行列式1/2×4/5-(-1/3)×(-3/2)=-1/10。",
+      "answers": {"1": [["-1/10", "numeric"], ["负", "exact", "负数"], ["正", "exact", "正数"], ["0", "numeric"]]}
+    },
+    "q.math.g6.rational.school.070": {
+      "note": "第4小题源Word也是(a)=2、(b)=3，无法确定原本是否为绝对值条件；不得猜补。第3题条件足以得正，旧参考误称条件残缺。整组暂不入池。",
+      "blocked_reasons": ["pool_missing_source_content"]
+    },
+    "q.math.g6.rational.school.071": {
+      "note": "抄录答案图片rId565并独立核算四个结果；第2小题只有公式等号而没有横线，补出作答空。",
+      "replacements": [["[ASSET:assets/rational/q.math.g6.rational.school.071_rId560.wmf]", "[ASSET:assets/rational/q.math.g6.rational.school.071_rId560.wmf]________"]],
+      "answers": {"1": [["-25/4", "numeric"]], "2": [["0", "numeric"]], "3": [["24", "numeric"]], "4": [["24", "numeric"]]}
+    },
+    "q.math.g6.rational.school.080": {
+      "mode": "final_answer_only",
+      "note": "用户明确要求把图片转为数值或公式并自动批改。本组仅判最终结果，不评过程分。第1、2题来自原答案图rId687、rId688，第3题依据清晰题干rId686裂项核算补全4048/2025。第二题按n为正整数的受限有理式恒等判分；不可解析或无法证明分母定义域的表达式进入复核。",
+      "grading_rules": {"final_answer_only": true, "symbolic_variable": "n", "symbolic_domain": "positive_integer"},
+      "answers": {
+        "1": [["2023/2024", "numeric"]],
+        "2": [["3/4-1/(2*(n+1))-1/(2*(n+2))", "numeric"]],
+        "3": [["4048/2025", "numeric"]]
+      },
+      "fields": {
+        "solution": "（1）利用 \\(\\frac{1}{k(k+1)}=\\frac{1}{k}-\\frac{1}{k+1}\\)，从k=1加到2023，得到 \\(1-\\frac{1}{2024}=\\frac{2023}{2024}\\)。\n（2）利用 \\(\\frac{1}{k(k+2)}=\\frac{1}{2}(\\frac{1}{k}-\\frac{1}{k+2})\\)，相加后得到 \\(\\frac{3}{4}-\\frac{1}{2(n+1)}-\\frac{1}{2(n+2)}\\)。\n（3）题干首项1等于k=1时的倒数。由 \\(1+2+\\cdots+k=\\frac{k(k+1)}{2}\\)，从k=1加到2024，原式为 \\(2\\sum_{k=1}^{2024}(\\frac{1}{k}-\\frac{1}{k+1})=2(1-\\frac{1}{2025})=\\frac{4048}{2025}\\)。此项为根据清晰题干核算补全，并非从原答案图片抄录。"
+      }
+    },
+    "q.math.g6.rational.school.083": {
+      "note": "同组两道原题，共四个空；转录三个倒数公式。",
+      "answers": {"1": [["倒数", "exact"], ["-1/2", "numeric"], ["-7/3", "numeric"], ["-5/12", "numeric"]]}
+    },
+    "q.math.g6.rational.school.085": {
+      "note": "转录乘法因子-1/2，题目要求填写除数的倒数。",
+      "answers": {"1": [["-1/2", "numeric"]]}
+    },
+    "q.math.g6.rational.school.086": {
+      "note": "转录乘法因子-8/3，即-0.375的倒数。",
+      "answers": {"1": [["-8/3", "numeric"]]}
+    },
+    "q.math.g6.rational.school.096": {
+      "note": "从解释性参考中提取三个最终答案，倒数等于本身须同时列出1和-1。",
+      "answers": {"1": [["0", "numeric"]], "2": [["±1", "exact", "1和-1", "-1和1", "1或-1", "-1或1", "-1,1"]], "3": [["0", "numeric"]]}
+    },
+    "q.math.g6.rational.school.103": {
+      "note": "按十一小题重建答案骨架，避免把分数分子分母识别成小题号；恢复Word上下标。幂、数集与乘法表达式均保留完整内容。",
+      "refresh_source_text": true,
+      "answers": {"1": [["乘方", "exact"], ["幂", "exact"], ["底数", "exact"], ["指数", "exact"]], "2": [["正数", "exact"], ["奇", "exact", "奇数"], ["偶", "exact", "偶数"]], "3": [["8^4", "latex_exact", "8^{4}"], ["(1/3)^5", "latex_exact", "(1/3)^{5}"]], "4": [["-4", "numeric"], ["5", "numeric"], ["4", "numeric"], ["5", "numeric"]], "5": [["(-9)^4", "latex_exact", "(-9)^{4}"], ["(-9)×(-9)×(-9)×(-9)", "latex_exact", "-9×(-9)×(-9)×(-9)"]], "6": [["±2/3", "exact", "-2/3或2/3", "2/3或-2/3"], ["-4", "numeric"]], "7": [["0或1", "exact", "1或0", "0,1"], ["-1,0,1", "exact", "±1或0", "0或±1"]], "8": [["-49/12", "numeric"]], "9": [["不一定", "exact"], ["一定不", "exact"]], "10": [["-2", "numeric"]], "11": [["2009或2029", "exact", "2029或2009", "2009,2029"]]}
+    },
+    "q.math.g6.rational.school.106": {
+      "note": "第3小题横线后已写“个0”，去掉答案中多余的“个”；10^100÷10^96=10000，原参考100000多一个0。",
+      "answers": {"1": [["10", "numeric"], ["100", "numeric"], ["1000", "numeric"], ["10000", "numeric"], ["100000", "numeric"], ["1000000", "numeric"]], "2": [["n", "exact"]], "3": [["15", "numeric"], ["10000", "numeric"]]}
+    },
+    "q.math.g6.rational.school.127": {
+      "note": "按题面图片50000、-36000000、-6257.9、550210重新规范科学记数法；原参考丢指数，第四项还丢失小数点和有效数字。必须按科学记数法填写，不使用数值等价把普通整数当作正确格式。",
+      "answers": {"1": [["5×10^4", "latex_exact", "5×10^{4}"]], "2": [["-3.6×10^7", "latex_exact", "-3.6×10^{7}"]], "3": [["-6.2579×10^3", "latex_exact", "-6.2579×10^{3}"]], "4": [["5.5021×10^5", "latex_exact", "5.5021×10^{5}"]]}
+    },
+    "q.math.g6.rational.school.131": {
+      "note": "补齐第1小题编号，使五个答案分别属于五个小题；温度带单位使用文本匹配，避免numeric拒绝℃。",
+      "replacements": [["气温由－5℃", "（1）气温由－5℃"]],
+      "answers": {"1": [["-1℃", "exact", "-1摄氏度"]], "2": [["38个", "exact", "38"]], "3": [["21℃", "exact", "21摄氏度"]], "4": [["P=Q", "latex_exact"]], "5": [["d<b<c<a", "latex_exact"]]}
+    },
+    "q.math.g6.expr.school.001": {
+      "note": "剥离“数（或任意数）”中的解释，并把同一空的等价表达放在accepted_answers；恢复立方、平方指数。",
+      "answers": {"1": [["数", "exact", "任意数"]], "2": [["假分数", "exact"], ["分数", "exact"], ["括号", "exact"]], "3": [["1", "numeric"]], "4": [["2(a+b)", "latex_exact", "2a+2b"], ["ab", "latex_exact"]], "5": [["(a-1)^3", "latex_exact", "(a-1)^{3}"], ["6(a-1)^2", "latex_exact", "6(a-1)^{2}"]], "6": [["1000x+y", "latex_exact"]], "7": [["12n", "latex_exact"]]}
+    },
+    "q.math.g6.expr.school.009": {
+      "note": "逐空转录公式；第3小题共七空，不能把一行公式当一个答案。",
+      "answers": {"1": [["运算符号", "exact"], ["数或表示数的字母", "exact"], ["数字", "exact", "数"], ["字母", "exact"]], "2": [["6", "numeric"]], "3": [["5a-3", "latex_exact"], ["-(3a/4+3)", "latex_exact", "-(3/4a+3)"], ["-|a|/2", "latex_exact", "-1/2|a|"], ["a^2+b^2", "latex_exact", "a^{2}+b^{2}"], ["(a+b)^2", "latex_exact", "(a+b)^{2}"], ["a^2+b", "latex_exact", "a^{2}+b"], ["a+b^2", "latex_exact", "a+b^{2}"]], "4": [["18n+2", "latex_exact"]], "5": [["5x+125", "latex_exact"], ["4.5x+135", "latex_exact"]], "6": [["(a-b)/2", "latex_exact"]], "7": [["(m-n)/2", "latex_exact"]], "8": [["12a/5", "latex_exact", "2.4a"]]}
+    },
+    "q.math.g6.expr.school.013": {
+      "note": "恢复源Word中被跳过的数据表。表中x=-1,0,1,2对应-1,0,3,5，四组数据不满足同一个一次式kx+b；原答案D无法据完整表格唯一成立，撤出池等待核对原表。",
+      "refresh_source_text": true,
+      "replacements": [["[ASSET:rId234]", "x"], ["[ASSET:rId236]", "kx+b"]],
+      "blocked_reasons": ["pool_source_conflict"]
+    },
+    "q.math.g6.expr.school.017": {
+      "note": "第1题应为规律公式，而非把“其中n为自然数”错放到第2题；第2题为999999。公式不完全匹配时进入人工复核。",
+      "answers": {"1": [["(2n+1)(2n-1)=(2n)^2-1", "latex_exact", "(2n+1)×(2n-1)=(2n)^2-1", "(2n+1)(2n-1)=4n^2-1"]], "2": [["999999", "numeric"]]}
+    },
+    "q.math.g6.expr.school.025": {
+      "note": "第2小题要求周长表达式与a=3时的数值，分别设置作答空；图形及原答案核对一致。",
+      "replacements": [["长方形ABCD的周长，并求出当", "长方形ABCD的周长________，并求出当"], ["长方形ABCD的周长.", "长方形ABCD的周长________."]],
+      "answers": {"1": [["2a", "latex_exact"], ["3a-1", "latex_exact"]], "2": [["24a-2", "latex_exact"], ["70", "numeric"]]}
+    },
+    "q.math.g6.expr.school.028": {
+      "note": "逐式核对题面：第6题为(5a-4)+1-(a^2-2a)=-a^2+7a-3，旧参考6a-5错误；第8题为-2(x-2y)-5=-11；第9题互为相反数的是②④，旧参考6x-5实际属于第10题植树总量。",
+      "answers": {"1": [["a+2", "latex_exact"]], "2": [["-a-1", "latex_exact"], ["-a+1", "latex_exact"], ["a-1", "latex_exact"], ["a+1", "latex_exact"]], "3": [["8a", "latex_exact"]], "4": [["-2a-3", "latex_exact"]], "5": [["4a-2", "latex_exact"]], "6": [["-a^2+7a-3", "latex_exact", "-a^{2}+7a-3"]], "7": [["3x+4y-3", "latex_exact"]], "8": [["-11", "numeric"]], "9": [["②④", "exact", "②、④", "②和④", "2,4"]], "10": [["6x-5", "latex_exact"]]}
+    },
+    "q.math.g6.expr.school.032": {
+      "note": "包含“写出结论并说明理由”的人工论证任务，不整组自动入池。原参考把系数总和为0误解为每个字母项系数均为0；实际第二问得到a+b=4，不能分别断言a=0,b=4。",
+      "blocked_reasons": ["pool_manual_reasoning_required", "pool_source_conflict"]
+    },
+    "q.math.g6.expr.school.034": {
+      "note": "从EQ分数字段恢复3/2、3/4、5/4及下标；序列六项一周期和为3，2024项和为5081/5，与答案图1016又1/5一致。",
+      "refresh_source_text": true,
+      "replacements": [["的值；", "的值________；"], ["的值．", "的值________．"]],
+      "answers": {"1": [["是", "exact"]], "2": [["-4", "numeric"]], "3": [["5081/5", "numeric"]]}
+    },
+    "q.math.g6.expr.school.035": {
+      "note": "第9题漏读EQ字段3/2，导致题面看起来条件不足；恢复为(3/2)b-a，答案5/2。其余公式转录并逐式核对。",
+      "refresh_source_text": true,
+      "answers": {"1": [["2x+4y-6", "latex_exact"]], "2": [["9x/2-6", "latex_exact", "4.5x-6"]], "3": [["-14a-3b", "latex_exact"]], "4": [["4m-n", "latex_exact"]], "5": [["630-179a", "latex_exact"]], "6": [["-2", "numeric"]], "7": [["8", "numeric"]], "8": [["2", "numeric"]], "9": [["5/2", "numeric"]]}
+    },
+    "q.math.g6.expr.school.036": {
+      "note": "从原始Word画布265恢复顶点数字图，并将重复编号统一为四个独立小题；逐项复核答案C、A、C、D：第2题3-5=-2，第3题(2m+n)-mn=3，第4题2024=4×506位于第507个正方形右下角。结构化答案改为sub_1至sub_4各一项后入池。",
+      "replacements": [["[ASSET:unknown][ASSET:unknown]", "[ASSET:assets/expr/q.math.g6.expr.school.036_canvas265.svg]"], ["(1)下列", "（1）下列"], ["(2)如果", "（3）如果"], ["(3)观察", "\n（4）观察"]],
+      "additional_assets": [{"relationship_id": "canvas265", "path": "assets/expr/q.math.g6.expr.school.036_canvas265.svg", "extension": ".svg"}],
+      "resolved_import_issues": ["asset_relationship_missing", "pool_missing_source_content"],
+      "answers": {"1": [["C", "choice"]], "2": [["A", "choice"]], "3": [["C", "choice"]], "4": [["D", "choice"]]}
+    }
+  }
+}

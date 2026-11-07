@@ -1,12 +1,12 @@
 {
   "chapter": "expr",
-  "generated_at": "2026-10-21T09:05:05.883952+00:00",
+  "generated_at": "2026-11-07T08:34:26.516413+00:00",
   "question_count": 41,
-  "reference_count": 556,
-  "unique_asset_count": 296,
-  "converted_count": 296,
+  "reference_count": 558,
+  "unique_asset_count": 297,
+  "converted_count": 297,
   "failed_count": 0,
-  "unresolved_reference_count": 2,
+  "unresolved_reference_count": 0,
   "assets": [
     {
       "source_path": "assets/expr/q.math.g6.expr.school.001_rId11.wmf",
@@ -2103,6 +2103,14 @@
       "format": "png",
       "status": "converted",
       "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/expr/q.math.g6.expr.school.036_canvas265.svg",
+      "source_sha256": "9abf61e91f607c945d81c2f9bc923a88a4e40a34e8d7e4c26f5b9b80b1d6a507",
+      "web_path": "expr/q.math.g6.expr.school.036_canvas265.svg",
+      "format": "svg",
+      "status": "converted",
+      "converter": "copy"
     },
     {
       "source_path": "assets/expr/q.math.g6.expr.school.036_rId537.wmf",

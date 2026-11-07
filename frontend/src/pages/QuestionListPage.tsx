@@ -1,18 +1,10 @@
-import { DeleteOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Col, Empty, Form, Input, Modal, Row, Select, Space, Statistic, Table, Tag, Typography, Upload, message } from 'antd'
+import { DeleteOutlined, SearchOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Col, Empty, Form, Input, Modal, Row, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
-import type { UploadFile } from 'antd/es/upload/interface'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { apiDelete, apiGet, apiPost, apiPostForm } from '../api/client'
-import type { AssetInfo, Page, QuestionCatalogChapter, QuestionCatalogStats, QuestionCreateRequest, QuestionDetail, QuestionSummary } from '../types'
-import type { KnowledgePoint } from '../types/profile'
-import { MathTextEditor } from '../components/MathTextEditor'
-
-interface QuestionCreateValues extends Omit<QuestionCreateRequest, 'options'> {
-  options_text?: string
-  chapter_code: string
-}
+import { apiDelete, apiGet } from '../api/client'
+import type { Page, QuestionCatalogChapter, QuestionCatalogStats, QuestionSummary } from '../types'
 
 const typeLabel: Record<string, string> = {
   choice: '选择题',
@@ -28,23 +20,16 @@ function cleanPreview(value: string) {
 }
 
 export function QuestionListPage() {
-  const [createForm] = Form.useForm<QuestionCreateValues>()
   const [filterForm] = Form.useForm()
   const [searchParams, setSearchParams] = useSearchParams()
   const [data, setData] = useState<Page<QuestionSummary> | null>(null)
   const [stats, setStats] = useState<QuestionCatalogStats | null>(null)
   const [loading, setLoading] = useState(false)
-  const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([])
   const [catalog, setCatalog] = useState<QuestionCatalogChapter[]>([])
-  const [questionImages, setQuestionImages] = useState<UploadFile[]>([])
   const [refreshKey, setRefreshKey] = useState(0)
   const page = Number(searchParams.get('page') || 1)
   const pageSize = Number(searchParams.get('page_size') || 20)
-  const createType = Form.useWatch('question_type', createForm)
-  const createChapterCode = Form.useWatch('chapter_code', createForm)
   const filterChapterCode = Form.useWatch('chapter_code', filterForm)
   const filterKnowledgePoints = catalog.find((chapter) => chapter.code === filterChapterCode)?.knowledge_points || []
   const filterSections = catalog.find((chapter) => chapter.code === filterChapterCode)?.sections || []
@@ -72,64 +57,9 @@ export function QuestionListPage() {
 
   useEffect(() => {
     apiGet<QuestionCatalogChapter[]>('/questions/catalog')
-      .then((items) => {
-        setCatalog(items)
-        if (!createForm.getFieldValue('chapter_code') && items[0]) {
-          createForm.setFieldValue('chapter_code', items[0].code)
-        }
-      })
+      .then(setCatalog)
       .catch((reason: Error) => setError(reason.message))
-  }, [createForm])
-
-  useEffect(() => {
-    if (!createChapterCode) { setKnowledgePoints([]); return }
-    apiGet<KnowledgePoint[]>(`/knowledge-points?chapter_code=${encodeURIComponent(createChapterCode)}`)
-      .then(setKnowledgePoints)
-      .catch((reason: Error) => setError(reason.message))
-    createForm.setFieldsValue({ main_knowledge_point_code: undefined })
-  }, [createChapterCode, createForm])
-
-  async function createQuestion() {
-    const values = await createForm.validateFields()
-    const { chapter_code, ...questionValues } = values
-    void chapter_code
-    setCreating(true); setError(null)
-    const uploadedAssets: AssetInfo[] = []
-    try {
-      for (const image of questionImages) {
-        if (!image.originFileObj) throw new Error(`无法读取图片：${image.name}`)
-        const formData = new FormData()
-        formData.append('file', image.originFileObj)
-        uploadedAssets.push(await apiPostForm<AssetInfo>('/questions/assets', formData))
-      }
-      const options = values.question_type === 'choice'
-        ? (values.options_text || '').split(/\r?\n/).map((value) => value.trim()).filter(Boolean)
-        : undefined
-      const created = await apiPost<QuestionDetail>('/questions', {
-        ...questionValues,
-        options,
-        options_text: undefined,
-        original_qid: values.original_qid?.trim() || undefined,
-        solution: values.solution?.trim() || undefined,
-        wrong_analysis: values.wrong_analysis?.trim() || undefined,
-        assets: uploadedAssets.map((asset) => ({ path: asset.path })),
-      })
-      message.success('题目已添加，请继续审核答案后加入自动组卷池')
-      setCreateOpen(false)
-      createForm.resetFields()
-      setQuestionImages([])
-      setRefreshKey((value) => value + 1)
-      setSearchParams({ page: '1', page_size: String(pageSize), keyword: created.original_qid })
-    } catch (reason) {
-      await Promise.allSettled(uploadedAssets.map((asset) => {
-        const filename = asset.path.split('/').pop()
-        return filename ? apiDelete(`/questions/assets/${filename}`) : Promise.resolve()
-      }))
-      setError((reason as Error).message)
-    } finally {
-      setCreating(false)
-    }
-  }
+  }, [])
 
   function deleteQuestion(record: QuestionSummary) {
     Modal.confirm({
@@ -227,10 +157,6 @@ export function QuestionListPage() {
           <Typography.Title level={2}>题库</Typography.Title>
           <Typography.Text type='secondary'>可按章、主属节和节内主属 KP 逐级筛选；只有结构化答案可靠的题目才进入自动组卷池。</Typography.Text>
         </div>
-        <Button type='primary' icon={<PlusOutlined />} onClick={() => {
-          if (!createForm.getFieldValue('chapter_code') && catalog[0]) createForm.setFieldValue('chapter_code', catalog[0].code)
-          setCreateOpen(true)
-        }}>上传新题</Button>
       </div>
       <Row gutter={16}>
         <Col xs={24} md={8}><Card><Statistic title="原始题库" value={stats?.total ?? 0} suffix="组" /></Card></Col>
@@ -284,87 +210,6 @@ export function QuestionListPage() {
           scroll={{ x: 1650 }}
         />
       </Card>
-      <Modal
-        title='上传新题'
-        width={760}
-        open={createOpen}
-        okText='保存到题库'
-        cancelText='取消'
-        confirmLoading={creating}
-        onOk={() => void createQuestion()}
-        onCancel={() => { setCreateOpen(false); createForm.resetFields(); setQuestionImages([]) }}
-        destroyOnClose
-      >
-        <Alert
-          type='info'
-          showIcon
-          message='新题先进入待审核区'
-          description='选择题和填空题保存后可继续核对结构化答案，再确认进入自动组卷池。'
-        />
-        <Form
-          form={createForm}
-          layout='vertical'
-          initialValues={{
-            question_type: 'fill_blank',
-            difficulty: 3,
-            grade: '六年级上册',
-            section: '教师新增',
-            core_literacy: '待标注',
-            is_required: false,
-            operator_name: '任课教师',
-          }}
-        >
-          <Row gutter={16}>
-            <Col xs={24} md={12}><Form.Item name='original_qid' label='题目编号（可留空自动生成）'><Input maxLength={180} /></Form.Item></Col>
-            <Col xs={12} md={6}><Form.Item name='question_type' label='题型' rules={[{ required: true }]}><Select options={Object.entries(typeLabel).filter(([value]) => value !== 'unknown').map(([value, label]) => ({ value, label }))} /></Form.Item></Col>
-            <Col xs={12} md={6}><Form.Item name='difficulty' label='难度' rules={[{ required: true }]}><Select options={[1, 2, 3, 4, 5].map((value) => ({ value, label: `${value} 星` }))} /></Form.Item></Col>
-          </Row>
-          <Row gutter={16}>
-            <Col xs={24} md={8}><Form.Item name='chapter_code' label='章节' rules={[{ required: true }]}><Select options={catalog.map((chapter) => ({ value: chapter.code, label: chapter.name }))} /></Form.Item></Col>
-            <Col xs={24} md={8}><Form.Item name='main_knowledge_point_code' label='节内主属 KP' rules={[{ required: true }]}><Select showSearch optionFilterProp='label' options={knowledgePoints.map((point) => ({ value: point.code, label: `${point.name} · ${point.code}` }))} /></Form.Item></Col>
-            <Col xs={24} md={8}><Form.Item name='section' label='主属节' rules={[{ required: true }]}><Input maxLength={255} /></Form.Item></Col>
-          </Row>
-          <Row gutter={16}>
-            <Col xs={24} md={8}><Form.Item name='grade' label='年级' rules={[{ required: true, whitespace: true }]}><Input maxLength={80} /></Form.Item></Col>
-            <Col xs={24} md={10}><Form.Item name='core_literacy' label='核心素养' rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item></Col>
-            <Col xs={24} md={6}><Form.Item name='is_required' label='是否为必做题' rules={[{ required: true }]}><Select options={[{ value: true, label: '是' }, { value: false, label: '否' }]} /></Form.Item></Col>
-          </Row>
-          <Form.Item name='question_text' label='题干' rules={[{ required: true, whitespace: true }]}><MathTextEditor rows={5} maxLength={10000} /></Form.Item>
-          <Form.Item
-            label='题目图片（可选）'
-            extra='支持 JPG、PNG、WebP，单张不超过 8MB，最多 8 张。图片会按顺序追加到题干末尾，详情页可点击放大。'
-          >
-            <Upload
-              className='question-image-upload'
-              accept='image/jpeg,image/png,image/webp'
-              listType='picture-card'
-              multiple
-              maxCount={8}
-              fileList={questionImages}
-              beforeUpload={(file) => {
-                if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-                  message.error('仅支持 JPG、PNG 或 WebP 图片')
-                  return Upload.LIST_IGNORE
-                }
-                if (file.size > 8 * 1024 * 1024) {
-                  message.error('单张图片不能超过 8MB')
-                  return Upload.LIST_IGNORE
-                }
-                return false
-              }}
-              onChange={({ fileList }) => setQuestionImages(fileList)}
-            >
-              {questionImages.length < 8 && <div><PlusOutlined /><div style={{ marginTop: 8 }}>添加图片</div></div>}
-            </Upload>
-          </Form.Item>
-          {createType === 'choice' && <Form.Item name='options_text' label='选项（每行一个）' rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={4} placeholder={'例如：\nA. -1\nB. 0\nC. 1'} /></Form.Item>}
-          <Form.Item name='reference_answer_raw' label='参考答案' rules={[{ required: true, whitespace: true }]}><Input.TextArea rows={3} maxLength={5000} showCount /></Form.Item>
-          <Form.Item name='solution' label='解析（可选）'><Input.TextArea rows={3} maxLength={10000} /></Form.Item>
-          <Form.Item name='wrong_analysis' label='易错分析（可选）'><Input.TextArea rows={2} maxLength={10000} /></Form.Item>
-          <Form.Item name='estimated_score_rate' label='预估得分率（可选）'><Input maxLength={64} placeholder='例如 65% 或 0.65' /></Form.Item>
-          <Form.Item name='operator_name' label='录入教师' rules={[{ required: true, whitespace: true }]}><Input maxLength={80} /></Form.Item>
-        </Form>
-      </Modal>
     </Space>
   )
 }

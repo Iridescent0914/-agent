@@ -51,7 +51,7 @@ function initialItems(question: QuestionDetail): QuestionAnswerItemInput[] {
     while (used.has(itemId)) itemId = `${base}_${suffix++}`
     used.add(itemId)
     const sourceType = String(item.answer_match_type || '')
-    const manual = question.question_type === 'calculation' || question.question_type === 'solution'
+    const manual = (question.question_type === 'calculation' || question.question_type === 'solution') && question.answer_normalization_rule.final_answer_only !== true
     const matchType: QuestionAnswerMatchType =
       manual
         ? 'manual'
@@ -120,7 +120,7 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
         answer: '',
         accepted_answers: [],
         answer_match_type:
-          question.question_type === 'calculation' || question.question_type === 'solution'
+          (question.question_type === 'calculation' || question.question_type === 'solution') && question.answer_normalization_rule.final_answer_only !== true
             ? 'manual'
             : question.question_type === 'choice' ? 'choice' : 'exact',
       },
@@ -145,6 +145,7 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
     }
 
     const body: QuestionReviewRequest = {
+      final_answer_only: question.answer_normalization_rule.final_answer_only === true,
       expected_review_revision: revision,
       reviewer_name: reviewerName.trim(),
       review_note: reviewNote.trim() || undefined,
@@ -169,7 +170,7 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
 
   const isChoice = question.question_type === 'choice'
   const isTrueFalse = question.question_type === 'true_false'
-  const isManual = question.question_type === 'calculation' || question.question_type === 'solution'
+  const isManual = (question.question_type === 'calculation' || question.question_type === 'solution') && question.answer_normalization_rule.final_answer_only !== true
   const isReady = question.grading_readiness === 'machine_ready' && !withdrawn
 
   async function withdraw() {
@@ -324,7 +325,7 @@ export function QuestionReviewEditor({ question, onUpdated }: Props) {
                         : isTrueFalse
                           ? [{ value: 'exact', label: '判断匹配' }]
                         : [
-                            { value: 'numeric', label: '数值（整数/小数）' },
+                            { value: 'numeric', label: question.answer_normalization_rule.symbolic_variable ? '数值 / 含 n 有理式等价' : '数值（整数/小数）' },
                             { value: 'exact', label: '精确文本' },
                             { value: 'latex_exact', label: '公式（LaTeX 精确匹配）' },
                           ]

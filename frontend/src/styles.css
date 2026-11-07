@@ -48,7 +48,6 @@ a { color: inherit; }
   font-size: 1.08em;
   pointer-events: none;
 }
-.question-image-upload .ant-upload-list-item { background: #fff; }
 .question-options { display: grid; gap: 8px; margin: 10px 0 16px; }
 .question-option-row { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: start; }
 .question-option-label { padding-top: 2px; color: #173553; font-weight: 650; line-height: 2; }

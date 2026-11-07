@@ -15,7 +15,9 @@ def normalize_text(value: Any, rule: dict[str, Any], *, max_length: int = 128) -
         raise NormalizationError("answer is too long")
     result = value
     if rule.get("normalize_fullwidth_symbols", False):
-        result = unicodedata.normalize("NFKC", result).replace("×", "*").replace("÷", "/")
+        result = unicodedata.normalize("NFKC", result).replace("×", "*").replace("÷", "/").replace("−", "-").replace("–", "-")
+    if rule.get("ignore_whitespace", False):
+        result = "".join(result.split())
     if rule.get("trim_whitespace", False):
         result = result.strip()
     return result

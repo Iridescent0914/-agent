@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from uuid import UUID
+import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +11,7 @@ from sqlalchemy import distinct, func, select
 from app.core.database import SessionLocal
 from app.main import app
 from app.models import KnowledgePoint, Question, Student
+from app.services.question_pool_quality import pool_answer_issues
 
 
 CHAPTER_CODE = "math.g6.expr"
@@ -83,9 +86,18 @@ def test_expr_seed_contract(expr_seeded: dict[str, object]) -> None:
     assert len({question.original_qid for question in questions}) == 41
     assert knowledge_point_count == 8
     assert used_knowledge_point_count == 6
-    # q.math.g6.expr.school.028 has a tenth answer slot in the stem but the
-    # source reference answer stops at subquestion 9, so it remains review-only.
-    assert sum(question.grading_readiness == "machine_ready" for question in questions) == 8
+    catalog = json.loads((Path(__file__).resolve().parents[2] / "data/interim/expr_all.json").read_text(encoding="utf-8"))
+    source_by_qid = {record["original_qid"]: record for record in catalog}
+    for question in questions:
+        teacher_reviewed = any(event.get("type") not in {"answer_structure_normalized", "pool_governance_applied"}
+                               for event in question.review_history or [])
+        # Live integration data may contain a teacher's promotion/withdrawal
+        # after import. Compare untouched rows with the source baseline and
+        # validate every ready row, including teacher-reviewed rows.
+        if not teacher_reviewed:
+            assert question.grading_readiness == source_by_qid[question.original_qid]["grading_readiness"]
+        if question.grading_readiness == "machine_ready":
+            assert pool_answer_issues(question.correct_answer, question.answer_match_type, question.answer_normalization_rule) == [], question.original_qid
     assert sum(bool(question.is_required) for question in questions) == 35
     assert all(question.source_review_status == "reviewed" for question in questions)
 

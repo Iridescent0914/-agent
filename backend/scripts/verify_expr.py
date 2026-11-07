@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 
 from sqlalchemy import distinct, func, select, text
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 from app.core.database import SessionLocal
 from app.models import KnowledgePoint, Question
@@ -17,6 +19,9 @@ CHAPTER_CODE = "math.g6.expr"
 
 def main() -> int:
     errors: list[str] = []
+    config = Config(str(CODE_ROOT / "backend/alembic.ini"))
+    config.set_main_option("script_location", str(CODE_ROOT / "backend/alembic"))
+    expected_head = ScriptDirectory.from_config(config).get_current_head()
     with SessionLocal() as session:
         migration = session.scalar(text("SELECT version_num FROM alembic_version"))
         questions = list(
@@ -38,8 +43,8 @@ def main() -> int:
     qids = [question.original_qid for question in questions]
     machine_ready = sum(question.grading_readiness == "machine_ready" for question in questions)
     required = sum(bool(question.is_required) for question in questions)
-    if migration != "0024":
-        errors.append(f"migration is {migration}, expected 0024")
+    if migration != expected_head:
+        errors.append(f"migration is {migration}, expected {expected_head}")
     if len(questions) != 41:
         errors.append(f"expr questions: expected 41, got {len(questions)}")
     if len(set(qids)) != len(qids):
@@ -48,8 +53,12 @@ def main() -> int:
         errors.append(f"expr knowledge points: expected 8, got {knowledge_points}")
     if used_knowledge_points != 6:
         errors.append(f"expr used knowledge points: expected 6, got {used_knowledge_points}")
-    if machine_ready != 9:
-        errors.append(f"expr machine_ready questions: expected 9, got {machine_ready}")
+    from app.services.question_pool_quality import pool_answer_issues
+    for question in questions:
+        if question.grading_readiness == "machine_ready":
+            issues = pool_answer_issues(question.correct_answer, question.answer_match_type, question.answer_normalization_rule)
+            if issues:
+                errors.append(f"{question.original_qid}: {issues}")
     if required != 35:
         errors.append(f"expr required questions: expected 35, got {required}")
     if any(question.source_review_status != "reviewed" for question in questions):
@@ -62,7 +71,7 @@ def main() -> int:
         errors.append(f"web asset conversion failures: {manifest.get('failed_count')}")
 
     output = {
-        "schema_at_head": migration == "0024",
+        "schema_at_head": migration == expected_head,
         "chapter_code": CHAPTER_CODE,
         "questions": len(questions),
         "knowledge_points": knowledge_points,

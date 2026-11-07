@@ -18,7 +18,6 @@ from app.schemas.questions import (
     QuestionCatalogChapter,
     QuestionCatalogKnowledgePoint,
     QuestionCatalogStats,
-    QuestionCreateRequest,
     QuestionDetail,
     QuestionListItem,
     QuestionReviewRequest,
@@ -179,88 +178,6 @@ def delete_question_asset(
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return Response(status_code=204)
-
-
-@router.post('', response_model=QuestionDetail, status_code=201)
-def create_question(
-    request: QuestionCreateRequest,
-    db: Session = Depends(get_db),
-) -> QuestionDetail:
-    knowledge_point = db.scalar(
-        select(KnowledgePoint).where(
-            KnowledgePoint.code == request.main_knowledge_point_code
-        )
-    )
-    if knowledge_point is None:
-        raise HTTPException(status_code=422, detail='节内主属 KP 不存在')
-    original_qid = request.original_qid or (
-        f'q.{knowledge_point.chapter_code}.teacher.{uuid.uuid4().hex[:12]}'
-    )
-    if db.scalar(select(Question.id).where(Question.original_qid == original_qid)):
-        raise HTTPException(status_code=409, detail='题目编号已存在')
-
-    missing_assets = [
-        asset.path for asset in request.assets if not question_asset_exists(asset.path)
-    ]
-    if missing_assets:
-        raise HTTPException(status_code=422, detail='题目图片不存在或已失效，请重新上传')
-
-    asset_records = [asset.model_dump() for asset in request.assets]
-    question_text = _question_text_with_assets(request.question_text, asset_records)
-
-    source_number = int(db.scalar(
-        select(func.max(Question.source_question_number)).where(
-            Question.source_file == 'teacher_upload'
-        )
-    ) or 0) + 1
-    now = datetime.now(timezone.utc)
-    question = Question(
-        original_qid=original_qid,
-        schema_version='teacher-question-v1',
-        chapter_code=knowledge_point.chapter_code,
-        chapter_name=knowledge_point.chapter_name,
-        grade=request.grade,
-        section=request.section,
-        question_type=request.question_type,
-        difficulty=request.difficulty,
-        main_knowledge_point_id=knowledge_point.id,
-        question_text=question_text,
-        options=request.options,
-        correct_answer=None,
-        reference_answer_raw=request.reference_answer_raw,
-        answer_match_type=None,
-        answer_normalization_rule={},
-        solution=request.solution,
-        wrong_analysis=request.wrong_analysis,
-        estimated_score_rate=request.estimated_score_rate,
-        core_literacy=request.core_literacy,
-        is_required=request.is_required,
-        has_image=bool(asset_records),
-        has_equation=any(mark in question_text for mark in ('$', '\\(', '\\[')),
-        assets=asset_records,
-        source_file='teacher_upload',
-        source_question_number=source_number,
-        source_review_status='reviewed',
-        grading_readiness='raw_answer_only',
-        import_status='teacher_created',
-        import_issues=['answer_items_not_structured'],
-        review_revision=1,
-        review_history=[{
-            'event_id': str(uuid.uuid4()),
-            'type': 'created',
-            'at': now.isoformat(),
-            'reviewer': request.operator_name,
-            'note': '教师手动新增题目',
-            'before_revision': 0,
-            'after_revision': 1,
-        }],
-        reviewed_by=request.operator_name,
-        reviewed_at=now,
-    )
-    db.add(question)
-    db.flush()
-    db.expire(question, ['main_knowledge_point'])
-    return _detail(db, question.id)
 
 
 @router.put('/{question_id}', response_model=QuestionDetail)

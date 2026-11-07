@@ -1,103 +1,12 @@
 {
   "schema_version": "answer-units-v1",
-  "generated_at": "2026-11-06T08:48:46.000314+00:00",
   "scope": "repository_catalog_files",
-  "question_record_count": 233,
-  "answer_unit_count": 821,
-  "unresolved_question_count": 29,
-  "unresolved_item_count": 118,
+  "generated_at": "2026-11-07T08:45:57.912442+00:00",
+  "question_record_count": 244,
+  "answer_unit_count": 961,
+  "unresolved_question_count": 15,
+  "unresolved_item_count": 46,
   "unresolved_questions": [
-    {
-      "file": "data/interim/rational_all.json",
-      "original_qid": "q.math.g6.rational.school.004",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_1.blank_3"
-      ]
-    },
-    {
-      "file": "data/interim/rational_all.json",
-      "original_qid": "q.math.g6.rational.school.007",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_1.blank_1",
-        "sub_1.blank_2",
-        "sub_1.blank_3",
-        "sub_2.blank_1"
-      ]
-    },
-    {
-      "file": "data/interim/rational_all.json",
-      "original_qid": "q.math.g6.rational.school.011",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_4.blank_1"
-      ]
-    },
-    {
-      "file": "data/interim/rational_all.json",
-      "original_qid": "q.math.g6.rational.school.014",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_1.blank_1",
-        "sub_1.blank_2",
-        "sub_1.blank_3",
-        "sub_1.blank_4",
-        "sub_3.blank_3"
-      ]
-    },
-    {
-      "file": "data/interim/rational_all.json",
-      "original_qid": "q.math.g6.rational.school.018",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_1.blank_2"
-      ]
-    },
-    {
-      "file": "data/interim/rational_all.json",
-      "original_qid": "q.math.g6.rational.school.020",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_1.blank_1",
-        "sub_1.blank_2",
-        "sub_2.blank_1",
-        "sub_2.blank_2",
-        "sub_2.blank_3",
-        "sub_3.blank_1",
-        "sub_3.blank_2",
-        "sub_3.blank_3",
-        "sub_4.blank_1",
-        "sub_5.blank_1",
-        "sub_5.blank_2",
-        "sub_6.blank_1",
-        "sub_7.blank_1",
-        "sub_7.blank_2",
-        "sub_7.blank_3",
-        "sub_8.blank_1",
-        "sub_8.blank_2",
-        "sub_9.blank_1",
-        "sub_9.blank_2",
-        "sub_10.blank_1",
-        "sub_11.blank_1",
-        "sub_12.blank_1",
-        "sub_13.blank_1",
-        "sub_14.blank_1"
-      ]
-    },
-    {
-      "file": "data/interim/rational_all.json",
-      "original_qid": "q.math.g6.rational.school.021",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_1.blank_1",
-        "sub_1.blank_2",
-        "sub_1.blank_3",
-        "sub_2.blank_1",
-        "sub_2.blank_2",
-        "sub_2.blank_3"
-      ]
-    },
     {
       "file": "data/interim/rational_all.json",
       "original_qid": "q.math.g6.rational.school.022",
@@ -160,30 +69,10 @@
     },
     {
       "file": "data/interim/rational_all.json",
-      "original_qid": "q.math.g6.rational.school.065",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_1.blank_2",
-        "sub_1.blank_3",
-        "sub_1.blank_4"
-      ]
-    },
-    {
-      "file": "data/interim/rational_all.json",
       "original_qid": "q.math.g6.rational.school.070",
       "question_type": "fill_blank",
       "unresolved_item_ids": [
         "sub_1.blank_2"
-      ]
-    },
-    {
-      "file": "data/interim/rational_all.json",
-      "original_qid": "q.math.g6.rational.school.071",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_1.blank_1",
-        "sub_3.blank_1",
-        "sub_4.blank_1"
       ]
     },
     {
@@ -197,44 +86,6 @@
         "sub_5.blank_1",
         "sub_6.blank_1",
         "sub_7.blank_1"
-      ]
-    },
-    {
-      "file": "data/interim/rational_all.json",
-      "original_qid": "q.math.g6.rational.school.080",
-      "question_type": "calculation",
-      "unresolved_item_ids": [
-        "sub_2.blank_1",
-        "sub_3.blank_1"
-      ]
-    },
-    {
-      "file": "data/interim/rational_all.json",
-      "original_qid": "q.math.g6.rational.school.083",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_1.blank_2",
-        "sub_1.blank_3",
-        "sub_1.blank_4"
-      ]
-    },
-    {
-      "file": "data/interim/rational_all.json",
-      "original_qid": "q.math.g6.rational.school.103",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_1.blank_2",
-        "sub_1.blank_3",
-        "sub_1.blank_4",
-        "sub_2.blank_2",
-        "sub_2.blank_3",
-        "sub_4.blank_2",
-        "sub_4.blank_3",
-        "sub_4.blank_4",
-        "sub_5.blank_2",
-        "sub_6.blank_2",
-        "sub_7.blank_2",
-        "sub_9.blank_2"
       ]
     },
     {
@@ -282,19 +133,6 @@
     },
     {
       "file": "data/interim/expr_all.json",
-      "original_qid": "q.math.g6.expr.school.009",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_3.blank_2",
-        "sub_3.blank_3",
-        "sub_3.blank_4",
-        "sub_3.blank_5",
-        "sub_3.blank_6",
-        "sub_3.blank_7"
-      ]
-    },
-    {
-      "file": "data/interim/expr_all.json",
       "original_qid": "q.math.g6.expr.school.026",
       "question_type": "solution",
       "unresolved_item_ids": [
@@ -314,20 +152,11 @@
     },
     {
       "file": "data/interim/expr_all.json",
-      "original_qid": "q.math.g6.expr.school.028",
-      "question_type": "fill_blank",
-      "unresolved_item_ids": [
-        "sub_10.blank_1"
-      ]
-    },
-    {
-      "file": "data/interim/expr_all.json",
       "original_qid": "q.math.g6.expr.school.032",
       "question_type": "fill_blank",
       "unresolved_item_ids": [
         "sub_1.blank_2"
       ]
     }
-  ],
-  "note": "未解决项保留为空并退出自动判分池，需依据原卷人工审核；未猜测答案。"
+  ]
 }
