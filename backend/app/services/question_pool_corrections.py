@@ -105,7 +105,10 @@ def apply_pool_corrections(records: list[dict[str, Any]], config_path: Path) -> 
                 "partial_credit": True,
                 **correction.get("grading_rules", {}),
             }
-        blocked = correction.get("blocked_reasons", [])
+        blocked = list(correction.get("blocked_reasons", []))
+        if record["question_type"] not in TARGET_TYPES and not manual_reference:
+            if "pool_profile_type_unsupported" not in blocked:
+                blocked.append("pool_profile_type_unsupported")
         if manual_reference:
             items = record["correct_answer"]["items"]
             if not items or any(item["answer_match_type"] != "manual" or not isinstance(item["answer"], str) or not item["answer"].strip() or "[ASSET:" in item["answer"] for item in items):

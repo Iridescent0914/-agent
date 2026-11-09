@@ -10815,7 +10815,7 @@
       "symbolic_variable": "n",
       "symbolic_domain": "positive_integer"
     },
-    "grading_readiness": "machine_ready",
+    "grading_readiness": "raw_answer_only",
     "main_knowledge_point": {
       "id": "math.g6.rational.kp.09_operation_laws",
       "name": "有理数的运算律及其简化运算的作用",
@@ -10876,14 +10876,17 @@
       "contains_asset",
       "multiple_subquestions",
       "question_type_mismatch",
-      "asset_needs_web_conversion"
+      "asset_needs_web_conversion",
+      "pool_profile_type_unsupported"
     ],
     "is_seed_candidate": false,
     "answer_structure_source": "question-pool-governance-v1",
     "pool_governance": {
       "version": "question-pool-governance-v1",
       "note": "用户明确要求把图片转为数值或公式并自动批改。本组仅判最终结果，不评过程分。第1、2题来自原答案图rId687、rId688，第3题依据清晰题干rId686裂项核算补全4048/2025。第二题按n为正整数的受限有理式恒等判分；不可解析或无法证明分母定义域的表达式进入复核。",
-      "blocked_reasons": []
+      "blocked_reasons": [
+        "pool_profile_type_unsupported"
+      ]
     }
   },
   {

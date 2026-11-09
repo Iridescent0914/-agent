@@ -118,17 +118,18 @@ def snapshot_payload(question: Question) -> dict[str, Any]:
     }
 
 
-def current_knowledge_point_snapshot(
+def published_knowledge_point_snapshot(
     db: Session,
     question_id: UUID,
     fallback: Any,
 ) -> dict[str, Any]:
-    """Resolve the current KP for teaching views without mutating audit snapshots."""
-    try:
-        question = load_question(db, question_id)
-    except LookupError:
-        return deepcopy(fallback) if isinstance(fallback, dict) else {}
-    return snapshot_payload(question)["knowledge_point_snapshot"]
+    """Preserve the published KP in teaching views and version copies.
+
+    Catalog edits or archiving affect future selections, not past evidence.
+    Unknown legacy codes must be explicitly migrated, never guessed from the
+    current question's classification.
+    """
+    return deepcopy(fallback) if isinstance(fallback, dict) else {}
 
 
 def current_selection_audit(

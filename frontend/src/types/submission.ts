@@ -22,6 +22,7 @@ export interface AttemptResult {
   answered_at: string
   reviewed_at: string | null
   used_in_profile: boolean
+  exclusion_reason: string | null
   recognition_status: string | null
   ocr_confidence: number | null
 }

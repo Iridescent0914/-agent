@@ -169,10 +169,6 @@ def test_true_false_snapshot_is_valid_profile_evidence(db):
             record.submission,
             record.revision,
         )],
-        {record.attempt.question_id: (
-            record.evidence.knowledge_point_code,
-            record.main_knowledge_point["name"],
-        )},
     ).records[0]
     assert changed.problem is None
     assert changed.evidence is not None

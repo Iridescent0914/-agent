@@ -30,7 +30,9 @@ test('080 displays three stored answers with final-result grading', async ({ pag
   await expect(answers).not.toContainText('[ASSET:')
   const after = await (await page.request.get(`${api}/questions/${question.id}`)).json()
   expect(after.review_revision).toBe(question.review_revision)
-  expect(after.grading_readiness).toBe('machine_ready')
+  expect(after.grading_readiness).toBe('raw_answer_only')
+  await expect(page.getByText('审核答案并进入组卷池', { exact: true })).toHaveCount(0)
+  await expect(page.getByText(/供后续视觉识别专项验证；本题不进入日常自动组卷池/)).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy()
 })
 

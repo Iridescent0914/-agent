@@ -14,6 +14,7 @@ from app.services.answer_units import (
     is_canonical_answer_structure,
 )
 from app.services.question_pool_quality import pool_answer_issues
+from app.services.profile_evidence import PROFILE_QUESTION_TYPES
 
 from app.models import KnowledgePoint, Question
 
@@ -81,6 +82,8 @@ def _validate_inputs(
                 f"{item['original_qid']} does not use canonical subquestion/blank answers"
             )
         if item.get("grading_readiness") == "machine_ready":
+            if item.get("question_type") not in PROFILE_QUESTION_TYPES:
+                raise ValueError(f"{item['original_qid']} has a question type outside the automatic pool")
             quality_issues = pool_answer_issues(item.get("correct_answer"), item.get("answer_match_type"), item.get("answer_normalization_rule", {}))
             if quality_issues:
                 raise ValueError(f"{item['original_qid']} cannot enter the automatic pool: {quality_issues}")

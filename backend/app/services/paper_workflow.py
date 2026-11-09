@@ -6,6 +6,9 @@ from datetime import datetime, timedelta, timezone
 import secrets
 from uuid import UUID, uuid4
 
+from app.services.profile_evidence import PROFILE_QUESTION_TYPES
+from app.services.question_policy import automatic_pool_ready
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -26,7 +29,7 @@ from app.schemas.recommendations import (
 from app.services.assets import resolve_assets
 from app.services.literacy_catalog import parse_literacy_names
 from app.services.paper_snapshots import (
-    copy_item, current_knowledge_point_snapshot, current_selection_audit, load_question,
+    copy_item, published_knowledge_point_snapshot, current_selection_audit, load_question, load_questions,
     snapshot_payload, student_safe_question_snapshot, student_safe_value,
 )
 from app.services.profile_refresh import refresh_student_profiles
@@ -242,7 +245,7 @@ def teacher_view(db: Session, paper_id: UUID) -> PaperInstanceTeacherOut:
     summary = _summary(db, paper, item_count=len(items))
     output = []
     for item in items:
-        current_snapshot = current_knowledge_point_snapshot(
+        current_snapshot = published_knowledge_point_snapshot(
             db, item.question_id, item.knowledge_point_snapshot
         )
         output.append(PaperItemOut(
@@ -270,7 +273,7 @@ def student_view(db: Session, paper_id: UUID) -> PaperInstanceStudentOut:
             id=item.id, order_no=item.order_no,
             question_snapshot=student_safe_question_snapshot(item.question_snapshot),
             options_snapshot=student_safe_value(item.options_snapshot),
-            knowledge_point_snapshot=current_knowledge_point_snapshot(
+            knowledge_point_snapshot=published_knowledge_point_snapshot(
                 db, item.question_id, item.knowledge_point_snapshot
             ),
             assets=resolve_assets(item.question_snapshot.get("assets", [])),
@@ -592,7 +595,7 @@ def alternatives(db: Session, paper_id: UUID, item_id: UUID) -> AlternativeOut:
                 Assignment.created_at <= as_of,
             )
         ))
-    question_filters = [Question.archived_at.is_(None)]
+    question_filters = [Question.archived_at.is_(None), Question.question_type.in_(PROFILE_QUESTION_TYPES)]
     if not is_fixed_review:
         question_filters.append(Question.chapter_code.in_(
             params.chapter_codes or [params.chapter_code]
@@ -989,6 +992,9 @@ def republish_paper(db: Session, paper_id: UUID, *, expected_revision: int) -> P
         raise PaperConflict('only a withdrawn paper can be republished')
     if paper.superseded_by_instance_id is not None:
         raise PaperConflict('a superseded paper cannot be republished')
+    if any(item.question_snapshot.get("question_type") not in PROFILE_QUESTION_TYPES
+           for item in paper_items(db, paper.id)):
+        raise PaperValidation('日常作业仅支持选择、填空、判断题；含计算题的旧试卷不能重新发布')
 
     active = db.scalar(select(PaperInstance).where(
         PaperInstance.assignment_id == paper.assignment_id,
@@ -1030,7 +1036,12 @@ def publish_paper(db: Session, paper_id: UUID, *, expected_revision: int,
     if any(not item.question_snapshot or not item.answer_rule_snapshot or
            not item.knowledge_point_snapshot.get("id") for item in items):
         raise PaperValidation("paper contains incomplete snapshots")
+    current_questions = load_questions(db, {item.question_id for item in items})
     for item in items:
+        if item.question_snapshot.get('question_type') not in PROFILE_QUESTION_TYPES:
+            raise PaperValidation('日常作业仅支持选择、填空、判断题，请替换计算题或解答题后再发布')
+        if not automatic_pool_ready(current_questions[item.question_id]):
+            raise PaperValidation('试卷包含已撤出自动组卷池或未完成审核的题目，请换题后再发布')
         try:
             normalize_literacy_label(item.question_snapshot.get("core_literacy"))
         except ValueError as exc:
@@ -1116,7 +1127,7 @@ def revise_paper(db: Session, published_id: UUID) -> PaperInstance:
         db.add(copy_item(
             source=item,
             paper_id=target.id,
-            knowledge_point_snapshot=current_knowledge_point_snapshot(
+            knowledge_point_snapshot=published_knowledge_point_snapshot(
                 db, item.question_id, item.knowledge_point_snapshot
             ),
         ))

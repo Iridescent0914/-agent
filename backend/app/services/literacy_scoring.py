@@ -19,11 +19,15 @@ from app.models import (
     PaperInstance,
     PaperInstanceItem,
     Student,
+    KnowledgePoint,
     StudentLiteracyScore,
     Submission,
 )
 from app.schemas.profile import LiteracyScoreOut
 from app.services.literacy_catalog import LITERACY_DIMENSIONS, parse_literacy_names
+from app.services.profile_evidence import (
+    EXPECTED_EVIDENCE_EXCLUSIONS, attempt_problem, load_attempt_rows_many,
+)
 from app.services.literacy_rules import (
     DEFAULT_SCORE,
     cap_daily_change,
@@ -101,45 +105,23 @@ def _local_date(value: datetime) -> date:
     return value.astimezone(BUSINESS_TIMEZONE).date()
 
 
-def _literacy_evidence_from_rows(rows: Iterable[tuple[Any, ...]]) -> LiteracyEvidenceSet:
+def _literacy_evidence_from_rows(
+    rows: Iterable[tuple[Any, ...]], *, knowledge_codes: set[str] | None = None,
+) -> LiteracyEvidenceSet:
     valid: list[LiteracyEvidence] = []
     invalid: list[InvalidLiteracyEvidence] = []
     pending = 0
     for attempt, item, paper, submission, revision in rows:
-        reason: str | None = None
+        reason = attempt_problem(
+            attempt, item, paper, submission, revision, knowledge_codes=knowledge_codes,
+        )
         snapshot = item.question_snapshot if item is not None else None
-        if item is None or paper is None or submission is None:
-            reason = "missing_ownership_record"
-        elif (
-            attempt.student_id != submission.student_id
-            or attempt.student_id != paper.student_id
-            or submission.paper_instance_id != paper.id
-            or attempt.question_id != item.question_id
-        ):
-            reason = "ownership_mismatch"
-        elif paper.status != "published":
-            reason = "unpublished_paper"
-        elif paper.invalidated_at is not None:
-            # An invalidated paper is valid historical/audit data, not broken
-            # evidence. Keep it out of the current score without failing a
-            # profile rebuild.
-            continue
-        elif not isinstance(snapshot, dict):
-            reason = "invalid_question_snapshot"
-        elif revision is None:
-            reason = "missing_current_revision"
-        elif attempt.grade_status == "needs_review":
+        if reason == "needs_review":
             pending += 1
             continue
-        elif attempt.grade_status not in {"auto_confirmed", "teacher_confirmed"}:
-            reason = "invalid_grade_status"
-        elif type(attempt.is_correct) is not bool:
-            reason = "missing_confirmed_result"
-        elif snapshot.get("question_type") not in {"choice", "fill_blank", "true_false"}:
-            reason = "unsupported_question_type"
-        elif type(snapshot.get("difficulty")) is not int or not 1 <= snapshot["difficulty"] <= 5:
-            reason = "invalid_difficulty"
-        else:
+        if reason in EXPECTED_EVIDENCE_EXCLUSIONS:
+            continue
+        if reason is None:
             try:
                 literacies = parse_literacies(snapshot.get("core_literacy"))
             except ValueError:
@@ -183,26 +165,10 @@ def load_literacy_evidence_many(
     if existing_ids != set(ids):
         raise LookupError("one or more students not found")
 
-    grouped: dict[UUID, list[tuple[Any, ...]]] = {
-        student_id: [] for student_id in ids
-    }
-    rows = db.execute(
-        select(Attempt, PaperInstanceItem, PaperInstance, Submission, AttemptRevision)
-        .outerjoin(PaperInstanceItem, PaperInstanceItem.id == Attempt.paper_instance_item_id)
-        .outerjoin(PaperInstance, PaperInstance.id == PaperInstanceItem.paper_instance_id)
-        .outerjoin(Submission, Submission.id == Attempt.submission_id)
-        .outerjoin(
-            AttemptRevision,
-            (AttemptRevision.attempt_id == Attempt.id)
-            & (AttemptRevision.revision_no == Attempt.revision_no),
-        )
-        .where(Attempt.student_id.in_(ids), Attempt.answered_at <= as_of)
-        .order_by(Attempt.student_id, Attempt.answered_at, Attempt.id)
-    ).all()
-    for row in rows:
-        grouped[row[0].student_id].append(row)
+    grouped = load_attempt_rows_many(db, ids, as_of=as_of)
+    knowledge_codes = set(db.scalars(select(KnowledgePoint.code)))
     return {
-        student_id: _literacy_evidence_from_rows(grouped[student_id])
+        student_id: _literacy_evidence_from_rows(grouped[student_id], knowledge_codes=knowledge_codes)
         for student_id in ids
     }
 
@@ -434,8 +400,9 @@ def persist_literacy_scores(
         for item in loaded.invalid:
             reasons[item.reason] += 1
         summary = ", ".join(f"{key}={value}" for key, value in sorted(reasons.items()))
+        details = ", ".join(f"{item.attempt_id}:{item.reason}" for item in loaded.invalid[:10])
         raise ValueError(
-            f"Cannot rebuild literacy scores: {len(loaded.invalid)} invalid evidence records ({summary})"
+            f"Cannot rebuild literacy scores: {len(loaded.invalid)} invalid evidence records ({summary}; {details})"
         )
     replayed = replay_literacy_scores(loaded.evidence, as_of=as_of)
     existing = {

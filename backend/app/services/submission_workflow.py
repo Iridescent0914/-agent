@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models import (
     Assignment, Attempt, AttemptRevision, PaperInstance, PaperInstanceItem,
-    Question, RecognitionRun, SchoolClass, Student, Submission,
+    Question, RecognitionRun, SchoolClass, Student, Submission, KnowledgePoint,
 )
 from app.schemas.submissions import (
     AttemptOut, AttemptReviewRequest, AttemptRevisionOut, GradingQueueItem,
@@ -23,8 +23,9 @@ from app.schemas.submissions import (
 )
 from app.services.assets import resolve_assets
 from app.services.grading import grade_answer
-from app.services.paper_snapshots import current_knowledge_point_snapshot
+from app.services.paper_snapshots import published_knowledge_point_snapshot
 from app.services.profile_refresh import refresh_student_profiles
+from app.services.profile_evidence import attempt_problem
 
 
 class GradingConflict(RuntimeError):
@@ -171,7 +172,7 @@ def _validate_answer(
 
 
 def _attempt_out(
-    attempt: Attempt, order_no: int, *, paper_is_active: bool,
+    attempt: Attempt, order_no: int, *, exclusion_reason: str | None,
 ) -> AttemptOut:
     return AttemptOut(
         id=attempt.id, paper_instance_item_id=attempt.paper_instance_item_id,
@@ -181,10 +182,8 @@ def _attempt_out(
         is_correct=attempt.is_correct, manual_override=attempt.manual_override,
         revision_no=attempt.revision_no, answered_at=attempt.answered_at,
         reviewed_at=attempt.reviewed_at,
-        used_in_profile=(
-            paper_is_active
-            and attempt.grade_status in {"auto_confirmed", "teacher_confirmed"}
-        ),
+        used_in_profile=exclusion_reason is None,
+        exclusion_reason=exclusion_reason,
         recognition_status=attempt.recognition_status,
         ocr_confidence=(
             float(attempt.ocr_confidence) if attempt.ocr_confidence is not None else None
@@ -217,6 +216,13 @@ def submission_view(db: Session, paper_id: UUID, *, replayed: bool = False,
                 .order_by(Attempt.answered_at, Attempt.id)
             )
         }
+    revisions = {
+        (revision.attempt_id, revision.revision_no): revision
+        for revision in db.scalars(select(AttemptRevision).where(
+            AttemptRevision.attempt_id.in_([attempt.id for attempt in attempts.values()])
+        ))
+    } if attempts else {}
+    knowledge_codes = set(db.scalars(select(KnowledgePoint.code))) if attempts else set()
     output_items = []
     answer_key_update_count = 0
     paper_is_active = paper.status == "published" and paper.invalidated_at is None
@@ -248,13 +254,18 @@ def submission_view(db: Session, paper_id: UUID, *, replayed: bool = False,
             grading_answer_rule_snapshot=grading_rule,
             standard_answer_source=answer_source,
             answer_key_update_available=answer_key_update_available,
-            knowledge_point_snapshot=current_knowledge_point_snapshot(
+            knowledge_point_snapshot=published_knowledge_point_snapshot(
                 db, item.question_id, item.knowledge_point_snapshot
             ),
             assets=resolve_assets(item.question_snapshot.get("assets", [])),
             attempt=(
                 _attempt_out(
-                    attempt, item.order_no, paper_is_active=paper_is_active,
+                    attempt, item.order_no,
+                    exclusion_reason=attempt_problem(
+                        attempt, item, paper, submission,
+                        revisions.get((attempt.id, attempt.revision_no)),
+                        knowledge_codes=knowledge_codes,
+                    ),
                 )
                 if attempt else None
             ),

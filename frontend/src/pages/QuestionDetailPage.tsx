@@ -36,6 +36,7 @@ const importIssueLabel: Record<string, string> = {
   pool_missing_source_content: '原题条件或图形不完整，补齐后才能入池',
   pool_source_conflict: '原始题面或参考答案存在矛盾，需要核对',
   pool_manual_reasoning_required: '包含说明理由等论证任务，整组需要人工评分',
+  pool_profile_type_unsupported: '保留参考答案及最终结果判分能力，供后续视觉识别专项验证；不进入日常自动组卷池',
   pool_manual_calculation: '计算题参考答案已整理，当前由教师人工评分',
 }
 
@@ -89,8 +90,8 @@ export function QuestionDetailPage() {
               }
             />
           )}
-          {question.answer_normalization_rule.final_answer_only === true && <Alert type="info" showIcon message="仅按最终答案自动判对错，不计计算过程分；本题含 n 的表达式按 n 为正整数核对等价性，无法可靠判定时进入复核。" />}
-          {(question.question_type === 'choice' || question.question_type === 'fill_blank' || question.question_type === 'true_false' || (question.question_type === 'calculation' && question.answer_normalization_rule.final_answer_only === true)) && (
+          {question.answer_normalization_rule.final_answer_only === true && <Alert type="info" showIcon message="保留最终答案匹配能力，供后续视觉识别专项验证；本题不进入日常自动组卷池，不参与当前画像评分。含 n 的表达式按 n 为正整数核对等价性，不评计算过程分。" />}
+          {(question.question_type === 'choice' || question.question_type === 'fill_blank' || question.question_type === 'true_false') && (
               <div className={'question-review-action' + (question.grading_readiness === 'machine_ready' ? ' is-ready' : '')}>
                 <QuestionReviewEditor question={question} onUpdated={setQuestion} />
                 <Typography.Text type="secondary">

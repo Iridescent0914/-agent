@@ -234,7 +234,7 @@ export function PaperGradingPage() {
             <Descriptions.Item label="当前状态">{gradeSource(item.attempt)}</Descriptions.Item>
             <Descriptions.Item label="评分标准来源">{item.standard_answer_source === 'question_revision' ? '题库当前发布答案' : '试卷发布快照'}</Descriptions.Item>
             <Descriptions.Item label="当前修订">v{item.attempt.revision_no}</Descriptions.Item>
-            <Descriptions.Item label="画像证据">{item.attempt.used_in_profile ? '已计入' : data.is_active ? '待复核，不计入' : '历史失效版本，不计入'}</Descriptions.Item>
+            <Descriptions.Item label="画像证据">{item.attempt.used_in_profile ? '已计入' : item.attempt.exclusion_reason === 'unsupported_profile_question_type' ? '该题型不参与当前画像评分' : data.is_active ? '待复核或证据异常，不计入' : '历史失效版本，不计入'}</Descriptions.Item>
             {data.source === 'image' && <Descriptions.Item label="识别状态">{item.attempt.recognition_status ?? '—'} · 置信度 {item.attempt.ocr_confidence == null ? '—' : item.attempt.ocr_confidence.toFixed(3)}（模型自报）</Descriptions.Item>}
           </Descriptions>
           <Input.TextArea value={reasons[item.attempt.id] ?? ''} onChange={(event) => setReasons((current) => ({ ...current, [item.attempt!.id]: event.target.value }))} placeholder="复核或改判原因（至少 2 个字）" rows={2} />

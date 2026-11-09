@@ -9,6 +9,7 @@ import { QuestionOptions } from './QuestionOptions'
 
 const exclusionReasonLabels: Record<string, string> = {
   invalidated_paper: '试卷已撤回或被新版替代',
+  unsupported_profile_question_type: '该题型保留判分结果，不参与当前画像评分',
   needs_review: '作答仍待教师复核',
   unpublished_paper: '试卷尚未发布',
   missing_ownership_record: '作答归属记录缺失',
