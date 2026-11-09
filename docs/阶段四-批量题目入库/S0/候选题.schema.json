@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://math-agent.local/schemas/import-candidate-v1.json",
+  "title": "Question import candidate v1",
+  "description": "暂存区候选题数据契约。标签白名单、章节和年级关联由服务端目录二次校验。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "batch_id", "item_id", "catalog_snapshot_sha256", "revision", "source", "content", "tags", "answers", "selected_answer_id", "answer_match_status", "precheck_status", "label_status", "teacher_decision", "commit_intent", "duplicate_status", "field_confidence", "field_evidence"],
+  "properties": {
+    "schema_version": {"const": "import-candidate-v1"},
+    "batch_id": {"type": "string", "minLength": 1},
+    "item_id": {"type": "string", "minLength": 1},
+    "catalog_snapshot_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "revision": {"type": "integer", "minimum": 1},
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["file_id", "original_number", "page_start", "page_end", "evidence"],
+      "properties": {
+        "file_id": {"type": "string", "minLength": 1},
+        "original_number": {"type": ["string", "null"]},
+        "page_start": {"type": ["integer", "null"], "minimum": 1},
+        "page_end": {"type": ["integer", "null"], "minimum": 1},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+      }
+    },
+    "content": {
+      "type": "object", "additionalProperties": false,
+      "required": ["question_text", "options", "solution", "asset_ids"],
+      "properties": {
+        "question_text": {"type": "string"},
+        "options": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["key", "text"], "properties": {"key": {"type": "string", "minLength": 1}, "text": {"type": "string"}}}},
+        "solution": {"type": ["string", "null"]},
+        "asset_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "tags": {
+      "type": "object", "additionalProperties": false,
+      "required": ["question_type", "difficulty", "grade", "chapter_code", "section", "main_kp_code", "core_literacies", "is_required"],
+      "properties": {
+        "question_type": {"enum": ["choice", "fill_blank", "calculation", "solution", "true_false", "unknown"]},
+        "difficulty": {"type": ["integer", "null"], "minimum": 1, "maximum": 5},
+        "grade": {"type": ["string", "null"]},
+        "chapter_code": {"type": ["string", "null"]},
+        "section": {"type": ["string", "null"]},
+        "main_kp_code": {"type": ["string", "null"]},
+        "core_literacies": {"type": "array", "uniqueItems": true, "items": {"enum": ["抽象能力", "运算能力", "几何直观", "推理能力", "模型观念", "数据意识", "应用意识", "创新意识"]}},
+        "is_required": {"type": ["boolean", "null"]}
+      }
+    },
+    "answers": {"type": "array", "items": {"$ref": "#/$defs/answer"}},
+    "selected_answer_id": {"type": ["string", "null"]},
+    "answer_match_status": {"enum": ["not_applicable", "matched", "uncertain", "unmatched", "conflict"]},
+    "precheck_status": {"enum": ["not_run", "matched", "suspect", "uncertain", "failed"]},
+    "label_status": {"enum": ["matched", "needs_confirmation", "out_of_scope", "invalid"]},
+    "teacher_decision": {"enum": ["pending", "approved", "rejected", "skipped_duplicate"]},
+    "commit_intent": {"enum": ["library_only", "direct_pool"]},
+    "duplicate_status": {"enum": ["none", "exact_in_batch", "exact_in_catalog", "suspected", "resolved_variant"]},
+    "field_confidence": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1}},
+    "field_evidence": {"type": "object", "additionalProperties": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}},
+    "warnings": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["file_id", "page", "block_id", "quote"],
+      "properties": {
+        "file_id": {"type": "string", "minLength": 1},
+        "page": {"type": ["integer", "null"], "minimum": 1},
+        "block_id": {"type": ["string", "null"]},
+        "quote": {"type": ["string", "null"]},
+        "bbox": {"type": ["array", "null"], "minItems": 4, "maxItems": 4, "items": {"type": "number"}}
+      }
+    },
+    "answer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["answer_id", "answer_source", "text", "evidence", "teacher_confirmed"],
+      "properties": {
+        "answer_id": {"type": "string", "minLength": 1},
+        "answer_source": {"enum": ["source_extracted", "model_generated", "teacher_entered", "missing"]},
+        "text": {"type": ["string", "null"]},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+        "teacher_confirmed": {"type": "boolean"}
+      }
+    }
+  }
+}
