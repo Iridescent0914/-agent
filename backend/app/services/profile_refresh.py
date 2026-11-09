@@ -21,11 +21,13 @@ def refresh_student_profiles(
     """Refresh mastery, literacy scores and knowledge labels atomically."""
 
     calculated_at = as_of or datetime.now(timezone.utc)
-    mastery = persist_mastery(db, load_context(db, student_id))
+    mastery = persist_mastery(db, load_context(
+        db, student_id, as_of=calculated_at, include_literacy=False,
+    ))
     literacy, _ = persist_literacy_scores(
         db, student_id, as_of=calculated_at
     )
-    knowledge_status = rebuild_knowledge_statuses(db, student_id)
+    knowledge_status = rebuild_knowledge_statuses(db, student_id, as_of=calculated_at)
     return {
         "mastery": mastery,
         "literacy": literacy,

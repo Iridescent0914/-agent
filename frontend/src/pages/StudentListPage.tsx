@@ -74,15 +74,17 @@ export function StudentListPage() {
     { title: '编号', dataIndex: 'student_code', width: 100, render: (_, row) => <Link to={`/students/${row.id}`}>{row.student_code}</Link> },
     { title: '学生姓名', dataIndex: 'display_name', width: 130 },
     { title: '班级', dataIndex: 'class_name' },
-    { title: '证据量', dataIndex: 'attempt_count', width: 100, render: (value) => `${value} 次` },
+    { title: '有效确认作答', dataIndex: 'attempt_count', width: 100, render: (value) => `${value} 次` },
     {
-      title: '历史正确率',
+      title: '有效确认正确率',
       width: 240,
       render: (_, row) => {
         const percent = row.attempt_count ? Math.round((row.correct_count / row.attempt_count) * 100) : 0
-        return <Progress percent={percent} size="small" />
+        return row.attempt_count ? <Progress percent={percent} size="small" /> : <Typography.Text type="secondary">未评估</Typography.Text>
       },
     },
+    { title: '待复核', dataIndex: 'pending_review_count', width: 90 },
+    { title: '历史记录', dataIndex: 'total_attempt_count', width: 100 },
     { title: '数据类型', width: 110, render: (_, row) => row.is_demo ? <Tag color='purple'>演示数据</Tag> : <Tag color='blue'>教师添加</Tag> },
     {
       title: '操作',

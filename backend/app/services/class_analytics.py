@@ -25,6 +25,7 @@ from app.services.mastery import RULE_VERSION
 from app.services.literacy_catalog import LITERACY_DIMENSIONS
 from app.services.literacy_scoring import RULE_VERSION as LITERACY_RULE_VERSION
 from app.services.literacy_rules import rounded_display_score
+from app.services.profile_evidence import EXPECTED_EVIDENCE_EXCLUSIONS
 from app.services.student_profile import (
     ProfileContext,
     knowledge_point_catalog,
@@ -174,7 +175,7 @@ def build_class_overview(
             if record.problem == "needs_review":
                 if code in catalog_codes:
                     pending_review_count += 1
-            elif record.problem is not None:
+            elif record.problem is not None and record.problem not in EXPECTED_EVIDENCE_EXCLUSIONS:
                 # Missing or unknown snapshot codes cannot safely be assigned to
                 # another chapter, so surface them instead of silently hiding them.
                 if code in catalog_codes or code is None or code not in all_catalog_codes:

@@ -82,6 +82,7 @@
     },
     "q.math.g6.rational.school.080": {
       "mode": "final_answer_only",
+      "blocked_reasons": ["pool_profile_type_unsupported"],
       "note": "用户明确要求把图片转为数值或公式并自动批改。本组仅判最终结果，不评过程分。第1、2题来自原答案图rId687、rId688，第3题依据清晰题干rId686裂项核算补全4048/2025。第二题按n为正整数的受限有理式恒等判分；不可解析或无法证明分母定义域的表达式进入复核。",
       "grading_rules": {"final_answer_only": true, "symbolic_variable": "n", "symbolic_domain": "positive_integer"},
       "answers": {

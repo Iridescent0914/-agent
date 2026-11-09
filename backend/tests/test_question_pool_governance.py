@@ -65,7 +65,8 @@ def test_rational_080_image_answers_are_complete_and_grade_final_results():
     record = next(record for record in catalog() if record["original_qid"] == "q.math.g6.rational.school.080")
     items = record["correct_answer"]["items"]
     assert record["question_type"] == "calculation"
-    assert record["grading_readiness"] == "machine_ready"
+    assert record["grading_readiness"] == "raw_answer_only"
+    assert "pool_profile_type_unsupported" in record["pool_governance"]["blocked_reasons"]
     assert [item["item_id"] for item in items] == ["sub_1.blank_1", "sub_2.blank_1", "sub_3.blank_1"]
     assert all(item["answer_match_type"] == "numeric" and item["answer"] and "[ASSET:" not in item["answer"] for item in items)
     assert items[0]["answer"] == "2023/2024"

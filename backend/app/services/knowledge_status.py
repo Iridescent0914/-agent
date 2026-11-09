@@ -8,9 +8,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Assignment, Attempt, PaperInstance, PaperInstanceItem, Question,
+    Assignment, Attempt, KnowledgePoint, PaperInstanceItem,
     StudentKnowledgeStatus,
 )
+from app.services.profile_evidence import attempt_problem, load_attempt_rows_many, snapshot_knowledge_code
 
 
 CONFIRMED_STATUSES = ("auto_confirmed", "teacher_confirmed")
@@ -156,23 +157,20 @@ def _valid_weekly_history_source(
     return None
 
 
-def _status_events(db: Session, student_id: UUID) -> list[StatusEvent]:
-    rows = db.execute(
-        select(Attempt, PaperInstanceItem, Assignment, Question)
-        .join(PaperInstanceItem, PaperInstanceItem.id == Attempt.paper_instance_item_id)
-        .join(PaperInstance, PaperInstance.id == PaperInstanceItem.paper_instance_id)
-        .join(Assignment, Assignment.id == PaperInstance.assignment_id)
-        .join(Question, Question.id == Attempt.question_id)
-        .where(
-            Attempt.student_id == student_id,
-            PaperInstance.status == "published",
-            PaperInstance.invalidated_at.is_(None),
-        )
-        .order_by(Attempt.answered_at, Attempt.id)
-    ).all()
+def _status_events(db: Session, student_id: UUID, *, as_of: datetime | None = None) -> list[StatusEvent]:
+    rows = load_attempt_rows_many(db, [student_id], as_of=as_of)[student_id]
+    points = {point.code: point.id for point in db.scalars(select(KnowledgePoint))}
+    paper_assignment_ids = {paper.assignment_id for _, _, paper, _, _ in rows if paper is not None}
+    assignments = {assignment.id: assignment for assignment in db.scalars(
+        select(Assignment).where(Assignment.id.in_(paper_assignment_ids))
+    )}
     facts = [
-        AttemptFact(attempt, item, assignment, question.main_knowledge_point_id)
-        for attempt, item, assignment, question in rows
+        AttemptFact(attempt, item, assignments[paper.assignment_id], points[snapshot_knowledge_code(item)])
+        for attempt, item, paper, submission, revision in rows
+        # Pending weekly siblings must remain visible so one confirmed answer
+        # cannot prematurely mark an unfinished two-question group as passed.
+        if attempt_problem(attempt, item, paper, submission, revision, knowledge_codes=points)
+        in {None, "needs_review"}
     ]
     by_attempt_id = {fact.attempt.id: fact for fact in facts}
 
@@ -220,11 +218,13 @@ def _status_events(db: Session, student_id: UUID) -> list[StatusEvent]:
     return sorted(events, key=lambda item: (item.answered_at, item.attempt_id.int))
 
 
-def rebuild_knowledge_statuses(db: Session, student_id: UUID) -> dict[str, int]:
+def rebuild_knowledge_statuses(
+    db: Session, student_id: UUID, *, as_of: datetime | None = None,
+) -> dict[str, int]:
     """Replay history/weekly outcomes and persist the latest label per KP."""
 
     latest: dict[UUID, StatusEvent] = {}
-    for event in _status_events(db, student_id):
+    for event in _status_events(db, student_id, as_of=as_of):
         latest[event.knowledge_point_id] = event
     existing = {
         row.knowledge_point_id: row

@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID
 
+from app.services.profile_evidence import PROFILE_QUESTION_TYPES
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -128,6 +130,7 @@ def personalized_question_candidates(
             Question.chapter_code.in_(chapters),
             KnowledgePoint.code.in_(knowledge_codes),
             Question.archived_at.is_(None),
+            Question.question_type.in_(PROFILE_QUESTION_TYPES),
         )
         .order_by(Question.original_qid, Question.id)
     ).all()

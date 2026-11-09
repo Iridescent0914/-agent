@@ -69,6 +69,7 @@ def test_database_candidates_use_exact_scope_and_readiness_contract(db):
                 Question.chapter_code == CHAPTER,
                 KnowledgePoint.code == KNOWLEDGE_POINT,
                 Question.archived_at.is_(None),
+                Question.question_type.in_(("choice", "fill_blank", "true_false")),
             )
         )
     }

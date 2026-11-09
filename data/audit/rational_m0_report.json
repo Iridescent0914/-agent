@@ -53,9 +53,10 @@
     "answer_units_need_review": 12,
     "answer_items_not_structured": 1,
     "pool_missing_source_content": 1,
+    "pool_profile_type_unsupported": 1,
     "missing_reference_answer": 1
   },
   "source_status_note": "新版校本审核 DOCX 作为权威来源；年级、章、主属节、节内主属 KP、核心素养和必做题标记均直接继承该文件。",
-  "catalog_machine_ready_count": 63,
+  "catalog_machine_ready_count": 62,
   "pool_governance_version": "question-pool-governance-v1"
 }

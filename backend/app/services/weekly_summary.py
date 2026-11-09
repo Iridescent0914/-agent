@@ -6,6 +6,8 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from uuid import UUID
 
+from app.services.profile_evidence import PROFILE_QUESTION_TYPES
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -64,12 +66,11 @@ def _false_knowledge_points(
     rows = db.execute(
         select(
             PaperInstance.student_id, PaperInstanceItem, Attempt,
-            Question.main_knowledge_point_id, KnowledgePoint.code, KnowledgePoint.name,
+            KnowledgePoint.id, KnowledgePoint.code, KnowledgePoint.name,
         )
         .join(PaperInstanceItem, PaperInstanceItem.paper_instance_id == PaperInstance.id)
         .join(Attempt, Attempt.paper_instance_item_id == PaperInstanceItem.id)
-        .join(Question, Question.id == PaperInstanceItem.question_id)
-        .join(KnowledgePoint, KnowledgePoint.id == Question.main_knowledge_point_id)
+        .join(KnowledgePoint, KnowledgePoint.code == PaperInstanceItem.knowledge_point_snapshot["id"].astext)
         .where(
             PaperInstance.assignment_id.in_(source_assignment_ids),
             PaperInstance.student_id.in_(student_ids),
@@ -103,6 +104,7 @@ def _candidates(db: Session, knowledge_point_ids: set[UUID]) -> dict[UUID, list[
             Question.main_knowledge_point_id.in_(knowledge_point_ids),
             Question.difficulty == FIXED_DIFFICULTY,
             Question.archived_at.is_(None),
+            Question.question_type.in_(PROFILE_QUESTION_TYPES),
         )
     ).all()
     for question, knowledge_point in rows:

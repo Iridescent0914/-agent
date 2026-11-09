@@ -12,6 +12,7 @@ from app.models import Question
 from app.schemas.questions import QuestionReviewRequest, QuestionWithdrawRequest
 from app.services.literacy_catalog import normalize_literacy_label
 from app.services.question_pool_quality import pool_answer_issues
+from app.services.profile_evidence import PROFILE_QUESTION_TYPES
 
 
 class QuestionReviewConflict(RuntimeError):
@@ -161,12 +162,12 @@ def _mutate(
 
     items = [item.model_dump() for item in request.items]
     final_answer_only = request.final_answer_only and question.question_type == "calculation"
+    if promote and question.question_type not in PROFILE_QUESTION_TYPES:
+        raise QuestionReviewValidation(
+            "日常自动组卷池仅支持选择、填空、判断题；计算题参考答案和最终结果判分能力可保留用于专项验证"
+        )
     validate_review_items(question.question_type, items, final_answer_only=final_answer_only)
     if promote:
-        if question.question_type in {"calculation", "solution"} and not final_answer_only:
-            raise QuestionReviewValidation(
-                "计算题和简答题可以保存结构化参考答案，但暂不进入自动判分池"
-            )
         try:
             question.core_literacy = normalize_literacy_label(question.core_literacy)
         except ValueError as exc:

@@ -66,6 +66,8 @@ class StudentListItem(BaseModel):
     attempt_count: int
     correct_count: int
     latest_answered_at: datetime | None
+    total_attempt_count: int = 0
+    pending_review_count: int = 0
 
 
 class StudentDetail(StudentListItem):

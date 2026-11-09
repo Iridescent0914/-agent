@@ -72,6 +72,7 @@ class AttemptOut(BaseModel):
     answered_at: datetime
     reviewed_at: datetime | None
     used_in_profile: bool
+    exclusion_reason: str | None = None
     recognition_status: str | None = None
     ocr_confidence: float | None = None
 

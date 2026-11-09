@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -8,29 +9,33 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import Attempt, SchoolClass, Student
+from app.models import KnowledgePoint, SchoolClass, Student
 from app.schemas.common import Page
 from app.schemas.students import (
     StudentArchiveRequest, StudentAttemptOut, StudentCreateRequest,
     StudentDetail, StudentListItem,
 )
 from app.services.student_profile import attempt_summary, load_context
+from app.services.profile_evidence import attempt_problem, load_attempt_rows_many
 
 
 router = APIRouter(prefix="/students", tags=["students"])
 
 
-def _student_stats_subquery():
-    return (
-        select(
-            Attempt.student_id.label("student_id"),
-            func.count(Attempt.id).label("attempt_count"),
-            func.count(Attempt.id).filter(Attempt.is_correct.is_(True)).label("correct_count"),
-            func.max(Attempt.answered_at).label("latest_answered_at"),
+def _student_stats(db: Session, student_ids: list[uuid.UUID]) -> dict:
+    codes = set(db.scalars(select(KnowledgePoint.code)))
+    output = {}
+    for student_id, rows in load_attempt_rows_many(db, student_ids).items():
+        classified = [(row[0], attempt_problem(*row, knowledge_codes=codes)) for row in rows]
+        valid = [attempt for attempt, problem in classified if problem is None]
+        output[student_id] = SimpleNamespace(
+            attempt_count=len(valid),
+            correct_count=sum(attempt.is_correct is True for attempt in valid),
+            latest_answered_at=max((attempt.answered_at for attempt in valid), default=None),
+            total_attempt_count=len(rows),
+            pending_review_count=sum(problem == "needs_review" for _, problem in classified),
         )
-        .group_by(Attempt.student_id)
-        .subquery()
-    )
+    return output
 
 
 def _student_item(student: Student, row: object) -> StudentListItem:
@@ -44,6 +49,8 @@ def _student_item(student: Student, row: object) -> StudentListItem:
         attempt_count=int(getattr(row, "attempt_count") or 0),
         correct_count=int(getattr(row, "correct_count") or 0),
         latest_answered_at=getattr(row, "latest_answered_at"),
+        total_attempt_count=row.total_attempt_count,
+        pending_review_count=row.pending_review_count,
     )
 
 
@@ -118,7 +125,6 @@ def list_students(
     keyword: str | None = Query(None, max_length=80),
     db: Session = Depends(get_db),
 ) -> Page[StudentListItem]:
-    stats = _student_stats_subquery()
     filters = [Student.archived_at.is_(None)]
     if class_id is not None:
         filters.append(Student.class_id == class_id)
@@ -133,18 +139,15 @@ def list_students(
     rows = db.execute(
         select(
             Student,
-            stats.c.attempt_count,
-            stats.c.correct_count,
-            stats.c.latest_answered_at,
         )
-        .outerjoin(stats, stats.c.student_id == Student.id)
         .where(*filters)
         .order_by(Student.class_name, Student.student_code, Student.id)
         .offset((page - 1) * page_size)
         .limit(page_size)
-    ).all()
+    ).scalars().all()
+    stats = _student_stats(db, [student.id for student in rows])
     return Page(
-        items=[_student_item(row.Student, row) for row in rows],
+        items=[_student_item(student, stats[student.id]) for student in rows],
         total=total,
         page=page,
         page_size=page_size,
@@ -153,21 +156,14 @@ def list_students(
 
 @router.get("/{student_id}", response_model=StudentDetail)
 def get_student(student_id: uuid.UUID, db: Session = Depends(get_db)) -> StudentDetail:
-    stats = _student_stats_subquery()
-    row = db.execute(
-        select(
-            Student,
-            stats.c.attempt_count,
-            stats.c.correct_count,
-            stats.c.latest_answered_at,
-        )
-        .outerjoin(stats, stats.c.student_id == Student.id)
+    student = db.scalar(
+        select(Student)
         .where(Student.id == student_id, Student.archived_at.is_(None))
-    ).one_or_none()
-    if row is None:
+    )
+    if student is None:
         raise HTTPException(status_code=404, detail="student not found")
-    item = _student_item(row.Student, row)
-    return StudentDetail(**item.model_dump(), created_at=row.Student.created_at)
+    item = _student_item(student, _student_stats(db, [student.id])[student.id])
+    return StudentDetail(**item.model_dump(), created_at=student.created_at)
 
 
 @router.get("/{student_id}/attempts", response_model=Page[StudentAttemptOut])

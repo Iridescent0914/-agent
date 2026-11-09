@@ -8,6 +8,8 @@ from math import floor
 import re
 from uuid import UUID
 
+from app.services.profile_evidence import PROFILE_QUESTION_TYPES
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -442,6 +444,7 @@ def recommendation_candidates(
         .where(
             *filters,
             Question.archived_at.is_(None),
+            Question.question_type.in_(PROFILE_QUESTION_TYPES),
         )
     ).all()
     return [Candidate(
@@ -473,6 +476,7 @@ def history_recommendation_candidates(
         .where(
             KnowledgePoint.code.in_(knowledge_point_codes),
             Question.archived_at.is_(None),
+            Question.question_type.in_(PROFILE_QUESTION_TYPES),
         )
     ).all()
     return [Candidate(
@@ -506,6 +510,7 @@ def required_question_candidates(
         Question.grade.in_(grades),
         Question.is_required.is_(True),
         Question.archived_at.is_(None),
+            Question.question_type.in_(PROFILE_QUESTION_TYPES),
     ]
     rows = db.execute(
         select(Question, KnowledgePoint)

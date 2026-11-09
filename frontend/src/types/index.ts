@@ -132,6 +132,8 @@ export interface StudentSummary {
   is_demo: boolean
   attempt_count: number
   correct_count: number
+  total_attempt_count: number
+  pending_review_count: number
   latest_answered_at: string | null
 }
 

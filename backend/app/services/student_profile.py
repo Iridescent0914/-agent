@@ -27,9 +27,10 @@ from app.services.literacy_scoring import (
     effective_literacy_scores_many,
     literacy_outputs_from_scores,
 )
-
-
-EXPECTED_EVIDENCE_EXCLUSIONS = frozenset({"needs_review", "invalidated_paper"})
+from app.services.profile_evidence import (
+    EXPECTED_EVIDENCE_EXCLUSIONS, PROFILE_QUESTION_TYPES, attempt_problem,
+    load_attempt_rows_many, snapshot_knowledge_code,
+)
 
 
 @dataclass
@@ -65,11 +66,13 @@ def knowledge_point_catalog(
         active_filters.append(Question.grade == grade)
     active_chapters = (
         select(Question.chapter_code)
-        .where(*active_filters)
+        # Archiving the last active question must not hide past evidence.
+        .where(*([Question.grade == grade] if grade is not None else []))
         .distinct()
         .subquery()
     )
     count_filters = [
+        Question.question_type.in_(PROFILE_QUESTION_TYPES),
         Question.grading_readiness == 'machine_ready',
         Question.source_review_status == 'reviewed',
         Question.archived_at.is_(None),
@@ -82,6 +85,7 @@ def knowledge_point_catalog(
         .group_by(Question.main_knowledge_point_id).subquery()
     )
     required_filters = [
+        Question.question_type.in_(PROFILE_QUESTION_TYPES),
         Question.is_required.is_(True),
         Question.grading_readiness == "machine_ready",
         Question.source_review_status == "reviewed",
@@ -104,7 +108,7 @@ def knowledge_point_catalog(
         # already referenced by questions.  Keep every formal knowledge point
         # in an active chapter so unpractised / currently unstocked points can
         # still be represented as unassessed.
-        .join(
+        .outerjoin(
             active_chapters,
             active_chapters.c.chapter_code == KnowledgePoint.chapter_code,
         )
@@ -116,6 +120,8 @@ def knowledge_point_catalog(
     )
     if chapter_code is not None:
         query = query.where(KnowledgePoint.chapter_code == chapter_code)
+    if grade is not None:
+        query = query.where(active_chapters.c.chapter_code.is_not(None))
     section_rows = db.execute(
         select(Question.main_knowledge_point_id, Question.section)
         .where(*active_filters)
@@ -146,7 +152,6 @@ def _context_from_rows(
     student: Student,
     catalog: list[KnowledgePointOut],
     rows: list[tuple],
-    current_knowledge_by_question_id: dict[UUID, tuple[str, str]],
     knowledge_statuses: dict[UUID, StudentKnowledgeStatus] | None = None,
 ) -> ProfileContext:
     by_code = {knowledge_point.code: knowledge_point for knowledge_point in catalog}
@@ -154,36 +159,17 @@ def _context_from_rows(
     for attempt, item, paper, submission, revision in rows:
         problem = None
         evidence = None
-        current = current_knowledge_by_question_id.get(attempt.question_id)
-        knowledge_point = by_code.get(current[0]) if current else None
+        knowledge_point = by_code.get(snapshot_knowledge_code(item))
         main = (
             {"id": knowledge_point.code, "name": knowledge_point.name}
             if knowledge_point is not None
             else {}
         )
         snapshot = item.question_snapshot if item else None
-        if item is None or paper is None or submission is None:
-            problem = "missing_ownership_record"
-        elif (attempt.student_id != submission.student_id or attempt.student_id != paper.student_id
-              or submission.paper_instance_id != paper.id or attempt.question_id != item.question_id):
-            problem = "ownership_mismatch"
-        elif paper.status != "published":
-            problem = "unpublished_paper"
-        elif paper.invalidated_at is not None:
-            # Withdrawn and superseded papers remain available for audit, but
-            # their attempts no longer contribute to the current profile.
-            problem = "invalidated_paper"
-        elif knowledge_point is None:
-            problem = "unmapped_knowledge_point"
-        elif (not isinstance(snapshot, dict) or not isinstance(snapshot.get("question_text"), str)
-              or not isinstance(snapshot.get("original_qid"), str)
-              or snapshot.get("question_type") not in {"choice", "fill_blank", "true_false"}
-              or type(snapshot.get("difficulty")) is not int
-              or not 1 <= snapshot["difficulty"] <= 5):
-            problem = "invalid_question_snapshot"
-        elif revision is None:
-            problem = "missing_current_revision"
-        else:
+        problem = attempt_problem(
+            attempt, item, paper, submission, revision, knowledge_codes=by_code,
+        )
+        if problem is None:
             evidence = Evidence(
                 attempt_id=attempt.id, student_id=student.id, question_id=attempt.question_id,
                 paper_instance_item_id=attempt.paper_instance_item_id,
@@ -206,7 +192,10 @@ def _context_from_rows(
     )
 
 
-def load_contexts(db: Session, student_ids: list[UUID]) -> dict[UUID, ProfileContext]:
+def load_contexts(
+    db: Session, student_ids: list[UUID], *, as_of: datetime | None = None,
+    include_literacy: bool = True,
+) -> dict[UUID, ProfileContext]:
     ids = list(dict.fromkeys(student_ids))
     if not ids:
         return {}
@@ -216,30 +205,7 @@ def load_contexts(db: Session, student_ids: list[UUID]) -> dict[UUID, ProfileCon
     if len(students) != len(ids):
         raise LookupError("one or more students not found")
     catalog = knowledge_point_catalog(db)
-    grouped: dict[UUID, list[tuple]] = {student.id: [] for student in students}
-    rows = db.execute(
-        select(Attempt, PaperInstanceItem, PaperInstance, Submission, AttemptRevision)
-        .outerjoin(PaperInstanceItem, PaperInstanceItem.id == Attempt.paper_instance_item_id)
-        .outerjoin(PaperInstance, PaperInstance.id == PaperInstanceItem.paper_instance_id)
-        .outerjoin(Submission, Submission.id == Attempt.submission_id)
-        .outerjoin(AttemptRevision, (AttemptRevision.attempt_id == Attempt.id)
-                   & (AttemptRevision.revision_no == Attempt.revision_no))
-        .where(Attempt.student_id.in_(ids))
-        .order_by(Attempt.student_id, Attempt.answered_at, Attempt.id)
-    ).all()
-    for row in rows:
-        grouped[row[0].student_id].append(row)
-    current_knowledge_by_question_id = {
-        question_id: (code, name)
-        for question_id, code, name in db.execute(
-            select(Question.id, KnowledgePoint.code, KnowledgePoint.name)
-            .join(
-                KnowledgePoint,
-                KnowledgePoint.id == Question.main_knowledge_point_id,
-            )
-            .where(Question.archived_at.is_(None))
-        ).all()
-    }
+    grouped = load_attempt_rows_many(db, ids, as_of=as_of)
     statuses_by_student: dict[UUID, dict[UUID, StudentKnowledgeStatus]] = {
         student.id: {} for student in students
     }
@@ -252,12 +218,13 @@ def load_contexts(db: Session, student_ids: list[UUID]) -> dict[UUID, ProfileCon
             student,
             catalog,
             grouped[student.id],
-            current_knowledge_by_question_id,
             statuses_by_student[student.id],
         )
         for student in students
     }
-    literacy_as_of = datetime.now(timezone.utc)
+    if not include_literacy:
+        return {student_id: by_student[student_id] for student_id in ids}
+    literacy_as_of = as_of or datetime.now(timezone.utc)
     literacy_values = effective_literacy_scores_many(
         db, ids, as_of=literacy_as_of
     )
@@ -267,9 +234,12 @@ def load_contexts(db: Session, student_ids: list[UUID]) -> dict[UUID, ProfileCon
     return {student_id: by_student[student_id] for student_id in ids}
 
 
-def load_context(db: Session, student_id: UUID) -> ProfileContext:
+def load_context(
+    db: Session, student_id: UUID, *, as_of: datetime | None = None,
+    include_literacy: bool = True,
+) -> ProfileContext:
     try:
-        return load_contexts(db, [student_id])[student_id]
+        return load_contexts(db, [student_id], as_of=as_of, include_literacy=include_literacy)[student_id]
     except LookupError as exc:
         raise LookupError("student not found") from exc
 
@@ -346,7 +316,7 @@ def build_profile(context: ProfileContext, *, computed_at: datetime | None = Non
         rule_version=RULE_VERSION,
         summary=ProfileSummary(
             total_attempt_count=len(context.records), valid_attempt_count=len(valid),
-            pending_review_count=sum(record.attempt.grade_status == "needs_review" for record in context.records),
+            pending_review_count=sum(record.problem == "needs_review" for record in context.records),
             invalid_evidence_count=len(invalid), distinct_question_count=len({r.attempt.question_id for r in valid}),
             assessed_knowledge_point_count=assessed,
             unassessed_knowledge_point_count=len(items) - assessed,
@@ -422,7 +392,8 @@ def persist_mastery(db: Session, context: ProfileContext) -> dict[str, int]:
         and record.problem not in EXPECTED_EVIDENCE_EXCLUSIONS
     ]
     if invalid:
-        raise ValueError(f"Cannot rebuild: {len(invalid)} invalid evidence records")
+        details = ", ".join(f"{r.attempt.id}:{r.problem}" for r in invalid[:10])
+        raise ValueError(f"Cannot rebuild: {len(invalid)} invalid evidence records ({details})")
     existing = {row.knowledge_point_id: row for row in db.scalars(
         select(StudentMastery).where(StudentMastery.student_id == context.student.id))}
     stats = {"inserted": 0, "updated": 0, "deleted": 0, "unchanged": 0}
