@@ -129,6 +129,7 @@ def knowledge_point_catalog(
             chapter_name=knowledge_point.chapter_name,
             grade=formal_kp(knowledge_point.code)["grade"],
             section=formal_kp(knowledge_point.code)["section"],
+            core_competencies=formal_kp(knowledge_point.code)["core_competencies"],
             available_question_count=count or 0,
             required_available_question_count=required_count or 0,
         )

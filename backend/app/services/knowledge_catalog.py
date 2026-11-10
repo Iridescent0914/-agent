@@ -40,6 +40,15 @@ def formal_kp(code: str) -> dict:
         raise ValueError(f"KP is absent from the formal JSON catalog: {code}") from exc
 
 
+def formal_question_literacy(code: str) -> str:
+    """Use the HTML competency set for a formal KP as the question label."""
+    competencies = formal_kp(code)["core_competencies"]
+    allowed = set(load_catalog()["formal_question_labels"]["core_literacies"])
+    if not competencies or any(value not in allowed for value in competencies):
+        raise ValueError(f"KP competencies need a formal question-label mapping: {code}")
+    return "、".join(dict.fromkeys(competencies))
+
+
 def sections_for_tree(tree: dict) -> dict[str, str]:
     matches = [
         chapter for chapter in load_catalog()["chapters"]

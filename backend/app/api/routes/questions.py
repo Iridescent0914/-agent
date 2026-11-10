@@ -33,7 +33,7 @@ from app.services.assets import (
     resolve_assets,
     store_teacher_asset,
 )
-from app.services.knowledge_catalog import formal_kp
+from app.services.knowledge_catalog import formal_kp, formal_question_literacy
 from app.services.question_review import (
     QuestionReviewConflict,
     QuestionReviewValidation,
@@ -235,6 +235,10 @@ def update_question(
     question.chapter_name = canonical_kp['chapter_name']
     question.grade = canonical_kp['grade']
     question.section = canonical_kp['section']
+    try:
+        question.core_literacy = formal_question_literacy(knowledge_point.code)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail='该 KP 的核心素养尚未映射到正式题目标签') from exc
     question.question_type = request.question_type
     question.difficulty = request.difficulty
     question.main_knowledge_point_id = knowledge_point.id
@@ -246,7 +250,6 @@ def update_question(
     question.solution = request.solution
     question.wrong_analysis = request.wrong_analysis
     question.estimated_score_rate = request.estimated_score_rate
-    question.core_literacy = request.core_literacy
     question.is_required = request.is_required
     question.has_image = bool(asset_records)
     question.has_equation = any(

@@ -6,7 +6,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.services.literacy_catalog import normalize_literacy_label
 
 
 class TagOut(BaseModel):
@@ -90,13 +89,14 @@ class QuestionUpdateRequest(BaseModel):
     solution: str | None = Field(default=None, max_length=10000)
     wrong_analysis: str | None = Field(default=None, max_length=10000)
     estimated_score_rate: str | None = Field(default=None, max_length=64)
-    core_literacy: str = Field(default='待标注', min_length=1, max_length=255)
+    # Legacy clients may send this; the service derives the label from KP.
+    core_literacy: str | None = Field(default=None, max_length=255)
     is_required: bool = False
     operator_name: str = Field(min_length=1, max_length=80)
     assets: list[QuestionAssetInput] = Field(default_factory=list, max_length=64)
 
     @field_validator(
-        'question_text', 'reference_answer_raw', 'core_literacy',
+        'question_text', 'reference_answer_raw',
         'main_knowledge_point_code', 'operator_name',
     )
     @classmethod
@@ -105,11 +105,6 @@ class QuestionUpdateRequest(BaseModel):
         if not clean:
             raise ValueError('字段不能为空')
         return clean
-
-    @field_validator('core_literacy')
-    @classmethod
-    def validate_core_literacy(cls, value: str) -> str:
-        return normalize_literacy_label(value, allow_unlabeled=True)
 
     @field_validator('original_qid', 'solution', 'wrong_analysis', 'estimated_score_rate')
     @classmethod

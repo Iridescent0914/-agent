@@ -63,7 +63,7 @@ export interface QuestionUpdateRequest {
   solution?: string
   wrong_analysis?: string
   estimated_score_rate?: string
-  core_literacy: string
+  core_literacy?: string
   is_required: boolean
   operator_name: string
   assets?: Array<{ path: string }>

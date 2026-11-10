@@ -8,8 +8,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.services.literacy_catalog import normalize_literacy_label
-from app.services.knowledge_catalog import formal_kp, sections_for_tree
+from app.services.knowledge_catalog import formal_kp, formal_question_literacy, sections_for_tree
 from app.services.answer_units import (
     AUTO_MATCH_TYPES,
     is_canonical_answer_structure,
@@ -77,7 +76,6 @@ def _validate_inputs(
                 "difficulty",
                 "question_text",
                 "main_knowledge_point",
-                "core_literacy",
                 "is_required",
             )
             if item.get(key) is None
@@ -111,14 +109,7 @@ def _validate_inputs(
                 raise ValueError(
                     f"{item['original_qid']} has non-deterministic answer units"
                 )
-            try:
-                item["core_literacy"] = normalize_literacy_label(
-                    item.get("core_literacy")
-                )
-            except ValueError as exc:
-                raise ValueError(
-                    f"{item['original_qid']} has invalid core_literacy: {exc}"
-                ) from exc
+            formal_question_literacy(kp_code)
         if item.get("source_review_status") != "reviewed":
             raise ValueError(f"{item['original_qid']} is not source-reviewed")
 
@@ -218,7 +209,7 @@ def _question_values(item: dict[str, Any], kp: KnowledgePoint) -> dict[str, Any]
         "solution": item.get("solution"),
         "wrong_analysis": item.get("wrong_analysis"),
         "estimated_score_rate": item.get("estimated_score_rate"),
-        "core_literacy": item["core_literacy"],
+        "core_literacy": formal_question_literacy(kp.code),
         "is_required": item["is_required"],
         "has_image": bool(item.get("has_image")),
         "has_equation": bool(item.get("has_equation")),

@@ -107,7 +107,7 @@ def test_teacher_can_review_edit_and_archive_existing_question(client, db, catal
         'question_text': '计算：1+2=____。',
         'reference_answer_raw': '3',
         'main_knowledge_point_code': alternative_knowledge_point.code,
-        'core_literacy': '运算能力',
+        'core_literacy': '待标注',
         'solution': '直接计算得到 3。',
         'wrong_analysis': '注意加法符号。',
         'estimated_score_rate': '65%',
@@ -123,6 +123,7 @@ def test_teacher_can_review_edit_and_archive_existing_question(client, db, catal
     assert edited['main_knowledge_point']['code'] == alternative_knowledge_point.code
     assert edited['section'] == alternative_knowledge_point.section
     assert edited['grade'] == '六年级上册'
+    assert edited['core_literacy'] == '、'.join(alternative_knowledge_point.core_competencies)
     assert edited['estimated_score_rate'] == '65%'
     assert edited['review_history'][-1]['type'] == 'content_updated'
 

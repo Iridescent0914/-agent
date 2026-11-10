@@ -43,7 +43,7 @@
         "chapter_code": {"type": ["string", "null"], "readOnly": true, "description": "服务端根据主属 KP 派生"},
         "section": {"type": ["string", "null"], "readOnly": true, "description": "服务端根据主属 KP 派生"},
         "main_kp_code": {"type": ["string", "null"], "description": "教师确认的唯一主属知识点"},
-        "core_literacies": {"type": "array", "uniqueItems": true, "items": {"enum": ["抽象能力", "运算能力", "几何直观", "推理能力", "模型观念", "数据意识", "应用意识", "创新意识"]}},
+        "core_literacies": {"type": "array", "uniqueItems": true, "readOnly": true, "description": "服务端根据主属 KP 在正式图谱中的完整素养集合派生；未选 KP 时为空数组", "items": {"enum": ["抽象能力", "运算能力", "几何直观", "推理能力", "模型观念", "数据意识", "应用意识", "创新意识"]}},
         "is_required": {"type": ["boolean", "null"]}
       }
     },

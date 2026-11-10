@@ -89,7 +89,6 @@ export function QuestionContentEditor({
       solution: question.solution || undefined,
       wrong_analysis: question.wrong_analysis || undefined,
       estimated_score_rate: question.estimated_score_rate || undefined,
-      core_literacy: question.core_literacy,
       is_required: question.is_required,
       operator_name: '任课教师',
     })
@@ -182,7 +181,7 @@ export function QuestionContentEditor({
         </Row>
         <Row gutter={16}>
           <Col xs={24} md={8}><Form.Item label="年级（由 KP 自动确定）"><Input value={selectedKp?.grade || '请选择主属 KP'} disabled /></Form.Item></Col>
-          <Col xs={24} md={10}><Form.Item name="core_literacy" label="核心素养" rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item></Col>
+          <Col xs={24} md={10}><Form.Item label="核心素养（由 KP 自动确定）"><Input value={selectedKp?.core_competencies.join('、') || '请选择主属 KP'} disabled /></Form.Item></Col>
           <Col xs={24} md={6}><Form.Item name="is_required" label="是否为必做题" rules={[{ required: true }]}><Select options={[{ value: true, label: '是' }, { value: false, label: '否' }]} /></Form.Item></Col>
         </Row>
         <Form.Item name="question_text" label="题干" rules={[{ required: true, whitespace: true }]}><MathTextEditor rows={5} maxLength={10000} /></Form.Item>

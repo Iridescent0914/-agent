@@ -17,7 +17,7 @@ from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import KnowledgePoint, Question
 from app.schemas.questions import QuestionUpdateRequest
-from app.services.knowledge_catalog import formal_kps_by_code, load_catalog, sections_for_tree
+from app.services.knowledge_catalog import formal_kps_by_code, formal_question_literacy, load_catalog, sections_for_tree
 from app.services.literacy_catalog import LITERACY_DIMENSIONS
 from app.services.seed_importer import _question_values, _validate_inputs
 
@@ -25,6 +25,7 @@ from app.services.seed_importer import _question_values, _validate_inputs
 CODE_ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = CODE_ROOT / "backend/alembic/versions/0026_backfill_pilot_kp_sections.py"
 STRICT_MIGRATION = CODE_ROOT / "backend/alembic/versions/0027_enforce_graph_kp_question_labels.py"
+LITERACY_MIGRATION = CODE_ROOT / "backend/alembic/versions/0028_derive_question_literacy_from_kp.py"
 
 
 def test_pilot_kp_sections_match_migration_and_questions() -> None:
@@ -78,6 +79,7 @@ def test_database_contains_only_formal_kps_and_derived_question_labels() -> None
                 expected["chapter_code"], expected["chapter_name"],
                 expected["grade"], expected["section"],
             )
+            assert question.core_literacy == formal_question_literacy(point.code)
 
 
 def test_seed_import_uses_html_section_when_question_section_drifts() -> None:
@@ -89,6 +91,7 @@ def test_seed_import_uses_html_section_when_question_section_drifts() -> None:
     )[0]
     broken = deepcopy(question)
     broken["section"] = tree["sections"][1]["name"]
+    broken["core_literacy"] = "创新意识"
     _validate_inputs([broken], tree, require_machine_ready=False)
     kp = SimpleNamespace(
         id=1,
@@ -96,6 +99,7 @@ def test_seed_import_uses_html_section_when_question_section_drifts() -> None:
         section=sections_for_tree(tree)[question["main_knowledge_point"]["id"]],
     )
     assert _question_values(broken, kp)["section"] == kp.section
+    assert _question_values(broken, kp)["core_literacy"] == formal_question_literacy(kp.code)
 
 
 def test_seed_import_rejects_tree_section_drift_from_html() -> None:
@@ -140,6 +144,26 @@ def test_strict_migration_rejects_unmapped_old_kp(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(migration["op"], "get_bind", lambda: FakeConnection())
     with pytest.raises(RuntimeError, match="legacy.unmapped.kp"):
         migration["upgrade"]()
+
+
+def test_literacy_migration_uses_the_full_formal_kp_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    migration = runpy.run_path(str(LITERACY_MIGRATION))
+    code = "math.g6.rational.kp.01_negative_quantity"
+    expected = formal_question_literacy(code)
+
+    class FakeConnection:
+        def __init__(self) -> None:
+            self.updated = []
+
+        def execute(self, statement, parameters=None):
+            if str(statement).startswith("SELECT"):
+                return SimpleNamespace(all=lambda: [("kp-id", code)])
+            self.updated.append(parameters)
+
+    connection = FakeConnection()
+    monkeypatch.setattr(migration["op"], "get_bind", lambda: connection)
+    migration["upgrade"]()
+    assert connection.updated == [{"label": expected, "id": "kp-id"}]
 
 
 def test_question_catalog_uses_formal_kp_sections() -> None:
