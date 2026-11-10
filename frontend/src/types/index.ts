@@ -54,8 +54,8 @@ export interface QuestionUpdateRequest {
   original_qid?: string
   question_type: 'choice' | 'fill_blank' | 'calculation' | 'solution' | 'true_false'
   difficulty: number
-  grade: string
-  section: string
+  grade?: string
+  section?: string
   question_text: string
   options?: string[]
   reference_answer_raw: string

@@ -20,10 +20,11 @@ from app.models import (
 )
 from app.schemas.submissions import ManualSubmissionRequest
 from app.services import submission_workflow
+from app.services.knowledge_catalog import formal_kp
 from app.services.submission_workflow import create_manual_submission
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def isolated_session_factory():
     schema = "m4_tx_" + uuid4().hex
     with engine.begin() as connection:
@@ -56,19 +57,20 @@ def _create_published_single_item_paper(factory):
     assignment_id = uuid4()
     paper_id = uuid4()
     item_id = uuid4()
-    knowledge_code = f"test.m4.knowledge.{suffix}"
+    knowledge_code = "math.g6.rational.kp.07_add_subtract"
+    kp_metadata = formal_kp(knowledge_code)
 
     with factory() as db:
         db.add_all([
             KnowledgePoint(
                 id=knowledge_point_id,
                 code=knowledge_code,
-                name="M4 事务测试知识点",
-                chapter_code="test.m4",
-                chapter_name="M4 测试",
-                section="事务",
-                sort_order=1,
-                core_competencies=["运算能力"],
+                name=kp_metadata["name"],
+                chapter_code=kp_metadata["chapter_code"],
+                chapter_name=kp_metadata["chapter_name"],
+                section=kp_metadata["section"],
+                sort_order=kp_metadata["order"],
+                core_competencies=kp_metadata["core_competencies"],
             ),
             Student(
                 id=student_id,
@@ -81,7 +83,7 @@ def _create_published_single_item_paper(factory):
                 id=assignment_id,
                 idempotency_key="tx-assignment-" + suffix,
                 title="M4 并发与回滚测试",
-                chapter_code="test.m4",
+                chapter_code=kp_metadata["chapter_code"],
                 teaching_scope={},
                 generation_config={},
                 assignment_type="practice",
@@ -92,9 +94,10 @@ def _create_published_single_item_paper(factory):
             id=question_id,
             original_qid="tx-question-" + suffix,
             schema_version="m4-test-v1",
-            chapter_code="test.m4",
-            chapter_name="M4 测试",
-            section="事务",
+            chapter_code=kp_metadata["chapter_code"],
+            chapter_name=kp_metadata["chapter_name"],
+            grade=kp_metadata["grade"],
+            section=kp_metadata["section"],
             question_type="choice",
             difficulty=1,
             main_knowledge_point_id=knowledge_point_id,

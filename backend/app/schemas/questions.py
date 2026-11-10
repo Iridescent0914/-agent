@@ -80,8 +80,9 @@ class QuestionUpdateRequest(BaseModel):
         'choice', 'fill_blank', 'calculation', 'solution', 'true_false'
     ]
     difficulty: int = Field(ge=1, le=5)
-    grade: str = Field(default='六年级上册', min_length=1, max_length=80)
-    section: str = Field(default='教师新增', min_length=1, max_length=255)
+    # Accepted for older clients, but the update service derives both from KP.
+    grade: str | None = Field(default=None, min_length=1, max_length=80)
+    section: str | None = Field(default=None, min_length=1, max_length=255)
     question_text: str = Field(min_length=1, max_length=10000)
     options: list[str] | None = Field(default=None, min_length=2, max_length=8)
     reference_answer_raw: str = Field(min_length=1, max_length=5000)
@@ -95,7 +96,7 @@ class QuestionUpdateRequest(BaseModel):
     assets: list[QuestionAssetInput] = Field(default_factory=list, max_length=64)
 
     @field_validator(
-        'grade', 'section', 'question_text', 'reference_answer_raw', 'core_literacy',
+        'question_text', 'reference_answer_raw', 'core_literacy',
         'main_knowledge_point_code', 'operator_name',
     )
     @classmethod

@@ -1,0 +1,4814 @@
+{
+  "schema_version": "knowledge-graph-catalog-v1",
+  "source_file": "上海市五四制初中数学知识图谱.html",
+  "source_sha256": "33a7f9f08dd902ae8d2b6cd821bbfe8e45477e90b02c614027ee7247767d3dfe",
+  "grades": [
+    "六年级上册",
+    "六年级下册",
+    "七年级上册",
+    "七年级下册",
+    "八年级上册",
+    "八年级下册",
+    "九年级上册",
+    "九年级下册"
+  ],
+  "domains": [
+    "数与代数",
+    "图形与几何",
+    "统计与概率",
+    "综合与实践"
+  ],
+  "mastery_levels": [
+    "了解",
+    "理解",
+    "掌握",
+    "运用"
+  ],
+  "html_core_competencies": [
+    "抽象能力",
+    "运算能力",
+    "几何直观",
+    "空间观念",
+    "推理能力",
+    "数据观念",
+    "模型观念",
+    "应用意识",
+    "创新意识"
+  ],
+  "formal_question_labels": {
+    "question_types": [
+      "choice",
+      "fill_blank",
+      "calculation",
+      "solution",
+      "true_false"
+    ],
+    "difficulty_levels": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "core_literacies": [
+      "抽象能力",
+      "运算能力",
+      "几何直观",
+      "推理能力",
+      "模型观念",
+      "数据意识",
+      "应用意识",
+      "创新意识"
+    ],
+    "is_required": [
+      false,
+      true
+    ]
+  },
+  "chapters": [
+    {
+      "order": 1,
+      "grade": "六年级上册",
+      "name": "第1章 有理数",
+      "domain": "数与代数",
+      "code": "math.g6.rational",
+      "available_for_import": true,
+      "sections": [
+        "1.1 有理数的引入",
+        "1.2 有理数的加法与减法",
+        "1.3 有理数的乘法与除法",
+        "1.4 有理数的乘方",
+        "1.5 有理数的混合运算",
+        "阅读材料：我国古代对负数的认识"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": "math.g6.rational.kp.01_negative_quantity",
+          "name": "负数与用正负数表示相反意义的量",
+          "section": "1.1 有理数的引入",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "抽象能力",
+            "应用意识"
+          ],
+          "curriculum_basis": "理解负数的意义；会用正数和负数表示具体情境中具有相反意义的量"
+        },
+        {
+          "order": 2,
+          "code": "math.g6.rational.kp.02_meaning_classification",
+          "name": "有理数的意义与分类（整数、分数）",
+          "section": "1.1 有理数的引入",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "理解有理数的意义"
+        },
+        {
+          "order": 3,
+          "code": "math.g6.rational.kp.03_number_line",
+          "name": "数轴与用数轴上的点表示有理数",
+          "section": "1.1 有理数的引入",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "能用数轴上的点表示有理数"
+        },
+        {
+          "order": 4,
+          "code": "math.g6.rational.kp.04_opposite_number",
+          "name": "相反数的意义与求法",
+          "section": "1.1 有理数的引入",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "借助数轴理解相反数的意义，掌握求有理数的相反数的方法"
+        },
+        {
+          "order": 5,
+          "code": "math.g6.rational.kp.05_absolute_value",
+          "name": "绝对值的意义与求法",
+          "section": "1.1 有理数的引入",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "抽象能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "借助数轴理解绝对值的意义，掌握求有理数的绝对值的方法"
+        },
+        {
+          "order": 6,
+          "code": "math.g6.rational.kp.06_comparison",
+          "name": "比较有理数的大小",
+          "section": "1.1 有理数的引入",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "抽象能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "能比较有理数的大小"
+        },
+        {
+          "order": 7,
+          "code": "math.g6.rational.kp.07_add_subtract",
+          "name": "有理数的加法法则与减法法则",
+          "section": "1.2 有理数的加法与减法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握有理数的加、减运算；减法统一为加法"
+        },
+        {
+          "order": 8,
+          "code": "math.g6.rational.kp.08_multiply_divide",
+          "name": "有理数的乘法法则与除法法则",
+          "section": "1.3 有理数的乘法与除法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握有理数的乘、除运算；除法统一为乘法"
+        },
+        {
+          "order": 9,
+          "code": "math.g6.rational.kp.09_operation_laws",
+          "name": "有理数的运算律及其简化运算的作用",
+          "section": "1.2 有理数的加法与减法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "理解有理数的运算律，能运用运算律简化运算"
+        },
+        {
+          "order": 10,
+          "code": "math.g6.rational.kp.10_powers",
+          "name": "有理数的乘方",
+          "section": "1.4 有理数的乘方",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "理解乘方的意义；会准确进行有理数的乘方运算"
+        },
+        {
+          "order": 11,
+          "code": "math.g6.rational.kp.11_mixed_operations",
+          "name": "有理数的混合运算（以三步以内为主）",
+          "section": "1.5 有理数的混合运算",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "掌握有理数简单的混合运算，明确运算顺序"
+        },
+        {
+          "order": 12,
+          "code": "math.g6.rational.kp.12_applications",
+          "name": "用有理数的运算解决简单实际问题",
+          "section": "1.5 有理数的混合运算",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能运用有理数的运算解决简单问题"
+        },
+        {
+          "order": 13,
+          "code": "math.g6.rational.kp.13_negative_number_culture",
+          "name": "古今对负数的认识（数学文化）",
+          "section": "阅读材料：我国古代对负数的认识",
+          "mastery_level": "了解",
+          "core_competencies": [
+            "创新意识",
+            "应用意识"
+          ],
+          "curriculum_basis": "感悟数学抽象的过程与中华优秀数学文化"
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "grade": "六年级上册",
+      "name": "第2章 简单的代数式",
+      "domain": "数与代数",
+      "code": "math.g6.expr",
+      "available_for_import": true,
+      "sections": [
+        "2.1 用字母表示数",
+        "2.2 代数式与代数式的值",
+        "2.3 一次式",
+        "阅读材料：能被 3、5、9 整除的数的特征"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": "math.g6.expr.kp.01_literal_relations",
+          "name": "用字母表示数与数量关系",
+          "section": "2.1 用字母表示数",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "进一步理解用字母表示数的意义，体验用数学符号表达数量关系的过程"
+        },
+        {
+          "order": 2,
+          "code": "math.g6.expr.kp.02_expression_concept",
+          "name": "代数式的概念",
+          "section": "2.2 代数式与代数式的值",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "借助现实情境了解代数式"
+        },
+        {
+          "order": 3,
+          "code": "math.g6.expr.kp.03_expression_quantity",
+          "name": "用代数式表示具体问题中的简单数量关系",
+          "section": "2.2 代数式与代数式的值",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "抽象能力",
+            "模型观念"
+          ],
+          "curriculum_basis": "能分析具体问题中的简单数量关系，并用代数式表示"
+        },
+        {
+          "order": 4,
+          "code": "math.g6.expr.kp.04_expression_value",
+          "name": "求代数式的值",
+          "section": "2.2 代数式与代数式的值",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "会把具体数代入代数式进行计算，会选择适当的方法求代数式的值"
+        },
+        {
+          "order": 5,
+          "code": "math.g6.expr.kp.05_linear_term",
+          "name": "一次式及其项、系数、常数项",
+          "section": "2.3 一次式",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "理解一次式相关概念，为整式运算作准备"
+        },
+        {
+          "order": 6,
+          "code": "math.g6.expr.kp.06_combine_like_terms",
+          "name": "合并同类项",
+          "section": "2.3 一次式",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握合并同类项的法则"
+        },
+        {
+          "order": 7,
+          "code": "math.g6.expr.kp.07_remove_parentheses",
+          "name": "去括号法则（数与一次式相乘）",
+          "section": "2.3 一次式",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握去括号的法则并会进行相应的化简"
+        },
+        {
+          "order": 8,
+          "code": "math.g6.expr.kp.08_divisibility_patterns",
+          "name": "能被 3、5、9 整除的数的特征（拓展）",
+          "section": "阅读材料：能被 3、5、9 整除的数的特征",
+          "mastery_level": "了解",
+          "core_competencies": [
+            "推理能力",
+            "创新意识"
+          ],
+          "curriculum_basis": "经历用字母与推理发现数字规律的过程"
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "grade": "六年级上册",
+      "name": "第3章 一元一次方程",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "3.1 方程与列方程",
+        "3.2 一元一次方程及其解法",
+        "3.3 一元一次方程的应用"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "方程的意义，方程的解与解方程",
+          "section": "3.1 方程与列方程",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "模型观念"
+          ],
+          "curriculum_basis": "能根据现实情境理解方程的意义；理解方程解的意义，经历估计方程解的过程"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "根据现实情境列出方程",
+          "section": "3.1 方程与列方程",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能针对具体问题列出方程"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "一元一次方程的概念",
+          "section": "3.2 一元一次方程及其解法",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "理解一元一次方程的概念"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "等式的基本性质",
+          "section": "3.2 一元一次方程及其解法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "掌握等式的基本性质，能运用它进行等式的变形"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "解一元一次方程的一般步骤（去括号、移项、合并同类项、系数化为 1）",
+          "section": "3.2 一元一次方程及其解法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "能根据等式的基本性质解一元一次方程"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "列一元一次方程解决实际问题",
+          "section": "3.3 一元一次方程的应用",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能在实际问题中建立一元一次方程模型并求解"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "根据实际意义检验方程解的合理性",
+          "section": "3.3 一元一次方程的应用",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "推理能力"
+          ],
+          "curriculum_basis": "能根据具体问题的实际意义检验方程的解是否合理"
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "grade": "六年级上册",
+      "name": "第4章 线段与角",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "4.1 线段",
+        "4.2 角"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "线段、射线、直线及其表示",
+          "section": "4.1 线段",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "了解从物体抽象出来的平面、直线和点等概念"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "基本事实：两点确定一条直线",
+          "section": "4.1 线段",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握基本事实：两点确定一条直线"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "两点之间线段最短与两点间的距离",
+          "section": "4.1 线段",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握基本事实：两点之间线段最短；理解两点间距离的意义并能度量"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "线段的中点、线段的和差倍",
+          "section": "4.1 线段",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "运算能力"
+          ],
+          "curriculum_basis": "理解线段的和、差以及线段中点的意义"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "用直尺和圆规画线段（和、差、倍、中点）",
+          "section": "4.1 线段",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用尺规作图画出线段的和、差、倍及中点"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "角的概念与表示，角的度量单位（度、分、秒）及换算",
+          "section": "4.2 角",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "理解角的概念；认识度、分、秒，能进行简单的单位换算，会计算角的和、差"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "比较角的大小与角的和差倍",
+          "section": "4.2 角",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "运算能力"
+          ],
+          "curriculum_basis": "能比较角的大小；会计算角的和、差"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "角的平分线",
+          "section": "4.2 角",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "理解角平分线的意义"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "余角、补角及其性质",
+          "section": "4.2 角",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并掌握同角（或等角）的余角相等、补角相等的性质"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "尺规作图：作一个角等于已知角、作角的平分线",
+          "section": "4.2 角",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用尺规作图作一个角等于已知角、作一个角的平分线"
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "grade": "六年级上册",
+      "name": "综合与实践（六上）",
+      "domain": "综合与实践",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "你的膳食健康吗？",
+        "上海一日游计划制订"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "在真实情境中获取并分析数据",
+          "section": "你的膳食健康吗？",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "数据观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "经历收集、整理、描述、分析数据的过程，作出合理判断"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "制订方案并用数学语言表达",
+          "section": "上海一日游计划制订",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "创新意识"
+          ],
+          "curriculum_basis": "综合运用数学和其他学科知识，提出解决问题思路并设计方案"
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "grade": "六年级下册",
+      "name": "第5章 比与比例",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "5.1 比",
+        "5.2 百分数",
+        "阅读材料：圆周率（相关应用）"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "比的意义与比值",
+          "section": "5.1 比",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "理解比的意义，会求比值"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "比的基本性质",
+          "section": "5.1 比",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "掌握比的基本性质并会化简比"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "比例的意义与比例的基本性质",
+          "section": "5.1 比",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "掌握比例的基本性质并会解比例"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "成比例（四个数成比例）",
+          "section": "5.1 比",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "了解成比例的意义"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "百分数的意义",
+          "section": "5.2 百分数",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "应用意识"
+          ],
+          "curriculum_basis": "理解百分数的意义，知道小数、分数与百分数的互化"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "小数、分数与百分数的互化",
+          "section": "5.2 百分数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "掌握小数、分数与百分数的相互转化"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "占比问题（部分与整体的比）",
+          "section": "5.2 百分数",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能利用百分数解决占比问题，正确辨别比较基数"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "变化率问题（变化量与变化前的量的比）",
+          "section": "5.2 百分数",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能利用百分数解决变化率问题，正确辨别比较基数"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "利率、税率、折扣等百分数实际问题",
+          "section": "5.2 百分数",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "应用意识",
+            "模型观念"
+          ],
+          "curriculum_basis": "能在纳税、存款、打折等真实情境中解决简单问题"
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "grade": "六年级下册",
+      "name": "第6章 圆与扇形",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "6.1 圆的周长与弧长",
+        "6.2 圆与扇形的面积",
+        "阅读材料：圆周率的历史"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "圆、圆心、半径、直径、弧、扇形的概念",
+          "section": "6.1 圆的周长与弧长",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "了解圆及其相关元素的概念，会使用圆规画圆"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "圆上各点到圆心的距离相等（圆的特征）",
+          "section": "6.1 圆的周长与弧长",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "抽象能力"
+          ],
+          "curriculum_basis": "认识圆的特征：圆上每一点到圆心的距离都相等"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "圆的对称性（轴对称图形）",
+          "section": "6.1 圆的周长与弧长",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "空间观念"
+          ],
+          "curriculum_basis": "知道圆是轴对称图形，过圆心的任一条直线都是对称轴"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "圆周率的意义",
+          "section": "6.1 圆的周长与弧长",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "认识圆的周长与直径的比值是常数，感悟“以直代曲”的思想"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "圆的周长公式 C=πd=2πr",
+          "section": "6.1 圆的周长与弧长",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握圆的周长计算公式并能解决简单实际问题"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "弧长公式（n° 圆心角所对的弧长 = nπr/180）",
+          "section": "6.1 圆的周长与弧长",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "会计算圆的弧长"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "圆的面积公式 S=πr²",
+          "section": "6.2 圆与扇形的面积",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握圆的面积计算公式"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "扇形面积公式 S=nπr²/360",
+          "section": "6.2 圆与扇形的面积",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "会计算扇形的面积"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "圆环与组合图形面积的计算",
+          "section": "6.2 圆与扇形的面积",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "运算能力",
+            "几何直观",
+            "应用意识"
+          ],
+          "curriculum_basis": "能解决圆环、组合图形的度量问题"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "圆周率的历史（数学文化）",
+          "section": "阅读材料：圆周率的历史",
+          "mastery_level": "了解",
+          "core_competencies": [
+            "创新意识"
+          ],
+          "curriculum_basis": "了解数学发展史，增强文化自信"
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "grade": "六年级下册",
+      "name": "第7章 可能性与统计图表",
+      "domain": "统计与概率",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "7.1 随机现象及其结果的可能性",
+        "7.2 数据的收集、整理与表达",
+        "7.3 百分数的统计意义"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "随机现象、确定事件与不确定事件",
+          "section": "7.1 随机现象及其结果的可能性",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "数据观念",
+            "抽象能力"
+          ],
+          "curriculum_basis": "能区分确定事件与不确定事件，初步认识随机现象"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "事件发生可能性大小的定性描述",
+          "section": "7.1 随机现象及其结果的可能性",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "数据观念",
+            "推理能力"
+          ],
+          "curriculum_basis": "能定性描述简单随机现象发生可能性的大小"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "全面调查与抽样调查及其优劣",
+          "section": "7.2 数据的收集、整理与表达",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "数据观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "知道用调查法收集数据的两种方式，能根据问题选择合适方法"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "数据的整理与表示（条形、折线、扇形统计图）",
+          "section": "7.2 数据的收集、整理与表达",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "数据观念",
+            "几何直观"
+          ],
+          "curriculum_basis": "能用条形统计图、折线统计图表达数据并作出简单判断"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "扇形统计图的制作",
+          "section": "7.2 数据的收集、整理与表达",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "数据观念",
+            "运算能力"
+          ],
+          "curriculum_basis": "会制作扇形统计图，能用它直观、有效地描述数据"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "三种统计图的特点与选择",
+          "section": "7.2 数据的收集、整理与表达",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "数据观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "知道几种统计图各自的功能，会选择合适的统计图描述数据"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "百分数的统计意义",
+          "section": "7.3 百分数的统计意义",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "数据观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用百分数描述不确定事件发生的可能性大小，作出判断、制订预案、确立标准"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "根据统计结果作出判断与决策",
+          "section": "7.3 百分数的统计意义",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "数据观念",
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能根据数据分析结果作出简单判断，养成用数据说话的习惯"
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "grade": "六年级下册",
+      "name": "第8章 圆柱与圆锥",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "8.1 圆柱及其侧面展开图",
+        "8.2 圆锥及其侧面展开图"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "圆柱、圆锥的概念及基本元素（底面、侧面、母线、高）",
+          "section": "8.1 圆柱及其侧面展开图",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "空间观念",
+            "抽象能力"
+          ],
+          "curriculum_basis": "通过实物和模型了解圆柱、圆锥的基本元素"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "旋转体的形成（长方形绕一边旋转得圆柱，直角三角形绕直角边旋转得圆锥）",
+          "section": "8.1 圆柱及其侧面展开图",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "空间观念",
+            "几何直观"
+          ],
+          "curriculum_basis": "通过实例感受平面图形运动形成立体图形的过程"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "圆柱的侧面展开图",
+          "section": "8.1 圆柱及其侧面展开图",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "空间观念",
+            "几何直观"
+          ],
+          "curriculum_basis": "了解直棱柱、圆柱的侧面展开图，能根据展开图想象和制作模型"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "圆柱的侧面积、表面积公式",
+          "section": "8.1 圆柱及其侧面展开图",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "空间观念"
+          ],
+          "curriculum_basis": "会计算圆柱的侧面积与表面积"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "圆柱的体积公式 V=S底·h",
+          "section": "8.1 圆柱及其侧面展开图",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "空间观念"
+          ],
+          "curriculum_basis": "会计算圆柱的体积，感悟“以直代曲”的转化方法"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "圆锥的侧面展开图",
+          "section": "8.2 圆锥及其侧面展开图",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "空间观念",
+            "几何直观"
+          ],
+          "curriculum_basis": "了解圆锥的侧面展开图，能根据展开图想象和制作模型"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "圆锥的侧面积、表面积公式",
+          "section": "8.2 圆锥及其侧面展开图",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "空间观念"
+          ],
+          "curriculum_basis": "会计算圆锥的侧面积与表面积"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "圆锥的体积公式 V=⅓S底·h",
+          "section": "8.2 圆锥及其侧面展开图",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "空间观念"
+          ],
+          "curriculum_basis": "通过实验得到圆锥体积公式，会进行体积计算"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "展开图与表面积、体积的实际应用",
+          "section": "8.2 圆锥及其侧面展开图",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "应用意识",
+            "模型观念"
+          ],
+          "curriculum_basis": "能解决制作容器、用料估算等实际问题"
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "grade": "六年级下册",
+      "name": "第9章 二元一次方程组",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "9.1 二元一次方程组的概念",
+        "9.2 二元一次方程组的解法",
+        "9.3 二元一次方程组的应用",
+        "9.4 简单的三元一次方程组"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "二元一次方程（组）及其解的概念",
+          "section": "9.1 二元一次方程组的概念",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "模型观念"
+          ],
+          "curriculum_basis": "理解二元一次方程组及其解的概念"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "消元法（代入消元法与加减消元法）",
+          "section": "9.2 二元一次方程组的解法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握消元法，能解二元一次方程组"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "解二元一次方程组",
+          "section": "9.2 二元一次方程组的解法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "能根据方程组特征选择代入法或加减法求解"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "列二元一次方程组解决实际问题",
+          "section": "9.3 二元一次方程组的应用",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用两个未知数表示问题中的两个量，列方程组求解"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "简单的三元一次方程组",
+          "section": "9.4 简单的三元一次方程组",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "能解简单的三元一次方程组（通过消元化为二元一次方程组）"
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "grade": "六年级下册",
+      "name": "综合与实践（六下）",
+      "domain": "综合与实践",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "旋转的齿轮",
+        "中国的能源生产与消费"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "用数学眼光观察真实情境（齿轮传动、能源数据）",
+          "section": "旋转的齿轮",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "抽象能力",
+            "应用意识"
+          ],
+          "curriculum_basis": "经历现实情境数学化的过程，发现并提出数学问题"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "以项目式学习方式综合运用所学知识解决问题",
+          "section": "中国的能源生产与消费",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "创新意识"
+          ],
+          "curriculum_basis": "经历分工合作、建立模型、计算反思、解决问题的过程"
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "grade": "七年级上册",
+      "name": "第10章 整式的加减",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "10.1 整式",
+        "10.2 合并同类项",
+        "10.3 整式的加法和减法"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "单项式及其系数、次数",
+          "section": "10.1 整式",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "理解单项式的概念，会确定单项式的系数与次数"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "整式（多项式）及其项、常数项、次数",
+          "section": "10.1 整式",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "理解整式的概念"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "同类项",
+          "section": "10.2 合并同类项",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "抽象能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握同类项的判定方法"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "合并同类项",
+          "section": "10.2 合并同类项",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握合并同类项的法则，正确进行合并"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "去括号法则",
+          "section": "10.3 整式的加法和减法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握去括号的法则并会化简整式"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "整式的加减运算",
+          "section": "10.3 整式的加法和减法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "能进行简单的整式加法和减法运算"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "整式加减在实际问题中的应用",
+          "section": "10.3 整式的加法和减法",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用整式表示数量关系并解决实际问题"
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "grade": "七年级上册",
+      "name": "第11章 整式的乘除",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "11.1 整式的乘法",
+        "11.2 乘法公式",
+        "11.3 整式的除法",
+        "阅读材料：贾宪三角、整式除以整式——长除法"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "幂的意义与底数、指数",
+          "section": "11.1 整式的乘法",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "了解整数指数幂的意义"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "正整数指数幂的运算性质（同底数幂相乘、幂的乘方、积的乘方）",
+          "section": "11.1 整式的乘法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "会用文字和符号语言表述整数指数幂的基本性质，并进行幂的运算"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "零指数幂",
+          "section": "11.1 整式的乘法",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "了解零指数幂的意义"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "单项式乘单项式、单项式乘多项式、多项式乘多项式",
+          "section": "11.1 整式的乘法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "能进行简单的整式乘法运算（多项式乘法限于一次式之间及一次式与二次式）"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "平方差公式",
+          "section": "11.2 乘法公式",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "理解平方差公式，了解其几何背景，能利用公式进行简单计算和推理"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "完全平方公式",
+          "section": "11.2 乘法公式",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "理解完全平方公式，了解其几何背景，能利用公式进行简单计算和推理"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "乘法公式的几何背景与验证",
+          "section": "11.2 乘法公式",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "知道平方差公式、完全平方公式的几何背景"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "单项式除以单项式、多项式除以单项式",
+          "section": "11.3 整式的除法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "能进行简单的整式除法运算"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "整式除以整式的长除法（拓展）",
+          "section": "阅读材料：贾宪三角、整式除以整式——长除法",
+          "mastery_level": "了解",
+          "core_competencies": [
+            "运算能力",
+            "创新意识"
+          ],
+          "curriculum_basis": "了解长除法思想，感悟算理与算法的关系"
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "grade": "七年级上册",
+      "name": "第12章 因式分解",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "12.1 因式分解的意义",
+        "12.2 因式分解的方法"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "因式、公因式与因式分解的意义",
+          "section": "12.1 因式分解的意义",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "理解因式分解的意义，体会其与整式乘法的互逆关系"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "提取公因式法",
+          "section": "12.2 因式分解的方法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "能用提公因式法进行因式分解（指数为正整数）"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "公式法（平方差公式、完全平方公式）",
+          "section": "12.2 因式分解的方法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "能用公式法进行因式分解（直接利用公式不超过二次）"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "十字相乘法",
+          "section": "12.2 因式分解的方法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "能对二次三项式进行因式分解"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "因式分解与整式乘法的互逆关系",
+          "section": "12.1 因式分解的意义",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "推理能力",
+            "创新意识"
+          ],
+          "curriculum_basis": "体会数学知识之间的联系和逆向思考问题的方法"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "因式分解在简化计算与解方程中的应用",
+          "section": "12.2 因式分解的方法",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "运算能力",
+            "应用意识"
+          ],
+          "curriculum_basis": "能运用因式分解解决相关问题"
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "grade": "七年级上册",
+      "name": "第13章 分式",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "13.1 分式及其性质",
+        "13.2 分式的运算",
+        "13.3 分式方程",
+        "阅读材料：把一个分式写成几个分式的和"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "分式与最简分式的概念，分式有意义的条件",
+          "section": "13.1 分式及其性质",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "了解分式和最简分式的概念，知道分式的分母不能为零"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "分式的基本性质（约分、通分）",
+          "section": "13.1 分式及其性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "能利用分式的基本性质进行约分和通分，并化简分式"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "分式的乘除法",
+          "section": "13.2 分式的运算",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "能对简单的分式进行乘、除运算并将结果化为最简分式"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "分式的加减法（同分母、异分母）",
+          "section": "13.2 分式的运算",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "能对简单的分式进行加、减运算并将结果化为最简分式"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "整数指数幂（含负整数指数幂）的运算",
+          "section": "13.2 分式的运算",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "能把正整数指数幂推广到整数指数幂，并进行幂的运算"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "分式方程的概念",
+          "section": "13.3 分式方程",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "模型观念"
+          ],
+          "curriculum_basis": "了解分式方程的概念"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "解分式方程与验根",
+          "section": "13.3 分式方程",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "能解可化为一元一次方程的分式方程，理解验根的必要性"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "分式方程在实际问题中的应用",
+          "section": "13.3 分式方程",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能在实际问题中建立分式方程模型并求解"
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "grade": "七年级上册",
+      "name": "第14章 图形的运动",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "14.1 平移",
+        "14.2 旋转",
+        "14.3 轴对称",
+        "14.4 中心对称"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "图形平移的概念",
+          "section": "14.1 平移",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "空间观念"
+          ],
+          "curriculum_basis": "通过具体实例认识平移"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "平移的基本性质",
+          "section": "14.1 平移",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "探索平移的基本性质：两组对应点的连线平行（或在同一直线上）且相等"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "图形旋转的概念",
+          "section": "14.2 旋转",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "空间观念"
+          ],
+          "curriculum_basis": "通过具体实例认识平面图形关于旋转中心的旋转"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "旋转的基本性质",
+          "section": "14.2 旋转",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "探索旋转的基本性质：对应点到旋转中心距离相等，两组对应点与旋转中心连线所成的角相等"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "轴对称、对称轴、对称点的概念",
+          "section": "14.3 轴对称",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "空间观念"
+          ],
+          "curriculum_basis": "通过具体实例理解轴对称的概念"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "轴对称的基本性质",
+          "section": "14.3 轴对称",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "探索轴对称的基本性质：对应点的连线被对称轴垂直平分"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "轴对称图形及其对称轴",
+          "section": "14.3 轴对称",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "空间观念"
+          ],
+          "curriculum_basis": "理解轴对称图形的概念；探索常见图形的轴对称性质"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "中心对称与中心对称图形及其性质",
+          "section": "14.4 中心对称",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "了解中心对称的概念，探索其基本性质：对应点的连线经过对称中心且被平分"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "画简单平面图形关于给定对称轴（或对称中心）的对称图形",
+          "section": "14.3 轴对称",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "空间观念"
+          ],
+          "curriculum_basis": "能画出简单平面图形关于给定对称轴的对称图形"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "运用平移、旋转、轴对称进行图案设计",
+          "section": "14.3 轴对称",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "几何直观",
+            "创新意识",
+            "应用意识"
+          ],
+          "curriculum_basis": "能综合运用三类图形运动进行图案设计"
+        },
+        {
+          "order": 11,
+          "code": null,
+          "name": "欣赏自然界与现实生活中的对称图形",
+          "section": "14.3 轴对称",
+          "mastery_level": "了解",
+          "core_competencies": [
+            "创新意识",
+            "应用意识"
+          ],
+          "curriculum_basis": "感悟现实世界中的对称美"
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "grade": "七年级上册",
+      "name": "综合与实践（七上）",
+      "domain": "综合与实践",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "从传统连续纹样到现代镶嵌图案",
+        "制订“阅读之星”评选方案"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "用图形运动分析传统纹样与镶嵌图案",
+          "section": "从传统连续纹样到现代镶嵌图案",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "几何直观",
+            "创新意识"
+          ],
+          "curriculum_basis": "在真实情境中运用图形的运动分析、设计与创造图案"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "设计评价方案并建立数学模型",
+          "section": "制订“阅读之星”评选方案",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "数据观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "经历发现和提出问题、制订方案、反思模型合理性的过程"
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "grade": "七年级下册",
+      "name": "第15章 一元一次不等式",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "15.1 不等式及其性质",
+        "15.2 一元一次不等式",
+        "15.3 一元一次不等式组"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "不等式、不等号与不等式的解、解集",
+          "section": "15.1 不等式及其性质",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "结合具体问题了解不等式的意义；了解不等式（组）的解集"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "不等式的基本性质",
+          "section": "15.1 不等式及其性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "探索不等式的基本性质，注意两边同乘负数时不等号方向改变"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "一元一次不等式的概念",
+          "section": "15.2 一元一次不等式",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "理解一元一次不等式的概念"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "解一元一次不等式并在数轴上表示解集",
+          "section": "15.2 一元一次不等式",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "能解数字系数的一元一次不等式，并能在数轴上表示出解集"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "一元一次不等式组及其解集",
+          "section": "15.3 一元一次不等式组",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "会用数轴确定由两个一元一次不等式组成的不等式组的解集"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "列一元一次不等式解决实际问题",
+          "section": "15.2 一元一次不等式",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能根据具体问题中的数量关系列出一元一次不等式并解决问题"
+        }
+      ]
+    },
+    {
+      "order": 19,
+      "grade": "七年级下册",
+      "name": "第16章 相交线与平行线",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "16.1 相交线",
+        "16.2 平行线",
+        "16.3 命题与证明",
+        "阅读材料：证明的必要性"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "对顶角及其性质（对顶角相等）",
+          "section": "16.1 相交线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "探索并掌握对顶角相等的性质"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "两条直线的夹角、两条直线互相垂直",
+          "section": "16.1 相交线",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "理解垂线、垂线段等概念；理解两条直线垂直的关系"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "基本事实：同一平面内过一点有且只有一条直线与已知直线垂直",
+          "section": "16.1 相交线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握该基本事实"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "垂线段最短与点到直线的距离",
+          "section": "16.1 相交线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握垂线段最短；理解点到直线的距离的意义并能度量"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "用三角板、量角器过一点画已知直线的垂线",
+          "section": "16.1 相交线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用三角板或量角器过一点画已知直线的垂线"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "尺规作图：作一条线段的垂直平分线、过一点作已知直线的垂线",
+          "section": "16.1 相交线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用尺规完成相关基本作图，了解作图原理并保留作图痕迹"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "同位角、内错角、同旁内角的识别",
+          "section": "16.2 平行线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "抽象能力"
+          ],
+          "curriculum_basis": "能识别同位角、内错角、同旁内角"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "平行线的概念",
+          "section": "16.2 平行线",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "理解平行线的概念"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "平行线基本事实Ⅰ：过直线外一点有且只有一条直线与这条直线平行",
+          "section": "16.2 平行线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握平行线基本事实Ⅰ"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "平行线的传递性",
+          "section": "16.2 平行线",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "推理能力"
+          ],
+          "curriculum_basis": "了解平行于同一条直线的两条直线平行"
+        },
+        {
+          "order": 11,
+          "code": null,
+          "name": "平行线的判定定理（同位角相等／内错角相等／同旁内角互补 ⇒ 两直线平行）",
+          "section": "16.2 平行线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握平行线基本事实Ⅱ，探索并证明平行线的判定定理"
+        },
+        {
+          "order": 12,
+          "code": null,
+          "name": "平行线的性质定理（两直线平行 ⇒ 同位角相等、内错角相等、同旁内角互补）",
+          "section": "16.2 平行线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握平行线的性质定理Ⅰ，探索并证明性质定理Ⅱ"
+        },
+        {
+          "order": 13,
+          "code": null,
+          "name": "命题、真命题、假命题、原命题与逆命题、互逆命题",
+          "section": "16.3 命题与证明",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "了解定义、命题、定理、推论的意义；会区分命题的条件和结论；知道原命题成立其逆命题不一定成立"
+        },
+        {
+          "order": 14,
+          "code": null,
+          "name": "证明的意义、必要性以及综合法的证明格式",
+          "section": "16.3 命题与证明",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "创新意识"
+          ],
+          "curriculum_basis": "知道证明的意义和必要性，知道数学思维要合乎逻辑，会用综合法的证明格式"
+        },
+        {
+          "order": 15,
+          "code": null,
+          "name": "反例的作用",
+          "section": "16.3 命题与证明",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "推理能力",
+            "创新意识"
+          ],
+          "curriculum_basis": "了解反例的作用，知道利用反例可以判断一个命题是错误的"
+        }
+      ]
+    },
+    {
+      "order": 20,
+      "grade": "七年级下册",
+      "name": "第17章 三角形",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "17.1 三角形的有关概念",
+        "17.2 三角形的内角和",
+        "17.3 全等三角形及其性质",
+        "17.4 三角形全等的判定"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "三角形及其内角、外角、中线、高线、角平分线的概念",
+          "section": "17.1 三角形的有关概念",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "理解三角形及其内角、外角、中线、高线、角平分线等概念，了解三角形的稳定性"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "三角形的三边关系（任意两边之和大于第三边）",
+          "section": "17.1 三角形的有关概念",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "证明三角形的任意两边之和大于第三边"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "三角形的内角和定理",
+          "section": "17.2 三角形的内角和",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明三角形的内角和定理"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "三角形的外角性质（外角等于不相邻两内角之和；外角大于任一不相邻内角；外角和为 360°）",
+          "section": "17.2 三角形的内角和",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握内角和定理的推论：三角形的外角等于与它不相邻的两个内角的和"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "全等三角形及其对应边、对应角",
+          "section": "17.3 全等三角形及其性质",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "理解全等三角形的概念，能识别全等三角形中的对应边、对应角"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "全等三角形的性质与传递性",
+          "section": "17.3 全等三角形及其性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握全等三角形对应边相等、对应角相等的性质"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "三角形全等的基本事实：SSS",
+          "section": "17.4 三角形全等的判定",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握基本事实：三边分别相等的两个三角形全等"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "三角形全等的基本事实：SAS",
+          "section": "17.4 三角形全等的判定",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握基本事实：两边及其夹角分别相等的两个三角形全等"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "三角形全等的基本事实：ASA",
+          "section": "17.4 三角形全等的判定",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握基本事实：两角及其夹边分别相等的两个三角形全等"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "三角形全等的判定定理：AAS",
+          "section": "17.4 三角形全等的判定",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力"
+          ],
+          "curriculum_basis": "证明定理：两角分别相等且其中一组等角的对边相等的两个三角形全等"
+        },
+        {
+          "order": 11,
+          "code": null,
+          "name": "尺规作图：已知三边、两边及其夹角、两角及其夹边作三角形",
+          "section": "17.4 三角形全等的判定",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用尺规作图作出符合条件的三角形"
+        },
+        {
+          "order": 12,
+          "code": null,
+          "name": "运用三角形全等证明线段相等、角相等",
+          "section": "17.4 三角形全等的判定",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "推理能力",
+            "创新意识"
+          ],
+          "curriculum_basis": "能依据全等三角形的性质与判定进行几何证明"
+        }
+      ]
+    },
+    {
+      "order": 21,
+      "grade": "七年级下册",
+      "name": "第18章 等腰三角形",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "18.1 等腰三角形的性质",
+        "18.2 等腰三角形的判定",
+        "18.3 等边三角形",
+        "18.4 线段的垂直平分线",
+        "阅读材料：到三个定点距离之和最小的点"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "等腰三角形、等边三角形的概念",
+          "section": "18.1 等腰三角形的性质",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "理解等腰三角形的概念；探索等边三角形的性质与判定"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "等腰三角形的性质定理（等边对等角）",
+          "section": "18.1 等腰三角形的性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明等腰三角形的性质定理：两个底角相等"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "等腰三角形的三线合一",
+          "section": "18.1 等腰三角形的性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明等腰三角形底边上的高线、中线及顶角平分线重合"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "等腰三角形的轴对称性",
+          "section": "18.1 等腰三角形的性质",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "空间观念"
+          ],
+          "curriculum_basis": "知道等腰三角形是轴对称图形，其对称轴是顶角平分线所在的直线"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "等腰三角形的判定定理（等角对等边）",
+          "section": "18.2 等腰三角形的判定",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并掌握等腰三角形的判定定理：有两个角相等的三角形是等腰三角形"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "三角形中大边对大角、大角对大边",
+          "section": "18.2 等腰三角形的判定",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明三角形中大边对大角、大角对大边"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "等边三角形的性质定理（各角都等于 60°）",
+          "section": "18.3 等边三角形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力"
+          ],
+          "curriculum_basis": "探索等边三角形的性质定理"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "等边三角形的判定定理",
+          "section": "18.3 等边三角形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力"
+          ],
+          "curriculum_basis": "探索等边三角形的判定定理：三个角都相等的三角形是等边三角形"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "线段垂直平分线的性质定理及其逆定理",
+          "section": "18.4 线段的垂直平分线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明线段垂直平分线的性质定理及其逆定理"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "尺规作图：已知底边及底边上的高线作等腰三角形",
+          "section": "18.4 线段的垂直平分线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用尺规作图作出符合条件的等腰三角形"
+        },
+        {
+          "order": 11,
+          "code": null,
+          "name": "用反证法说明结论（初步体会）",
+          "section": "18.2 等腰三角形的判定",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "推理能力",
+            "创新意识"
+          ],
+          "curriculum_basis": "通过实例体会反证法的含义"
+        },
+        {
+          "order": 12,
+          "code": null,
+          "name": "到三个定点距离之和最小的点（拓展）",
+          "section": "阅读材料：到三个定点距离之和最小的点",
+          "mastery_level": "了解",
+          "core_competencies": [
+            "推理能力",
+            "创新意识"
+          ],
+          "curriculum_basis": "经历探索性问题，发展推理能力与创新意识"
+        }
+      ]
+    },
+    {
+      "order": 22,
+      "grade": "七年级下册",
+      "name": "综合与实践（七下）",
+      "domain": "综合与实践",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "积木可以叠多远？",
+        "田径比赛中的数学"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "在真实情境中提出数学问题并建立模型",
+          "section": "积木可以叠多远？",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "抽象能力",
+            "模型观念"
+          ],
+          "curriculum_basis": "经历现实情境数学化，探索数学关系、性质与规律的过程"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "综合运用数学与其他学科知识解决问题",
+          "section": "田径比赛中的数学",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "应用意识",
+            "创新意识",
+            "推理能力"
+          ],
+          "curriculum_basis": "经历分工合作、试验调查、建立模型、计算反思、解决问题的过程"
+        }
+      ]
+    },
+    {
+      "order": 23,
+      "grade": "八年级上册",
+      "name": "第19章 实数",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "19.1 平方根与立方根",
+        "19.2 实数"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "平方根、算术平方根、立方根的概念与表示",
+          "section": "19.1 平方根与立方根",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "了解平方根、算术平方根、立方根的概念，会用根号表示"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "平方根与立方根的性质",
+          "section": "19.1 平方根与立方根",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "知道正数有两个平方根、0 的平方根是 0、负数没有平方根；掌握立方根的性质"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "乘方与开方互为逆运算",
+          "section": "19.1 平方根与立方根",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "推理能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "了解乘方与开方互为逆运算，会用平方、立方运算求平方根与立方根，会用计算器计算"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "无理数与实数的概念",
+          "section": "19.2 实数",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "了解无理数和实数，知道实数由有理数和无理数组成"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "实数与数轴上的点一一对应",
+          "section": "19.2 实数",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "抽象能力"
+          ],
+          "curriculum_basis": "了解实数与数轴上的点一一对应，感悟数的扩充"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "用数轴上的点表示实数、比较实数的大小",
+          "section": "19.2 实数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "运算能力"
+          ],
+          "curriculum_basis": "能用数轴上的点表示实数，能比较实数的大小"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "实数的相反数与绝对值",
+          "section": "19.2 实数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "抽象能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "能借助数轴理解相反数和绝对值的意义，会求实数的相反数与绝对值"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "实数的运算法则、运算律与运算顺序",
+          "section": "19.2 实数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "有理数的运算法则、运算律以及运算顺序的规定在实数范围内同样适用"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "用有理数估计无理数的大致范围",
+          "section": "19.2 实数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "能用有理数估计一个无理数的大致范围"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "近似数与近似计算",
+          "section": "19.2 实数",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "运算能力",
+            "应用意识"
+          ],
+          "curriculum_basis": "了解近似数，能用计算器进行近似计算并按要求取近似值"
+        },
+        {
+          "order": 11,
+          "code": null,
+          "name": "科学记数法",
+          "section": "19.2 实数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "应用意识"
+          ],
+          "curriculum_basis": "会用科学记数法表示数（包括在计算器上表示）"
+        },
+        {
+          "order": 12,
+          "code": null,
+          "name": "数的扩充过程与数形结合思想",
+          "section": "19.2 实数",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "创新意识"
+          ],
+          "curriculum_basis": "感悟数是对数量的抽象，体会数形结合的意义"
+        }
+      ]
+    },
+    {
+      "order": 24,
+      "grade": "八年级上册",
+      "name": "第20章 二次根式",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "20.1 二次根式及其性质",
+        "20.2 二次根式的运算"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "二次根式与最简二次根式的概念",
+          "section": "20.1 二次根式及其性质",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "了解二次根式、最简二次根式的概念"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "二次根式的性质",
+          "section": "20.1 二次根式及其性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "了解二次根式的性质并能运用性质化简"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "分母有理化",
+          "section": "20.1 二次根式及其性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "会把分母中的根号化去，掌握有理化因式的方法"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "二次根式的加减（合并同类二次根式）",
+          "section": "20.2 二次根式的运算",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "了解二次根式加、减运算法则，会进行简单运算"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "二次根式的乘除",
+          "section": "20.2 二次根式的运算",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "了解二次根式乘、除运算法则，会进行简单运算"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "二次根式的简单四则运算",
+          "section": "20.2 二次根式的运算",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "会用二次根式的四则运算法则进行简单运算（根号下仅限于数）"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "二次根式在实际问题中的应用",
+          "section": "20.2 二次根式的运算",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "应用意识",
+            "模型观念"
+          ],
+          "curriculum_basis": "能运用二次根式解决简单实际问题"
+        }
+      ]
+    },
+    {
+      "order": 25,
+      "grade": "八年级上册",
+      "name": "第21章 一元二次方程",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "21.1 一元二次方程的概念",
+        "21.2 一元二次方程的解法",
+        "21.3 一元二次方程的判别式",
+        "21.4 一元二次方程根与系数的关系",
+        "21.5 一元二次方程的应用",
+        "阅读材料：一元高次方程的求解之路"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "一元二次方程的概念与一般式",
+          "section": "21.1 一元二次方程的概念",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "模型观念"
+          ],
+          "curriculum_basis": "理解一元二次方程的概念，注意二次项系数不为零"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "配方法",
+          "section": "21.2 一元二次方程的解法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "理解配方法，能用配方法解数字系数的一元二次方程"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "公式法（求根公式）",
+          "section": "21.2 一元二次方程的解法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "能用公式法解数字系数的一元二次方程，感悟用字母表示求根公式的意义"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "因式分解法",
+          "section": "21.2 一元二次方程的解法",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "能根据方程特征选择因式分解法解一元二次方程"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "一元二次方程根的判别式及其与根的情况的对应",
+          "section": "21.3 一元二次方程的判别式",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "会用判别式判别方程是否有实根及两个实根是否相等，并将根的情况与判别式相联系"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "一元二次方程根与系数的关系（韦达定理）",
+          "section": "21.4 一元二次方程根与系数的关系",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "推理能力",
+            "抽象能力"
+          ],
+          "curriculum_basis": "知道利用一元二次方程的根与系数的关系可以解决一些简单问题"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "二次三项式在实数范围内的因式分解",
+          "section": "21.4 一元二次方程根与系数的关系",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "能利用求根公式对二次三项式进行因式分解"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "列一元二次方程解决实际问题",
+          "section": "21.5 一元二次方程的应用",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能建立一元二次方程模型解决实际问题"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "根据实际意义检验方程解的合理性",
+          "section": "21.5 一元二次方程的应用",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "推理能力"
+          ],
+          "curriculum_basis": "能根据具体问题的实际意义检验方程的解是否合理"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "一元高次方程的求解之路（数学文化）",
+          "section": "阅读材料：一元高次方程的求解之路",
+          "mastery_level": "了解",
+          "core_competencies": [
+            "创新意识",
+            "推理能力"
+          ],
+          "curriculum_basis": "了解数学发展史，感悟化归思想"
+        }
+      ]
+    },
+    {
+      "order": 26,
+      "grade": "八年级上册",
+      "name": "第22章 直角三角形",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "22.1 直角三角形",
+        "22.2 角平分线",
+        "22.3 勾股定理",
+        "阅读材料：勾股定理简史"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "直角三角形的概念",
+          "section": "22.1 直角三角形",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "理解直角三角形的概念"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "直角三角形的性质定理（两锐角互余；斜边上的中线等于斜边的一半；斜边大于直角边）",
+          "section": "22.1 直角三角形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并掌握直角三角形的性质定理"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "直角三角形的判定定理（两个锐角互余的三角形是直角三角形）",
+          "section": "22.1 直角三角形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力"
+          ],
+          "curriculum_basis": "掌握有两个角互余的三角形是直角三角形"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "勾股定理",
+          "section": "22.3 勾股定理",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观",
+            "运算能力"
+          ],
+          "curriculum_basis": "探索勾股定理，并能运用它解决一些简单的实际问题"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "勾股定理的逆定理",
+          "section": "22.3 勾股定理",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索勾股定理的逆定理，并能运用它解决一些简单的实际问题"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "勾股定理及其逆定理在实际问题中的应用",
+          "section": "22.3 勾股定理",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能构造直角三角形解决测量、面积等实际问题"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "直角三角形全等的判定（“斜边、直角边”定理）",
+          "section": "22.1 直角三角形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力"
+          ],
+          "curriculum_basis": "探索并掌握判定直角三角形全等的“斜边、直角边”定理"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "尺规作图：已知一直角边和斜边作直角三角形",
+          "section": "22.1 直角三角形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用尺规作图作出符合条件的直角三角形"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "角平分线的性质定理及其逆定理",
+          "section": "22.2 角平分线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明角平分线的性质定理及其逆定理"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "三角形的内心",
+          "section": "22.2 角平分线",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "了解三角形三个内角的平分线相交于一点，这个交点叫作三角形的内心"
+        },
+        {
+          "order": 11,
+          "code": null,
+          "name": "垂线段最短",
+          "section": "22.2 角平分线",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握连接直线外一点与直线上各点的所有线段中垂线段最短"
+        },
+        {
+          "order": 12,
+          "code": null,
+          "name": "勾股定理的证明与“中国智慧”（数学文化）",
+          "section": "阅读材料：勾股定理简史",
+          "mastery_level": "了解",
+          "core_competencies": [
+            "创新意识",
+            "推理能力"
+          ],
+          "curriculum_basis": "感悟中华优秀数学文化，增强文化自信"
+        }
+      ]
+    },
+    {
+      "order": 27,
+      "grade": "八年级上册",
+      "name": "综合与实践（八上）",
+      "domain": "综合与实践",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "理财小课堂",
+        "“勾股定理”证明中的中国智慧"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "运用数学知识进行理财方案分析与比较",
+          "section": "理财小课堂",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "运算能力",
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "综合运用数学与其他学科知识解决真实问题"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "在数学史料中理解证明思想",
+          "section": "“勾股定理”证明中的中国智慧",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "推理能力",
+            "创新意识"
+          ],
+          "curriculum_basis": "经历从数学的角度发现和提出问题、分析并解决问题的过程"
+        }
+      ]
+    },
+    {
+      "order": 28,
+      "grade": "八年级下册",
+      "name": "第23章 四边形",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "23.1 多边形",
+        "23.2 平行四边形",
+        "23.3 矩形、菱形与正方形",
+        "23.4 三角形的中位线与重心",
+        "阅读材料：几何与建筑窥探"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "多边形及其顶点、边、内角、外角、对角线的概念；凸多边形",
+          "section": "23.1 多边形",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "了解多边形的概念及多边形的顶点、边、内角、外角与对角线（指凸多边形）"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "多边形内角和定理（n 边形的内角和等于 (n−2)·180°）",
+          "section": "23.1 多边形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "探索并掌握多边形内角和公式"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "多边形外角和定理（任意多边形的外角和等于 360°）",
+          "section": "23.1 多边形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "探索并掌握多边形外角和公式"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "梯形、平行四边形的概念及相互关系",
+          "section": "23.2 平行四边形",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "理解平行四边形、矩形、菱形、正方形、梯形的概念以及它们之间的关系"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "平行四边形的性质定理（对边相等、对角相等、对角线互相平分）",
+          "section": "23.2 平行四边形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明平行四边形的性质定理"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "平行四边形的判定定理（一组对边平行且相等／两组对边分别相等／对角线互相平分）",
+          "section": "23.2 平行四边形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明平行四边形的判定定理"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "两条平行线之间的距离",
+          "section": "23.2 平行四边形",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "空间观念"
+          ],
+          "curriculum_basis": "理解两条平行线之间距离的概念，能度量两条平行线之间的距离"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "四边形的不稳定性",
+          "section": "23.2 平行四边形",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "空间观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "了解四边形的不稳定性"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "矩形的概念、性质定理与判定定理",
+          "section": "23.3 矩形、菱形与正方形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明矩形的性质定理与判定定理"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "菱形的概念、性质定理与判定定理",
+          "section": "23.3 矩形、菱形与正方形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明菱形的性质定理与判定定理"
+        },
+        {
+          "order": 11,
+          "code": null,
+          "name": "正方形的概念、性质与判定；矩形、菱形、正方形之间的包含关系",
+          "section": "23.3 矩形、菱形与正方形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "知道正方形既是矩形又是菱形，理解三者之间的包含关系"
+        },
+        {
+          "order": 12,
+          "code": null,
+          "name": "三角形的中位线定理",
+          "section": "23.4 三角形的中位线与重心",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明三角形的中位线定理"
+        },
+        {
+          "order": 13,
+          "code": null,
+          "name": "三角形的重心与重心定理",
+          "section": "23.4 三角形的中位线与重心",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "了解三角形重心的概念及其性质"
+        },
+        {
+          "order": 14,
+          "code": null,
+          "name": "四边形的对称性（中心对称、轴对称）",
+          "section": "23.3 矩形、菱形与正方形",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "空间观念"
+          ],
+          "curriculum_basis": "感悟平行四边形的中心对称性、矩形与菱形的轴对称性"
+        },
+        {
+          "order": 15,
+          "code": null,
+          "name": "几何与建筑中的数学（数学文化）",
+          "section": "阅读材料：几何与建筑窥探",
+          "mastery_level": "了解",
+          "core_competencies": [
+            "创新意识",
+            "应用意识"
+          ],
+          "curriculum_basis": "感悟数学在建筑与艺术中的应用价值"
+        }
+      ]
+    },
+    {
+      "order": 29,
+      "grade": "八年级下册",
+      "name": "第24章 平面直角坐标系",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "24.1 平面直角坐标系",
+        "24.2 两点间的距离公式",
+        "24.3 平移与轴对称"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "平面直角坐标系的概念、横轴与纵轴、象限",
+          "section": "24.1 平面直角坐标系",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "理解平面直角坐标系的有关概念，能画出平面直角坐标系"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "平面上点与有序数对的一一对应",
+          "section": "24.1 平面直角坐标系",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "感悟平面上点与坐标之间的一一对应关系"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "由点写出坐标、由坐标描出点",
+          "section": "24.1 平面直角坐标系",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "运算能力"
+          ],
+          "curriculum_basis": "能在给定的坐标系中根据坐标描出点的位置，由点的位置写出坐标"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "简单图形的坐标表达（坐标轴所在直线、平行于坐标轴的直线）",
+          "section": "24.1 平面直角坐标系",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "抽象能力"
+          ],
+          "curriculum_basis": "能体会可以用坐标表达简单图形"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "建立适当的平面直角坐标系描述物体位置",
+          "section": "24.1 平面直角坐标系",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能在实际问题中建立适当的坐标系描述物体的位置"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "两点间的距离公式",
+          "section": "24.2 两点间的距离公式",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "能用坐标计算两点间的距离"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "线段中点的坐标",
+          "section": "24.2 两点间的距离公式",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "能由两点坐标写出线段中点的坐标"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "坐标的变化刻画平移",
+          "section": "24.3 平移与轴对称",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "能在坐标系中写出多边形沿坐标轴方向平移后各顶点的坐标，并知道对应顶点坐标之间的关系"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "坐标的变化刻画轴对称",
+          "section": "24.3 平移与轴对称",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "能以坐标轴为对称轴写出对称图形的顶点坐标，知道对应顶点坐标之间的关系"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "用方位角和距离刻画两个物体的相对位置",
+          "section": "24.1 平面直角坐标系",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "应用意识"
+          ],
+          "curriculum_basis": "能在平面上用方位角和距离刻画两个物体的相对位置"
+        },
+        {
+          "order": 11,
+          "code": null,
+          "name": "数形结合思想",
+          "section": "24.3 平移与轴对称",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "创新意识"
+          ],
+          "curriculum_basis": "感悟平面直角坐标系是沟通代数与几何的桥梁"
+        }
+      ]
+    },
+    {
+      "order": 30,
+      "grade": "八年级下册",
+      "name": "第25章 一次函数",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "25.1 变量与函数",
+        "25.2 正比例函数",
+        "25.3 一次函数",
+        "25.4 一次函数的应用"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "常量与变量的意义",
+          "section": "25.1 变量与函数",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力"
+          ],
+          "curriculum_basis": "了解常量、变量的意义"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "函数的概念与表示法（表达式、表格、图像）",
+          "section": "25.1 变量与函数",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "模型观念"
+          ],
+          "curriculum_basis": "了解函数的概念和表示法，能举出函数的实例"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "确定简单实际问题中自变量的取值范围、求函数值",
+          "section": "25.1 变量与函数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "模型观念"
+          ],
+          "curriculum_basis": "能确定简单实际问题中函数自变量的取值范围，并会求函数值"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "用适当的方法刻画变量之间的关系",
+          "section": "25.1 变量与函数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用适当的函数表示法刻画简单实际问题中变量之间的关系"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "函数的图像与描点法画图",
+          "section": "25.1 变量与函数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "运算能力"
+          ],
+          "curriculum_basis": "能结合图像对简单实际问题中的函数关系进行分析"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "正比例函数的概念、图像与性质",
+          "section": "25.2 正比例函数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "认识正比例函数中两个变量之间的对应规律，会结合实例说明其意义"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "一次函数的概念",
+          "section": "25.3 一次函数",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "模型观念"
+          ],
+          "curriculum_basis": "结合具体情境体会一次函数的意义"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "用待定系数法确定一次函数的表达式",
+          "section": "25.3 一次函数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "会运用待定系数法确定一次函数的表达式"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "一次函数的图像与性质（k>0、k<0 时图像的变化情况）",
+          "section": "25.3 一次函数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "能画一次函数的图像，根据图像和表达式探索并理解 k>0 和 k<0 时图像的变化情况"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "一次函数图像与坐标轴的交点",
+          "section": "25.3 一次函数",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "运算能力"
+          ],
+          "curriculum_basis": "会根据一次函数的表达式求其图像与坐标轴的交点坐标"
+        },
+        {
+          "order": 11,
+          "code": null,
+          "name": "一次函数与一元一次方程、一元一次不等式、二元一次方程的关系",
+          "section": "25.3 一次函数",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "会结合图像解释一次函数与二元一次方程的关系"
+        },
+        {
+          "order": 12,
+          "code": null,
+          "name": "一次函数的应用（建立模型解决实际问题）",
+          "section": "25.4 一次函数的应用",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能在实际问题中列出一次函数的表达式，并结合图像与性质解决简单实际问题"
+        },
+        {
+          "order": 13,
+          "code": null,
+          "name": "结合图像分析变化趋势并作出推测",
+          "section": "25.4 一次函数的应用",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "几何直观",
+            "模型观念"
+          ],
+          "curriculum_basis": "能根据函数图像分析实际问题的信息，对变量的变化趋势进行初步推测"
+        }
+      ]
+    },
+    {
+      "order": 31,
+      "grade": "八年级下册",
+      "name": "第26章 反比例函数",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "26.1 反比例函数的概念",
+        "26.2 反比例函数的图像与性质",
+        "26.3 反比例函数的应用"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "反比例函数的概念",
+          "section": "26.1 反比例函数的概念",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "模型观念"
+          ],
+          "curriculum_basis": "结合具体情境用实例体会反比例函数的意义"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "反比例函数的图像（双曲线）与画法",
+          "section": "26.2 反比例函数的图像与性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "会用描点法画出反比例函数的图像"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "反比例函数的性质（k>0、k<0 时图像所在象限与增减性）",
+          "section": "26.2 反比例函数的图像与性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "知道 k>0 和 k<0 时反比例函数图像的整体特征"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "反比例函数表达式的确定",
+          "section": "26.2 反比例函数的图像与性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力"
+          ],
+          "curriculum_basis": "能根据已知条件确定反比例函数的表达式"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "反比例函数中 k 的几何意义",
+          "section": "26.2 反比例函数的图像与性质",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "能结合图像解释比例系数的几何意义"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "反比例函数与正比例函数图像的交点",
+          "section": "26.2 反比例函数的图像与性质",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "能分析两个函数图像公共点的特征"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "反比例函数的应用（建立模型解决实际问题）",
+          "section": "26.3 反比例函数的应用",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用反比例函数解决简单的实际问题（如杠杆原理等）"
+        }
+      ]
+    },
+    {
+      "order": 32,
+      "grade": "八年级下册",
+      "name": "综合与实践（八下）",
+      "domain": "综合与实践",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "折纸与数学",
+        "神奇的密码"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "在动手操作中发现并提出数学问题",
+          "section": "折纸与数学",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "几何直观",
+            "创新意识",
+            "抽象能力"
+          ],
+          "curriculum_basis": "经历现实情境数学化，探索数学关系、性质与规律的过程"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "综合运用数学知识破解实际问题",
+          "section": "神奇的密码",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识",
+            "推理能力"
+          ],
+          "curriculum_basis": "经历建立模型、计算反思、解决问题的全过程"
+        }
+      ]
+    },
+    {
+      "order": 33,
+      "grade": "九年级上册",
+      "name": "第27章 二次函数",
+      "domain": "数与代数",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "27.1 二次函数的概念",
+        "27.2 二次函数的图像与性质",
+        "27.3 确定二次函数的表达式",
+        "27.4 二次函数与一元二次方程",
+        "27.5 二次函数的简单应用"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "二次函数的概念",
+          "section": "27.1 二次函数的概念",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "模型观念"
+          ],
+          "curriculum_basis": "通过对实际问题的分析，体会二次函数的意义"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "形如 y=a(x+m)²+k 的二次函数的图像与性质",
+          "section": "27.2 二次函数的图像与性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "能从图像看出开口方向、对称轴、顶点，说出增减性与最值"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "用配方法将 y=ax²+bx+c 化为顶点式",
+          "section": "27.2 二次函数的图像与性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "会用配方法将数字系数的二次函数表达式化为 y=a(x−h)²+k 的形式"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "y=ax²+bx+c 的图像与性质（对称轴、顶点坐标、开口方向、最值）",
+          "section": "27.2 二次函数的图像与性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "运算能力"
+          ],
+          "curriculum_basis": "能由此得出顶点坐标、说出开口方向、画出对称轴、得出最大值或最小值"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "二次函数系数的几何意义",
+          "section": "27.2 二次函数的图像与性质",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "知道二次函数的系数与图像形状和对称轴的关系"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "用待定系数法确定二次函数的表达式",
+          "section": "27.3 确定二次函数的表达式",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "模型观念"
+          ],
+          "curriculum_basis": "会通过分析实际问题的情境确定二次函数的表达式"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "二次函数与一元二次方程的关系",
+          "section": "27.4 二次函数与一元二次方程",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "知道二次函数和一元二次方程之间的关系"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "用二次函数的图像求一元二次方程的近似解",
+          "section": "27.4 二次函数与一元二次方程",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "运算能力"
+          ],
+          "curriculum_basis": "会利用二次函数的图像求一元二次方程的近似解"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "用二次函数的最大值或最小值解决实际问题",
+          "section": "27.5 二次函数的简单应用",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能确定相应自变量的值并解决简单的实际问题"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "数形结合与函数建模思想",
+          "section": "27.5 二次函数的简单应用",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "创新意识"
+          ],
+          "curriculum_basis": "深入理解二次函数与一元二次方程的内在联系，体会数形结合"
+        }
+      ]
+    },
+    {
+      "order": 34,
+      "grade": "九年级上册",
+      "name": "第28章 相似三角形",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "28.1 成比例线段",
+        "28.2 相似三角形",
+        "28.3 相似多边形",
+        "28.4 位似多边形",
+        "阅读材料：黄金分割、三角形的垂心"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "比例的基本性质、线段的比、成比例的线段",
+          "section": "28.1 成比例线段",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "了解比例的基本性质、线段的比、成比例的线段"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "两条直线被一组平行线所截，所得对应线段成比例（基本事实）",
+          "section": "28.1 成比例线段",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握基本事实：两条直线被一组平行线所截，所得的对应线段成比例"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "平行于三角形一边的直线截其他两边所得对应线段成比例",
+          "section": "28.1 成比例线段",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握该比例关系并能用于计算与证明"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "相似多边形与相似比",
+          "section": "28.3 相似多边形",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "通过具体实例认识图形的相似，了解相似多边形和相似比"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "相似三角形的预备定理（平行于三角形一边的直线截得的三角形与原三角形相似）",
+          "section": "28.2 相似三角形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握预备定理"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "相似三角形的判定定理（两角分别相等／两边成比例且夹角相等／三边成比例）",
+          "section": "28.2 相似三角形",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "了解相似三角形的判定定理（这些定理不要求学生证明）"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "直角三角形相似的判定定理（斜边和一条直角边对应成比例）",
+          "section": "28.2 相似三角形",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "推理能力"
+          ],
+          "curriculum_basis": "了解直角三角形相似的判定定理"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "相似三角形的性质定理（对应线段的比等于相似比；面积比等于相似比的平方）",
+          "section": "28.2 相似三角形",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "推理能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "了解相似三角形的性质定理及其应用"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "位似图形与位似变换",
+          "section": "28.4 位似多边形",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "空间观念"
+          ],
+          "curriculum_basis": "了解图形的位似，知道利用位似可以将一个图形放大或缩小"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "黄金分割及其在建筑、艺术中的应用",
+          "section": "阅读材料：黄金分割、三角形的垂心",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "创新意识",
+            "应用意识"
+          ],
+          "curriculum_basis": "通过建筑、艺术上的实例了解黄金分割"
+        },
+        {
+          "order": 11,
+          "code": null,
+          "name": "三角形的垂心",
+          "section": "阅读材料：黄金分割、三角形的垂心",
+          "mastery_level": "了解",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "了解三角形三条高的交点及其性质"
+        },
+        {
+          "order": 12,
+          "code": null,
+          "name": "利用相似三角形解决测量等实际问题",
+          "section": "28.2 相似三角形",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "会利用图形的相似解决一些简单的实际问题"
+        }
+      ]
+    },
+    {
+      "order": 35,
+      "grade": "九年级上册",
+      "name": "第29章 三角初步",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "29.1 锐角的正弦、余弦与正切",
+        "29.2 解直角三角形",
+        "阅读材料：直角三角形中锐角的正弦、余弦与正切之间的关系"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "锐角三角函数的概念（sinA、cosA、tanA）",
+          "section": "29.1 锐角的正弦、余弦与正切",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "利用相似的直角三角形，探索并认识锐角三角函数"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "30°、45°、60° 角的三角函数值",
+          "section": "29.1 锐角的正弦、余弦与正切",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "推理能力"
+          ],
+          "curriculum_basis": "知道特殊角的三角函数值"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "用计算器由已知锐角求三角函数值、由三角函数值求锐角",
+          "section": "29.1 锐角的正弦、余弦与正切",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "应用意识"
+          ],
+          "curriculum_basis": "会使用计算器进行相应计算"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "解直角三角形",
+          "section": "29.2 解直角三角形",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "能用锐角三角函数解直角三角形"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "同角及互余角三角函数之间的关系",
+          "section": "阅读材料：直角三角形中锐角的正弦、余弦与正切之间的关系",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "推理能力",
+            "运算能力"
+          ],
+          "curriculum_basis": "了解直角三角形中锐角三角函数之间的关系"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "用解直角三角形解决测量高度、距离等实际问题",
+          "section": "29.2 解直角三角形",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识",
+            "几何直观"
+          ],
+          "curriculum_basis": "能用相关知识解决一些简单的实际问题"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "数形结合与转化思想",
+          "section": "29.2 解直角三角形",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "创新意识"
+          ],
+          "curriculum_basis": "体会将实际问题转化为解直角三角形问题的过程"
+        }
+      ]
+    },
+    {
+      "order": 36,
+      "grade": "九年级上册",
+      "name": "第30章 投影与视图",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "30.1 投影",
+        "30.2 三视图",
+        "30.3 立体模型的制作"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "投影、中心投影与平行投影的概念",
+          "section": "30.1 投影",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "空间观念",
+            "抽象能力"
+          ],
+          "curriculum_basis": "通过丰富的实例了解中心投影和平行投影的概念"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "正投影与视图的概念",
+          "section": "30.1 投影",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "空间观念"
+          ],
+          "curriculum_basis": "知道视线、投影线与投影面的关系，理解视图的意义"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "三视图（主视图、左视图、俯视图）",
+          "section": "30.2 三视图",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "空间观念",
+            "几何直观"
+          ],
+          "curriculum_basis": "会画直棱柱、圆柱、圆锥、球的主视图、左视图、俯视图"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "由三视图判断或还原简单几何体",
+          "section": "30.2 三视图",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "空间观念",
+            "几何直观"
+          ],
+          "curriculum_basis": "能判断简单物体的视图，并会根据视图描述简单的几何体"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "立体图形的侧面展开图",
+          "section": "30.2 三视图",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "空间观念",
+            "几何直观"
+          ],
+          "curriculum_basis": "了解直棱柱、圆锥的侧面展开图，能根据展开图想象和制作模型"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "视图与展开图在现实生活中的应用",
+          "section": "30.2 三视图",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "空间观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "通过实例了解视图与展开图在现实生活中的应用"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "制作立体模型",
+          "section": "30.3 立体模型的制作",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "空间观念",
+            "创新意识",
+            "应用意识"
+          ],
+          "curriculum_basis": "经历从视图到实物模型的制作过程，发展空间想象力"
+        }
+      ]
+    },
+    {
+      "order": 37,
+      "grade": "九年级上册",
+      "name": "综合与实践（九上）",
+      "domain": "综合与实践",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "探寻测量高度的方法",
+        "城市原点"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "设计测量方案并综合运用解直角三角形、相似等知识",
+          "section": "探寻测量高度的方法",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "应用意识",
+            "几何直观"
+          ],
+          "curriculum_basis": "在实际情境中发现问题和提出问题，将其转化为合理的数学问题"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "小组合作完成项目并撰写研究报告",
+          "section": "城市原点",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "创新意识",
+            "应用意识"
+          ],
+          "curriculum_basis": "独立思考和与他人合作，提出思路、设计方案、反思模型合理性"
+        }
+      ]
+    },
+    {
+      "order": 38,
+      "grade": "九年级下册",
+      "name": "第31章 圆",
+      "domain": "图形与几何",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "31.1 圆的基本性质",
+        "31.2 直线与圆的位置关系",
+        "31.3 多边形与圆",
+        "阅读材料：圆和圆的位置关系、尺规作图中的不可能问题"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "圆的定义及相关概念（圆心、半径、弧、优弧与劣弧、弦、圆心角、圆周角、等圆、等弧）",
+          "section": "31.1 圆的基本性质",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "理解圆、弧、弦、圆心角、圆周角的概念，了解等圆、等弧的概念"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "点与圆的位置关系（d 与 r 的大小关系）",
+          "section": "31.1 圆的基本性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "探索并掌握点与圆的位置关系"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "不在同一直线上的三点确定一个圆",
+          "section": "31.1 圆的基本性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明三点确定一个圆的结论"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "圆的对称性（轴对称、中心对称）",
+          "section": "31.1 圆的基本性质",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "空间观念"
+          ],
+          "curriculum_basis": "知道圆既是轴对称图形又是中心对称图形"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "圆心角、弧、弦之间的关系定理",
+          "section": "31.1 圆的基本性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索在同圆或等圆中圆心角、弧、弦之间的关系"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "垂径定理",
+          "section": "31.1 圆的基本性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明垂径定理：垂直于弦的直径平分弦以及弦所对的两条弧"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "圆周角定理及其推论",
+          "section": "31.1 圆的基本性质",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "了解并证明圆周角定理及其推论（同弧圆周角相等；直径所对圆周角是直角；圆内接四边形对角互补）"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "直线与圆的位置关系（相离、相切、相交，d 与 r 的关系）",
+          "section": "31.2 直线与圆的位置关系",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "抽象能力"
+          ],
+          "curriculum_basis": "了解直线与圆的位置关系"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "切线的判定定理",
+          "section": "31.2 直线与圆的位置关系",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握切线的判定定理（经过半径的外端且垂直于这条半径的直线是圆的切线）"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "切线的性质定理",
+          "section": "31.2 直线与圆的位置关系",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "掌握切线的性质定理（圆的切线垂直于过切点的半径）"
+        },
+        {
+          "order": 11,
+          "code": null,
+          "name": "切线长定理",
+          "section": "31.2 直线与圆的位置关系",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "推理能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "探索并证明切线长定理：过圆外一点的两条切线长相等"
+        },
+        {
+          "order": 12,
+          "code": null,
+          "name": "三角形的外接圆与外心、内切圆与内心",
+          "section": "31.3 多边形与圆",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "抽象能力"
+          ],
+          "curriculum_basis": "了解三角形的内心与外心"
+        },
+        {
+          "order": 13,
+          "code": null,
+          "name": "圆内接四边形与正多边形和圆的关系，正多边形的中心角",
+          "section": "31.3 多边形与圆",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "几何直观",
+            "推理能力"
+          ],
+          "curriculum_basis": "了解正多边形的概念及正多边形与圆的关系"
+        },
+        {
+          "order": 14,
+          "code": null,
+          "name": "尺规作图：过不在同一直线上的三点作圆、作三角形的外接圆与内切圆、作圆的内接正方形和正六边形、过圆外一点作圆的切线",
+          "section": "31.3 多边形与圆",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "几何直观",
+            "应用意识"
+          ],
+          "curriculum_basis": "能用尺规完成上述基本作图，了解作图原理、保留作图痕迹"
+        },
+        {
+          "order": 15,
+          "code": null,
+          "name": "圆的弧长与扇形面积的计算",
+          "section": "31.3 多边形与圆",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "几何直观"
+          ],
+          "curriculum_basis": "会计算圆的弧长、扇形的面积"
+        },
+        {
+          "order": 16,
+          "code": null,
+          "name": "圆与圆的位置关系（拓展）",
+          "section": "阅读材料：圆和圆的位置关系、尺规作图中的不可能问题",
+          "mastery_level": "了解",
+          "core_competencies": [
+            "空间观念",
+            "几何直观"
+          ],
+          "curriculum_basis": "通过阅读材料了解圆与圆的位置关系"
+        },
+        {
+          "order": 17,
+          "code": null,
+          "name": "尺规作图中的不可能问题（数学文化）",
+          "section": "阅读材料：圆和圆的位置关系、尺规作图中的不可能问题",
+          "mastery_level": "了解",
+          "core_competencies": [
+            "创新意识",
+            "推理能力"
+          ],
+          "curriculum_basis": "了解数学史上有名的作图问题，感悟数学的严谨性"
+        },
+        {
+          "order": 18,
+          "code": null,
+          "name": "综合运用圆的性质进行证明与计算",
+          "section": "31.1 圆的基本性质",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "推理能力",
+            "几何直观",
+            "创新意识"
+          ],
+          "curriculum_basis": "能综合平面几何各种知识和方法解决问题，展示逻辑之美"
+        }
+      ]
+    },
+    {
+      "order": 39,
+      "grade": "九年级下册",
+      "name": "第32章 抽样与数据分析",
+      "domain": "统计与概率",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "32.1 总体与样本",
+        "32.2 数据的集中趋势",
+        "32.3 数据的离散程度",
+        "32.4 数据的分布"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "总体、个体、样本与样本容量的概念",
+          "section": "32.1 总体与样本",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "数据观念",
+            "抽象能力"
+          ],
+          "curriculum_basis": "体会抽样的必要性，通过实例认识简单随机抽样"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "抽样的必要性与简单随机抽样",
+          "section": "32.1 总体与样本",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "数据观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "知道抽样调查的必要性和简单随机抽样的特点"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "设计调查问卷、收集与整理数据",
+          "section": "32.1 总体与样本",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "数据观念",
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能根据问题的需要设计恰当的调查问卷并用简单随机抽样收集数据"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "平均数与加权平均数",
+          "section": "32.2 数据的集中趋势",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "数据观念"
+          ],
+          "curriculum_basis": "理解平均数的意义，能计算加权平均数"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "中位数与众数",
+          "section": "32.2 数据的集中趋势",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "数据观念"
+          ],
+          "curriculum_basis": "理解中位数、众数的意义，能计算中位数与众数，知道它们是对数据集中趋势的描述"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "离差、离差平方和与方差",
+          "section": "32.3 数据的离散程度",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "数据观念"
+          ],
+          "curriculum_basis": "体会刻画数据离散程度的意义，会计算一组简单数据的离差平方和与方差"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "总体方差的估计值",
+          "section": "32.3 数据的离散程度",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "数据观念"
+          ],
+          "curriculum_basis": "理解总体方差的估计值的意义并能计算"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "按组内离差平方和最小的原则对数据分类",
+          "section": "32.3 数据的离散程度",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "数据观念",
+            "推理能力"
+          ],
+          "curriculum_basis": "经历数据分类的活动，知道按照组内离差平方和最小的原则分类的方法"
+        },
+        {
+          "order": 9,
+          "code": null,
+          "name": "频数、频率分布与频数分布直方图",
+          "section": "32.4 数据的分布",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "数据观念",
+            "几何直观"
+          ],
+          "curriculum_basis": "了解频数和频数分布的意义，能画频数直方图并解释其中蕴含的信息"
+        },
+        {
+          "order": 10,
+          "code": null,
+          "name": "四分位数、箱线图与百分位数",
+          "section": "32.4 数据的分布",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "数据观念"
+          ],
+          "curriculum_basis": "会计算四分位数，了解四分位数与箱线图的关系，感悟百分位数的意义"
+        },
+        {
+          "order": 11,
+          "code": null,
+          "name": "用样本平均数、方差估计总体平均数、方差",
+          "section": "32.4 数据的分布",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "数据观念",
+            "推理能力"
+          ],
+          "curriculum_basis": "知道可以用样本平均数估计总体平均数，用样本方差估计总体方差"
+        },
+        {
+          "order": 12,
+          "code": null,
+          "name": "用统计图表描述数据、分析变化趋势",
+          "section": "32.4 数据的分布",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "数据观念",
+            "几何直观"
+          ],
+          "curriculum_basis": "能用扇形统计图、频数直方图等整理与描述数据，并分析随机现象的变化趋势"
+        },
+        {
+          "order": 13,
+          "code": null,
+          "name": "根据数据分析结果作出判断与预测",
+          "section": "32.4 数据的分布",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "数据观念",
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能解释数据分析的结果，作出简单的判断和预测并进行交流"
+        },
+        {
+          "order": 14,
+          "code": null,
+          "name": "感悟数据分析的重要性与“用数据说话”的科学态度",
+          "section": "32.4 数据的分布",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "数据观念",
+            "创新意识"
+          ],
+          "curriculum_basis": "感悟通过样本特征估计总体特征的思想，形成数据观念"
+        }
+      ]
+    },
+    {
+      "order": 40,
+      "grade": "九年级下册",
+      "name": "第33章 概率初步",
+      "domain": "统计与概率",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "33.1 随机事件及其发生的可能性",
+        "33.2 事件的概率",
+        "33.3 用频率估计概率"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "随机事件、必然事件与不可能事件",
+          "section": "33.1 随机事件及其发生的可能性",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "数据观念",
+            "抽象能力"
+          ],
+          "curriculum_basis": "能区分随机事件、必然事件、不可能事件"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "随机事件发生的可能性大小",
+          "section": "33.1 随机事件及其发生的可能性",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "数据观念",
+            "推理能力"
+          ],
+          "curriculum_basis": "能描述简单随机事件的特征，比较可能性的大小"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "概率的意义（0≤P(A)≤1）",
+          "section": "33.2 事件的概率",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "抽象能力",
+            "数据观念"
+          ],
+          "curriculum_basis": "理解概率是对随机事件发生可能性大小的度量"
+        },
+        {
+          "order": 4,
+          "code": null,
+          "name": "用列举法（列表、画树状图）列出所有可能结果",
+          "section": "33.2 事件的概率",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "数据观念",
+            "运算能力"
+          ],
+          "curriculum_basis": "能通过列表、画树状图等方法列出简单随机事件所有可能的结果"
+        },
+        {
+          "order": 5,
+          "code": null,
+          "name": "计算简单随机事件的概率",
+          "section": "33.2 事件的概率",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "运算能力",
+            "数据观念"
+          ],
+          "curriculum_basis": "能计算简单随机事件的概率"
+        },
+        {
+          "order": 6,
+          "code": null,
+          "name": "频率及其稳定性",
+          "section": "33.3 用频率估计概率",
+          "mastery_level": "理解",
+          "core_competencies": [
+            "数据观念"
+          ],
+          "curriculum_basis": "知道经历大量重复试验，随机事件发生的频率具有稳定性"
+        },
+        {
+          "order": 7,
+          "code": null,
+          "name": "用频率估计概率",
+          "section": "33.3 用频率估计概率",
+          "mastery_level": "掌握",
+          "core_competencies": [
+            "数据观念",
+            "推理能力"
+          ],
+          "curriculum_basis": "知道通过大量重复试验可以用频率估计概率"
+        },
+        {
+          "order": 8,
+          "code": null,
+          "name": "用概率知识作出合理决策",
+          "section": "33.3 用频率估计概率",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "数据观念",
+            "模型观念",
+            "应用意识"
+          ],
+          "curriculum_basis": "能综合运用统计与概率的思维方法解决简单的实际问题"
+        }
+      ]
+    },
+    {
+      "order": 41,
+      "grade": "九年级下册",
+      "name": "综合与实践（九下）",
+      "domain": "综合与实践",
+      "code": null,
+      "available_for_import": false,
+      "sections": [
+        "碳足迹——无处不在的二氧化碳排放",
+        "血型的秘密"
+      ],
+      "knowledge_points": [
+        {
+          "order": 1,
+          "code": null,
+          "name": "收集并分析真实数据，形成研究报告",
+          "section": "碳足迹——无处不在的二氧化碳排放",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "数据观念",
+            "应用意识",
+            "模型观念"
+          ],
+          "curriculum_basis": "合理使用数据，进行合理计算，借助模型得到结论并分析其意义"
+        },
+        {
+          "order": 2,
+          "code": null,
+          "name": "在跨学科情境中综合运用统计与概率知识",
+          "section": "血型的秘密",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "数据观念",
+            "创新意识",
+            "应用意识"
+          ],
+          "curriculum_basis": "整合数学与其他学科的知识，完成跨学科实践活动"
+        },
+        {
+          "order": 3,
+          "code": null,
+          "name": "反思模型的合理性并解释结论",
+          "section": "血型的秘密",
+          "mastery_level": "运用",
+          "core_competencies": [
+            "模型观念",
+            "创新意识"
+          ],
+          "curriculum_basis": "根据问题背景分析结论的意义，反思模型是否与现实吻合"
+        }
+      ]
+    }
+  ]
+}

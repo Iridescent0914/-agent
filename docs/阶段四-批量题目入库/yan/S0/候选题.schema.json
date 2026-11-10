@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://math-agent.local/schemas/import-candidate-v1.json",
   "title": "Question import candidate v1",
-  "description": "暂存区候选题数据契约。标签白名单、章节和年级关联由服务端目录二次校验。",
+  "description": "暂存区候选题数据契约，不是模型原始响应格式，也不是当前已接入的运行时校验器。教师只确认主属 KP；章、年级、节为服务端按正式目录派生的只读字段。",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "batch_id", "item_id", "catalog_snapshot_sha256", "revision", "source", "content", "tags", "answers", "selected_answer_id", "answer_match_status", "precheck_status", "label_status", "teacher_decision", "commit_intent", "duplicate_status", "field_confidence", "field_evidence"],
@@ -39,10 +39,10 @@
       "properties": {
         "question_type": {"enum": ["choice", "fill_blank", "calculation", "solution", "true_false", "unknown"]},
         "difficulty": {"type": ["integer", "null"], "minimum": 1, "maximum": 5},
-        "grade": {"type": ["string", "null"]},
-        "chapter_code": {"type": ["string", "null"]},
-        "section": {"type": ["string", "null"]},
-        "main_kp_code": {"type": ["string", "null"]},
+        "grade": {"type": ["string", "null"], "readOnly": true, "description": "服务端根据主属 KP 所属章派生"},
+        "chapter_code": {"type": ["string", "null"], "readOnly": true, "description": "服务端根据主属 KP 派生"},
+        "section": {"type": ["string", "null"], "readOnly": true, "description": "服务端根据主属 KP 派生"},
+        "main_kp_code": {"type": ["string", "null"], "description": "教师确认的唯一主属知识点"},
         "core_literacies": {"type": "array", "uniqueItems": true, "items": {"enum": ["抽象能力", "运算能力", "几何直观", "推理能力", "模型观念", "数据意识", "应用意识", "创新意识"]}},
         "is_required": {"type": ["boolean", "null"]}
       }

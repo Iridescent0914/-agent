@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.services.literacy_catalog import normalize_literacy_label
-from app.services.html_kp_sections import sections_for_tree
+from app.services.knowledge_catalog import formal_kp, sections_for_tree
 from app.services.answer_units import (
     AUTO_MATCH_TYPES,
     is_canonical_answer_structure,
@@ -60,7 +60,7 @@ def _validate_inputs(
     if len(section_by_code) != len(points):
         raise ValueError("Knowledge tree has duplicate KP codes")
     if any(point.get("section") != section_by_code[point["id"]] for point in points):
-        raise ValueError("Knowledge tree KP section differs from the HTML graph")
+        raise ValueError("Knowledge tree KP section differs from the JSON knowledge catalog")
     if expected_count is not None and len(questions) != expected_count:
         raise ValueError(f"expected {expected_count} question groups, got {len(questions)}")
     qids = [item.get("original_qid") for item in questions]
@@ -73,8 +73,6 @@ def _validate_inputs(
         missing = [
             key
             for key in (
-                "chapter",
-                "grade",
                 "question_type",
                 "difficulty",
                 "question_text",
@@ -148,6 +146,12 @@ def _get_or_create_kp(
     core_competencies: list[str] | None = None,
     curriculum_basis: str | None = None,
 ) -> KnowledgePoint:
+    canonical = formal_kp(code)
+    if (name, chapter_code, chapter_name, section) != (
+        canonical["name"], canonical["chapter_code"],
+        canonical["chapter_name"], canonical["section"],
+    ):
+        raise ValueError(f"KP metadata differs from the formal JSON catalog: {code}")
     instance = session.scalar(select(KnowledgePoint).where(KnowledgePoint.code == code))
     values = {
         "name": name,
@@ -195,12 +199,13 @@ def _import_knowledge_tree(
 
 
 def _question_values(item: dict[str, Any], kp: KnowledgePoint) -> dict[str, Any]:
+    canonical = formal_kp(kp.code)
     return {
         "schema_version": item["schema_version"],
-        "chapter_code": item["chapter"]["id"],
-        "chapter_name": item["chapter"]["name"],
-        "grade": item["grade"],
-        "section": kp.section,
+        "chapter_code": canonical["chapter_code"],
+        "chapter_name": canonical["chapter_name"],
+        "grade": canonical["grade"],
+        "section": canonical["section"],
         "question_type": item["question_type"],
         "difficulty": item["difficulty"],
         "main_knowledge_point_id": kp.id,
@@ -254,19 +259,7 @@ def _import_questions(
         kp_data = item["main_knowledge_point"]
         kp = kp_by_code.get(kp_data["id"])
         if kp is None:
-            kp = _get_or_create_kp(
-                session,
-                stats,
-                code=kp_data["id"],
-                name=kp_data["name"],
-                chapter_code=item["chapter"]["id"],
-                chapter_name=item["chapter"]["name"],
-                section=item["section"],
-                mastery_level=kp_data.get("mastery_level"),
-                core_competencies=kp_data.get("core_competencies", []),
-                curriculum_basis=kp_data.get("curriculum_basis"),
-            )
-            kp_by_code[kp.code] = kp
+            raise ValueError(f"Question KP is absent from the formal knowledge tree: {kp_data['id']}")
 
         question = session.scalar(
             select(Question).where(Question.original_qid == item["original_qid"])

@@ -15,6 +15,7 @@ from app.models import (
     Assignment, Attempt, KnowledgePoint, PaperInstance, PaperInstanceItem,
     Question, Student, Submission,
 )
+from app.services.knowledge_catalog import formal_kp
 from app.services.paper_snapshots import new_item, snapshot_payload
 from app.services.recommendations import (
     history_source_question_ids, history_wrong_answers, recent_completed_assignment_ids,
@@ -174,20 +175,16 @@ def completed_required_source(
 
 
 def complete_personalized_scope(db, template_question, *, competency="运算能力"):
-    """Create an isolated all-star pool so unrelated workflow tests stay focused."""
+    """Add an all-star question pool under another formal KP in the same chapter."""
 
     suffix = uuid4().hex
-    knowledge_point = KnowledgePoint(
-        code=f"test.personalized.{suffix}.kp",
-        name="Complete personalized test pool",
-        chapter_code=template_question.chapter_code,
-        chapter_name=template_question.chapter_name,
-        section=template_question.section,
-        sort_order=999,
-        core_competencies=[competency],
-    )
-    db.add(knowledge_point)
-    db.flush()
+    knowledge_point = next((point for point in db.scalars(
+        select(KnowledgePoint).where(
+            KnowledgePoint.chapter_code == template_question.chapter_code,
+            KnowledgePoint.id != template_question.main_knowledge_point_id,
+        ).order_by(KnowledgePoint.sort_order.desc())
+    ) if competency in point.core_competencies), None)
+    assert knowledge_point is not None
     for difficulty in range(1, 6):
         for copy_no in range(1, 4):
             db.add(Question(
@@ -198,7 +195,7 @@ def complete_personalized_scope(db, template_question, *, competency="运算能�
                 chapter_code=template_question.chapter_code,
                 chapter_name=template_question.chapter_name,
                 grade=template_question.grade,
-                section=template_question.section,
+                section=knowledge_point.section,
                 question_type=template_question.question_type,
                 difficulty=difficulty,
                 main_knowledge_point_id=knowledge_point.id,
@@ -391,7 +388,7 @@ def test_required_and_selected_history_are_combined_per_student(client, db):
     ]
 
 
-def test_history_scope_is_independent_from_current_grade_and_chapter(client, db):
+def test_history_scope_is_independent_from_current_chapter(client, db):
     student = db.scalar(select(Student).where(
         Student.archived_at.is_(None), Student.class_id.is_not(None),
     ).order_by(Student.student_code))
@@ -399,25 +396,21 @@ def test_history_scope_is_independent_from_current_grade_and_chapter(client, db)
         db, student, minimum_group_size=4,
     )
     suffix = uuid4().hex
-    target_chapter_code = f"test.cross.scope.{suffix}"
-    target_knowledge_point = KnowledgePoint(
-        code=f"{target_chapter_code}.kp",
-        name="Cross-scope current knowledge point",
-        chapter_code=target_chapter_code,
-        chapter_name="Cross-scope current chapter",
-        section="Cross-scope section",
-        sort_order=1,
-        core_competencies=["运算能力"],
-    )
-    db.add(target_knowledge_point)
-    db.flush()
+    target_knowledge_point = next((point for point in db.scalars(
+        select(KnowledgePoint).where(
+            KnowledgePoint.chapter_code != source_question.chapter_code,
+        ).order_by(KnowledgePoint.sort_order)
+    ) if "运算能力" in point.core_competencies), None)
+    assert target_knowledge_point is not None
+    target_metadata = formal_kp(target_knowledge_point.code)
+    target_chapter_code = target_metadata["chapter_code"]
     target_question = Question(
         original_qid=f"test.cross.scope.question.{suffix}",
         schema_version=source_question.schema_version,
         chapter_code=target_chapter_code,
-        chapter_name="Cross-scope current chapter",
-        grade="Cross-scope current grade",
-        section="Cross-scope section",
+        chapter_name=target_metadata["chapter_name"],
+        grade=target_metadata["grade"],
+        section=target_metadata["section"],
         question_type=source_question.question_type,
         difficulty=2,
         main_knowledge_point_id=target_knowledge_point.id,

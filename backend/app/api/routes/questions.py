@@ -33,6 +33,7 @@ from app.services.assets import (
     resolve_assets,
     store_teacher_asset,
 )
+from app.services.knowledge_catalog import formal_kp
 from app.services.question_review import (
     QuestionReviewConflict,
     QuestionReviewValidation,
@@ -201,6 +202,16 @@ def update_question(
     )
     if knowledge_point is None:
         raise HTTPException(status_code=422, detail='节内主属 KP 不存在')
+    try:
+        canonical_kp = formal_kp(knowledge_point.code)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail='节内主属 KP 不在正式知识图谱中') from exc
+    if (
+        knowledge_point.name != canonical_kp['name']
+        or knowledge_point.chapter_code != canonical_kp['chapter_code']
+        or knowledge_point.chapter_name != canonical_kp['chapter_name']
+    ):
+        raise HTTPException(status_code=409, detail='数据库 KP 与正式知识图谱不一致，请先修复目录')
     original_qid = request.original_qid or question.original_qid
     duplicate = db.scalar(
         select(Question.id).where(
@@ -220,10 +231,10 @@ def update_question(
     before_revision = question.review_revision
     now = datetime.now(timezone.utc)
     question.original_qid = original_qid
-    question.chapter_code = knowledge_point.chapter_code
-    question.chapter_name = knowledge_point.chapter_name
-    question.grade = request.grade
-    question.section = request.section
+    question.chapter_code = canonical_kp['chapter_code']
+    question.chapter_name = canonical_kp['chapter_name']
+    question.grade = canonical_kp['grade']
+    question.section = canonical_kp['section']
     question.question_type = request.question_type
     question.difficulty = request.difficulty
     question.main_knowledge_point_id = knowledge_point.id
@@ -408,19 +419,6 @@ def question_filter_catalog(db: Session = Depends(get_db)) -> list[QuestionCatal
             KnowledgePoint.name,
         )
     ).unique().all()
-    kp_section_rows = db.execute(
-        select(
-            Question.main_knowledge_point_id,
-            Question.section,
-            Question.source_question_number,
-        )
-        .where(Question.archived_at.is_(None))
-        .order_by(Question.main_knowledge_point_id, Question.source_question_number)
-    ).all()
-    section_by_kp: dict[uuid.UUID, str] = {}
-    for point_id, section, _source_number in kp_section_rows:
-        if point_id not in section_by_kp and section:
-            section_by_kp[point_id] = section
     chapters: dict[str, QuestionCatalogChapter] = {}
     for knowledge_point in knowledge_points:
         chapter = chapters.setdefault(
@@ -434,7 +432,8 @@ def question_filter_catalog(db: Session = Depends(get_db)) -> list[QuestionCatal
                 core_literacies=[],
             ),
         )
-        formal_section = knowledge_point.section or section_by_kp.get(knowledge_point.id)
+        canonical_kp = formal_kp(knowledge_point.code)
+        formal_section = canonical_kp['section']
         chapter.knowledge_points.append(QuestionCatalogKnowledgePoint(
             code=knowledge_point.code,
             name=knowledge_point.name,

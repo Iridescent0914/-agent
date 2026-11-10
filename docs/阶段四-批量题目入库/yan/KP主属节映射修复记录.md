@@ -1,4 +1,4 @@
-# KP—主属节映射修复记录
+# KP—主属节映射修复记录（含题目标签约束）
 
 日期：2026-11-10
 
@@ -8,27 +8,28 @@
 
 按 HTML 映射、两份知识树的 KP 名称及顺序、`data/interim` 中 180 道现有题的节字段交叉核对，21 个 KP 的映射数量和内容均一致。特别是“有理数的运算律及其简化运算的作用”属于 `1.2 有理数的加法与减法`，按 HTML 原映射写入，不按 KP code 或题意另行猜节。
 
+原设计允许题目分别填写主属 KP 和主属节，容易出现两者冲突。现在**题目只选择主属 KP**；章、年级、主属节由该 KP 在正式图谱中的记录自动确定。数据库的 `questions.chapter_code/chapter_name/grade/section` 仍保留供现有筛选、画像和快照使用，但只是派生字段，不是教师可独立编辑的标签。HTML 是图谱维护来源，运行时读取由 HTML 导出的 `data/knowledge_graph_catalog.json`，不要求后端打开 HTML。
+
 ## 修复内容
 
-1. 两份种子知识树逐个 KP 增加正式节名，共 21 条。知识树生成脚本和种子导入器直接读取 HTML 映射，校验章节、KP 名称及顺序。知识树若与 HTML 不一致则停止导入；题目原始节名若不一致，入库时按其主属 KP 在 HTML 中的节名归一。
-2. 增加 Alembic `0026_backfill_pilot_kp_sections.py`：对**已有数据库**中这 21 个 KP 的节字段按 HTML 映射写入，空值和非空冲突值均覆盖。数据库尚未导入的 KP 不由迁移创建，后续正常种子导入会写入节名。
-3. 题库目录与画像目录优先使用 `KnowledgePoint.section`；只有没有正式节名的旧 KP 才回退到现有题目的节字段。题库目录的章节节列表也从正式 KP 汇总，使尚无题目的正式 KP 所属节可以显示。
-4. 修正 S0 标签快照生成脚本在文档目录移动后的仓库路径，并增加“知识树节名必须与 HTML 一致”的断言；重新生成标签目录快照。阶段四计划与 S0 契约同步更新。迁移只修改 `knowledge_points.section`，不重导题目，也不修改题干、答案、作业或历史快照。
+1. 两份种子知识树逐个 KP 增加正式节名，共 21 条。导出脚本从 HTML 生成全量 JSON；知识树生成脚本和种子导入器读取该 JSON，校验章节、KP 名称、顺序和已有元数据。知识树若与 JSON 不一致则停止导入；题目原始章、年级、节即使写错，种子导入时也统一按主属 KP 派生。
+2. `0026_backfill_pilot_kp_sections.py` 曾补齐前两章 21 个 KP 的节名。新增 `0027_enforce_graph_kp_question_labels.py`：迁移时先锁定并检查数据库全部 KP；只要有 code 不在正式 JSON 中就**报错并停止迁移**，绝不静默保留、删除或猜测替换旧 KP。通过检查后，覆盖现有 KP 的正式元数据，再把全部现有题目的章、年级、节改成其主属 KP 对应的值，包括已归档题目。题干、答案、作业和既有快照不改。
+3. 种子导入不再遇到未知 KP 就自动创建占位知识点；题库编辑接口拒绝 JSON 外 KP，且只接收教师选定的主属 KP，忽略旧客户端传来的章、年级、节。前端编辑器把年级和主属节显示为只读派生值。题库目录和画像目录也必须从正式 JSON 找 KP，移除了对旧 KP 节字段、题目节字段的回退。
+4. 全量 JSON 包含 41 章、345 个 HTML KP；目前只有前两章 21 个 KP 已分配正式 code 并导入数据库，其余 324 个保留在目录中但不可用于正式入库。S0 局部快照已移除。后续章节开放时，先为其 KP 分配稳定 code、扩展种子树并导入，再允许题目选择。
 
 ## 验证结果
 
-- 本地数据库迁移从 `0025` 升级到 `0026 (head)`，升级后按 code 与两份知识树逐条对比：**21/21 一致，0 条缺失或冲突**。
-- `pytest -q tests/test_knowledge_point_sections.py tests/test_seed_contract.py tests/test_catalog_management.py tests/test_profile_api.py`：**23 passed**。测试覆盖 HTML、知识树、迁移常量和 180 道现有题的一致性；题目节名归一、知识树偏离 HTML 时停止导入、迁移覆盖旧节名，以及目录和画像接口。错误题目节的目录测试只在事务内临时修改数据并回滚。
-- `pytest -q tests/test_catalog_management.py tests/test_profile_api.py`：**14 passed**，现有题库目录/编辑和画像 API 回归通过。
-- S0 生成脚本通过 HTML、知识树和 180 道题交叉校验，生成 2 章、21 KP 的标签快照；PDF 评测页级清单仍为 7 文件、209 页。
-- `git diff --check` 通过。
+- 本地数据库已升级到 `0027 (head)`。全库检查：21 个已有 KP 均在正式 JSON 中，**图谱外旧 KP 为 0**；所有现有题目的章、年级、节都与其主属 KP 的 JSON 记录一致。`0027` 对其他数据库也会执行相同检查，遇到旧 KP 即中断并列出 code。
+- `scripts/export_knowledge_graph_catalog.py --check` 对照 HTML 和前两章种子树检查 41 章、345 KP 及正式 21 个 KP 的名称、节、素养等元数据；不会依赖已移除的 S0 局部快照。
+- 后端 `pytest -q`：**235 passed**；覆盖旧 KP 迁移阻断、种子入库时派生题目标签、题库编辑时忽略手填节/年级、目录和画像读取正式 KP，以及现有题目一致性。
+- 前端 `npm run build` 通过；`git diff --check` 通过。
 
 ## 部署与边界
 
-已有环境执行 `alembic upgrade head` 即可修复现存 KP；仓库的 Compose 后端启动命令也会执行迁移。镜像和 Compose 都已提供原始 HTML 文件，更新后端需要重建镜像或重建容器。新环境在迁移后运行 `python -m scripts.seed_database --chapter all`，由已补字段的知识树创建完整 KP。无需为了本次修复在运行中的环境重导 180 道题。
+已有环境执行 `alembic upgrade head`，由 `0027` 检查所有 KP 并归一题目派生字段；新环境迁移后再运行 `python -m scripts.seed_database --chapter all`。运行时 JSON 位于已挂载的 `data` 目录；HTML 只在更新图谱目录时由导出脚本读取。迁移不重导 180 道题。
 
-`0026` 的 downgrade 不清除节名，因为无法可靠区分迁移补入与之后正常种子导入或人工维护的值。当前修复仅覆盖已有正式种子树的前两章；其他章节进入题库前，需按 HTML 的 `SECTION_BY_KP` 扩展其正式知识树和数据库目录。
+如果某环境已经有图谱外旧 KP，迁移会失败并保持原事务不落库。须先人工核对这些 KP、其题目及学生历史引用，制定明确的映射或数据修复迁移，再重新执行；不能把不明旧 KP 自动删除或按名称猜配。正式 JSON 尚未分配 code 的 324 个 HTML KP 也不能作为已导入 KP 使用。日后若调整 HTML 中已入库 KP 的归属，须重新导出 JSON 并增加数据迁移，同步已存题目的派生字段；仅替换 JSON 不会自动重写数据库。`0026`、`0027` 的 downgrade 不尝试还原先前不可靠的节或题目标签值。
 
 ## 协作同步
 
-本地数据库已升级至 `0026`，前两章 21/21 个 KP 与 HTML 一致。**合作者的工作区和数据库没有自动更新**：目前这些改动仍在本地，尚未提交或推送。代码进入共享仓库后，合作者拉取改动，在 `code` 目录运行 `docker compose up -d --build backend`；后端启动命令会执行 `alembic upgrade head`。若不使用 Compose，则在其后端环境手动执行迁移。已记录为 `0026` 的数据库不会因为迁移脚本后续变化再次执行 `0026`；若该环境已有 `0026` 且存有冲突节名，需要另行校正，不能只重启服务。
+**合作者的工作区和数据库没有自动更新**：目前这些改动仍在本地，尚未提交或推送。共享代码后，合作者拉取改动，在 `code` 目录运行 `docker compose up -d`、`docker compose exec backend python -m alembic upgrade head` 和 `docker compose exec backend python -m scripts.seed_database --chapter all`。Compose 会挂载后端代码和 `data` 目录；本次没有修改后端依赖，不需仅为 JSON 重建镜像。已有 `0026` 的环境会继续执行新的 `0027`；如果其中有旧 KP，按上面的失败处理，不应跳过迁移。

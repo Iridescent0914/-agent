@@ -19,6 +19,7 @@ from app.schemas.profile import (
 )
 from app.schemas.students import StudentAttemptOut
 from app.services.assets import resolve_assets
+from app.services.knowledge_catalog import formal_kp
 from app.services.mastery import (
     Evidence, MasteryResult, RECENT_WINDOW_SIZE, RULE_VERSION, evidence_problem, replay,
 )
@@ -61,9 +62,6 @@ class ProfileContext:
 def knowledge_point_catalog(
     db: Session, chapter_code: str | None = None, grade: str | None = None
 ) -> list[KnowledgePointOut]:
-    active_filters = [Question.archived_at.is_(None)]
-    if grade is not None:
-        active_filters.append(Question.grade == grade)
     active_chapters = (
         select(Question.chapter_code)
         # Archiving the last active question must not hide past evidence.
@@ -122,15 +120,6 @@ def knowledge_point_catalog(
         query = query.where(KnowledgePoint.chapter_code == chapter_code)
     if grade is not None:
         query = query.where(active_chapters.c.chapter_code.is_not(None))
-    section_rows = db.execute(
-        select(Question.main_knowledge_point_id, Question.section)
-        .where(*active_filters)
-        .order_by(Question.main_knowledge_point_id, Question.source_question_number)
-    ).all()
-    section_by_id: dict[UUID, str] = {}
-    for point_id, section in section_rows:
-        if point_id not in section_by_id and section:
-            section_by_id[point_id] = section
     return [
         KnowledgePointOut(
             id=knowledge_point.id,
@@ -138,7 +127,8 @@ def knowledge_point_catalog(
             name=knowledge_point.name,
             chapter_code=knowledge_point.chapter_code,
             chapter_name=knowledge_point.chapter_name,
-            section=knowledge_point.section or section_by_id.get(knowledge_point.id),
+            grade=formal_kp(knowledge_point.code)["grade"],
+            section=formal_kp(knowledge_point.code)["section"],
             available_question_count=count or 0,
             required_available_question_count=required_count or 0,
         )

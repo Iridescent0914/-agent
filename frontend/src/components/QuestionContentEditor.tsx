@@ -60,6 +60,8 @@ export function QuestionContentEditor({
   const [chapters, setChapters] = useState<QuestionCatalogChapter[]>([])
   const questionType = Form.useWatch('question_type', form)
   const chapterCode = Form.useWatch('chapter_code', form)
+  const selectedKpCode = Form.useWatch('main_knowledge_point_code', form)
+  const selectedKp = knowledgePoints.find((point) => point.code === selectedKpCode)
 
   useEffect(() => {
     apiGet<QuestionCatalogChapter[]>('/questions/catalog')
@@ -80,8 +82,6 @@ export function QuestionContentEditor({
       chapter_code: question.chapter.code,
       question_type: question.question_type === 'unknown' ? 'fill_blank' : question.question_type,
       difficulty: question.difficulty,
-      grade: question.grade,
-      section: question.section,
       question_text: editableText(question.question_text),
       options_text: optionsText(question.options),
       reference_answer_raw: question.reference_answer_raw,
@@ -178,10 +178,10 @@ export function QuestionContentEditor({
         <Row gutter={16}>
           <Col xs={24} md={8}><Form.Item name="chapter_code" label="章节" rules={[{ required: true }]}><Select options={chapters.map((chapter) => ({ value: chapter.code, label: chapter.name }))} onChange={() => form.setFieldsValue({ main_knowledge_point_code: undefined })} /></Form.Item></Col>
           <Col xs={24} md={8}><Form.Item name="main_knowledge_point_code" label="节内主属 KP" rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={knowledgePoints.map((point) => ({ value: point.code, label: `${point.name} · ${point.code}` }))} /></Form.Item></Col>
-          <Col xs={24} md={8}><Form.Item name="section" label="主属节" rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item></Col>
+          <Col xs={24} md={8}><Form.Item label="主属节（由 KP 自动确定）"><Input value={selectedKp?.section || '请选择主属 KP'} disabled /></Form.Item></Col>
         </Row>
         <Row gutter={16}>
-          <Col xs={24} md={8}><Form.Item name="grade" label="年级" rules={[{ required: true, whitespace: true }]}><Input maxLength={80} /></Form.Item></Col>
+          <Col xs={24} md={8}><Form.Item label="年级（由 KP 自动确定）"><Input value={selectedKp?.grade || '请选择主属 KP'} disabled /></Form.Item></Col>
           <Col xs={24} md={10}><Form.Item name="core_literacy" label="核心素养" rules={[{ required: true, whitespace: true }]}><Input maxLength={255} /></Form.Item></Col>
           <Col xs={24} md={6}><Form.Item name="is_required" label="是否为必做题" rules={[{ required: true }]}><Select options={[{ value: true, label: '是' }, { value: false, label: '否' }]} /></Form.Item></Col>
         </Row>

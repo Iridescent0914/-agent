@@ -31,7 +31,7 @@ from app.services.answer_units import (  # noqa: E402
     normalize_answer_structure,
 )
 from app.services.question_pool_corrections import apply_pool_corrections  # noqa: E402
-from app.services.html_kp_sections import sections_for_tree  # noqa: E402
+from app.services.knowledge_catalog import sections_for_tree  # noqa: E402
 
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"

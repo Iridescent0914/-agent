@@ -103,6 +103,7 @@ def test_teacher_can_review_edit_and_archive_existing_question(client, db, catal
         'question_type': 'fill_blank',
         'difficulty': 4,
         'section': '教师编辑测试',
+        'grade': '错误年级',
         'question_text': '计算：1+2=____。',
         'reference_answer_raw': '3',
         'main_knowledge_point_code': alternative_knowledge_point.code,
@@ -120,6 +121,8 @@ def test_teacher_can_review_edit_and_archive_existing_question(client, db, catal
     assert edited['grading_readiness'] == 'raw_answer_only'
     assert edited['correct_answer'] is None
     assert edited['main_knowledge_point']['code'] == alternative_knowledge_point.code
+    assert edited['section'] == alternative_knowledge_point.section
+    assert edited['grade'] == '六年级上册'
     assert edited['estimated_score_rate'] == '65%'
     assert edited['review_history'][-1]['type'] == 'content_updated'
 

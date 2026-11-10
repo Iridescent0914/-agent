@@ -15,6 +15,7 @@ from app.models import (
     StudentLiteracyScore, StudentMastery, Submission,
 )
 from app.services.student_profile import load_context
+from app.services.profile_refresh import refresh_student_profiles
 
 
 @pytest.fixture
@@ -491,6 +492,7 @@ def test_reopened_grades_cannot_bypass_withdrawal_guard(client, db):
 
 def test_superseding_submitted_paper_removes_old_evidence_from_current_profile(client, db):
     student, paper = _published_paper(client, db)
+    refresh_student_profiles(db, student.id)
     _, before = _profile_state(client, student.id)
     submitted = client.post(
         f"/api/v1/paper-instances/{paper['id']}/submissions/manual",

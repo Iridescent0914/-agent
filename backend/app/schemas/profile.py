@@ -22,6 +22,7 @@ class KnowledgePointOut(BaseModel):
     name: str
     chapter_code: str
     chapter_name: str = ""
+    grade: str | None = None
     section: str | None = None
     available_question_count: int
     required_available_question_count: int = 0

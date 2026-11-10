@@ -7,6 +7,7 @@ import runpy
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
+from typing import get_args
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,15 +16,26 @@ from sqlalchemy import select
 from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import KnowledgePoint, Question
-from app.services.html_kp_sections import sections_for_tree
+from app.schemas.questions import QuestionUpdateRequest
+from app.services.knowledge_catalog import formal_kps_by_code, load_catalog, sections_for_tree
+from app.services.literacy_catalog import LITERACY_DIMENSIONS
 from app.services.seed_importer import _question_values, _validate_inputs
 
 
 CODE_ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = CODE_ROOT / "backend/alembic/versions/0026_backfill_pilot_kp_sections.py"
+STRICT_MIGRATION = CODE_ROOT / "backend/alembic/versions/0027_enforce_graph_kp_question_labels.py"
 
 
 def test_pilot_kp_sections_match_migration_and_questions() -> None:
+    catalog = load_catalog()
+    assert len(catalog["chapters"]) == 41
+    assert sum(len(chapter["knowledge_points"]) for chapter in catalog["chapters"]) == 345
+    assert sum(point["code"] is not None for chapter in catalog["chapters"] for point in chapter["knowledge_points"]) == 21
+    assert catalog["formal_question_labels"]["question_types"] == list(
+        get_args(QuestionUpdateRequest.model_fields["question_type"].annotation)
+    )
+    assert catalog["formal_question_labels"]["core_literacies"] == list(LITERACY_DIMENSIONS)
     migration_values = runpy.run_path(str(MIGRATION))["SECTIONS_BY_CODE"]
     expected = {}
     question_count = 0
@@ -46,6 +58,28 @@ def test_pilot_kp_sections_match_migration_and_questions() -> None:
     assert question_count == 180
 
 
+def test_database_contains_only_formal_kps_and_derived_question_labels() -> None:
+    canonical = formal_kps_by_code()
+    with SessionLocal() as session:
+        points = session.scalars(select(KnowledgePoint)).all()
+        for point in points:
+            expected = canonical[point.code]
+            assert (point.name, point.chapter_code, point.chapter_name, point.section) == (
+                expected["name"], expected["chapter_code"],
+                expected["chapter_name"], expected["section"],
+            )
+        for question, point in session.execute(
+            select(Question, KnowledgePoint).join(
+                KnowledgePoint, Question.main_knowledge_point_id == KnowledgePoint.id
+            )
+        ):
+            expected = canonical[point.code]
+            assert (question.chapter_code, question.chapter_name, question.grade, question.section) == (
+                expected["chapter_code"], expected["chapter_name"],
+                expected["grade"], expected["section"],
+            )
+
+
 def test_seed_import_uses_html_section_when_question_section_drifts() -> None:
     tree = json.loads(
         (CODE_ROOT / "data/seed/rational_knowledge_tree.json").read_text(encoding="utf-8")
@@ -56,7 +90,11 @@ def test_seed_import_uses_html_section_when_question_section_drifts() -> None:
     broken = deepcopy(question)
     broken["section"] = tree["sections"][1]["name"]
     _validate_inputs([broken], tree, require_machine_ready=False)
-    kp = SimpleNamespace(id=1, section=sections_for_tree(tree)[question["main_knowledge_point"]["id"]])
+    kp = SimpleNamespace(
+        id=1,
+        code=question["main_knowledge_point"]["id"],
+        section=sections_for_tree(tree)[question["main_knowledge_point"]["id"]],
+    )
     assert _question_values(broken, kp)["section"] == kp.section
 
 
@@ -68,7 +106,7 @@ def test_seed_import_rejects_tree_section_drift_from_html() -> None:
         (CODE_ROOT / "data/seed/rational_questions.json").read_text(encoding="utf-8")
     )[0]
     tree["knowledge_points"][0]["section"] = tree["sections"][1]["name"]
-    with pytest.raises(ValueError, match="differs from the HTML graph"):
+    with pytest.raises(ValueError, match="differs from the JSON knowledge catalog"):
         _validate_inputs([question], tree, require_machine_ready=False)
 
 
@@ -89,6 +127,19 @@ def test_migration_replaces_conflicting_database_section(monkeypatch: pytest.Mon
     monkeypatch.setattr(migration["op"], "get_bind", lambda: connection)
     migration["upgrade"]()
     assert connection.updated == [{"section": canonical, "code": code}]
+
+
+def test_strict_migration_rejects_unmapped_old_kp(monkeypatch: pytest.MonkeyPatch) -> None:
+    migration = runpy.run_path(str(STRICT_MIGRATION))
+
+    class FakeConnection:
+        def execute(self, statement):
+            assert "SELECT id, code FROM knowledge_points" in str(statement)
+            return SimpleNamespace(all=lambda: [("old-id", "legacy.unmapped.kp")])
+
+    monkeypatch.setattr(migration["op"], "get_bind", lambda: FakeConnection())
+    with pytest.raises(RuntimeError, match="legacy.unmapped.kp"):
+        migration["upgrade"]()
 
 
 def test_question_catalog_uses_formal_kp_sections() -> None:
@@ -127,7 +178,9 @@ def test_question_section_cannot_override_formal_catalog_section() -> None:
         if pair is None:
             pytest.skip("pilot questions are not seeded in this database")
         question, point = pair
+        canonical_section = formal_kps_by_code()[point.code]["section"]
         question.section = "临时错误节"
+        point.section = "临时错误KP节"
         session.flush()
         app.dependency_overrides[get_db] = lambda: session
         try:
@@ -141,8 +194,9 @@ def test_question_section_cannot_override_formal_catalog_section() -> None:
                 item for item in chapter["knowledge_points"]
                 if item["code"] == point.code
             )
-            assert catalog_point["section"] == point.section
+            assert catalog_point["section"] == canonical_section
             assert "临时错误节" not in chapter["sections"]
+            assert "临时错误KP节" not in chapter["sections"]
         finally:
             app.dependency_overrides.pop(get_db, None)
             session.rollback()

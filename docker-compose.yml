@@ -53,7 +53,6 @@ services:
       - ./backend:/app/backend
       - ./data:/app/data
       - ./scripts:/app/scripts:ro
-      - ./上海市五四制初中数学知识图谱.html:/app/上海市五四制初中数学知识图谱.html:ro
     depends_on:
       postgres:
         condition: service_healthy

@@ -7,6 +7,7 @@ export interface KnowledgePoint {
   name: string
   chapter_code: string
   chapter_name: string
+  grade?: string | null
   section?: string | null
   available_question_count: number
   required_available_question_count: number
