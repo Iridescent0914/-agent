@@ -15,7 +15,7 @@ from pypdf import PdfReader
 
 
 HERE = Path(__file__).resolve().parent
-CODE_ROOT = HERE.parents[2]
+CODE_ROOT = HERE.parents[3]
 GRAPH = CODE_ROOT / "上海市五四制初中数学知识图谱.html"
 PDF_ROOT = CODE_ROOT.parent / "校本" / "题"
 STEMS = ("rational", "expr")
@@ -59,6 +59,7 @@ def main() -> None:
         for kp, section_index in zip(kps, indexes):
             assert kp["name"] == html_kp_names[name_offset], f"{stem}: KP order/name mismatch"
             assert 0 <= section_index < len(sections), f"{stem}: invalid section index"
+            assert kp["section"] == sections[section_index]["name"], f"{stem}: KP section drift"
             catalog_kps.append(
                 {
                     "code": kp["id"],

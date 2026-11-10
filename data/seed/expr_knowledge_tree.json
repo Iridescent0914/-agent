@@ -36,6 +36,7 @@
     {
       "id": "math.g6.expr.kp.01_literal_relations",
       "name": "用字母表示数与数量关系",
+      "section": "2.1 用字母表示数",
       "mastery_level": "理解",
       "core_competencies": [
         "抽象能力"
@@ -46,6 +47,7 @@
     {
       "id": "math.g6.expr.kp.02_expression_concept",
       "name": "代数式的概念",
+      "section": "2.2 代数式与代数式的值",
       "mastery_level": "理解",
       "core_competencies": [
         "抽象能力"
@@ -56,6 +58,7 @@
     {
       "id": "math.g6.expr.kp.03_expression_quantity",
       "name": "用代数式表示具体问题中的简单数量关系",
+      "section": "2.2 代数式与代数式的值",
       "mastery_level": "掌握",
       "core_competencies": [
         "抽象能力",
@@ -67,6 +70,7 @@
     {
       "id": "math.g6.expr.kp.04_expression_value",
       "name": "求代数式的值",
+      "section": "2.2 代数式与代数式的值",
       "mastery_level": "掌握",
       "core_competencies": [
         "运算能力"
@@ -77,6 +81,7 @@
     {
       "id": "math.g6.expr.kp.05_linear_term",
       "name": "一次式及其项、系数、常数项",
+      "section": "2.3 一次式",
       "mastery_level": "理解",
       "core_competencies": [
         "抽象能力"
@@ -87,6 +92,7 @@
     {
       "id": "math.g6.expr.kp.06_combine_like_terms",
       "name": "合并同类项",
+      "section": "2.3 一次式",
       "mastery_level": "掌握",
       "core_competencies": [
         "运算能力",
@@ -98,6 +104,7 @@
     {
       "id": "math.g6.expr.kp.07_remove_parentheses",
       "name": "去括号法则（数与一次式相乘）",
+      "section": "2.3 一次式",
       "mastery_level": "掌握",
       "core_competencies": [
         "运算能力",
@@ -109,6 +116,7 @@
     {
       "id": "math.g6.expr.kp.08_divisibility_patterns",
       "name": "能被 3、5、9 整除的数的特征（拓展）",
+      "section": "阅读材料：能被 3、5、9 整除的数的特征",
       "mastery_level": "了解",
       "core_competencies": [
         "推理能力",

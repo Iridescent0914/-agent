@@ -434,23 +434,16 @@ def question_filter_catalog(db: Session = Depends(get_db)) -> list[QuestionCatal
                 core_literacies=[],
             ),
         )
+        formal_section = knowledge_point.section or section_by_kp.get(knowledge_point.id)
         chapter.knowledge_points.append(QuestionCatalogKnowledgePoint(
             code=knowledge_point.code,
             name=knowledge_point.name,
-            section=section_by_kp.get(knowledge_point.id) or knowledge_point.section,
+            section=formal_section,
             mastery_level=knowledge_point.mastery_level,
             core_competencies=knowledge_point.core_competencies,
         ))
-    section_rows = db.execute(
-        select(Question.chapter_code, Question.section)
-        .where(Question.archived_at.is_(None))
-        .distinct()
-        .order_by(Question.chapter_code, Question.section)
-    ).all()
-    for chapter_code, section in section_rows:
-        chapter = chapters.get(chapter_code)
-        if chapter is not None and section not in chapter.sections:
-            chapter.sections.append(section)
+        if formal_section and formal_section not in chapter.sections:
+            chapter.sections.append(formal_section)
     metadata_rows = db.execute(
         select(Question.chapter_code, Question.grade, Question.core_literacy)
         .where(Question.archived_at.is_(None))

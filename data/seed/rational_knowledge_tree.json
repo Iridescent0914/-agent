@@ -46,6 +46,7 @@
     {
       "id": "math.g6.rational.kp.01_negative_quantity",
       "name": "负数与用正负数表示相反意义的量",
+      "section": "1.1 有理数的引入",
       "mastery_level": "掌握",
       "core_competencies": [
         "抽象能力",
@@ -57,6 +58,7 @@
     {
       "id": "math.g6.rational.kp.02_meaning_classification",
       "name": "有理数的意义与分类（整数、分数）",
+      "section": "1.1 有理数的引入",
       "mastery_level": "理解",
       "core_competencies": [
         "抽象能力"
@@ -67,6 +69,7 @@
     {
       "id": "math.g6.rational.kp.03_number_line",
       "name": "数轴与用数轴上的点表示有理数",
+      "section": "1.1 有理数的引入",
       "mastery_level": "掌握",
       "core_competencies": [
         "抽象能力",
@@ -78,6 +81,7 @@
     {
       "id": "math.g6.rational.kp.04_opposite_number",
       "name": "相反数的意义与求法",
+      "section": "1.1 有理数的引入",
       "mastery_level": "掌握",
       "core_competencies": [
         "抽象能力"
@@ -88,6 +92,7 @@
     {
       "id": "math.g6.rational.kp.05_absolute_value",
       "name": "绝对值的意义与求法",
+      "section": "1.1 有理数的引入",
       "mastery_level": "掌握",
       "core_competencies": [
         "抽象能力",
@@ -99,6 +104,7 @@
     {
       "id": "math.g6.rational.kp.06_comparison",
       "name": "比较有理数的大小",
+      "section": "1.1 有理数的引入",
       "mastery_level": "掌握",
       "core_competencies": [
         "抽象能力",
@@ -110,6 +116,7 @@
     {
       "id": "math.g6.rational.kp.07_add_subtract",
       "name": "有理数的加法法则与减法法则",
+      "section": "1.2 有理数的加法与减法",
       "mastery_level": "掌握",
       "core_competencies": [
         "运算能力",
@@ -121,6 +128,7 @@
     {
       "id": "math.g6.rational.kp.08_multiply_divide",
       "name": "有理数的乘法法则与除法法则",
+      "section": "1.3 有理数的乘法与除法",
       "mastery_level": "掌握",
       "core_competencies": [
         "运算能力",
@@ -132,6 +140,7 @@
     {
       "id": "math.g6.rational.kp.09_operation_laws",
       "name": "有理数的运算律及其简化运算的作用",
+      "section": "1.2 有理数的加法与减法",
       "mastery_level": "掌握",
       "core_competencies": [
         "运算能力",
@@ -143,6 +152,7 @@
     {
       "id": "math.g6.rational.kp.10_powers",
       "name": "有理数的乘方",
+      "section": "1.4 有理数的乘方",
       "mastery_level": "理解",
       "core_competencies": [
         "抽象能力",
@@ -154,6 +164,7 @@
     {
       "id": "math.g6.rational.kp.11_mixed_operations",
       "name": "有理数的混合运算（以三步以内为主）",
+      "section": "1.5 有理数的混合运算",
       "mastery_level": "掌握",
       "core_competencies": [
         "运算能力"
@@ -164,6 +175,7 @@
     {
       "id": "math.g6.rational.kp.12_applications",
       "name": "用有理数的运算解决简单实际问题",
+      "section": "1.5 有理数的混合运算",
       "mastery_level": "运用",
       "core_competencies": [
         "模型观念",
@@ -175,6 +187,7 @@
     {
       "id": "math.g6.rational.kp.13_negative_number_culture",
       "name": "古今对负数的认识（数学文化）",
+      "section": "阅读材料：我国古代对负数的认识",
       "mastery_level": "了解",
       "core_competencies": [
         "创新意识",

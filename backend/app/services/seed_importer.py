@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.services.literacy_catalog import normalize_literacy_label
+from app.services.html_kp_sections import sections_for_tree
 from app.services.answer_units import (
     AUTO_MATCH_TYPES,
     is_canonical_answer_structure,
@@ -49,12 +50,26 @@ def _validate_inputs(
     expected_count: int | None = None,
     require_machine_ready: bool = True,
 ) -> None:
+    section_names = {section["name"] for section in tree.get("sections", [])}
+    if not section_names:
+        raise ValueError("Knowledge tree has no sections")
+    points = tree.get("knowledge_points", [])
+    if not points:
+        raise ValueError("Knowledge tree has no knowledge_points")
+    section_by_code = sections_for_tree(tree)
+    if len(section_by_code) != len(points):
+        raise ValueError("Knowledge tree has duplicate KP codes")
+    if any(point.get("section") != section_by_code[point["id"]] for point in points):
+        raise ValueError("Knowledge tree KP section differs from the HTML graph")
     if expected_count is not None and len(questions) != expected_count:
         raise ValueError(f"expected {expected_count} question groups, got {len(questions)}")
     qids = [item.get("original_qid") for item in questions]
     if None in qids or len(set(qids)) != len(qids):
         raise ValueError("Seed original_qid values must be present and unique")
     for item in questions:
+        kp_code = (item.get("main_knowledge_point") or {}).get("id")
+        if kp_code not in section_by_code:
+            raise ValueError(f"{item.get('original_qid')} has an unknown formal KP")
         missing = [
             key
             for key in (
@@ -108,8 +123,6 @@ def _validate_inputs(
                 ) from exc
         if item.get("source_review_status") != "reviewed":
             raise ValueError(f"{item['original_qid']} is not source-reviewed")
-    if not tree.get("knowledge_points"):
-        raise ValueError("Knowledge tree has no knowledge_points")
 
 
 def _set_fields(instance: object, values: dict[str, Any]) -> bool:
@@ -171,7 +184,7 @@ def _import_knowledge_tree(
             name=kp_data["name"],
             chapter_code=chapter["id"],
             chapter_name=chapter["name"],
-            section=kp_data.get("section"),
+            section=kp_data["section"],
             sort_order=kp_data.get("order_no", 0),
             mastery_level=kp_data.get("mastery_level"),
             core_competencies=kp_data.get("core_competencies", []),
@@ -187,7 +200,7 @@ def _question_values(item: dict[str, Any], kp: KnowledgePoint) -> dict[str, Any]
         "chapter_code": item["chapter"]["id"],
         "chapter_name": item["chapter"]["name"],
         "grade": item["grade"],
-        "section": item["section"],
+        "section": kp.section,
         "question_type": item["question_type"],
         "difficulty": item["difficulty"],
         "main_knowledge_point_id": kp.id,

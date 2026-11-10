@@ -138,7 +138,7 @@ def knowledge_point_catalog(
             name=knowledge_point.name,
             chapter_code=knowledge_point.chapter_code,
             chapter_name=knowledge_point.chapter_name,
-            section=section_by_id.get(knowledge_point.id) or knowledge_point.section,
+            section=knowledge_point.section or section_by_id.get(knowledge_point.id),
             available_question_count=count or 0,
             required_available_question_count=required_count or 0,
         )

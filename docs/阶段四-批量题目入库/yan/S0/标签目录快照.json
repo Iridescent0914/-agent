@@ -3,8 +3,8 @@
   "status": "pilot_snapshot_not_runtime_database",
   "source_sha256": {
     "上海市五四制初中数学知识图谱.html": "33a7f9f08dd902ae8d2b6cd821bbfe8e45477e90b02c614027ee7247767d3dfe",
-    "data\\seed\\rational_knowledge_tree.json": "fc05c63c54a358d1293521f045ac3225cd5038073f719b808b3aa793a59211ef",
-    "data\\seed\\expr_knowledge_tree.json": "c12c6ccaf031f4c4655b1c5b8f3f0f1bba8cd479da9fa2bc12aa5b30e1314b33"
+    "data\\seed\\rational_knowledge_tree.json": "e5c4b6417f73f25bce558e1f05dafe4f1cd7c7977d01c95ad76fa5658267a1cf",
+    "data\\seed\\expr_knowledge_tree.json": "aed5a86210acd9a45730ea1b359eb56fd1d87d582fcea20d01d3bb476788e78b"
   },
   "chapters": [
     {

@@ -31,6 +31,7 @@ from app.services.answer_units import (  # noqa: E402
     normalize_answer_structure,
 )
 from app.services.question_pool_corrections import apply_pool_corrections  # noqa: E402
+from app.services.html_kp_sections import sections_for_tree  # noqa: E402
 
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -765,22 +766,26 @@ def build_knowledge_tree(records: Iterable[dict]) -> dict:
             "curriculum_basis": spec["curriculum_basis"],
             "order_no": spec["order_no"],
         })
-    return {
+    tree = {
         "schema_version": "2.0",
         "taxonomy_source": TAXONOMY_SOURCE,
         "grade": next((record["grade"] for record in records if record.get("grade")), "六年级上册"),
         "chapter": {"id": CHAPTER_CODE, "name": CHAPTER_NAME},
         "sections": SECTIONS,
         "semantic_mapping": {
-            "sections": "新版 Word 主属节",
+            "sections": "HTML SECTION_BY_KP 主属节",
             "knowledge_points": "新版 Word 节内主属 KP",
         },
         "knowledge_points": knowledge_points,
         "notes": [
-            "题目的主属节和节内主属 KP 逐题继承新版校本审核 DOCX，并作为唯一知识分类来源。",
-            "节与知识点采用上海五四制知识图谱的稳定 ID；Word 提供每道题的具体归属。",
+            "KP 主属节以 HTML 的 SECTION_BY_KP 为唯一依据；Word 中的节字段只作为原始记录。",
+            "节与知识点采用上海五四制知识图谱的稳定 ID。",
         ],
     }
+    canonical = sections_for_tree(tree)
+    for point in tree["knowledge_points"]:
+        point["section"] = canonical[point["id"]]
+    return tree
 
 
 def write_json(path: Path, payload: object) -> None:
