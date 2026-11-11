@@ -34,6 +34,7 @@ from app.services.assets import (
     store_teacher_asset,
 )
 from app.services.knowledge_catalog import formal_kp, formal_literacy_dimensions, formal_question_literacy
+from app.services.question_import import content_fingerprint
 from app.services.question_review import (
     QuestionReviewConflict,
     QuestionReviewValidation,
@@ -257,6 +258,9 @@ def update_question(
         for mark in ('$', '\\(', '\\[')
     )
     question.assets = asset_records
+    question.content_fingerprint = content_fingerprint(
+        question.question_text, question.options, asset_records
+    )
     # Content changes invalidate the previously structured answer. Published
     # papers keep their immutable snapshots and are not affected.
     question.correct_answer = None

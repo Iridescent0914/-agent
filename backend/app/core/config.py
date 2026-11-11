@@ -35,6 +35,17 @@ class Settings(BaseSettings):
     vision_api_key: str = ""
     vision_timeout_seconds: float = 45.0
     vision_max_tokens: int = 2048
+    question_import_dir: Path = Path(__file__).resolve().parents[3] / "data" / "uploads" / "question_imports"
+    question_import_max_file_bytes: int = 30 * 1024 * 1024
+    question_import_max_batch_bytes: int = 60 * 1024 * 1024
+    question_import_max_pdf_pages: int = 50
+    question_import_max_files: int = 2
+    question_import_max_candidates: int = 200
+    question_import_retention_hours: int = 72
+    question_import_recent_batches: int = 7
+    question_import_worker_interval_seconds: int = 15
+    question_import_lease_seconds: int = 120
+    question_import_max_attempts: int = 3
 
     model_config = SettingsConfigDict(
         env_file=".env",

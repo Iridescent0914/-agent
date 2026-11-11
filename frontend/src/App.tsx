@@ -15,6 +15,7 @@ const GradingQueuePage = lazy(() => import('./pages/GradingQueuePage').then((mod
 const PaperGradingPage = lazy(() => import('./pages/PaperGradingPage').then((module) => ({ default: module.PaperGradingPage })))
 const QuestionDetailPage = lazy(() => import('./pages/QuestionDetailPage').then((module) => ({ default: module.QuestionDetailPage })))
 const QuestionListPage = lazy(() => import('./pages/QuestionListPage').then((module) => ({ default: module.QuestionListPage })))
+const QuestionImportPage = lazy(() => import('./pages/QuestionImportPage').then((module) => ({ default: module.QuestionImportPage })))
 const StudentDetailPage = lazy(() => import('./pages/StudentDetailPage').then((module) => ({ default: module.StudentDetailPage })))
 const StudentListPage = lazy(() => import('./pages/StudentListPage').then((module) => ({ default: module.StudentListPage })))
 const ClassManagementPage = lazy(() => import('./pages/ClassManagementPage').then((module) => ({ default: module.ClassManagementPage })))
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/analytics" replace />} />
           <Route path="/analytics" element={<ClassAnalyticsPage />} />
           <Route path="/questions" element={<QuestionListPage />} />
+          <Route path="/question-imports" element={<QuestionImportPage />} />
           <Route path="/questions/:questionId" element={<QuestionDetailPage />} />
           <Route path="/students" element={<StudentListPage />} />
           <Route path="/classes" element={<ClassManagementPage />} />

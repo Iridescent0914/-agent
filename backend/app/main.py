@@ -17,6 +17,8 @@ from app.services.maintenance import (
     run_system_maintenance,
     seconds_until_next_business_midnight,
 )
+from app.services.question_import import ImportProblem
+from app.services.question_import_worker import process_one as process_question_import
 
 
 settings = get_settings()
@@ -44,15 +46,28 @@ async def _maintenance_loop(stop: asyncio.Event) -> None:
             )
 
 
+async def _question_import_loop(stop: asyncio.Event) -> None:
+    while not stop.is_set():
+        try:
+            while await asyncio.to_thread(process_question_import):
+                pass
+        except Exception:
+            logger.exception("question import worker failed")
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(stop.wait(), timeout=max(settings.question_import_worker_interval_seconds, 5))
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     stop = asyncio.Event()
     task = asyncio.create_task(_maintenance_loop(stop))
+    import_task = asyncio.create_task(_question_import_loop(stop))
     try:
         yield
     finally:
         stop.set()
         await task
+        await import_task
 
 
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
@@ -83,6 +98,13 @@ async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse
         status_code=exc.status_code,
         content={"code": f"http_{exc.status_code}", "message": str(exc.detail), "details": None},
     )
+
+
+@app.exception_handler(ImportProblem)
+async def import_problem_handler(_: Request, exc: ImportProblem) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content={
+        "code": exc.code, "message": str(exc), "details": None,
+    })
 
 
 @app.exception_handler(RequestValidationError)

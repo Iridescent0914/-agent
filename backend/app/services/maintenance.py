@@ -17,6 +17,7 @@ from app.services.literacy_scoring import (
     persist_literacy_scores,
 )
 from app.services.recognition_workflow import purge_expired_recognition_images
+from app.services.question_import import purge_expired_import_files
 
 
 logger = logging.getLogger(__name__)
@@ -27,10 +28,12 @@ def run_file_maintenance() -> dict[str, int]:
     with SessionLocal() as db:
         recognition_images = purge_expired_recognition_images(db)
         teacher_assets = cleanup_orphan_teacher_assets(db)
+        question_import_files = purge_expired_import_files(db)
         db.commit()
     return {
         "recognition_images": recognition_images,
         "teacher_assets": teacher_assets,
+        "question_import_files": question_import_files,
     }
 
 
