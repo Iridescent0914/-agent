@@ -178,7 +178,7 @@ def test_create_recomputes_score_and_freezes_personalized_audit(
     assert policy == {
         "score_source": "computed",
         "score_type": "rounded_integer",
-        "rule_version": "literacy-dynamic-v1",
+        "rule_version": "literacy-dynamic-v2",
         "recomputed_at_creation": True,
     }
     paper = client.get(
@@ -198,7 +198,7 @@ def test_create_recomputes_score_and_freezes_personalized_audit(
         assert audit["score_source"] == "computed"
         assert audit["base_star"] == 2
         assert audit["target_stars"] == [2, 3, 4]
-        assert audit["rule_version"] == "literacy-dynamic-v1"
+        assert audit["rule_version"] == "literacy-dynamic-v2"
         assert audit["class_usage_count"] == 1
         assert datetime.fromisoformat(
             audit["generated_at"].replace("Z", "+00:00")

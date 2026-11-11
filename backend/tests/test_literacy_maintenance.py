@@ -48,7 +48,7 @@ def test_stale_literacy_rows_are_advanced_once_per_business_day():
             rows = list(db.scalars(select(StudentLiteracyScore).where(
                 StudentLiteracyScore.student_id == student.id
             )))
-            assert len(rows) == 8
+            assert len(rows) == 9
             assert {row.score_as_of_date.isoformat() for row in rows} == {"2026-11-01"}
 
             second = refresh_stale_literacy_scores(

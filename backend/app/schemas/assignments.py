@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.papers import PaperSummaryOut
+from app.services.knowledge_catalog import formal_literacy_dimensions
 from app.schemas.recommendations import (
     PersonalizedSelectionPreviewOut,
     RecommendationOut,
@@ -22,6 +23,14 @@ class RequiredQuestionFilter(BaseModel):
     knowledge_point_codes: list[str] = Field(default_factory=list, max_length=54)
     core_literacies: list[str] = Field(default_factory=list, max_length=32)
     difficulty_counts: dict[str, int] = Field(default_factory=dict)
+
+    @field_validator("core_literacies")
+    @classmethod
+    def validate_core_literacies(cls, values: list[str]) -> list[str]:
+        allowed = set(formal_literacy_dimensions())
+        if any(value not in allowed for value in values):
+            raise ValueError("核心素养必须使用正式知识图谱的九项名称")
+        return list(dict.fromkeys(values))
 
     @model_validator(mode="after")
     def validate_difficulty_counts(self):
@@ -41,6 +50,13 @@ class PersonalizedQuestionFilter(BaseModel):
     knowledge_point_codes: list[str] = Field(default_factory=list, max_length=54)
     primary_competency: str | None = Field(default=None, max_length=120)
     question_count: int = Field(default=3, ge=3, le=3, strict=True)
+
+    @field_validator("primary_competency")
+    @classmethod
+    def validate_primary_competency(cls, value: str | None) -> str | None:
+        if value is not None and value not in formal_literacy_dimensions():
+            raise ValueError("主要能力必须使用正式知识图谱的九项名称")
+        return value
 
     @model_validator(mode="after")
     def require_scope_and_competency(self):

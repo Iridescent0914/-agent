@@ -995,6 +995,11 @@ def republish_paper(db: Session, paper_id: UUID, *, expected_revision: int) -> P
     if any(item.question_snapshot.get("question_type") not in PROFILE_QUESTION_TYPES
            for item in paper_items(db, paper.id)):
         raise PaperValidation('日常作业仅支持选择、填空、判断题；含计算题的旧试卷不能重新发布')
+    for item in paper_items(db, paper.id):
+        try:
+            normalize_literacy_label(item.question_snapshot.get("core_literacy"))
+        except ValueError as exc:
+            raise PaperValidation('旧试卷含非正式核心素养，需核对后创建新版本') from exc
 
     active = db.scalar(select(PaperInstance).where(
         PaperInstance.assignment_id == paper.assignment_id,

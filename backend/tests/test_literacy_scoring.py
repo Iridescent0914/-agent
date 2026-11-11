@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
@@ -106,20 +107,20 @@ def test_persistence_is_idempotent_for_current_demo(db):
     assert not loaded.invalid
 
     first, result = persist_literacy_scores(db, student.id, as_of=as_of)
-    assert first["inserted"] + first["updated"] + first["unchanged"] == 8
+    assert first["inserted"] + first["updated"] + first["unchanged"] == 9
     assert first["deleted"] == 0
     rows = list(db.scalars(select(StudentLiteracyScore).where(
         StudentLiteracyScore.student_id == student.id
     )))
-    assert len(rows) == 8
+    assert len(rows) == 9
     assert {row.literacy_name for row in rows} == set(LITERACY_DIMENSIONS)
     assert result.evidence_count == len(loaded.evidence)
 
     second, _ = persist_literacy_scores(db, student.id, as_of=as_of)
-    assert second == {"inserted": 0, "updated": 0, "deleted": 0, "unchanged": 8}
+    assert second == {"inserted": 0, "updated": 0, "deleted": 0, "unchanged": 9}
     outputs = literacy_score_outputs(db, student.id, as_of=as_of)
     assert all(item.score_source == "computed" for item in outputs)
-    assert all(item.rule_version == "literacy-dynamic-v1" for item in outputs)
+    assert all(item.rule_version == "literacy-dynamic-v2" for item in outputs)
     assert all(isinstance(item.score, int) for item in outputs)
     raw = effective_literacy_scores(db, student.id, as_of=as_of)
     assert any(raw[item.name] != item.score for item in outputs)
@@ -165,7 +166,7 @@ def test_persistence_is_idempotent_for_current_demo(db):
     assert reopened_stats["updated"] > 0
 
 
-def test_empty_student_persists_eight_baseline_computed_rows(db):
+def test_empty_student_persists_nine_baseline_computed_rows(db):
     student = Student(
         student_code="LIT-" + uuid4().hex[:16],
         display_name="素养空学生",
@@ -179,7 +180,7 @@ def test_empty_student_persists_eight_baseline_computed_rows(db):
         student.id,
         as_of=datetime(2026, 10, 31, 12, 0, tzinfo=TZ),
     )
-    assert stats["inserted"] == 8
+    assert stats["inserted"] == 9
     assert result.evidence_count == 0
     assert all(state.score == 60 for state in result.states.values())
     assert all(state.attempt_count == 0 for state in result.states.values())
@@ -189,3 +190,49 @@ def test_empty_student_persists_eight_baseline_computed_rows(db):
         as_of=datetime(2026, 10, 31, 12, 0, tzinfo=TZ),
     )
     assert all(item.score == 60 and item.score_source == "computed" for item in outputs)
+
+
+def test_spatial_and_data_concepts_receive_equal_question_weights():
+    result = replay_literacy_scores([
+        evidence(28, correct=True, literacies=("空间观念", "数据观念")),
+    ], as_of=datetime(2026, 10, 28, 23, 0, tzinfo=TZ))
+    assert len(result.states) == 9
+    for name in ("空间观念", "数据观念"):
+        assert result.states[name].score == pytest.approx(63)
+        assert result.states[name].attempt_count == 1
+    assert all(state.score == 60 and state.attempt_count == 0
+               for name, state in result.states.items() if name not in ("空间观念", "数据观念"))
+    with pytest.raises(ValueError):
+        parse_literacies("数据意识")
+
+
+@pytest.mark.parametrize("meaningful", [False, True])
+def test_legacy_score_transition_never_renames_learning_evidence(db, meaningful):
+    student = Student(student_code="LIT-OLD-" + uuid4().hex[:12],
+                      display_name="旧维度迁移测试", class_name="素养测试班", is_demo=True)
+    db.add(student)
+    db.flush()
+    as_of = datetime(2026, 10, 31, 12, 0, tzinfo=TZ)
+    old_names = [name for name in LITERACY_DIMENSIONS if name not in ("空间观念", "数据观念")] + ["数据意识"]
+    for name in old_names:
+        db.add(StudentLiteracyScore(
+            student_id=student.id, literacy_name=name,
+            score=Decimal("72") if meaningful and name == "数据意识" else Decimal("60"),
+            attempt_count=3 if meaningful and name == "数据意识" else 0,
+            score_as_of_date=as_of.date(), rule_version="literacy-dynamic-v1",
+        ))
+    db.flush()
+    if meaningful:
+        with pytest.raises(ValueError, match="Legacy literacy scores require explicit review"):
+            persist_literacy_scores(db, student.id, as_of=as_of)
+        old = db.get(StudentLiteracyScore, (student.id, "数据意识"))
+        assert old.score == 72 and old.attempt_count == 3
+        assert db.get(StudentLiteracyScore, (student.id, "数据观念")) is None
+    else:
+        stats, _ = persist_literacy_scores(db, student.id, as_of=as_of)
+        assert stats == {"inserted": 2, "updated": 7, "deleted": 1, "unchanged": 0}
+        assert db.get(StudentLiteracyScore, (student.id, "数据意识")) is None
+        for name in ("空间观念", "数据观念"):
+            row = db.get(StudentLiteracyScore, (student.id, name))
+            assert row.score == 60 and row.attempt_count == 0
+        assert persist_literacy_scores(db, student.id, as_of=as_of)[0]["unchanged"] == 9

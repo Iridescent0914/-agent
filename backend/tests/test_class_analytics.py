@@ -80,10 +80,10 @@ def test_class_overview_contract_and_drilldown(client):
     assert demo["student_count"] == 5
 
     body = _overview(client)
-    assert len(body["literacies"]) == 8
+    assert len(body["literacies"]) == 9
     assert all(
         item["score_source"] == "computed"
-        and item["rule_version"] == "literacy-dynamic-v1"
+        and item["rule_version"] == "literacy-dynamic-v2"
         for item in body["literacies"]
     )
     assert any(item["score"] != 60 for item in body["literacies"])
@@ -238,7 +238,7 @@ def test_class_contexts_batch_load_materialized_literacy_scores(db):
     assert [context.student.id for context in contexts] == [
         student.id for student in students
     ]
-    assert all(len(context.literacy_values) == 8 for context in contexts)
+    assert all(len(context.literacy_values) == 9 for context in contexts)
     literacy_queries = [
         statement for statement in statements
         if "student_literacy_scores" in statement

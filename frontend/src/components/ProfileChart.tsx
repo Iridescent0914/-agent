@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
 import * as echarts from 'echarts/core'
 import { BarChart, LineChart, RadarChart } from 'echarts/charts'
-import { GridComponent, RadarComponent, TooltipComponent } from 'echarts/components'
+import { GridComponent, LegendComponent, RadarComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { EChartsCoreOption } from 'echarts/core'
 
-echarts.use([BarChart, LineChart, RadarChart, GridComponent, RadarComponent, TooltipComponent, CanvasRenderer])
+echarts.use([BarChart, LineChart, RadarChart, GridComponent, LegendComponent, RadarComponent, TooltipComponent, CanvasRenderer])
 
 export function ProfileChart({ option, height, label, onPoint }: {
   option: EChartsCoreOption; height: number; label: string; onPoint: (index: number) => void

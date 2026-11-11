@@ -387,9 +387,9 @@ def test_image_submission_waits_for_teacher_before_mastery(client, db):
         literacy_reviewed = list(db.scalars(select(StudentLiteracyScore).where(
             StudentLiteracyScore.student_id == student.id
         )))
-        assert len(literacy_reviewed) == 8
+        assert len(literacy_reviewed) == 9
         assert all(
-            row.rule_version == "literacy-dynamic-v1"
+            row.rule_version == "literacy-dynamic-v2"
             for row in literacy_reviewed
         )
         assert not literacy_before or any(

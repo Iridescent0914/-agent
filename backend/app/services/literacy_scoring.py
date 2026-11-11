@@ -39,7 +39,7 @@ from app.services.literacy_rules import (
 )
 
 
-RULE_VERSION = "literacy-dynamic-v1"
+RULE_VERSION = "literacy-dynamic-v2"
 BUSINESS_TIMEZONE = ZoneInfo("Asia/Shanghai")
 _SCORE_QUANTUM = Decimal("0.0001")
 
@@ -125,7 +125,12 @@ def _literacy_evidence_from_rows(
             try:
                 literacies = parse_literacies(snapshot.get("core_literacy"))
             except ValueError:
-                reason = "invalid_core_literacy"
+                label = snapshot.get("core_literacy")
+                reason = (
+                    "legacy_core_literacy_requires_review"
+                    if isinstance(label, str) and "数据意识" in label
+                    else "invalid_core_literacy"
+                )
             else:
                 valid.append(LiteracyEvidence(
                     attempt_id=attempt.id,
@@ -351,7 +356,8 @@ def effective_literacy_scores_many(
         if loaded.invalid:
             raise ValueError(
                 "Cannot compute literacy profile: "
-                f"{len(loaded.invalid)} invalid evidence records"
+                f"{len(loaded.invalid)} invalid evidence records; "
+                + ", ".join(f"{item.attempt_id}:{item.reason}" for item in loaded.invalid[:10])
             )
         replayed = replay_literacy_scores(loaded.evidence, as_of=as_of)
         result[student_id] = {
@@ -392,7 +398,7 @@ def persist_literacy_scores(
     *,
     as_of: datetime,
 ) -> tuple[dict[str, int], LiteracyReplayResult]:
-    """Replay and idempotently synchronize all eight materialized rows."""
+    """Replay the current taxonomy; never repurpose legacy learning evidence."""
 
     loaded = load_literacy_evidence(db, student_id, as_of=as_of)
     if loaded.invalid:
@@ -411,6 +417,17 @@ def persist_literacy_scores(
             StudentLiteracyScore.student_id == student_id
         ))
     }
+    legacy = [
+        name for name, row in existing.items()
+        if name not in LITERACY_DIMENSIONS
+        and (row.attempt_count != 0 or row.score != Decimal(str(DEFAULT_SCORE))
+             or row.last_practiced_at is not None)
+    ]
+    if legacy:
+        raise ValueError(
+            "Legacy literacy scores require explicit review before rebuilding: "
+            + ", ".join(sorted(legacy))
+        )
     stats = {"inserted": 0, "updated": 0, "deleted": 0, "unchanged": 0}
     for name in LITERACY_DIMENSIONS:
         state = replayed.states[name]

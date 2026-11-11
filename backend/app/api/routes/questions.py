@@ -33,7 +33,7 @@ from app.services.assets import (
     resolve_assets,
     store_teacher_asset,
 )
-from app.services.knowledge_catalog import formal_kp, formal_question_literacy
+from app.services.knowledge_catalog import formal_kp, formal_literacy_dimensions, formal_question_literacy
 from app.services.question_review import (
     QuestionReviewConflict,
     QuestionReviewValidation,
@@ -403,6 +403,11 @@ def question_catalog_stats(db: Session = Depends(get_db)) -> QuestionCatalogStat
         pending_count=total - ready_count,
         type_counts=type_counts,
     )
+
+
+@router.get('/literacy-dimensions', response_model=list[str])
+def question_literacy_dimensions() -> list[str]:
+    return list(formal_literacy_dimensions())
 
 
 @router.get('/catalog', response_model=list[QuestionCatalogChapter])

@@ -16,6 +16,7 @@ from pathlib import Path
 CODE_ROOT = Path(__file__).resolve().parents[1]
 GRAPH = CODE_ROOT / "上海市五四制初中数学知识图谱.html"
 OUTPUT = CODE_ROOT / "data" / "knowledge_graph_catalog.json"
+IMPORT_CANDIDATE_SCHEMA = CODE_ROOT / "docs" / "阶段四-批量题目入库" / "yan" / "S0" / "候选题.schema.json"
 SEED_STEMS = ("rational", "expr")
 
 
@@ -121,26 +122,33 @@ def build_catalog() -> dict:
         "formal_question_labels": {
             "question_types": ["choice", "fill_blank", "calculation", "solution", "true_false"],
             "difficulty_levels": [1, 2, 3, 4, 5],
-            "core_literacies": [
-                "抽象能力", "运算能力", "几何直观", "推理能力",
-                "模型观念", "数据意识", "应用意识", "创新意识",
-            ],
+            "core_literacies": list(literacies),
             "is_required": [False, True],
         },
         "chapters": chapters,
     }
 
 
+def check_import_candidate_schema(catalog: dict, schema_path: Path = IMPORT_CANDIDATE_SCHEMA) -> None:
+    """Keep the development contract aligned with the exported formal taxonomy."""
+
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    dimensions = schema["properties"]["tags"]["properties"]["core_literacies"]["items"]["enum"]
+    if dimensions != catalog["formal_question_labels"]["core_literacies"]:
+        raise ValueError("Import candidate schema literacy enum differs from the formal catalog")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--check", action="store_true", help="Fail if the checked-in JSON differs from HTML and pilot seeds")
+    parser.add_argument("--check", action="store_true", help="Check the exported JSON and candidate schema against the formal graph")
     args = parser.parse_args()
     payload = json.dumps(build_catalog(), ensure_ascii=False, indent=2) + "\n"
     if args.check:
         if not OUTPUT.exists() or OUTPUT.read_text(encoding="utf-8") != payload:
             raise SystemExit(f"Catalog is stale; run python {Path(__file__).name}")
+        check_import_candidate_schema(json.loads(payload))
     else:
-        OUTPUT.write_text(payload, encoding="utf-8")
+        OUTPUT.write_text(payload, encoding="utf-8", newline="\n")
     catalog = json.loads(payload)
     print(
         f"catalog: {len(catalog['chapters'])} chapters, "

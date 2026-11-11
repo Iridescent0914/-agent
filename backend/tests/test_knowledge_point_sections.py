@@ -17,8 +17,7 @@ from app.core.database import SessionLocal, get_db
 from app.main import app
 from app.models import KnowledgePoint, Question
 from app.schemas.questions import QuestionUpdateRequest
-from app.services.knowledge_catalog import formal_kps_by_code, formal_question_literacy, load_catalog, sections_for_tree
-from app.services.literacy_catalog import LITERACY_DIMENSIONS
+from app.services.knowledge_catalog import formal_kps_by_code, formal_literacy_dimensions, formal_question_literacy, load_catalog, sections_for_tree
 from app.services.seed_importer import _question_values, _validate_inputs
 
 
@@ -36,7 +35,7 @@ def test_pilot_kp_sections_match_migration_and_questions() -> None:
     assert catalog["formal_question_labels"]["question_types"] == list(
         get_args(QuestionUpdateRequest.model_fields["question_type"].annotation)
     )
-    assert catalog["formal_question_labels"]["core_literacies"] == list(LITERACY_DIMENSIONS)
+    assert catalog["formal_question_labels"]["core_literacies"] == list(formal_literacy_dimensions())
     migration_values = runpy.run_path(str(MIGRATION))["SECTIONS_BY_CODE"]
     expected = {}
     question_count = 0

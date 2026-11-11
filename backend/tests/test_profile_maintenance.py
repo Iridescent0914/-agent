@@ -210,10 +210,11 @@ def test_rebuild_skips_archived_students_and_dry_run_leaves_no_materializations(
     assert second["changed_components"] == []
 
 
-def test_rebuild_failure_rolls_back_all_three_profiles_and_other_students_can_continue(client, db, student):
+@pytest.mark.parametrize("label", ["非法素养", "数据意识"])
+def test_rebuild_failure_rolls_back_all_three_profiles_and_other_students_can_continue(client, db, student, label):
     q = question(db)
     bad_payload = snapshot_payload(q)
-    bad_payload["question_snapshot"]["core_literacy"] = "非法素养"
+    bad_payload["question_snapshot"]["core_literacy"] = label
     broken, item = paper(db, student, q, payload=bad_payload)
     # Simulate a historical confirmed record whose published metadata is invalid.
     from app.models import Submission, Attempt, AttemptRevision
@@ -237,4 +238,4 @@ def test_rebuild_failure_rolls_back_all_three_profiles_and_other_students_can_co
     db.add(healthy)
     db.flush()
     result = rebuild_student_profile(db, healthy.id, as_of=datetime.now(timezone.utc), dry_run=False)
-    assert result["status"] == "ok" and len(materialized_profile(db, healthy.id)["literacy"]) == 8
+    assert result["status"] == "ok" and len(materialized_profile(db, healthy.id)["literacy"]) == 9

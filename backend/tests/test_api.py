@@ -8,6 +8,16 @@ from app.main import app
 client = TestClient(app)
 
 
+def test_question_literacy_dimensions_follow_the_formal_catalog() -> None:
+    from app.services.knowledge_catalog import formal_literacy_dimensions
+    response = client.get("/api/v1/questions/literacy-dimensions")
+    assert response.status_code == 200
+    assert response.json() == list(formal_literacy_dimensions())
+    assert len(response.json()) == 9
+    assert "空间观念" in response.json() and "数据观念" in response.json()
+    assert "创新意识" in response.json() and "数据意识" not in response.json()
+
+
 def test_health_and_readiness() -> None:
     assert client.get("/api/v1/health").json() == {"status": "ok"}
     response = client.get("/api/v1/ready")

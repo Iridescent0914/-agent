@@ -53,10 +53,10 @@ def test_profile_history_detail_and_read_only_preview(client, db):
     student = first_student(db)
     before = counts(db)
     profile = client.get(f"/api/v1/students/{student.id}/profile").json()
-    assert len(profile["literacies"]) == 8
+    assert len(profile["literacies"]) == 9
     assert all(
         item["score_source"] == "computed"
-        and item["rule_version"] == "literacy-dynamic-v1"
+        and item["rule_version"] == "literacy-dynamic-v2"
         for item in profile["literacies"]
     )
     assert any(item["score"] != 60 for item in profile["literacies"])

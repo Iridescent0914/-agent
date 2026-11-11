@@ -123,8 +123,8 @@ def test_manual_submission_is_idempotent_and_updates_mastery(client, db):
     literacy_after = list(db.scalars(select(StudentLiteracyScore).where(
         StudentLiteracyScore.student_id == student.id
     )))
-    assert len(literacy_after) == 8
-    assert all(row.rule_version == "literacy-dynamic-v1" for row in literacy_after)
+    assert len(literacy_after) == 9
+    assert all(row.rule_version == "literacy-dynamic-v2" for row in literacy_after)
     assert not literacy_before or any(
         literacy_before[row.literacy_name] != row.score
         for row in literacy_after

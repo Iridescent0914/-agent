@@ -18,6 +18,21 @@ def load_catalog() -> dict:
     return catalog
 
 
+def formal_literacy_dimensions() -> tuple[str, ...]:
+    """Read the formal dimensions in the HTML graph's original order."""
+
+    catalog = load_catalog()
+    dimensions = tuple(catalog["formal_question_labels"]["core_literacies"])
+    if (
+        not dimensions
+        or any(not isinstance(name, str) or not name.strip() for name in dimensions)
+        or len(set(dimensions)) != len(dimensions)
+        or dimensions != tuple(catalog["html_core_competencies"])
+    ):
+        raise ValueError("Formal literacy dimensions differ from the HTML knowledge graph")
+    return dimensions
+
+
 @lru_cache(maxsize=1)
 def formal_kps_by_code() -> dict[str, dict]:
     return {
@@ -43,7 +58,7 @@ def formal_kp(code: str) -> dict:
 def formal_question_literacy(code: str) -> str:
     """Use the HTML competency set for a formal KP as the question label."""
     competencies = formal_kp(code)["core_competencies"]
-    allowed = set(load_catalog()["formal_question_labels"]["core_literacies"])
+    allowed = set(formal_literacy_dimensions())
     if not competencies or any(value not in allowed for value in competencies):
         raise ValueError(f"KP competencies need a formal question-label mapping: {code}")
     return "、".join(dict.fromkeys(competencies))

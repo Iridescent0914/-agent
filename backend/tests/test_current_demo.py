@@ -50,7 +50,7 @@ def test_current_demo_is_complete_and_idempotent() -> None:
             assert {"yes", "no", "weak"} <= statuses
             assert db.scalar(select(func.count(StudentLiteracyScore.student_id)).join(
                 Student, Student.id == StudentLiteracyScore.student_id
-            ).where(Student.class_id == school_class.id)) == 40
+            ).where(Student.class_id == school_class.id)) == 45
 
             assert first["student_count"] == 5
             assert second["class_created"] is False
@@ -63,7 +63,7 @@ def test_current_demo_is_complete_and_idempotent() -> None:
             assert all(
                 stats == {
                     "inserted": 0, "updated": 0,
-                    "deleted": 0, "unchanged": 8,
+                    "deleted": 0, "unchanged": 9,
                 }
                 for stats in second["literacy_score_stats"].values()
             )

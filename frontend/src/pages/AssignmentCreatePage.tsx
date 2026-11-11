@@ -44,10 +44,6 @@ const defaults: Partial<FormValues> = {
 
 type FilterModule = 'required' | 'personalized' | 'history' | null
 
-const CORE_LITERACIES = [
-  '抽象能力', '运算能力', '几何直观', '空间观念',
-  '推理能力', '数据观念', '模型观念', '应用意识',
-]
 const ALL_KNOWLEDGE_POINTS = '__all_knowledge_points__'
 const ALL_CHAPTER_KNOWLEDGE_POINTS = '__all_chapter_knowledge_points__:'
 const ALL_GRADES = '__all_grades__'
@@ -95,6 +91,7 @@ export function AssignmentCreatePage() {
   const navigate = useNavigate()
   const [classes, setClasses] = useState<ClassSummary[]>([])
   const [chapters, setChapters] = useState<QuestionCatalogChapter[]>([])
+  const [literacyDimensions, setLiteracyDimensions] = useState<string[]>([])
   const [catalog, setCatalog] = useState<KnowledgePoint[]>([])
   const [recentAssignments, setRecentAssignments] = useState<AssignmentListItem[]>([])
   const [activeModule, setActiveModule] = useState<FilterModule>('required')
@@ -107,9 +104,11 @@ export function AssignmentCreatePage() {
     Promise.all([
       apiGet<ClassSummary[]>('/classes'),
       apiGet<QuestionCatalogChapter[]>('/questions/catalog'),
+      apiGet<string[]>('/questions/literacy-dimensions'),
     ])
-      .then(([classItems, chapterItems]) => {
+      .then(([classItems, chapterItems, dimensions]) => {
         setClasses(classItems); setChapters(chapterItems)
+        setLiteracyDimensions(dimensions)
         const initialClass = classItems.find((item) => item.student_count > 0) ?? classItems[0]
         form.setFieldsValue({
           class_id: initialClass?.id,
@@ -220,7 +219,7 @@ export function AssignmentCreatePage() {
     available, (point) => point.available_question_count,
   )
   const sectionOptions = Array.from(new Set(selectedChapters.flatMap((item) => item.sections))).map((value) => ({ value, label: value }))
-  const coreLiteracyOptions = CORE_LITERACIES.map((value) => ({ value, label: value }))
+  const coreLiteracyOptions = literacyDimensions.map((value) => ({ value, label: value }))
   const gradeValues = Array.from(new Set(
     chapters.flatMap((item) => item.grades ?? []).filter(isConfiguredGrade),
   ))
@@ -287,7 +286,9 @@ export function AssignmentCreatePage() {
       .filter((point) => selectedPersonalizedKpCodes.includes(point.code))
       .flatMap((point) => point.core_competencies ?? []),
   ))
-  const competencyOptions = personalizedCompetencies.map((value) => ({ value, label: value }))
+  const competencyOptions = literacyDimensions
+    .filter((value) => personalizedCompetencies.includes(value))
+    .map((value) => ({ value, label: value }))
 
   const handleKnowledgePointChange = (values: string[]) => {
     form.setFieldValue('required_knowledge_point_codes', compactKnowledgePointSelection(values))

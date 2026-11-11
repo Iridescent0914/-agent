@@ -42,6 +42,17 @@ def select(score: int, candidates: list[Candidate], **kwargs):
     )
 
 
+@pytest.mark.parametrize("name", ["空间观念", "数据观念", "创新意识"])
+def test_selects_three_exact_slots_for_formal_dimensions(name):
+    result = select_personalized_questions(
+        student_id=STUDENT_ID, literacy_name=name, literacy_score=60,
+        knowledge_point_codes=[KNOWLEDGE_POINT_CODE],
+        candidates=[candidate(star, star) for star in range(1, 6)],
+    )
+    assert result.target_stars == (2, 3, 4)
+    assert result.selected_count == 3 and result.shortfall == 0
+
+
 def test_selects_exact_three_star_sequence_from_business_integer():
     result = select(64, [candidate(star, star) for star in range(1, 6)])
 

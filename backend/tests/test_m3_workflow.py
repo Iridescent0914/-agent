@@ -357,6 +357,10 @@ def test_required_and_selected_history_are_combined_per_student(client, db):
     invalid_competency["filter_config"]["personalized"]["primary_competency"] = "不存在的能力"
     rejected = client.post("/api/v1/assignments/preview", json=invalid_competency)
     assert rejected.status_code == 422
+    assert "主要能力必须使用正式知识图谱的九项名称" in rejected.text
+    invalid_competency["filter_config"]["personalized"]["primary_competency"] = "空间观念"
+    rejected = client.post("/api/v1/assignments/preview", json=invalid_competency)
+    assert rejected.status_code == 422
     assert "主要能力不属于所选知识点" in rejected.text
 
     recent = client.get(

@@ -249,7 +249,7 @@ def test_concurrent_identical_submission_creates_one_evidence_set(
             select(func.count(StudentLiteracyScore.student_id)).where(
                 StudentLiteracyScore.student_id == ids["student_id"],
             )
-        ) == 8
+        ) == 9
 
 
 def test_failure_after_attempt_flush_rolls_back_submission_revision_and_mastery(
