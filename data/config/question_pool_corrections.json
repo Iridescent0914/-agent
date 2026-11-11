@@ -16,11 +16,25 @@
       "append_text": "\n第（2）小题分类填写：整数________；负有理数________；非负数________。（每空内按从小到大填写，用逗号分隔。）",
       "answers": {"1": [["-5/2", "numeric"], ["-2", "numeric"], ["-1/4", "numeric"], ["0", "numeric"], ["1/2", "numeric"], ["7/4", "numeric"], ["3", "numeric"], ["7/2", "numeric"]], "2": [["-2,0,3", "exact"], ["-5/2,-2,-1/4", "exact"], ["0,1/2,7/4,3,7/2", "exact"]]}
     },
+    "q.math.g6.rational.school.010": {
+      "mode": "asset_only",
+      "note": "从原 Word 画布 49 恢复数轴；只修复题图，不修改答案或入池状态。",
+      "replacements": [["[ASSET:unknown][ASSET:unknown]", "[ASSET:assets/rational/q.math.g6.rational.school.010_canvas49.svg]"]],
+      "additional_assets": [{"relationship_id": "canvas49", "path": "assets/rational/q.math.g6.rational.school.010_canvas49.svg", "extension": ".svg"}],
+      "resolved_import_issues": ["asset_relationship_missing"]
+    },
     "q.math.g6.rational.school.011": {
       "note": "去除无识别能力提示，按四小题重新对齐答案；补出第一题遗漏的填空线。第三题距离和为12。",
       "replacements": [["则m= .", "则m=________." ]],
       "append_instruction": "多值答案从小到大填写，用逗号分隔。",
       "answers": {"1": [["-2,-1,0,1,2", "exact"]], "2": [["-5,1", "exact", "1或-5", "-5或1"]], "3": [["12", "numeric"]], "4": [["<", "exact"]]}
+    },
+    "q.math.g6.rational.school.023": {
+      "mode": "asset_only",
+      "note": "从原 Word 画布 83 恢复 a、b、c 的数轴位置；只修复题图，原答案仍待教师审核。",
+      "replacements": [["[ASSET:unknown][ASSET:unknown]", "[ASSET:assets/rational/q.math.g6.rational.school.023_canvas83.svg]"]],
+      "additional_assets": [{"relationship_id": "canvas83", "path": "assets/rational/q.math.g6.rational.school.023_canvas83.svg", "extension": ".svg"}],
+      "resolved_import_issues": ["asset_relationship_missing"]
     },
     "q.math.g6.rational.school.014": {
       "note": "按十小题逐空核对；第9小题原参考答案与数轴方向相反，按 b<0<a 且 |b|>|a| 改为 b<-a<a<-b；第7题重复的同一公式只显示一次。",

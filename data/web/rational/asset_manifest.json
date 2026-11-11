@@ -1,12 +1,12 @@
 {
   "chapter": "rational",
-  "generated_at": "2026-10-21T09:05:05.512383+00:00",
+  "generated_at": "2026-11-11T10:26:36.450904+00:00",
   "question_count": 139,
-  "reference_count": 1069,
-  "unique_asset_count": 564,
-  "converted_count": 564,
+  "reference_count": 1072,
+  "unique_asset_count": 566,
+  "converted_count": 566,
   "failed_count": 0,
-  "unresolved_reference_count": 4,
+  "unresolved_reference_count": 0,
   "assets": [
     {
       "source_path": "assets/rational/q.math.g6.rational.school.001_rId7.wmf",
@@ -319,6 +319,14 @@
       "format": "png",
       "status": "converted",
       "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/rational/q.math.g6.rational.school.010_canvas49.svg",
+      "source_sha256": "da1216f5259e1d7b6aa1eb595f7e15bc7003cf434114d5385a742d2c71c5102c",
+      "web_path": "rational/q.math.g6.rational.school.010_canvas49.svg",
+      "format": "svg",
+      "status": "converted",
+      "converter": "copy"
     },
     {
       "source_path": "assets/rational/q.math.g6.rational.school.011_rId100.wmf",
@@ -887,6 +895,14 @@
       "format": "png",
       "status": "converted",
       "converter": "windows_gdi_plus"
+    },
+    {
+      "source_path": "assets/rational/q.math.g6.rational.school.023_canvas83.svg",
+      "source_sha256": "eb99a5edd47b4fc11c38bf11365d1148db8eb21a8ede60ceae9a8fdbdbed25ac",
+      "web_path": "rational/q.math.g6.rational.school.023_canvas83.svg",
+      "format": "svg",
+      "status": "converted",
+      "converter": "copy"
     },
     {
       "source_path": "assets/rational/q.math.g6.rational.school.023_rId228.png",

@@ -49,7 +49,6 @@
     "asset_needs_web_conversion": 401,
     "question_type_mismatch": 29,
     "source_contains_ai_draft_marker": 3,
-    "asset_relationship_missing": 2,
     "answer_units_need_review": 12,
     "answer_items_not_structured": 1,
     "pool_missing_source_content": 1,

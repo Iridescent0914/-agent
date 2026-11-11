@@ -1383,7 +1383,7 @@
     "question_type": "solution",
     "question_type_source": "解答题",
     "difficulty": 2,
-    "question_text": "3、在数轴上把数4.5、－2.5、－1.5、3、－3表示出来，并用“＜”号把它们连接起来：\n[ASSET:unknown][ASSET:unknown]",
+    "question_text": "3、在数轴上把数4.5、－2.5、－1.5、3、－3表示出来，并用“＜”号把它们连接起来：\n[ASSET:assets/rational/q.math.g6.rational.school.010_canvas49.svg]",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -1437,14 +1437,19 @@
     "estimated_score_rate": "（合作者填写）",
     "has_image": true,
     "has_equation": false,
-    "assets": [],
+    "assets": [
+      {
+        "relationship_id": "canvas49",
+        "path": "assets/rational/q.math.g6.rational.school.010_canvas49.svg",
+        "extension": ".svg"
+      }
+    ],
     "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
     "source_question_number": 10,
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
     "import_issues": [
-      "contains_asset",
-      "asset_relationship_missing"
+      "contains_asset"
     ],
     "is_seed_candidate": false,
     "answer_structure_source": "normalized_answer_units_v1"
@@ -3492,7 +3497,7 @@
     "question_type": "solution",
     "question_type_source": "解答题",
     "difficulty": 4,
-    "question_text": "4、有理数a、b、c在数轴上的位置如图所示，化简|b－a|－|a＋c|＋|b－c|．\n[ASSET:unknown][ASSET:unknown]\n第4题",
+    "question_text": "4、有理数a、b、c在数轴上的位置如图所示，化简|b－a|－|a＋c|＋|b－c|．\n[ASSET:assets/rational/q.math.g6.rational.school.023_canvas83.svg]\n第4题",
     "options": null,
     "correct_answer": {
       "kind": "group",
@@ -3551,6 +3556,11 @@
         "relationship_id": "rId228",
         "path": "assets/rational/q.math.g6.rational.school.023_rId228.png",
         "extension": ".png"
+      },
+      {
+        "relationship_id": "canvas83",
+        "path": "assets/rational/q.math.g6.rational.school.023_canvas83.svg",
+        "extension": ".svg"
       }
     ],
     "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
@@ -3558,8 +3568,7 @@
     "source_review_status": "reviewed",
     "import_status": "needs_technical_cleanup",
     "import_issues": [
-      "contains_asset",
-      "asset_relationship_missing"
+      "contains_asset"
     ],
     "is_seed_candidate": false,
     "answer_structure_source": "normalized_answer_units_v1"

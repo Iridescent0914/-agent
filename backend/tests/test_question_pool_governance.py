@@ -193,6 +193,30 @@ def test_expr036_native_canvas_and_four_independent_choice_items_are_ready():
     assert all(10 <= float(node.get("font-size")) <= 30 for node in texts)
 
 
+@pytest.mark.parametrize("qid,canvas_id,labels", [
+    ("q.math.g6.rational.school.010", "49", [str(i) for i in range(-6, 7)]),
+    ("q.math.g6.rational.school.023", "83", ["c", "a", "0", "b"]),
+])
+def test_recovered_rational_number_lines_are_resolved_without_answer_promotion(qid, canvas_id, labels):
+    from app.services.assets import question_asset_exists, resolve_assets
+    record = next(row for row in catalog() if row["original_qid"] == qid)
+    path = f"assets/rational/{qid}_canvas{canvas_id}.svg"
+    assert record["question_text"].count(f"[ASSET:{path}]") == 1
+    assert "[ASSET:unknown]" not in record["question_text"]
+    assert "asset_relationship_missing" not in record["import_issues"]
+    assert record["grading_readiness"] == "raw_answer_only"
+    assert question_asset_exists(path)
+    resolved = next(asset for asset in resolve_assets(record["assets"]) if asset["path"] == path)
+    assert resolved["conversion_status"] == "converted" and resolved["web_url"].endswith(f"_canvas{canvas_id}.svg")
+    svg = ET.fromstring((ROOT / "data" / path).read_text(encoding="utf-8"))
+    texts = sorted(svg.findall("{http://www.w3.org/2000/svg}text"), key=lambda node: float(node.get("x")))
+    assert [node.text.replace("－", "-") for node in texts] == labels
+    assert svg.findall("{http://www.w3.org/2000/svg}line")
+    before = deepcopy((record["correct_answer"], record["grading_readiness"], record["reference_answer_raw"]))
+    apply_pool_corrections([record], CONFIG)
+    assert (record["correct_answer"], record["grading_readiness"], record["reference_answer_raw"]) == before
+
+
 @pytest.mark.parametrize("value", ["−0.81", "–0.81", "－0.81"])
 def test_unicode_negative_numeric_answer_is_accepted(value):
     result = grade_answer(value, "-0.81", {"answer_match_type": "numeric", "answer_normalization_rule": {"normalize_fullwidth_symbols": True}}, response_status="answered")

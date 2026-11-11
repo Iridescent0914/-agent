@@ -1,0 +1,20 @@
+[
+  {
+    "original_qid": "q.math.g6.rational.school.010",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_sha256": "8b57e2abce281f52028adb94479b2cfa6148986c779c1425cf5665044ff0309a",
+    "source_canvas_id": "49",
+    "asset": "assets/rational/q.math.g6.rational.school.010_canvas49.svg",
+    "asset_sha256": "da1216f5259e1d7b6aa1eb595f7e15bc7003cf434114d5385a742d2c71c5102c",
+    "method": "Word DrawingML line and text coordinates to SVG"
+  },
+  {
+    "original_qid": "q.math.g6.rational.school.023",
+    "source_file": "六年级_数学_校本审核/新/rational_有理数.docx",
+    "source_sha256": "8b57e2abce281f52028adb94479b2cfa6148986c779c1425cf5665044ff0309a",
+    "source_canvas_id": "83",
+    "asset": "assets/rational/q.math.g6.rational.school.023_canvas83.svg",
+    "asset_sha256": "eb99a5edd47b4fc11c38bf11365d1148db8eb21a8ede60ceae9a8fdbdbed25ac",
+    "method": "Word DrawingML line and text coordinates to SVG"
+  }
+]

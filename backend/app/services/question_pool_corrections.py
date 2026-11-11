@@ -24,12 +24,22 @@ def apply_pool_corrections(records: list[dict[str, Any]], config_path: Path) -> 
             continue
         manual_reference = correction.get("mode") == "manual_reference"
         final_answer_only = correction.get("mode") == "final_answer_only"
+        asset_only = correction.get("mode") == "asset_only"
         if manual_reference and record["question_type"] not in {"calculation", "solution"}:
             raise ValueError("Manual reference mode requires a manual question type")
         if final_answer_only and record["question_type"] != "calculation":
             raise ValueError("Final-answer mode is restricted to calculation questions")
-        if record["question_type"] not in TARGET_TYPES and not manual_reference and not final_answer_only:
+        if record["question_type"] not in TARGET_TYPES and not manual_reference and not final_answer_only and not asset_only:
             raise ValueError("Correction outside approved question types: " + record["original_qid"])
+        if asset_only:
+            allowed = {"mode", "note", "replacements", "additional_assets", "resolved_import_issues"}
+            if set(correction) - allowed:
+                raise ValueError("Asset-only corrections cannot change answers or grading")
+            if not correction.get("additional_assets") or not correction.get("replacements") or any(
+                old != "[ASSET:unknown][ASSET:unknown]" or new != f"[ASSET:{correction['additional_assets'][0]['path']}]"
+                for old, new in correction.get("replacements", [])
+            ):
+                raise ValueError("Asset-only corrections require a source-checked asset replacement")
         for key, value in correction.get("fields", {}).items():
             if key not in {"question_text", "options", "reference_answer_raw", "solution"}:
                 raise ValueError("Unsupported correction field: " + key)
@@ -54,7 +64,8 @@ def apply_pool_corrections(records: list[dict[str, Any]], config_path: Path) -> 
                 record["question_text"] += "\n" + text.strip()
         for asset in correction.get("additional_assets", []):
             path = asset.get("path", "")
-            if not path.startswith(f"assets/expr/{record['original_qid']}_") or not path.endswith(".svg") or "/../" in path:
+            chapter = record["original_qid"].split(".")[3]
+            if chapter not in {"rational", "expr"} or not path.startswith(f"assets/{chapter}/{record['original_qid']}_") or not path.endswith(".svg") or "/../" in path:
                 raise ValueError("Unsupported recovered asset path: " + path)
             existing = next((item for item in record["assets"] if item["path"] == path), None)
             if existing is None:
@@ -64,10 +75,15 @@ def apply_pool_corrections(records: list[dict[str, Any]], config_path: Path) -> 
         resolved = set(correction.get("resolved_import_issues", []))
         if resolved - {"asset_relationship_missing", "pool_missing_source_content"}:
             raise ValueError("Unsupported resolved import issue")
+        if asset_only and resolved - {"asset_relationship_missing"}:
+            raise ValueError("Asset-only correction cannot resolve answer or source-content issues")
         if resolved:
             if "[ASSET:unknown]" in record["question_text"]:
                 raise ValueError("Cannot resolve missing assets while unknown markers remain")
             record["import_issues"] = [issue for issue in record["import_issues"] if issue not in resolved]
+        if asset_only:
+            applied += 1
+            continue
         if "answers" in correction:
             items = []
             for subquestion_no, answers in correction["answers"].items():
