@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://math-agent.local/schemas/import-candidate-v1.json",
   "title": "Question import candidate v1",
-  "description": "暂存区候选题数据契约，不是模型原始响应格式，也不是当前已接入的运行时校验器。教师只确认主属 KP；章、年级、节为服务端按正式目录派生的只读字段。",
+  "description": "暂存区候选题数据契约，不是模型原始响应格式，也不是当前已接入的运行时校验器。教师只确认主属 KP；章、年级、节为服务端按正式目录派生的只读字段；新候选题必做标记初始为 false，仅教师可修改。",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "batch_id", "item_id", "catalog_snapshot_sha256", "revision", "source", "content", "tags", "answers", "selected_answer_id", "answer_match_status", "precheck_status", "label_status", "teacher_decision", "commit_intent", "duplicate_status", "field_confidence", "field_evidence"],
@@ -44,7 +44,7 @@
         "section": {"type": ["string", "null"], "readOnly": true, "description": "服务端根据主属 KP 派生"},
         "main_kp_code": {"type": ["string", "null"], "description": "教师确认的唯一主属知识点"},
         "core_literacies": {"type": "array", "uniqueItems": true, "readOnly": true, "description": "服务端根据主属 KP 在正式图谱中的完整素养集合派生；未选 KP 时为空数组", "items": {"enum": ["抽象能力", "运算能力", "几何直观", "空间观念", "推理能力", "数据观念", "模型观念", "应用意识", "创新意识"]}},
-        "is_required": {"type": ["boolean", "null"]}
+        "is_required": {"type": "boolean", "default": false, "description": "新候选题初始为非必做；只有教师明确修改才可设为必做，模型不得推荐或覆盖"}
       }
     },
     "answers": {"type": "array", "items": {"$ref": "#/$defs/answer"}},
