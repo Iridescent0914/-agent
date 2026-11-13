@@ -1,4 +1,4 @@
-"""Restart-safe S1 validation worker; S2 replaces the awaiting_s2 checkpoint."""
+"""Restart-safe import worker for S1 validation and explicit S2 extraction."""
 
 from __future__ import annotations
 
@@ -118,7 +118,8 @@ def process_one() -> bool:
         claimed = claim_one(db)
         db.commit()
     if claimed is None:
-        return False
+        from app.services.question_import_s2_worker import process_s2_one
+        return process_s2_one()
     batch_id, token = claimed
     try:
         with SessionLocal() as db:

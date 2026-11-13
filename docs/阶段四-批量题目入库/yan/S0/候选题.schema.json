@@ -57,7 +57,11 @@
     "duplicate_status": {"enum": ["none", "exact_in_batch", "exact_in_catalog", "suspected", "resolved_variant"]},
     "field_confidence": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1}},
     "field_evidence": {"type": "object", "additionalProperties": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}},
-    "warnings": {"type": "array", "items": {"type": "string"}}
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "extraction": {"type": "object", "description": "S2 模型提取辅助信息，供人工核对；非正式题库标签", "additionalProperties": false,
+      "properties": {"prompt_version": {"type": "string"}, "subquestions": {"type": "array", "items": {"type": "string"}},
+        "math_fragments": {"type": "array", "items": {"type": "string"}}, "diagram_clues": {"type": "array", "items": {"type": "string"}},
+        "uncertain_fragments": {"type": "array", "items": {"type": "string"}}}}
   },
   "$defs": {
     "evidence": {
@@ -67,8 +71,7 @@
         "file_id": {"type": "string", "minLength": 1},
         "page": {"type": ["integer", "null"], "minimum": 1},
         "block_id": {"type": ["string", "null"]},
-        "quote": {"type": ["string", "null"]},
-        "bbox": {"type": ["array", "null"], "minItems": 4, "maxItems": 4, "items": {"type": "number"}}
+        "quote": {"type": ["string", "null"]}
       }
     },
     "answer": {

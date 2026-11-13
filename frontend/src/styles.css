@@ -33,6 +33,7 @@ a { color: inherit; }
 .table-card .ant-card-body { padding: 0; }
 .table-card .ant-table-cell-fix-right .ant-btn { font-weight: 600; }
 .question-rich-text { white-space: pre-wrap; font-size: 16px; line-height: 2; color: #111827; }
+.question-import-candidate .question-rich-text { margin-bottom: 0; }
 .question-rich-text .ant-image { max-width: min(720px, 100%); vertical-align: middle; margin: 6px 4px; }
 .question-asset { width: auto !important; object-fit: contain; cursor: zoom-in; }
 .question-asset-compact { max-width: min(360px, 80vw); max-height: 52px; margin-block: 0; }

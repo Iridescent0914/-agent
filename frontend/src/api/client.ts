@@ -35,8 +35,8 @@ export function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
   return apiRequest<T>(path, { signal })
 }
 
-export function apiPost<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
-  return apiRequest<T>(path, { method: 'POST', body: JSON.stringify(body), signal, headers: { 'Content-Type': 'application/json' } })
+export function apiPost<T>(path: string, body: unknown, signal?: AbortSignal, headers?: Record<string, string>): Promise<T> {
+  return apiRequest<T>(path, { method: 'POST', body: JSON.stringify(body), signal, headers: { 'Content-Type': 'application/json', ...headers } })
 }
 
 export function apiPostForm<T>(path: string, body: FormData, signal?: AbortSignal): Promise<T> {

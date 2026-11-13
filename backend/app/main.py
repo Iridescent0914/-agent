@@ -49,7 +49,7 @@ async def _maintenance_loop(stop: asyncio.Event) -> None:
 async def _question_import_loop(stop: asyncio.Event) -> None:
     while not stop.is_set():
         try:
-            while await asyncio.to_thread(process_question_import):
+            while not stop.is_set() and await asyncio.to_thread(process_question_import):
                 pass
         except Exception:
             logger.exception("question import worker failed")

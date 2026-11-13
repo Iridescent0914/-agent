@@ -1,10 +1,11 @@
-"""S1 private staging. Extraction and formal submission belong to S2–S6."""
+"""Private import staging shared by S1 and S2."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import re
+import secrets
 import unicodedata
 import uuid
 import zipfile
@@ -26,6 +27,12 @@ OWNER_SCOPE = "internal-demo"
 FINISHED = {"completed", "completed_with_unassigned", "cancelled", "failed"}
 PURGEABLE_FOR_CAP = {"completed", "completed_with_unassigned", "cancelled"}
 MODES = {"questions_only", "combined", "separate"}
+
+
+def require_s2_operator_token(provided: str | None) -> None:
+    expected = get_settings().question_import_s2_operator_token
+    if not expected or not provided or not secrets.compare_digest(expected, provided):
+        raise ImportProblem("S2_OPERATOR_REQUIRED", "S2 操作口令缺失或不正确", 403)
 
 
 class ImportProblem(ValueError):
@@ -105,6 +112,9 @@ def _purge_files(batch: QuestionImportBatch, *, now: datetime) -> None:
         _path_for(batch.id, uuid.UUID(item["file_id"])).unlink(missing_ok=True)
     folder = get_settings().question_import_dir / str(batch.id)
     if folder.is_dir():
+        for artifact in folder.iterdir():
+            if artifact.is_file():
+                artifact.unlink()
         folder.rmdir()
     batch.files_purged_at = now
 
@@ -211,7 +221,7 @@ def cancel_batch(db: Session, batch_id: uuid.UUID) -> QuestionImportBatch:
     return batch
 
 
-def retry_batch(db: Session, batch_id: uuid.UUID) -> QuestionImportBatch:
+def retry_batch(db: Session, batch_id: uuid.UUID, *, operator_token: str | None = None) -> QuestionImportBatch:
     batch = db.scalar(select(QuestionImportBatch).where(
         QuestionImportBatch.id == batch_id, QuestionImportBatch.owner_scope == OWNER_SCOPE,
     ).with_for_update())
@@ -219,8 +229,13 @@ def retry_batch(db: Session, batch_id: uuid.UUID) -> QuestionImportBatch:
         raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
     if batch.status != "failed" or batch.files_purged_at is not None or batch.expires_at <= datetime.now(timezone.utc):
         raise ImportProblem("COMMIT_CONFLICT", "该批次无法重试，请重新上传", 409)
+    if batch.stage == "s2_failed":
+        require_s2_operator_token(operator_token)
+        settings = get_settings()
+        if not settings.question_import_s2_enabled or not settings.question_import_s2_api_key or not settings.question_import_s2_base_url.startswith("https://"):
+            raise ImportProblem("S2_NOT_CONFIGURED", "S2 百炼调用尚未在服务端配置", 409)
     batch.status = "uploaded"
-    batch.stage = "files_saved"
+    batch.stage = "s2_queued" if batch.stage == "s2_failed" else "files_saved"
     batch.error_code = batch.error_message = None
     batch.worker_token = None
     batch.lease_until = None

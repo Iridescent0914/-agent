@@ -46,6 +46,19 @@ class Settings(BaseSettings):
     question_import_worker_interval_seconds: int = 15
     question_import_lease_seconds: int = 120
     question_import_max_attempts: int = 3
+    question_import_s2_enabled: bool = False
+    question_import_s2_api_key: str = ""
+    question_import_s2_operator_token: str = ""
+    question_import_s2_base_url: str = ""
+    question_import_s2_model: str = "qwen3.8-flash"
+    question_import_s2_timeout_seconds: float = 360.0
+    question_import_s2_pages_per_unit: int = 2
+    question_import_s2_overlap_pages: int = 1
+    question_import_s2_max_calls: int = 30
+    question_import_s2_max_budget_cny: float = 20.0
+    question_import_s2_pdf_page_price_cny: float = 0.02
+    question_import_s2_input_million_price_cny: float = 0.8
+    question_import_s2_output_million_price_cny: float = 2.7
 
     model_config = SettingsConfigDict(
         env_file=".env",

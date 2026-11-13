@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -15,6 +15,7 @@ from app.services.question_import import (
     OWNER_SCOPE, ImportProblem, cancel_batch, create_batch, get_batch, retry_batch,
     update_candidate,
 )
+from app.services.question_import_s2_worker import start_s2
 
 
 router = APIRouter(prefix="/question-imports", tags=["question-imports"])
@@ -52,6 +53,10 @@ class CandidateUpdate(BaseModel):
     changes: dict
 
 
+class S2StartRequest(BaseModel):
+    budget_cny: float = Field(gt=0)
+
+
 @router.post("", response_model=BatchOut, status_code=201)
 async def upload_batch(
     source_mode: str = Form(...),
@@ -79,6 +84,18 @@ def list_batches(db: Session = Depends(get_db)):
     ).order_by(QuestionImportBatch.created_at.desc(), QuestionImportBatch.id.desc()).limit(100)))
 
 
+@router.get("/s2-config")
+def s2_config():
+    settings = get_settings()
+    return {"ready": bool(settings.question_import_s2_enabled and settings.question_import_s2_api_key
+                          and settings.question_import_s2_operator_token
+                          and settings.question_import_s2_base_url.startswith("https://")),
+            "model": settings.question_import_s2_model,
+            "max_budget_cny": settings.question_import_s2_max_budget_cny,
+            "pages_per_unit": settings.question_import_s2_pages_per_unit,
+            "overlap_pages": settings.question_import_s2_overlap_pages}
+
+
 @router.get("/{batch_id}", response_model=BatchOut)
 def read_batch(batch_id: UUID, db: Session = Depends(get_db)):
     return get_batch(db, batch_id)
@@ -90,8 +107,15 @@ def cancel(batch_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/{batch_id}/retry", response_model=BatchOut)
-def retry(batch_id: UUID, db: Session = Depends(get_db)):
-    return retry_batch(db, batch_id)
+def retry(batch_id: UUID, db: Session = Depends(get_db),
+          operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
+    return retry_batch(db, batch_id, operator_token=operator_token)
+
+
+@router.post("/{batch_id}/start-s2", response_model=BatchOut)
+def start_extraction(batch_id: UUID, request: S2StartRequest, db: Session = Depends(get_db),
+                     operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
+    return start_s2(db, batch_id, budget_cny=request.budget_cny, operator_token=operator_token)
 
 
 @router.get("/{batch_id}/items", response_model=list[CandidateOut])
