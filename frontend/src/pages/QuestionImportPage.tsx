@@ -56,6 +56,8 @@ export function QuestionImportPage() {
   const [questionFile, setQuestionFile] = useState<File | null>(null)
   const [answerFile, setAnswerFile] = useState<File | null>(null)
   const [batches, setBatches] = useState<Batch[]>([])
+  const [batchPage, setBatchPage] = useState(1)
+  const [focusedBatchId, setFocusedBatchId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -65,8 +67,15 @@ export function QuestionImportPage() {
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null)
   const [candidates, setCandidates] = useState<Candidate[]>([])
 
-  async function reload() {
-    try { setBatches(await apiGet<Batch[]>('/question-imports')) }
+  async function reload(focusBatchId?: string) {
+    try {
+      const rows = await apiGet<Batch[]>('/question-imports')
+      setBatches(rows)
+      if (focusBatchId) {
+        const index = rows.findIndex((batch) => batch.id === focusBatchId)
+        if (index >= 0) setBatchPage(Math.floor(index / 10) + 1)
+      }
+    }
     catch (error) { message.error(error instanceof Error ? error.message : '批次列表加载失败') }
   }
 
@@ -101,10 +110,13 @@ export function QuestionImportPage() {
     request.onload = () => {
       setUploading(false)
       if (request.status >= 200 && request.status < 300) {
-        message.success('上传完成，已建立暂存批次')
+        const batch = JSON.parse(request.responseText) as Batch
+        setFocusedBatchId(batch.id)
+        if (request.status === 200) message.info('文件内容与已有批次相同，已定位原批次；未重复创建')
+        else message.success('上传完成，已建立暂存批次')
         setQuestionFile(null)
         setAnswerFile(null)
-        void reload()
+        void reload(batch.id)
       } else {
         try { message.error(JSON.parse(request.responseText).message || '上传失败') }
         catch { message.error('上传失败') }
@@ -175,11 +187,12 @@ export function QuestionImportPage() {
       </Space>
     </Card>
     <Card title="导入批次">
-      <Table rowKey="id" dataSource={batches} locale={{ emptyText: <Empty description="暂无导入批次" /> }} pagination={{ pageSize: 10 }}
+      <Table rowKey="id" dataSource={batches} locale={{ emptyText: <Empty description="暂无导入批次" /> }}
+        pagination={{ current: batchPage, pageSize: 10, onChange: setBatchPage }}
         columns={[
           { title: '上传时间', dataIndex: 'created_at', render: (value: string) => new Date(value).toLocaleString('zh-CN') },
           { title: '场景', dataIndex: 'source_mode', render: (value: string) => modeLabels[value] || value },
-          { title: '文件', dataIndex: 'files', render: (files: Batch['files']) => files.map((file) => file.original_name).join('、') },
+          { title: '文件', dataIndex: 'files', render: (files: Batch['files'], batch: Batch) => <Space wrap>{batch.id === focusedBatchId && <Tag color="blue">当前批次</Tag>}{files.map((file) => file.original_name).join('、')}</Space> },
           { title: '状态', render: (_, batch: Batch) => <Space direction="vertical" size={0}><Tag color={batch.status === 'failed' ? 'red' : batch.status === 'cancelled' ? 'default' : batch.status === 'review_pending' ? 'green' : 'blue'}>{stageLabel(batch)}</Tag>{batch.checkpoint?.s2 && <Typography.Text type="secondary">调用 {batch.checkpoint.s2.calls || 0} 次；估算 ¥{(batch.checkpoint.s2.estimated_cny || 0).toFixed(3)}{batch.checkpoint.s2.cost_unknown ? '（部分用量缺失）' : ''}</Typography.Text>}{batch.error_message && <Typography.Text type="danger">{batch.error_message}</Typography.Text>}</Space> },
           { title: '操作', render: (_, batch: Batch) => <Space wrap>{['awaiting_s2', 's2_budget_paused'].includes(batch.stage) && <Button disabled={!s2Config?.ready} onClick={() => confirmStart(batch)}>开始 S2 识别</Button>}{batch.checkpoint?.s2 && <Button onClick={() => void viewCandidates(batch.id)}>查看候选与页段</Button>}{batch.status === 'failed' && !batch.files_purged_at && <Button disabled={loading} onClick={() => void act(batch.id, 'retry')}>重试</Button>}{!['cancelled', 'completed', 'completed_with_unassigned'].includes(batch.status) && <Button disabled={loading} onClick={() => void act(batch.id, 'cancel')}>取消</Button>}</Space> },
         ]} />

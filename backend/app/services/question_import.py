@@ -42,6 +42,10 @@ class ImportProblem(ValueError):
         self.status_code = status_code
 
 
+# Bump when DOCX rendering changes so an identical upload does not reuse an old batch.
+DOCX_CONVERSION_VERSION = "libreoffice-math-v1"
+
+
 def content_fingerprint(question_text: str, options: object = None, assets: object = None) -> str:
     normalized = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", question_text)).strip()
     value = json.dumps(
@@ -132,10 +136,14 @@ def create_batch(db: Session, *, source_mode: str,
     if source_mode == "separate" and [role for _, _, role, _ in validated] != ["questions", "answers"]:
         raise ImportProblem("INVALID_FILE", "分文件场景需题目文件和答案文件")
     catalog_hash = hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest()
-    request_hash = hashlib.sha256(json.dumps({
+    fingerprint_data = {
         "mode": source_mode, "catalog": catalog_hash,
         "files": [(role, hashlib.sha256(data).hexdigest()) for _, _, role, data in validated],
-    }, sort_keys=True).encode()).hexdigest()
+    }
+    if any(role == "questions" and media_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+           for (media_type, _), _, role, _ in validated):
+        fingerprint_data["docx_conversion_version"] = DOCX_CONVERSION_VERSION
+    request_hash = hashlib.sha256(json.dumps(fingerprint_data, sort_keys=True).encode()).hexdigest()
     # The transaction lock makes idempotency and the seven-batch limit atomic across workers.
     lock_key = 0x51494D504F5254  # One owner scope in the internal S1 deployment.
     db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
@@ -147,6 +155,7 @@ def create_batch(db: Session, *, source_mode: str,
     now = datetime.now(timezone.utc)
     if existing is not None:
         if existing.status != "cancelled" and existing.expires_at > now:
+            existing.reused_existing = True
             return existing
         _purge_files(existing, now=now)
         db.flush()
@@ -189,6 +198,7 @@ def create_batch(db: Session, *, source_mode: str,
         folder.rmdir()
         raise
     batch.files = manifest
+    batch.reused_existing = False
     try:
         db.flush()
     except Exception:

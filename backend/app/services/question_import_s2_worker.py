@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.models import QuestionImportBatch, QuestionImportItem
-from app.services.question_import import OWNER_SCOPE, ImportProblem, _path_for, add_candidate, get_batch, require_s2_operator_token
+from app.services.question_import import DOCX_CONVERSION_VERSION, OWNER_SCOPE, ImportProblem, _path_for, add_candidate, get_batch, require_s2_operator_token
 from app.services.question_import_s2 import (
     FLASH_MODEL, PROMPT_VERSION, ModelOutput, PageUnit, QwenPdfProvider, candidate_from_question, candidate_key,
     decode_qwen_response, estimate_cost, pdf_unit_bytes, plan_units, prepare_pdf,
@@ -43,6 +43,10 @@ def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_to
         raise ImportProblem("INVALID_FILE", "批次缺少题目文件")
     checkpoint = dict(batch.checkpoint or {})
     s2 = dict(checkpoint.get("s2") or {})
+    question_file = next(item for item in batch.files if item["role"] == "questions")
+    if (question_file["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            and s2.get("units") and s2.get("conversion_version") != DOCX_CONVERSION_VERSION):
+        raise ImportProblem("S2_CONFIG_CHANGED", "DOCX 转换器已修复公式处理，请重新上传以完整重跑 S2", 409)
     if budget_cny <= float(s2.get("estimated_cny") or 0):
         raise ImportProblem("INVALID_S2_BUDGET", "新预算必须高于已估算费用")
     s2["budget_cny"] = budget_cny
@@ -50,6 +54,8 @@ def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_to
         raise ImportProblem("S2_CONFIG_CHANGED", "模型配置已变化，请新建批次", 409)
     s2["model"] = settings.question_import_s2_model
     s2["prompt_version"] = PROMPT_VERSION
+    if question_file["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        s2["conversion_version"] = DOCX_CONVERSION_VERSION
     prices = {
         "pdf_page_cny": settings.question_import_s2_pdf_page_price_cny,
         "input_million_cny": settings.question_import_s2_input_million_price_cny,
@@ -132,6 +138,22 @@ def _result_path(batch_id: uuid.UUID, file_id: str, unit_index: int):
     return _path_for(batch_id, uuid.UUID(file_id)).with_name(file_id.replace("-", "") + f".unit{unit_index}.json")
 
 
+def _trim_redundant_pending_tail(s2: dict, batch_id: uuid.UUID, file_id: str) -> bool:
+    """Drop only legacy unstarted tail units already covered by the preceding unit."""
+    units = s2["units"]
+    changed = False
+    while len(units) > 1:
+        tail, previous = units[-1], units[-2]
+        if (tail["core_last_page"] > previous["last_page"]
+                or tail["status"] != "pending"
+                or (s2.get("failed_unit") or {}).get("index") == tail["index"]
+                or _result_path(batch_id, file_id, tail["index"]).is_file()):
+            break
+        units.pop()
+        changed = True
+    return changed
+
+
 def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
                   *, retry_invalid: bool = False) -> tuple[ModelOutput, dict]:
     artifact = _result_path(batch_id, file_id, unit.index)
@@ -174,6 +196,9 @@ def process_s2_one() -> bool:
             batch = get_batch(db, batch_id)
             source = next(item for item in batch.files if item["role"] == "questions")
             s2 = dict((batch.checkpoint or {}).get("s2") or {})
+        if (source["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                and s2.get("units") and s2.get("conversion_version") != DOCX_CONVERSION_VERSION):
+            raise ImportProblem("S2_CONFIG_CHANGED", "DOCX 转换器已修复公式处理，请重新上传以完整重跑 S2")
         pdf, pages, warnings = prepare_pdf(batch_id, source)
         if not s2.get("units"):
             units = plan_units(pages, pages_per_unit=get_settings().question_import_s2_pages_per_unit,
@@ -196,6 +221,10 @@ def process_s2_one() -> bool:
                       "output_million_cny": get_settings().question_import_s2_output_million_price_cny}
             if s2.get("price_snapshot") != prices:
                 raise ImportProblem("S2_CONFIG_CHANGED", "计费单价配置已变化，请新建批次")
+            if _trim_redundant_pending_tail(s2, batch_id, source["file_id"]):
+                with SessionLocal() as db:
+                    if not _checkpoint_update(db, batch_id, token, s2):
+                        return True
             units = [PageUnit(**{key: row[key] for key in PageUnit.__dataclass_fields__}) for row in s2["units"]]
         for unit in units:
             state = s2["units"][unit.index]

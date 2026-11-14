@@ -58,7 +58,7 @@ def test_upload_is_idempotent_and_files_stay_private(db, private_dir):
         first = client.post("/api/v1/question-imports", data=body, files=files)
         assert first.status_code == 201, first.text
         second = client.post("/api/v1/question-imports", data=body, files=files)
-        assert second.status_code == 201, second.text
+        assert second.status_code == 200, second.text
         assert second.json()["id"] == first.json()["id"]
         batch = first.json()
         assert batch["files"][0]["page_count"] == 1

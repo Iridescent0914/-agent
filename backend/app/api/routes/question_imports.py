@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -59,6 +59,7 @@ class S2StartRequest(BaseModel):
 
 @router.post("", response_model=BatchOut, status_code=201)
 async def upload_batch(
+    response: Response,
     source_mode: str = Form(...),
     question_file: UploadFile = File(...),
     answer_file: UploadFile | None = File(None),
@@ -74,7 +75,10 @@ async def upload_batch(
         if len(secondary) > limit:
             raise ImportProblem("FILE_LIMIT_EXCEEDED", "答案文件超过单文件上限", 413)
         files.append(("answers", answer_file.filename or "", secondary))
-    return create_batch(db, source_mode=source_mode, files=files)
+    batch = create_batch(db, source_mode=source_mode, files=files)
+    if batch.reused_existing:
+        response.status_code = 200
+    return batch
 
 
 @router.get("", response_model=list[BatchOut])

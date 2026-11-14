@@ -23,7 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from pypdf import PdfReader, PdfWriter
 
 from app.core.config import Settings, get_settings
-from app.services.question_import import ImportProblem, _path_for
+from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, _path_for
 
 PROMPT_VERSION = "question-import-s2-v2"
 FLASH_MODEL = "qwen3.8-flash"
@@ -53,12 +53,19 @@ class ModelLabeledSubquestion(BaseModel):
     text: str = Field(min_length=1)
 
 
+class ModelOriginalNumberSubquestion(BaseModel):
+    """Accept the parent question field names when the model reuses them for a subquestion."""
+    model_config = ConfigDict(extra="forbid", strict=True)
+    original_number: str
+    question_text: str = Field(min_length=1)
+
+
 class ModelQuestion(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     original_number: str | None = None
     question_text: str = Field(min_length=1)
     options: list[ModelOption] = Field(default_factory=list)
-    subquestions: list[str | ModelSubquestion | ModelNumberedSubquestion | ModelLabeledSubquestion] = Field(default_factory=list)
+    subquestions: list[str | ModelSubquestion | ModelNumberedSubquestion | ModelLabeledSubquestion | ModelOriginalNumberSubquestion] = Field(default_factory=list)
     math_fragments: list[str] = Field(default_factory=list)
     diagram_clues: list[str] = Field(default_factory=list)
     page_start: int = Field(ge=1)
@@ -99,6 +106,8 @@ def plan_units(page_count: int, *, pages_per_unit: int, overlap: int) -> list[Pa
     units = []
     for index, core_start in enumerate(range(1, page_count + 1, pages_per_unit)):
         core_end = min(page_count, core_start + pages_per_unit - 1)
+        if units and core_end <= units[-1].last_page:
+            break
         units.append(PageUnit(index, core_start,
                               min(page_count, core_end + overlap), core_start, core_end))
     return units
@@ -113,7 +122,7 @@ def prepare_pdf(batch_id: uuid.UUID, file: dict, *, settings: Settings | None = 
         pdf = source
         warnings: list[str] = []
     elif file["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        pdf = source.with_name(source.name + ".converted.pdf")
+        pdf = source.with_name(source.name + f".{DOCX_CONVERSION_VERSION}.converted.pdf")
         warnings = ["DOCX 转换结果须对照原件人工检查公式和图形"]
         with zipfile.ZipFile(source) as archive:
             source_media_count = sum(name.startswith("word/media/") and not name.endswith("/")
@@ -172,10 +181,22 @@ def pdf_unit_bytes(pdf: Path, unit: PageUnit) -> bytes:
 
 
 def parse_model_output(value: object, unit: PageUnit) -> ModelOutput:
+    if isinstance(value, list):
+        detail = "空数组 []" if not value else "数组"
+        raise ImportProblem("INVALID_MODEL_OUTPUT", f"模型返回{detail}，需要包含 complete、questions 的 JSON 对象")
     try:
         output = ModelOutput.model_validate(value)
     except ValidationError as exc:
-        raise ImportProblem("INVALID_MODEL_OUTPUT", "模型返回字段不符合 S2 契约") from exc
+        location = []
+        for part in exc.errors()[0]["loc"]:
+            if part == "str" or (isinstance(part, str) and part.startswith("Model")):
+                break
+            if isinstance(part, int):
+                location.append(f"[{part}]")
+            else:
+                location.append(("." if location else "") + part)
+        detail = f"（位置：{''.join(location)}）" if location else ""
+        raise ImportProblem("INVALID_MODEL_OUTPUT", f"模型返回字段不符合 S2 契约{detail}") from exc
     if not output.complete:
         raise ImportProblem("INCOMPLETE_MODEL_OUTPUT", "模型报告页段提取不完整")
     for question in output.questions:
@@ -222,15 +243,17 @@ def candidate_from_question(file_id: str, question: ModelQuestion, unit: PageUni
     }
 
 
-def subquestion_text(value: str | ModelSubquestion | ModelNumberedSubquestion | ModelLabeledSubquestion) -> str:
+def subquestion_text(value: str | ModelSubquestion | ModelNumberedSubquestion | ModelLabeledSubquestion | ModelOriginalNumberSubquestion) -> str:
     if isinstance(value, str):
         return value.strip()
     if isinstance(value, ModelSubquestion):
         number = value.key
     elif isinstance(value, ModelNumberedSubquestion):
         number = value.number
-    else:
+    elif isinstance(value, ModelLabeledSubquestion):
         number = value.label
+    else:
+        return (value.original_number + value.question_text).strip()
     return (number + value.text).strip()
 
 
@@ -286,7 +309,10 @@ class QwenPdfProvider:
                                           "filename": "question-pages.pdf"}},
                 {"type": "text", "text": prompt},
             ]}],
-            "response_format": {"type": "json_object"},
+            "response_format": {"type": "json_schema", "json_schema": {
+                "name": "s2_page_questions", "strict": True,
+                "schema": ModelOutput.model_json_schema(),
+            }},
             "include_tool_usage": True,
             "max_tokens": 8192,
         }
