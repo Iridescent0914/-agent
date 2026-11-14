@@ -34,6 +34,10 @@ a { color: inherit; }
 .table-card .ant-table-cell-fix-right .ant-btn { font-weight: 600; }
 .question-rich-text { white-space: pre-wrap; font-size: 16px; line-height: 2; color: #111827; }
 .question-import-candidate .question-rich-text { margin-bottom: 0; }
+.question-markdown-table-wrap { max-width: 100%; overflow-x: auto; margin: 8px 0; }
+.question-markdown-table { border-collapse: collapse; min-width: max-content; max-width: 100%; font-size: 16px; color: #111827; }
+.question-markdown-table th, .question-markdown-table td { border: 1px solid #cbd5e1; padding: 4px 12px; text-align: center; white-space: nowrap; }
+.question-markdown-table th { background: #f1f5f9; font-weight: 600; }
 .question-rich-text .ant-image { max-width: min(720px, 100%); vertical-align: middle; margin: 6px 4px; }
 .question-asset { width: auto !important; object-fit: contain; cursor: zoom-in; }
 .question-asset-compact { max-width: min(360px, 80vw); max-height: 52px; margin-block: 0; }

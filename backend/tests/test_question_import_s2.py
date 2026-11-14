@@ -4,6 +4,7 @@ import json
 import shutil
 import zipfile
 from io import BytesIO
+from types import SimpleNamespace
 from uuid import uuid4
 
 import httpx
@@ -16,6 +17,7 @@ from app.core.database import engine
 from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, create_batch, retry_batch
 from app.services.question_import_s2 import (
     QwenPdfProvider, candidate_from_question, candidate_key, estimate_cost,
+    overlap_candidate_is_duplicate, prefer_incoming_overlap, resolved_overlap_option,
     decode_qwen_response, parse_model_output, plan_units, prepare_pdf,
 )
 from app.services.question_import_s2_worker import claim_s2, start_s2
@@ -142,6 +144,82 @@ def test_page_overlap_mapping_and_model_guard():
     with pytest.raises(ImportProblem, match="字段"):
         parse_model_output({"complete": True, "questions": [{**question, "is_required": True}],
                             "unresolved_fragments": []}, units[0])
+
+
+def test_overlap_reconciliation_keeps_distinct_math_and_resolves_attached_option():
+    file_id = str(uuid4())
+    first_unit, second_unit = plan_units(4, pages_per_unit=2, overlap=1)
+    first = candidate_from_question(file_id, parse_model_output({
+        "complete": True, "questions": [{
+            **_model_question(page=2), "page_end": 3,
+            "question_text": "计算 1/2 + 3/4",
+            "options": [{"key": "C", "text": "甲错误，乙正确"}],
+        }], "unresolved_fragments": [],
+    }, first_unit).questions[0], first_unit)
+    second = candidate_from_question(file_id, parse_model_output({
+        "complete": True, "questions": [{
+            **_model_question(page=1), "question_text": "计算 \\frac{1}{2}+\\frac{3}{4}。",
+            "options": [{"key": "C", "text": "甲错误，乙正确"}],
+        }], "unresolved_fragments": [],
+    }, second_unit).questions[0], second_unit)
+    assert overlap_candidate_is_duplicate(first, second, boundary_page=3)
+    changed_number = json.loads(json.dumps(second))
+    changed_number["content"]["question_text"] = "计算 1/2 + 5/4"
+    assert not overlap_candidate_is_duplicate(first, changed_number, boundary_page=3)
+    changed_option = json.loads(json.dumps(second))
+    changed_option["content"]["options"][0]["text"] = "甲乙均正确"
+    assert not overlap_candidate_is_duplicate(first, changed_option, boundary_page=3)
+    missing_options = json.loads(json.dumps(second))
+    missing_options["content"]["options"] = []
+    assert not overlap_candidate_is_duplicate(first, missing_options, boundary_page=3)
+    assert resolved_overlap_option({"page": 3, "text": "C. 甲错误，乙正确"},
+                                   boundary_page=3, previous=[first])
+    assert not resolved_overlap_option({"page": 3, "text": "D. 甲、乙均错误"},
+                                       boundary_page=3, previous=[first])
+    assert not resolved_overlap_option({"page": 4, "text": "C. 甲错误，乙正确"},
+                                       boundary_page=3, previous=[first])
+
+
+def test_overlap_same_page_number_matches_formula_notation_variants():
+    source = {"file_id": str(uuid4()), "original_number": "9", "page_start": 5}
+    first = {"source": source, "content": {"question_text": "当 -a = -7 时， -a 的相反数是（ ）",
+             "options": [{"key": "A", "text": "7"}, {"key": "C", "text": "±7"}]}}
+    second = json.loads(json.dumps(first))
+    second["content"]["options"][1]["text"] = "$\\pm 7$"
+    assert overlap_candidate_is_duplicate(first, second, boundary_page=5)
+    different_math = json.loads(json.dumps(second))
+    different_math["content"]["question_text"] = "当 -a = -8 时， -a 的相反数是（ ）"
+    assert not overlap_candidate_is_duplicate(first, different_math, boundary_page=5)
+
+    first["source"]["original_number"] = "10"
+    first["content"]["question_text"] = "化简 -(-(-...(-1)...)))（上方标注“2022 个负号”）的结果的相反数为（ ）"
+    first["content"]["options"] = [{"key": "A", "text": "-1"}, {"key": "B", "text": "1"}]
+    second = json.loads(json.dumps(first))
+    second["content"]["question_text"] = (
+        "化简 \\(\\frac{2022 \\text{个负号}}{-(-(-\\cdots(-1)\\cdots)))}\\) 的结果的相反数为（）")
+    assert overlap_candidate_is_duplicate(first, second, boundary_page=5)
+    second["content"]["options"][1]["text"] = "2"
+    assert not overlap_candidate_is_duplicate(first, second, boundary_page=5)
+
+
+def test_same_unit_partial_question_keeps_complete_candidate():
+    from scripts.reconcile_s2_overlap import audit
+
+    source = {"file_id": str(uuid4()), "original_number": "8", "page_start": 13}
+    partial = {"source": source, "content": {"question_text": "计算：(1) (-12)-(-15);", "options": []},
+               "teacher_decision": "pending"}
+    complete = json.loads(json.dumps(partial))
+    complete["content"]["question_text"] = "计算：(1) $(-12)-(-15)$; (2) $0-2020$; (3) $(-7.5)-5.6$."
+    assert overlap_candidate_is_duplicate(partial, complete, boundary_page=13)
+    assert prefer_incoming_overlap(partial, complete)
+    items = [SimpleNamespace(id=uuid4(), ordinal=index, revision=1, payload=payload)
+             for index, payload in enumerate((partial, complete), start=1)]
+    batch = SimpleNamespace(stage="s2_completed", status="review_pending", checkpoint={"s2": {
+        "units": [{"first_page": 13, "candidate_count": 2, "unresolved_fragments": []}]}})
+    duplicates, unresolved = audit(batch, items)
+    assert unresolved == []
+    assert duplicates[0]["removed_item_id"] == str(items[0].id)
+    assert duplicates[0]["kept_item_id"] == str(items[1].id)
 
 
 def test_empty_array_response_reports_actual_failure():
@@ -373,9 +451,15 @@ def test_worker_resumes_by_unit_and_deduplicates_overlap(db, tmp_path, monkeypat
     class MockProvider:
         def extract(self, data, *, page_count, capture_response=None):
             calls.append(page_count)
-            question = _model_question(page=3 if len(calls) == 1 else 1)
+            first = len(calls) == 1
+            question = {**_model_question(page=2 if first else 1),
+                        "page_end": 3 if first else 1,
+                        "question_text": "计算 1+2" if first else "计算 1 + 2。",
+                        "options": [{"key": "C", "text": "甲错误，乙正确"}]}
             output = parse_model_output({"complete": True, "questions": [question],
-                                         "unresolved_fragments": []},
+                                         "unresolved_fragments": [] if first else [{
+                                             "page": 1, "text": "C. 甲错误，乙正确",
+                                             "reason": "缺少题干和题号，无法判断归属"}]},
                                         plan_units(page_count, pages_per_unit=page_count, overlap=0)[0])
             return output, {"usage": {"prompt_tokens": 100, "completion_tokens": 50,
                                       "x_tools": {"pdf_page_parser": {"count": page_count}}},
@@ -391,6 +475,11 @@ def test_worker_resumes_by_unit_and_deduplicates_overlap(db, tmp_path, monkeypat
     assert batch.stage == "s2_completed"
     assert batch.checkpoint["s2"]["calls"] == 2
     assert calls == [3, 2]
+    second_unit = batch.checkpoint["s2"]["units"][1]
+    assert second_unit["candidate_count"] == 0
+    assert second_unit["unresolved_fragments"] == []
+    assert len(second_unit["resolved_overlap_fragments"]) == 1
+    assert second_unit["overlap_duplicates"][0]["reason"] == "overlap_variant"
     from app.models import QuestionImportItem
     from sqlalchemy import select
     assert len(list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch.id)))) == 1

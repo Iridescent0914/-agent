@@ -17,7 +17,9 @@ from app.models import QuestionImportBatch, QuestionImportItem
 from app.services.question_import import DOCX_CONVERSION_VERSION, OWNER_SCOPE, ImportProblem, _path_for, add_candidate, get_batch, require_s2_operator_token
 from app.services.question_import_s2 import (
     FLASH_MODEL, PROMPT_VERSION, ModelOutput, PageUnit, QwenPdfProvider, candidate_from_question, candidate_key,
-    decode_qwen_response, estimate_cost, pdf_unit_bytes, plan_units, prepare_pdf,
+    decode_qwen_response, estimate_cost, overlap_candidate_is_duplicate, prefer_incoming_overlap,
+    pdf_unit_bytes, plan_units, prepare_pdf,
+    resolved_overlap_option,
 )
 
 
@@ -252,26 +254,61 @@ def process_s2_one() -> bool:
                 current = dict((row.checkpoint or {}).get("s2") or {})
                 if current["units"][unit.index]["status"] == "completed":
                     continue
-                known = {candidate_key(item.payload) for item in db.scalars(select(QuestionImportItem).where(
-                    QuestionImportItem.batch_id == batch_id))}
+                existing_items = list(db.scalars(select(QuestionImportItem).where(
+                    QuestionImportItem.batch_id == batch_id).with_for_update()))
+                previous_payloads = [item.payload for item in existing_items]
+                known = {candidate_key(item.payload) for item in existing_items}
                 selected = 0
+                overlap_duplicates = []
                 for question in output.questions:
                     payload = candidate_from_question(source["file_id"], question, unit)
                     key = candidate_key(payload)
                     if key in known:
+                        overlap_duplicates.append({"original_number": payload["source"]["original_number"],
+                                                   "page_start": payload["source"]["page_start"],
+                                                   "reason": "exact"})
                         continue
-                    add_candidate(db, row, payload)
+                    duplicate = next((item for item in existing_items if overlap_candidate_is_duplicate(
+                        item.payload, payload, boundary_page=unit.first_page)), None)
+                    if duplicate is not None:
+                        replaced = prefer_incoming_overlap(duplicate.payload, payload)
+                        if replaced:
+                            original = duplicate.payload
+                            duplicate.payload = {**payload,
+                                                 "batch_id": original["batch_id"],
+                                                 "item_id": original["item_id"],
+                                                 "revision": original["revision"],
+                                                 "catalog_snapshot_sha256": original["catalog_snapshot_sha256"]}
+                        overlap_duplicates.append({"original_number": payload["source"]["original_number"],
+                                                   "page_start": payload["source"]["page_start"],
+                                                   "kept_item_id": str(duplicate.id), "reason": "overlap_variant",
+                                                   "replaced_with_richer_candidate": replaced})
+                        continue
+                    existing_items.append(add_candidate(db, row, payload))
                     known.add(key)
                     selected += 1
                 unresolved = [{"page": unit.first_page + fragment.page - 1,
                                "text": fragment.text, "reason": fragment.reason}
                               for fragment in output.unresolved_fragments]
+                resolved_overlap = []
+                if unit.index > 0:
+                    remaining = []
+                    for fragment in unresolved:
+                        if resolved_overlap_option(fragment, boundary_page=unit.first_page,
+                                                   previous=previous_payloads):
+                            resolved_overlap.append(fragment)
+                        else:
+                            remaining.append(fragment)
+                    unresolved = remaining
                 if not output.questions and not unresolved:
-                    unresolved = [{"page": unit.first_page, "text": "本页段没有识别出题目",
-                                   "reason": "需核对原文件是否为空白、答案页或漏题"}]
+                    if not resolved_overlap:
+                        unresolved = [{"page": unit.first_page, "text": "本页段没有识别出题目",
+                                       "reason": "需核对原文件是否为空白、答案页或漏题"}]
                 current["units"][unit.index] = {**current["units"][unit.index], "status": "completed",
                                                   "candidate_count": selected,
                                                   "unresolved_fragments": unresolved,
+                                                  "resolved_overlap_fragments": resolved_overlap,
+                                                  "overlap_duplicates": overlap_duplicates,
                                                   "usage": meta.get("usage") or {},
                                                   "estimated_cny": cost,
                                                   "elapsed_seconds": meta["elapsed_seconds"],

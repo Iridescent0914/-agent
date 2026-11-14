@@ -6,6 +6,9 @@ import base64
 import copy
 import hashlib
 import json
+import re
+import unicodedata
+from difflib import SequenceMatcher
 import os
 import shutil
 import subprocess
@@ -264,6 +267,106 @@ def candidate_key(payload: dict) -> str:
                         source["original_number"], content["question_text"], content["options"]],
                        ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _comparison_text(value: str) -> str:
+    text = unicodedata.normalize("NFKC", value).lower().replace("−", "-")
+    text = re.sub(r"\\(?:left|right)\b", "", text)
+    text = re.sub(r"\\pm\b", "±", text)
+    text = re.sub(r"\^\{\\circ\}", "°", text)
+    text = re.sub(r"\\circ\b", "°", text)
+    text = re.sub(r"\\times\b", "×", text)
+    text = re.sub(r"\\(?:dfrac|tfrac|frac)\{([^{}]+)\}\{([^{}]+)\}", r"\1/\2", text)
+    return re.sub(r"[\s\$\\{}|*_，。,.：:；;（）()\[\]【】]+", "", text)
+
+
+def _numeric_values(value: str) -> set[str]:
+    return set(re.findall(r"\d+(?:\.\d+)?", unicodedata.normalize("NFKC", value)))
+
+
+def _question_number(value: str | None) -> str:
+    text = unicodedata.normalize("NFKC", value or "").strip().lower()
+    text = re.sub(r"^第\s*", "", text)
+    return re.sub(r"\s*题?[.．、:：\s]*$", "", text)
+
+
+def overlap_candidate_is_duplicate(existing: dict, incoming: dict, *, boundary_page: int) -> bool:
+    """Only merge strongly supported duplicate interpretations around one S2 page boundary."""
+    old_source, new_source = existing["source"], incoming["source"]
+    if old_source["file_id"] != new_source["file_id"]:
+        return False
+    old_start, new_start = old_source["page_start"], new_source["page_start"]
+    if not isinstance(old_start, int) or not isinstance(new_start, int):
+        return False
+    if abs(old_start - new_start) > 1 or (boundary_page not in {old_start, new_start}
+                                               and old_start != new_start):
+        return False
+    old_number = _question_number(old_source.get("original_number"))
+    new_number = _question_number(new_source.get("original_number"))
+    if bool(old_number) != bool(new_number) or (old_number and old_number != new_number):
+        return False
+    old_text = _comparison_text(existing["content"]["question_text"])
+    new_text = _comparison_text(incoming["content"]["question_text"])
+    if not old_text or not new_text:
+        return False
+    old_numbers = re.findall(r"\d+(?:\.\d+)?", old_text)
+    new_numbers = re.findall(r"\d+(?:\.\d+)?", new_text)
+    similarity = SequenceMatcher(None, old_text, new_text, autojunk=False).ratio()
+    old_options = existing["content"].get("options") or []
+    new_options = incoming["content"].get("options") or []
+    if bool(old_options) != bool(new_options):
+        return False
+    if old_options and new_options:
+        if [option["key"] for option in old_options] != [option["key"] for option in new_options]:
+            return False
+        old_option_text = _comparison_text(" ".join(option["text"] for option in old_options))
+        new_option_text = _comparison_text(" ".join(option["text"] for option in new_options))
+        if old_option_text != new_option_text:
+            return False
+    if old_numbers == new_numbers and similarity >= (0.86 if old_number else 0.95):
+        return True
+    if not old_number or old_start != new_start:
+        return False
+    old_values = _numeric_values(existing["content"]["question_text"])
+    new_values = _numeric_values(incoming["content"]["question_text"])
+    if old_options:
+        return bool(old_values == new_values and similarity >= 0.45)
+    if old_values == new_values and similarity >= 0.60:
+        return True
+    shorter, longer = sorted((old_text, new_text), key=len)
+    return bool(len(shorter) >= 8 and shorter in longer
+                and (old_values.issubset(new_values) or new_values.issubset(old_values)))
+
+
+def prefer_incoming_overlap(existing: dict, incoming: dict) -> bool:
+    """Keep complete subquestions; otherwise prefer concise text over repeated extraction."""
+    old_text = _comparison_text(existing["content"]["question_text"])
+    new_text = _comparison_text(incoming["content"]["question_text"])
+    old_values = _numeric_values(existing["content"]["question_text"])
+    new_values = _numeric_values(incoming["content"]["question_text"])
+    if old_text in new_text and old_values < new_values:
+        return True
+    return bool(old_values == new_values and len(new_text) < len(old_text) * 0.8)
+
+
+def resolved_overlap_option(fragment: dict, *, boundary_page: int, previous: list[dict]) -> bool:
+    """An orphan option on the shared page is already attached to the previous-page question."""
+    if fragment["page"] != boundary_page:
+        return False
+    match = re.match(r"^\s*([A-Za-z])\s*[.．、:：]\s*(.+?)\s*$", fragment["text"])
+    if not match:
+        return False
+    key, text = match.group(1).upper(), _comparison_text(match.group(2))
+    if not text:
+        return False
+    for payload in previous:
+        source = payload["source"]
+        if source.get("page_start") != boundary_page - 1:
+            continue
+        for option in payload["content"].get("options") or []:
+            if option["key"].upper() == key and _comparison_text(option["text"]) == text:
+                return True
+    return False
 
 
 def estimate_cost(usage: dict, *, settings: Settings | None = None) -> float | None:
