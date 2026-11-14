@@ -143,11 +143,14 @@ def _result_path(batch_id: uuid.UUID, file_id: str, unit_index: int):
 
 def _trim_redundant_pending_tail(s2: dict, batch_id: uuid.UUID, file_id: str) -> bool:
     """Drop only legacy unstarted tail units already covered by the preceding unit."""
+    if s2.get("recovery_history"):
+        return False
     units = s2["units"]
     changed = False
     while len(units) > 1:
         tail, previous = units[-1], units[-2]
         if (tail["core_last_page"] > previous["last_page"]
+                or previous["status"] != "completed"
                 or tail["status"] != "pending"
                 or (s2.get("failed_unit") or {}).get("index") == tail["index"]
                 or _result_path(batch_id, file_id, tail["index"]).is_file()):
@@ -181,6 +184,48 @@ def _upgrade_incomplete_overlap_prompt(s2: dict) -> bool:
     s2["prompt_version"] = PROMPT_VERSION
     s2["prompt_upgrade"] = {"from": LEGACY_PROMPT_VERSION, "at_unit_index": unit["index"],
                             "reason": "incomplete_overlap_page"}
+    failed["recovery_applied"] = True
+    return True
+
+
+def _adapt_incomplete_unit(s2: dict, batch_id: uuid.UUID, file_id: str) -> bool:
+    """On an explicit retry, reduce the failed core or extend its context."""
+    failed = s2.get("failed_unit") or {}
+    if failed.get("code") != "INCOMPLETE_MODEL_OUTPUT" or failed.get("recovery_applied"):
+        return False
+    units = s2["units"]
+    index = failed.get("index")
+    if not isinstance(index, int) or not 0 <= index < len(units):
+        raise ImportProblem("S2_CONFIG_CHANGED", "失败页段检查点无效，请联系管理员")
+    unit = units[index]
+    if unit["status"] != "pending" or any(row["status"] != "pending" for row in units[index + 1:]):
+        raise ImportProblem("S2_CONFIG_CHANGED", "失败页段状态不一致，请联系管理员")
+    if any(_result_path(batch_id, file_id, row["index"]).exists() for row in units[index + 1:]):
+        raise ImportProblem("S2_CONFIG_CHANGED", "后续页段已有响应，请联系管理员核对")
+    page_count = int(s2["page_count"])
+    core_count = unit["core_last_page"] - unit["core_first_page"] + 1
+    if core_count > 1:
+        midpoint = unit["core_first_page"] + (core_count - 1) // 2
+        context = max(2, unit["last_page"] - unit["core_last_page"])
+        first = {**unit, "core_last_page": midpoint,
+                 "last_page": min(page_count, midpoint + context)}
+        second = {**unit, "index": index + 1,
+                  "first_page": midpoint + 1, "core_first_page": midpoint + 1,
+                  "last_page": min(page_count, unit["core_last_page"] + context)}
+        units[index:index + 1] = [first, second]
+        for position in range(index + 2, len(units)):
+            units[position]["index"] = position
+        action = "split_core"
+    elif unit["last_page"] < page_count:
+        unit["last_page"] = min(page_count, unit["last_page"] + 2)
+        action = "extend_context"
+    else:
+        raise ImportProblem("S2_REVIEW_REQUIRED", f"第 {unit['first_page']} 页起始的题已检查后续全部页面，模型仍无法完整提取；请检查原页并重新上传清晰文件，或联系管理员核对")
+    s2.setdefault("recovery_history", []).append({"failed_index": index,
+                                                     "first_page": unit["first_page"],
+                                                     "core_last_page": unit["core_last_page"],
+                                                     "action": action})
+    failed["recovery_applied"] = True
     return True
 
 
@@ -263,7 +308,8 @@ def process_s2_one() -> bool:
                 raise ImportProblem("S2_CONFIG_CHANGED", "提示词版本已变化，请新建批次")
             trimmed = _trim_redundant_pending_tail(s2, batch_id, source["file_id"])
             covered = _cover_final_page(s2, pages)
-            if upgraded or trimmed or covered:
+            adapted = False if upgraded else _adapt_incomplete_unit(s2, batch_id, source["file_id"])
+            if upgraded or trimmed or covered or adapted:
                 with SessionLocal() as db:
                     if not _checkpoint_update(db, batch_id, token, s2):
                         return True
@@ -432,7 +478,8 @@ def process_s2_one() -> bool:
                 row.stage = "s2_failed"
                 row.error_code = exc.code if isinstance(exc, ImportProblem) else "S2_INTERNAL_ERROR"
                 message = str(exc) if isinstance(exc, ImportProblem) else "S2 处理失败；请检查服务日志"
-                row.error_message = (f"第 {unit.first_page}–{unit.last_page} 页：" if unit is not None else "") + message[:180] + "。失败调用可能已产生费用，请核对百炼账单"
+                suffix = "" if row.error_code == "S2_REVIEW_REQUIRED" else "。失败调用可能已产生费用，请核对百炼账单"
+                row.error_message = (f"第 {unit.first_page}–{unit.last_page} 页：" if unit is not None else "") + message[:180] + suffix
                 row.worker_token = None
                 row.lease_until = None
                 db.commit()

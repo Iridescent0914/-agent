@@ -142,6 +142,19 @@ export function QuestionImportPage() {
     } finally { setLoading(false) }
   }
 
+  function confirmRetry(batch: Batch) {
+    if (batch.error_code !== 'INCOMPLETE_MODEL_OUTPUT') {
+      void act(batch.id, 'retry')
+      return
+    }
+    Modal.confirm({
+      title: '自动调整失败页段并重试？',
+      content: '系统会缩小失败页段或增加后续页作为上下文，已完成的页段不会重跑。新的模型调用可能产生费用，仍受本批预算阈值约束。',
+      okText: '确认重试', cancelText: '取消',
+      onOk: () => act(batch.id, 'retry'),
+    })
+  }
+
   function confirmStart(batch: Batch) {
     if (!budget) { message.warning('请设置本批调用预算阈值'); return }
     if (!operatorToken) { message.warning('请输入 S2 操作口令'); return }
@@ -193,8 +206,8 @@ export function QuestionImportPage() {
           { title: '上传时间', dataIndex: 'created_at', render: (value: string) => new Date(value).toLocaleString('zh-CN') },
           { title: '场景', dataIndex: 'source_mode', render: (value: string) => modeLabels[value] || value },
           { title: '文件', dataIndex: 'files', render: (files: Batch['files'], batch: Batch) => <Space wrap>{batch.id === focusedBatchId && <Tag color="blue">当前批次</Tag>}{files.map((file) => file.original_name).join('、')}</Space> },
-          { title: '状态', render: (_, batch: Batch) => <Space direction="vertical" size={0}><Tag color={batch.status === 'failed' ? 'red' : batch.status === 'cancelled' ? 'default' : batch.status === 'review_pending' ? 'green' : 'blue'}>{stageLabel(batch)}</Tag>{batch.checkpoint?.s2 && <Typography.Text type="secondary">调用 {batch.checkpoint.s2.calls || 0} 次</Typography.Text>}{batch.error_message && <Typography.Text type="danger">{batch.error_message}</Typography.Text>}</Space> },
-          { title: '操作', render: (_, batch: Batch) => <Space wrap>{['awaiting_s2', 's2_budget_paused'].includes(batch.stage) && <Button disabled={!s2Config?.ready} onClick={() => confirmStart(batch)}>开始 S2 识别</Button>}{batch.checkpoint?.s2 && <Button onClick={() => void viewCandidates(batch.id)}>查看候选与页段</Button>}{batch.status === 'failed' && !batch.files_purged_at && <Button disabled={loading} onClick={() => void act(batch.id, 'retry')}>重试</Button>}{!['cancelled', 'completed', 'completed_with_unassigned'].includes(batch.status) && <Button disabled={loading} onClick={() => void act(batch.id, 'cancel')}>取消</Button>}</Space> },
+          { title: '状态', render: (_, batch: Batch) => <Space direction="vertical" size={0}><Tag color={batch.status === 'failed' ? 'red' : batch.status === 'cancelled' ? 'default' : batch.status === 'review_pending' ? 'green' : 'blue'}>{stageLabel(batch)}</Tag>{batch.checkpoint?.s2 && <Typography.Text type="secondary">调用 {batch.checkpoint.s2.calls || 0} 次</Typography.Text>}{batch.error_message && <Typography.Text type="danger">{batch.error_message}</Typography.Text>}{batch.error_code === 'S2_REVIEW_REQUIRED' && <Typography.Text type="warning">请检查原文件对应页面并重新上传清晰版，或将批次号发给管理员；已完成的候选题仍可查看。批次号：<Typography.Text copyable={{ text: batch.id }}>{batch.id}</Typography.Text></Typography.Text>}{batch.error_code === 'CALL_LIMIT_REACHED' && <Typography.Text type="warning">已达到单批调用次数上限，请将批次号发给管理员：<Typography.Text copyable={{ text: batch.id }}>{batch.id}</Typography.Text></Typography.Text>}</Space> },
+          { title: '操作', render: (_, batch: Batch) => <Space wrap>{['awaiting_s2', 's2_budget_paused'].includes(batch.stage) && batch.error_code !== 'CALL_LIMIT_REACHED' && <Button disabled={!s2Config?.ready} onClick={() => confirmStart(batch)}>{batch.stage === 's2_budget_paused' ? '调整预算并继续识别' : '开始 S2 识别'}</Button>}{batch.checkpoint?.s2 && <Button onClick={() => void viewCandidates(batch.id)}>查看候选与页段</Button>}{batch.status === 'failed' && batch.error_code !== 'S2_REVIEW_REQUIRED' && !batch.files_purged_at && <Button disabled={loading} onClick={() => confirmRetry(batch)}>{batch.error_code === 'INCOMPLETE_MODEL_OUTPUT' ? '自动调整页段并重试' : '重试'}</Button>}{!['cancelled', 'completed', 'completed_with_unassigned'].includes(batch.status) && <Button disabled={loading} onClick={() => void act(batch.id, 'cancel')}>取消</Button>}</Space> },
         ]} />
     </Card>
     <Modal title="S2 候选题与页段记录" open={!!selectedBatchId} width={900} footer={<Button onClick={() => setSelectedBatchId(null)}>关闭</Button>} onCancel={() => setSelectedBatchId(null)}>

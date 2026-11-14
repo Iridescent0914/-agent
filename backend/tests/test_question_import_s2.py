@@ -292,6 +292,33 @@ def test_only_failed_overlap_batch_upgrades_to_core_page_prompt():
     assert not s2_worker._upgrade_incomplete_overlap_prompt(no_overlap)
 
 
+def test_incomplete_retry_splits_core_then_extends_single_page(tmp_path, monkeypatch):
+    monkeypatch.setattr(s2_worker, "_result_path", lambda _batch, _file, index: tmp_path / f"{index}.json")
+    checkpoint = {"page_count": 8, "prompt_version": s2_worker.PROMPT_VERSION,
+                  "units": [
+                      {"index": 0, "first_page": 1, "last_page": 5,
+                       "core_first_page": 1, "core_last_page": 4, "status": "pending"},
+                      {"index": 1, "first_page": 5, "last_page": 8,
+                       "core_first_page": 5, "core_last_page": 8, "status": "pending"},
+                  ], "failed_unit": {"index": 0, "code": "INCOMPLETE_MODEL_OUTPUT"}}
+    assert s2_worker._adapt_incomplete_unit(checkpoint, uuid4(), str(uuid4()))
+    assert [(u["index"], u["first_page"], u["core_last_page"], u["last_page"])
+            for u in checkpoint["units"]] == [(0, 1, 2, 4), (1, 3, 4, 6), (2, 5, 8, 8)]
+    assert not s2_worker._trim_redundant_pending_tail(checkpoint, uuid4(), str(uuid4()))
+    assert not s2_worker._adapt_incomplete_unit(checkpoint, uuid4(), str(uuid4()))
+
+    checkpoint["units"][0]["core_last_page"] = 1
+    checkpoint["units"][0]["last_page"] = 4
+    checkpoint["failed_unit"] = {"index": 0, "code": "INCOMPLETE_MODEL_OUTPUT"}
+    assert s2_worker._adapt_incomplete_unit(checkpoint, uuid4(), str(uuid4()))
+    assert checkpoint["units"][0]["last_page"] == 6
+    checkpoint["units"][0]["last_page"] = 8
+    checkpoint["failed_unit"] = {"index": 0, "code": "INCOMPLETE_MODEL_OUTPUT"}
+    with pytest.raises(ImportProblem) as error:
+        s2_worker._adapt_incomplete_unit(checkpoint, uuid4(), str(uuid4()))
+    assert error.value.code == "S2_REVIEW_REQUIRED"
+
+
 def test_qwen_private_file_payload_and_cost():
     captured = {}
     saved = []
@@ -599,4 +626,62 @@ def test_failed_response_cost_is_counted_and_retry_calls_again(db, tmp_path, mon
     source = next(file for file in batch.files if file["role"] == "questions")
     prior = s2_worker._result_path(batch.id, source["file_id"], 0).with_suffix(".json.prior.json")
     assert json.loads(prior.read_text(encoding="utf-8"))["raw_response"]["id"] == "response-1"
+
+
+def test_incomplete_retry_replans_failed_unit_without_restarting_batch(db, tmp_path, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "question_import_dir", tmp_path / "imports")
+    monkeypatch.setattr(settings, "question_import_s2_enabled", True)
+    monkeypatch.setattr(settings, "question_import_s2_api_key", "test-only")
+    monkeypatch.setattr(settings, "question_import_s2_operator_token", "operator-test")
+    monkeypatch.setattr(settings, "question_import_s2_base_url", "https://example.invalid/compatible-mode/v1")
+    monkeypatch.setattr(settings, "question_import_s2_pages_per_unit", 4)
+    monkeypatch.setattr(settings, "question_import_s2_overlap_pages", 1)
+    batch = create_batch(db, source_mode="questions_only", files=[("questions", "one.pdf", _pdf())])
+    batch.stage = "awaiting_s2"
+    db.flush()
+    start_s2(db, batch.id, budget_cny=1, operator_token="operator-test")
+    db.commit()
+    connection = db.get_bind()
+
+    def session_factory():
+        return Session(bind=connection, expire_on_commit=False,
+                       join_transaction_mode="create_savepoint")
+
+    monkeypatch.setattr(s2_worker, "SessionLocal", session_factory)
+    monkeypatch.setattr(s2_worker, "prepare_pdf", lambda *_: (tmp_path / "unused.pdf", 4, []))
+    monkeypatch.setattr(s2_worker, "pdf_unit_bytes", lambda *_: _pdf())
+    calls = []
+
+    class ResponseProvider:
+        def extract(self, _data, *, page_count, core_page_count, capture_response):
+            calls.append((page_count, core_page_count))
+            body = {"id": f"response-{len(calls)}", "choices": [{"finish_reason": "stop", "message": {
+                "content": json.dumps({"complete": len(calls) > 1,
+                                       "questions": [_model_question()], "unresolved_fragments": []})}}],
+                "usage": {"prompt_tokens": 100, "completion_tokens": 50,
+                          "x_tools": {"pdf_page_parser": {"count": page_count}}}}
+            capture_response(body, 1.0)
+            output, meta = decode_qwen_response(body, page_count=page_count, elapsed=1.0,
+                                                model=settings.question_import_s2_model)
+            return output, meta, 1.0
+
+    monkeypatch.setattr(s2_worker, "QwenPdfProvider", ResponseProvider)
+    assert s2_worker.process_s2_one()
+    db.refresh(batch)
+    assert batch.stage == "s2_failed"
+    assert batch.error_code == "INCOMPLETE_MODEL_OUTPUT"
+    retry_batch(db, batch.id, operator_token="operator-test")
+    db.commit()
+    assert s2_worker.process_s2_one()
+    db.refresh(batch)
+    assert batch.stage == "s2_queued"
+    assert [(u["index"], u["core_last_page"], u["last_page"], u["status"])
+            for u in batch.checkpoint["s2"]["units"]] == [
+                (0, 2, 4, "completed"), (1, 4, 4, "pending")]
+    assert s2_worker.process_s2_one()
+    db.refresh(batch)
+    assert batch.stage == "s2_completed"
+    assert batch.checkpoint["s2"]["calls"] == 3
+    assert calls == [(4, 4), (4, 2), (2, 2)]
 
