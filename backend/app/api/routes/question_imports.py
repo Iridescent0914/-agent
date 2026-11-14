@@ -96,6 +96,7 @@ def s2_config():
                           and settings.question_import_s2_base_url.startswith("https://")),
             "model": settings.question_import_s2_model,
             "max_budget_cny": settings.question_import_s2_max_budget_cny,
+            "max_output_tokens": settings.question_import_s2_max_output_tokens,
             "pages_per_unit": settings.question_import_s2_pages_per_unit,
             "overlap_pages": settings.question_import_s2_overlap_pages}
 

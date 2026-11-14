@@ -52,7 +52,8 @@ class Settings(BaseSettings):
     question_import_s2_base_url: str = ""
     question_import_s2_model: str = "qwen3.8-flash"
     question_import_s2_timeout_seconds: float = 360.0
-    question_import_s2_pages_per_unit: int = 2
+    question_import_s2_max_output_tokens: int = 16384
+    question_import_s2_pages_per_unit: int = 4
     question_import_s2_overlap_pages: int = 1
     question_import_s2_max_calls: int = 30
     question_import_s2_max_budget_cny: float = 20.0

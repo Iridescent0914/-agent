@@ -28,7 +28,8 @@ from pypdf import PdfReader, PdfWriter
 from app.core.config import Settings, get_settings
 from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, _path_for
 
-PROMPT_VERSION = "question-import-s2-v2"
+PROMPT_VERSION = "question-import-s2-v3"
+LEGACY_PROMPT_VERSION = "question-import-s2-v2"
 FLASH_MODEL = "qwen3.8-flash"
 
 
@@ -113,6 +114,10 @@ def plan_units(page_count: int, *, pages_per_unit: int, overlap: int) -> list[Pa
             break
         units.append(PageUnit(index, core_start,
                               min(page_count, core_end + overlap), core_start, core_end))
+    if units[-1].core_last_page < page_count:
+        last = units[-1]
+        units[-1] = PageUnit(last.index, last.first_page, last.last_page,
+                             last.core_first_page, page_count)
     return units
 
 
@@ -393,13 +398,25 @@ class QwenPdfProvider:
             raise ImportProblem("S2_NOT_CONFIGURED", "百炼密钥或 HTTPS 工作空间地址未配置", 409)
         self.transport = transport
 
-    def extract(self, pdf_data: bytes, *, page_count: int,
+    def extract(self, pdf_data: bytes, *, page_count: int, core_page_count: int | None = None,
                 capture_response: Callable[[dict, float], None] | None = None) -> tuple[ModelOutput, dict, float]:
+        core_page_count = page_count if core_page_count is None else core_page_count
+        if not 1 <= core_page_count <= page_count:
+            raise ImportProblem("INVALID_S2_CONFIG", "PDF 主体页数无效")
+        overlap_count = page_count - core_page_count
+        page_scope = (
+            f"本 PDF 前 {core_page_count} 页是主体页，最后 {overlap_count} 页是重叠页。"
+            "只提取题干起始于主体页的题；重叠页只用于补全主体页开始的跨页题。"
+            "不要输出重叠页中新起的题，也不要因这些题在本 PDF 中尚未结束而把 complete 设为 false。"
+            if overlap_count else f"本 PDF 共 {core_page_count} 页，全部是主体页。"
+        )
         prompt = (
-            "你是数学试题转录员。按原文逐题提取本 PDF 的所有题目，输出 JSON。"
-            "页码使用本 PDF 内从 1 开始的页码。保留公式原样，子题逐条列出；图形仅记录线索，不猜测图中文字。"
+            "你是数学试题转录员。按原文逐题提取题目，输出 JSON。"
+            + page_scope
+            + "页码使用本 PDF 内从 1 开始的页码。保留公式原样，子题逐条列出；图形仅记录线索，不猜测图中文字。"
             "答案和解析不要混入题干。无法辨认或无法判断归属的内容放入 unresolved_fragments。"
-            "不要凭空补题、补选项或补页码。只有完整检查所有页后 complete 才为 true。"
+            "不要凭空补题、补选项或补页码。只有主体页中起始的题都已完整提取，complete 才为 true；"
+            "若主体页中起始的题延续到本 PDF 之外，complete 必须为 false。"
             "输出对象字段：complete 布尔值；questions 数组，每题包含 original_number、question_text、"
             "options（key/text 数组）、subquestions、math_fragments、diagram_clues、page_start、page_end、"
             "uncertain_fragments；不要输出区域坐标；"
@@ -417,7 +434,7 @@ class QwenPdfProvider:
                 "schema": ModelOutput.model_json_schema(),
             }},
             "include_tool_usage": True,
-            "max_tokens": 8192,
+            "max_tokens": self.settings.question_import_s2_max_output_tokens,
         }
         start = time.monotonic()
         try:

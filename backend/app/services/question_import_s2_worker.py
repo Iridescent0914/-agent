@@ -16,7 +16,8 @@ from app.core.database import SessionLocal
 from app.models import QuestionImportBatch, QuestionImportItem
 from app.services.question_import import DOCX_CONVERSION_VERSION, OWNER_SCOPE, ImportProblem, _path_for, add_candidate, get_batch, require_s2_operator_token
 from app.services.question_import_s2 import (
-    FLASH_MODEL, PROMPT_VERSION, ModelOutput, PageUnit, QwenPdfProvider, candidate_from_question, candidate_key,
+    FLASH_MODEL, LEGACY_PROMPT_VERSION, PROMPT_VERSION, ModelOutput, PageUnit, QwenPdfProvider,
+    candidate_from_question, candidate_key,
     decode_qwen_response, estimate_cost, overlap_candidate_is_duplicate, prefer_incoming_overlap,
     pdf_unit_bytes, plan_units, prepare_pdf,
     resolved_overlap_option,
@@ -156,6 +157,33 @@ def _trim_redundant_pending_tail(s2: dict, batch_id: uuid.UUID, file_id: str) ->
     return changed
 
 
+def _cover_final_page(s2: dict, page_count: int) -> bool:
+    """The final overlap has no following unit, so it belongs to the final core."""
+    tail = s2["units"][-1]
+    if tail["last_page"] != page_count or tail["core_last_page"] >= page_count:
+        return False
+    if tail["status"] != "pending":
+        raise ImportProblem("S2_CONFIG_CHANGED", "尾页已按旧规则处理，请重新建立批次")
+    tail["core_last_page"] = page_count
+    return True
+
+
+def _upgrade_incomplete_overlap_prompt(s2: dict) -> bool:
+    """Resume a v2 batch whose failed unit ended on a context-only overlap page."""
+    if s2.get("prompt_version") != LEGACY_PROMPT_VERSION:
+        return False
+    failed = s2.get("failed_unit") or {}
+    if failed.get("code") != "INCOMPLETE_MODEL_OUTPUT":
+        return False
+    unit = next((row for row in s2.get("units") or [] if row["index"] == failed.get("index")), None)
+    if unit is None or unit["last_page"] <= unit["core_last_page"]:
+        return False
+    s2["prompt_version"] = PROMPT_VERSION
+    s2["prompt_upgrade"] = {"from": LEGACY_PROMPT_VERSION, "at_unit_index": unit["index"],
+                            "reason": "incomplete_overlap_page"}
+    return True
+
+
 def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
                   *, retry_invalid: bool = False) -> tuple[ModelOutput, dict]:
     artifact = _result_path(batch_id, file_id, unit.index)
@@ -169,6 +197,12 @@ def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
         except ImportProblem:
             if not retry_invalid:
                 raise
+            prior = artifact.with_name(artifact.name + ".prior.json")
+            suffix = 2
+            while prior.exists():
+                prior = artifact.with_name(artifact.name + f".prior{suffix}.json")
+                suffix += 1
+            prior.write_bytes(artifact.read_bytes())
     provider = QwenPdfProvider()
 
     def save_artifact(data: dict) -> None:
@@ -180,6 +214,7 @@ def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
         save_artifact({"raw_response": body, "elapsed_seconds": elapsed})
 
     output, meta, _ = provider.extract(pdf_unit_bytes(pdf, unit), page_count=unit.page_count,
+                                       core_page_count=unit.core_last_page - unit.first_page + 1,
                                        capture_response=capture_response)
     save_artifact({"output": output.model_dump(mode="json"), "meta": meta})
     return output, meta
@@ -216,14 +251,19 @@ def process_s2_one() -> bool:
         else:
             if s2.get("source_sha256") != source["sha256"] or s2.get("page_count") != pages:
                 raise ImportProblem("SOURCE_CHANGED", "源文件或转换页数与检查点不一致")
-            if s2.get("model") != get_settings().question_import_s2_model or s2.get("prompt_version") != PROMPT_VERSION:
-                raise ImportProblem("S2_CONFIG_CHANGED", "模型或提示词版本已变化，请新建批次")
+            if s2.get("model") != get_settings().question_import_s2_model:
+                raise ImportProblem("S2_CONFIG_CHANGED", "模型配置已变化，请新建批次")
             prices = {"pdf_page_cny": get_settings().question_import_s2_pdf_page_price_cny,
                       "input_million_cny": get_settings().question_import_s2_input_million_price_cny,
                       "output_million_cny": get_settings().question_import_s2_output_million_price_cny}
             if s2.get("price_snapshot") != prices:
                 raise ImportProblem("S2_CONFIG_CHANGED", "计费单价配置已变化，请新建批次")
-            if _trim_redundant_pending_tail(s2, batch_id, source["file_id"]):
+            upgraded = _upgrade_incomplete_overlap_prompt(s2)
+            if s2.get("prompt_version") != PROMPT_VERSION:
+                raise ImportProblem("S2_CONFIG_CHANGED", "提示词版本已变化，请新建批次")
+            trimmed = _trim_redundant_pending_tail(s2, batch_id, source["file_id"])
+            covered = _cover_final_page(s2, pages)
+            if upgraded or trimmed or covered:
                 with SessionLocal() as db:
                     if not _checkpoint_update(db, batch_id, token, s2):
                         return True
@@ -260,7 +300,12 @@ def process_s2_one() -> bool:
                 known = {candidate_key(item.payload) for item in existing_items}
                 selected = 0
                 overlap_duplicates = []
+                ignored_overlap_questions = []
                 for question in output.questions:
+                    if question.page_start > unit.core_last_page - unit.first_page + 1:
+                        ignored_overlap_questions.append({"original_number": question.original_number,
+                                                          "page_start": unit.first_page + question.page_start - 1})
+                        continue
                     payload = candidate_from_question(source["file_id"], question, unit)
                     key = candidate_key(payload)
                     if key in known:
@@ -309,6 +354,7 @@ def process_s2_one() -> bool:
                                                   "unresolved_fragments": unresolved,
                                                   "resolved_overlap_fragments": resolved_overlap,
                                                   "overlap_duplicates": overlap_duplicates,
+                                                  "ignored_overlap_questions": ignored_overlap_questions,
                                                   "usage": meta.get("usage") or {},
                                                   "estimated_cny": cost,
                                                   "elapsed_seconds": meta["elapsed_seconds"],

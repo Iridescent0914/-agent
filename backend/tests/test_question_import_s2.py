@@ -100,6 +100,10 @@ def test_page_overlap_mapping_and_model_guard():
     assert [(unit.first_page, unit.last_page) for unit in plan_units(2, pages_per_unit=2, overlap=1)] == [(1, 2)]
     assert [(unit.first_page, unit.last_page) for unit in plan_units(17, pages_per_unit=2, overlap=1)][-1] == (15, 17)
     assert len(plan_units(17, pages_per_unit=2, overlap=1)) == 8
+    final_units = plan_units(29, pages_per_unit=4, overlap=1)
+    assert len(final_units) == 7
+    assert (final_units[-1].first_page, final_units[-1].last_page,
+            final_units[-1].core_last_page) == (25, 29, 29)
     question = _model_question(page=2)
     output = parse_model_output({"complete": True, "questions": [question],
                                  "unresolved_fragments": []}, units[1])
@@ -264,6 +268,30 @@ def test_legacy_redundant_tail_is_removed_only_before_it_starts(tmp_path, monkey
     assert [unit["index"] for unit in checkpoint["units"]] == [0, 1]
 
 
+def test_pending_final_overlap_becomes_core_page():
+    checkpoint = {"units": [{"index": 6, "first_page": 25, "last_page": 29,
+                             "core_first_page": 25, "core_last_page": 28, "status": "pending"}]}
+    assert s2_worker._cover_final_page(checkpoint, 29)
+    assert checkpoint["units"][-1]["core_last_page"] == 29
+    assert not s2_worker._cover_final_page(checkpoint, 29)
+
+
+def test_only_failed_overlap_batch_upgrades_to_core_page_prompt():
+    checkpoint = {
+        "prompt_version": s2_worker.LEGACY_PROMPT_VERSION,
+        "units": [{"index": 2, "first_page": 9, "core_last_page": 12, "last_page": 13}],
+        "failed_unit": {"index": 2, "code": "INCOMPLETE_MODEL_OUTPUT"},
+    }
+    assert s2_worker._upgrade_incomplete_overlap_prompt(checkpoint)
+    assert checkpoint["prompt_version"] == s2_worker.PROMPT_VERSION
+    assert checkpoint["prompt_upgrade"]["at_unit_index"] == 2
+    assert not s2_worker._upgrade_incomplete_overlap_prompt(checkpoint)
+
+    no_overlap = {**checkpoint, "prompt_version": s2_worker.LEGACY_PROMPT_VERSION,
+                  "units": [{"index": 2, "first_page": 9, "core_last_page": 13, "last_page": 13}]}
+    assert not s2_worker._upgrade_incomplete_overlap_prompt(no_overlap)
+
+
 def test_qwen_private_file_payload_and_cost():
     captured = {}
     saved = []
@@ -282,7 +310,8 @@ def test_qwen_private_file_payload_and_cost():
         })
 
     settings = Settings(question_import_s2_api_key="test-only",
-                        question_import_s2_base_url="https://example.invalid/compatible-mode/v1")
+                        question_import_s2_base_url="https://example.invalid/compatible-mode/v1",
+                        question_import_s2_max_output_tokens=12345)
     provider = QwenPdfProvider(settings=settings, transport=httpx.MockTransport(respond))
     output, meta, _ = provider.extract(_pdf(), page_count=1,
                                        capture_response=lambda body, elapsed: saved.append(body))
@@ -291,6 +320,8 @@ def test_qwen_private_file_payload_and_cost():
     assert "region" not in output.questions[0].model_dump()
     assert captured["messages"][0]["content"][0]["file"]["file_data"].startswith("data:application/pdf;base64,")
     assert "file_url" not in captured["messages"][0]["content"][0]["file"]
+    assert captured["max_tokens"] == 12345
+    assert "全部是主体页" in captured["messages"][0]["content"][1]["text"]
     response_format = captured["response_format"]
     assert response_format["type"] == "json_schema"
     assert response_format["json_schema"]["strict"] is True
@@ -302,6 +333,29 @@ def test_qwen_private_file_payload_and_cost():
     assert captured["include_tool_usage"] is True
     assert estimate_cost(meta["usage"], settings=settings) == 0.0361
     assert estimate_cost({"prompt_tokens": 10, "completion_tokens": 2}, settings=settings) is None
+
+
+def test_qwen_prompt_limits_extraction_to_core_pages():
+    captured = {}
+
+    def respond(request: httpx.Request):
+        captured.update(json.loads(request.content))
+        return httpx.Response(200, json={
+            "choices": [{"finish_reason": "stop", "message": {"content": json.dumps({
+                "complete": True, "questions": [_model_question()], "unresolved_fragments": [],
+            })}}],
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50,
+                      "x_tools": {"pdf_page_parser": {"count": 3}}},
+        })
+
+    settings = Settings(question_import_s2_api_key="test-only",
+                        question_import_s2_base_url="https://example.invalid/compatible-mode/v1")
+    QwenPdfProvider(settings=settings, transport=httpx.MockTransport(respond)).extract(
+        _pdf(), page_count=3, core_page_count=2)
+    prompt = captured["messages"][0]["content"][1]["text"]
+    assert "前 2 页是主体页，最后 1 页是重叠页" in prompt
+    assert "不要输出重叠页中新起的题" in prompt
+    assert "尚未结束而把 complete 设为 false" in prompt
 
 
 def test_only_flash_model_can_be_called():
@@ -449,14 +503,18 @@ def test_worker_resumes_by_unit_and_deduplicates_overlap(db, tmp_path, monkeypat
     calls = []
 
     class MockProvider:
-        def extract(self, data, *, page_count, capture_response=None):
-            calls.append(page_count)
+        def extract(self, data, *, page_count, core_page_count, capture_response=None):
+            calls.append((page_count, core_page_count))
             first = len(calls) == 1
             question = {**_model_question(page=2 if first else 1),
                         "page_end": 3 if first else 1,
                         "question_text": "计算 1+2" if first else "计算 1 + 2。",
                         "options": [{"key": "C", "text": "甲错误，乙正确"}]}
-            output = parse_model_output({"complete": True, "questions": [question],
+            questions = [question]
+            if first:
+                questions.append({**_model_question(page=3), "original_number": "99",
+                                  "question_text": "overlap-only"})
+            output = parse_model_output({"complete": True, "questions": questions,
                                          "unresolved_fragments": [] if first else [{
                                              "page": 1, "text": "C. 甲错误，乙正确",
                                              "reason": "缺少题干和题号，无法判断归属"}]},
@@ -474,7 +532,9 @@ def test_worker_resumes_by_unit_and_deduplicates_overlap(db, tmp_path, monkeypat
     db.refresh(batch)
     assert batch.stage == "s2_completed"
     assert batch.checkpoint["s2"]["calls"] == 2
-    assert calls == [3, 2]
+    assert calls == [(3, 2), (2, 2)]
+    assert batch.checkpoint["s2"]["units"][0]["ignored_overlap_questions"] == [
+        {"original_number": "99", "page_start": 3}]
     second_unit = batch.checkpoint["s2"]["units"][1]
     assert second_unit["candidate_count"] == 0
     assert second_unit["unresolved_fragments"] == []
@@ -509,7 +569,7 @@ def test_failed_response_cost_is_counted_and_retry_calls_again(db, tmp_path, mon
     calls = []
 
     class ResponseProvider:
-        def extract(self, _data, *, page_count, capture_response):
+        def extract(self, _data, *, page_count, core_page_count, capture_response):
             calls.append(len(calls) + 1)
             content = "[]" if len(calls) == 1 else json.dumps({"complete": True, "questions": [_model_question()],
                                                                  "unresolved_fragments": []})
@@ -536,4 +596,7 @@ def test_failed_response_cost_is_counted_and_retry_calls_again(db, tmp_path, mon
     assert batch.checkpoint["s2"]["estimated_cny"] == 0.04043
     assert batch.checkpoint["s2"]["calls"] == 2
     assert calls == [1, 2]
+    source = next(file for file in batch.files if file["role"] == "questions")
+    prior = s2_worker._result_path(batch.id, source["file_id"], 0).with_suffix(".json.prior.json")
+    assert json.loads(prior.read_text(encoding="utf-8"))["raw_response"]["id"] == "response-1"
 

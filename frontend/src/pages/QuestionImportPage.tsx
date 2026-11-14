@@ -30,7 +30,7 @@ type Candidate = {
   }
 }
 
-type S2Config = { ready: boolean; model: string; max_budget_cny: number; pages_per_unit: number; overlap_pages: number }
+type S2Config = { ready: boolean; model: string; max_budget_cny: number; max_output_tokens: number; pages_per_unit: number; overlap_pages: number }
 
 const modeLabels: Record<string, string> = {
   questions_only: '只有题目', combined: '题目与答案同文件', separate: '题目与答案分文件',
@@ -182,7 +182,7 @@ export function QuestionImportPage() {
         <Typography.Text type="secondary">单文件不超过 30 MB；PDF 不超过 50 页；临时文件最多保留 72 小时、最近 7 批。</Typography.Text>
         <Space><Button type="primary" onClick={upload} loading={uploading}>上传并建立批次</Button><Button onClick={() => void reload()}>刷新</Button></Space>
         <Space wrap><Typography.Text>S2 操作口令</Typography.Text><Input.Password aria-label="S2 操作口令" value={operatorToken} onChange={(event) => setOperatorToken(event.target.value)} autoComplete="off" style={{ width: 220 }} /><Typography.Text>单批估算费用阈值（元）</Typography.Text><InputNumber min={0.01} max={s2Config?.max_budget_cny || 20} step={0.5} value={budget} onChange={setBudget} />
-          <Typography.Text type="secondary">{s2Config?.ready ? `已配置 ${s2Config.model}；每段 ${s2Config.pages_per_unit} 页，向后重叠 ${s2Config.overlap_pages} 页` : '百炼尚未在服务端启用；仍可上传与校验'}</Typography.Text></Space>
+          <Typography.Text type="secondary">{s2Config?.ready ? `已配置 ${s2Config.model}；每段主体 ${s2Config.pages_per_unit} 页，向后重叠 ${s2Config.overlap_pages} 页；单次回答上限 ${s2Config.max_output_tokens} Token` : '百炼尚未在服务端启用；仍可上传与校验'}</Typography.Text></Space>
         {uploading && <Progress percent={progress} />}
       </Space>
     </Card>
