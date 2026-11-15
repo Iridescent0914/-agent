@@ -16,6 +16,7 @@ from app.services.question_import import (
     update_candidate,
 )
 from app.services.question_import_s2_worker import start_s2
+from app.services.question_import_s3 import reconcile_source_answers
 
 
 router = APIRouter(prefix="/question-imports", tags=["question-imports"])
@@ -129,6 +130,12 @@ def list_items(batch_id: UUID, db: Session = Depends(get_db)):
     return list(db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch_id
     ).order_by(QuestionImportItem.ordinal)))
+
+
+@router.post("/{batch_id}/s3/reconcile-source-answers")
+def reconcile_combined_source_answers(batch_id: UUID, db: Session = Depends(get_db)):
+    """Link only unambiguous one-pass source answers; never confirm or import them."""
+    return reconcile_source_answers(db, batch_id)
 
 
 @router.patch("/{batch_id}/items/{item_id}", response_model=CandidateOut)

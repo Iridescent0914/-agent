@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import uuid
 import zipfile
 from io import BytesIO
 from types import SimpleNamespace
@@ -14,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.core.database import engine
-from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, create_batch, retry_batch
+from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, _path_for, create_batch, retry_batch
 from app.services.question_import_s2 import (
     QwenPdfProvider, candidate_from_question, candidate_key, estimate_cost,
     overlap_candidate_is_duplicate, prefer_incoming_overlap, resolved_overlap_option,
@@ -89,6 +90,19 @@ def _docx_with_math() -> bytes:
     with zipfile.ZipFile(BytesIO(_docx())) as source, zipfile.ZipFile(output, "w") as target:
         for name in source.namelist():
             target.writestr(name, document if name == "word/document.xml" else source.read(name))
+    return output.getvalue()
+
+
+def _docx_with_nested_math() -> bytes:
+    """Word-style OMML inside a run: LibreOffice used to omit it silently."""
+    output = BytesIO()
+    with zipfile.ZipFile(BytesIO(_docx_with_math())) as source, zipfile.ZipFile(output, "w") as target:
+        for name in source.namelist():
+            data = source.read(name)
+            if name == "word/document.xml":
+                data = data.replace(b"<m:oMath>", b"<w:r><w:rPr><w:rFonts w:ascii='Cambria Math'/></w:rPr><m:oMath>")
+                data = data.replace(b"</m:oMath>", b"</m:oMath></w:r>")
+            target.writestr(name, data)
     return output.getvalue()
 
 
@@ -486,6 +500,22 @@ def test_docx_conversion_preserves_inline_word_fraction(db, tmp_path, monkeypatc
     text = PdfReader(str(pdf)).pages[0].extract_text()
     assert "Reciprocal of" in text and "is sought." in text
     assert "1" in text and "2" in text
+
+
+@pytest.mark.skipif(shutil.which("libreoffice") is None, reason="container LibreOffice required")
+def test_docx_conversion_preserves_math_nested_in_word_run(db, tmp_path, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "question_import_dir", tmp_path / "imports")
+    batch = create_batch(db, source_mode="questions_only",
+                         files=[("questions", "nested-math.docx", _docx_with_nested_math())])
+    pdf, pages, _ = prepare_pdf(batch.id, batch.files[0])
+    assert pages == 1
+    from pypdf import PdfReader
+    text = PdfReader(str(pdf)).pages[0].extract_text()
+    between = text.split("Reciprocal of", 1)[1].split("is sought.", 1)[0]
+    assert "1" in between and "2" in between and any(sign in between for sign in ("-", "−", "﹣"))
+    with zipfile.ZipFile(_path_for(batch.id, uuid.UUID(batch.files[0]["file_id"]))) as original:
+        assert b"<w:r><w:rPr>" in original.read("word/document.xml")
 
 
 def test_old_docx_s2_pages_cannot_resume_with_new_conversion(db, tmp_path, monkeypatch):

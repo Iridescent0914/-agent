@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import hashlib
+import copy
+import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -17,11 +19,15 @@ from app.models import QuestionImportBatch, QuestionImportItem
 from app.services.question_import import DOCX_CONVERSION_VERSION, OWNER_SCOPE, ImportProblem, _path_for, add_candidate, get_batch, require_s2_operator_token
 from app.services.question_import_s2 import (
     FLASH_MODEL, LEGACY_PROMPT_VERSION, PROMPT_VERSION, ModelOutput, PageUnit, QwenPdfProvider,
+    COMBINED_PROMPT_VERSION, COMBINED_PROMPT_VERSIONS, LEGACY_COMBINED_PROMPT_VERSION,
+    ClassifiedCombinedModelOutput, CombinedModelOutput, combined_output_model,
     candidate_from_question, candidate_key,
     decode_qwen_response, estimate_cost, overlap_candidate_is_duplicate, prefer_incoming_overlap,
-    pdf_unit_bytes, plan_units, prepare_pdf,
+    pdf_page_roles, pdf_unit_bytes, plan_units, prepare_pdf,
     resolved_overlap_option,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_token: str | None = None) -> QuestionImportBatch:
@@ -56,7 +62,10 @@ def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_to
     if s2.get("model") and s2["model"] != settings.question_import_s2_model:
         raise ImportProblem("S2_CONFIG_CHANGED", "模型配置已变化，请新建批次", 409)
     s2["model"] = settings.question_import_s2_model
-    s2["prompt_version"] = PROMPT_VERSION
+    # Existing paid v3 batches keep their original output contract on resume.
+    s2["prompt_version"] = s2.get("prompt_version") or (
+        COMBINED_PROMPT_VERSION if batch.source_mode == "combined" else PROMPT_VERSION
+    )
     if question_file["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         s2["conversion_version"] = DOCX_CONVERSION_VERSION
     prices = {
@@ -191,7 +200,7 @@ def _upgrade_incomplete_overlap_prompt(s2: dict) -> bool:
 def _adapt_incomplete_unit(s2: dict, batch_id: uuid.UUID, file_id: str) -> bool:
     """On an explicit retry, reduce the failed core or extend its context."""
     failed = s2.get("failed_unit") or {}
-    if failed.get("code") != "INCOMPLETE_MODEL_OUTPUT" or failed.get("recovery_applied"):
+    if failed.get("code") not in {"INCOMPLETE_MODEL_OUTPUT", "MODEL_OUTPUT_TRUNCATED"} or failed.get("recovery_applied"):
         return False
     units = s2["units"]
     index = failed.get("index")
@@ -216,6 +225,8 @@ def _adapt_incomplete_unit(s2: dict, batch_id: uuid.UUID, file_id: str) -> bool:
         for position in range(index + 2, len(units)):
             units[position]["index"] = position
         action = "split_core"
+    elif failed["code"] == "MODEL_OUTPUT_TRUNCATED":
+        raise ImportProblem("S2_REVIEW_REQUIRED", f"第 {unit['first_page']} 页题答输出过长；请拆分原文件或联系管理员调整回答上限")
     elif unit["last_page"] < page_count:
         unit["last_page"] = min(page_count, unit["last_page"] + 2)
         action = "extend_context"
@@ -230,15 +241,21 @@ def _adapt_incomplete_unit(s2: dict, batch_id: uuid.UUID, file_id: str) -> bool:
 
 
 def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
-                  *, retry_invalid: bool = False) -> tuple[ModelOutput, dict]:
+                  *, retry_invalid: bool = False,
+                  include_answers: bool = False,
+                  combined_prompt_version: str = COMBINED_PROMPT_VERSION,
+                  document_page_roles: list[str] | None = None) -> tuple[ModelOutput | CombinedModelOutput, dict]:
     artifact = _result_path(batch_id, file_id, unit.index)
     if artifact.is_file():
         data = json.loads(artifact.read_text(encoding="utf-8"))
         if "output" in data:
-            return ModelOutput.model_validate(data["output"]), data["meta"]
+            output_model = combined_output_model(combined_prompt_version) if include_answers else ModelOutput
+            return output_model.model_validate(data["output"]), data["meta"]
         try:
             return decode_qwen_response(data["raw_response"], page_count=unit.page_count,
-                                        elapsed=data["elapsed_seconds"], model=get_settings().question_import_s2_model)
+                                        elapsed=data["elapsed_seconds"], model=get_settings().question_import_s2_model,
+                                        include_answers=include_answers,
+                                        combined_prompt_version=combined_prompt_version)
         except ImportProblem:
             if not retry_invalid:
                 raise
@@ -258,9 +275,16 @@ def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
     def capture_response(body: dict, elapsed: float) -> None:
         save_artifact({"raw_response": body, "elapsed_seconds": elapsed})
 
-    output, meta, _ = provider.extract(pdf_unit_bytes(pdf, unit), page_count=unit.page_count,
-                                       core_page_count=unit.core_last_page - unit.first_page + 1,
-                                       capture_response=capture_response)
+    kwargs = {"page_count": unit.page_count,
+              "core_page_count": unit.core_last_page - unit.first_page + 1,
+              "capture_response": capture_response}
+    if include_answers:
+        kwargs["include_answers"] = True
+        if combined_prompt_version == LEGACY_COMBINED_PROMPT_VERSION:
+            kwargs["combined_prompt_version"] = combined_prompt_version
+        elif document_page_roles:
+            kwargs["page_roles"] = document_page_roles[unit.first_page - 1:unit.last_page]
+    output, meta, _ = provider.extract(pdf_unit_bytes(pdf, unit), **kwargs)
     save_artifact({"output": output.model_dump(mode="json"), "meta": meta})
     return output, meta
 
@@ -282,6 +306,8 @@ def process_s2_one() -> bool:
                 and s2.get("units") and s2.get("conversion_version") != DOCX_CONVERSION_VERSION):
             raise ImportProblem("S2_CONFIG_CHANGED", "DOCX 转换器已修复公式处理，请重新上传以完整重跑 S2")
         pdf, pages, warnings = prepare_pdf(batch_id, source)
+        document_page_roles = (pdf_page_roles(pdf) if batch.source_mode == "combined"
+                               and s2.get("prompt_version") != COMBINED_PROMPT_VERSION else [])
         if not s2.get("units"):
             units = plan_units(pages, pages_per_unit=get_settings().question_import_s2_pages_per_unit,
                                overlap=get_settings().question_import_s2_overlap_pages)
@@ -304,7 +330,11 @@ def process_s2_one() -> bool:
             if s2.get("price_snapshot") != prices:
                 raise ImportProblem("S2_CONFIG_CHANGED", "计费单价配置已变化，请新建批次")
             upgraded = _upgrade_incomplete_overlap_prompt(s2)
-            if s2.get("prompt_version") != PROMPT_VERSION:
+            valid_version = (
+                COMBINED_PROMPT_VERSIONS
+                if batch.source_mode == "combined" else {PROMPT_VERSION}
+            )
+            if s2.get("prompt_version") not in valid_version:
                 raise ImportProblem("S2_CONFIG_CHANGED", "提示词版本已变化，请新建批次")
             trimmed = _trim_redundant_pending_tail(s2, batch_id, source["file_id"])
             covered = _cover_final_page(s2, pages)
@@ -318,26 +348,37 @@ def process_s2_one() -> bool:
             state = s2["units"][unit.index]
             if state["status"] == "completed":
                 continue
-            if s2.get("cost_unknown") or float(s2.get("estimated_cny") or 0) >= float(s2["budget_cny"]):
+            include_answers = s2.get("prompt_version") in COMBINED_PROMPT_VERSIONS
+            reference_only = include_answers and bool(document_page_roles) and all(
+                role == "reference" for role in document_page_roles[unit.core_first_page - 1:unit.core_last_page]
+            )
+            if not reference_only and (s2.get("cost_unknown") or float(s2.get("estimated_cny") or 0) >= float(s2["budget_cny"])):
                 _pause(batch_id, token, s2, "BUDGET_REACHED", "预算已达到或部分用量缺失，请核对账单后调整预算")
                 return True
-            if int(s2.get("calls") or 0) >= get_settings().question_import_s2_max_calls:
+            if not reference_only and int(s2.get("calls") or 0) >= get_settings().question_import_s2_max_calls:
                 _pause(batch_id, token, s2, "CALL_LIMIT_REACHED", "S2 单批调用次数达到上限")
                 return True
             failed_unit = s2.get("failed_unit") or {}
-            output, meta = _extract_unit(batch_id, source["file_id"], pdf, unit,
-                                         retry_invalid=failed_unit.get("index") == unit.index
-                                         and failed_unit.get("code") in {
-                                             "INVALID_MODEL_OUTPUT", "INVALID_MODEL_PAGE",
-                                             "INCOMPLETE_MODEL_OUTPUT",
-                                             "MODEL_OUTPUT_TRUNCATED",
-                                         })
-            cost = estimate_cost(meta.get("usage") or {})
+            if reference_only:
+                output = CombinedModelOutput(complete=True, questions=[], source_answers=[], unresolved_fragments=[])
+                meta = {"usage": {}, "elapsed_seconds": 0.0, "response_id": None}
+                cost = 0.0
+            else:
+                output, meta = _extract_unit(batch_id, source["file_id"], pdf, unit,
+                                             retry_invalid=failed_unit.get("index") == unit.index
+                                             and failed_unit.get("code") in {
+                                                 "INVALID_MODEL_OUTPUT", "INVALID_MODEL_PAGE",
+                                                 "INCOMPLETE_MODEL_OUTPUT",
+                                                 "MODEL_OUTPUT_TRUNCATED",
+                                             }, include_answers=include_answers,
+                                             combined_prompt_version=s2.get("prompt_version", COMBINED_PROMPT_VERSION),
+                                             document_page_roles=document_page_roles)
+                cost = estimate_cost(meta.get("usage") or {})
             with SessionLocal() as db:
                 row = _locked_batch(db, batch_id, token)
                 if row is None:
                     return True
-                current = dict((row.checkpoint or {}).get("s2") or {})
+                current = copy.deepcopy((row.checkpoint or {}).get("s2") or {})
                 if current["units"][unit.index]["status"] == "completed":
                     continue
                 existing_items = list(db.scalars(select(QuestionImportItem).where(
@@ -347,7 +388,34 @@ def process_s2_one() -> bool:
                 selected = 0
                 overlap_duplicates = []
                 ignored_overlap_questions = []
+                ignored_nonquestion_sections = []
+                source_answers = []
+                page_roles = document_page_roles if include_answers else []
+                if include_answers:
+                    for answer in output.source_answers:
+                        if answer.page_start > unit.core_last_page - unit.first_page + 1:
+                            continue
+                        original_answer_page = unit.first_page + answer.page_start - 1
+                        if page_roles and page_roles[original_answer_page - 1] == "reference":
+                            continue
+                        source_answers.append({
+                            "source_file_id": source["file_id"],
+                            "original_number": answer.original_number,
+                            "subquestion_number": answer.subquestion_number,
+                            "text": answer.answer_text,
+                            "page_start": unit.first_page + answer.page_start - 1,
+                            "page_end": unit.first_page + answer.page_end - 1,
+                            "uncertain_fragments": answer.uncertain_fragments,
+                            "question_excerpt": answer.question_excerpt,
+                            "answer_form": answer.answer_form,
+                        })
                 for question in output.questions:
+                    original_page = unit.first_page + question.page_start - 1
+                    if page_roles and page_roles[original_page - 1] not in {"question", "mixed"}:
+                        ignored_nonquestion_sections.append({"original_number": question.original_number,
+                                                              "page_start": original_page,
+                                                              "section": page_roles[original_page - 1]})
+                        continue
                     if question.page_start > unit.core_last_page - unit.first_page + 1:
                         ignored_overlap_questions.append({"original_number": question.original_number,
                                                           "page_start": unit.first_page + question.page_start - 1})
@@ -378,6 +446,16 @@ def process_s2_one() -> bool:
                     existing_items.append(add_candidate(db, row, payload))
                     known.add(key)
                     selected += 1
+                if isinstance(output, ClassifiedCombinedModelOutput):
+                    ignored_nonquestion_sections = [
+                        {"original_number": fragment.original_number,
+                         "page_start": unit.first_page + fragment.page - 1,
+                         "excerpt": fragment.excerpt,
+                         "section": fragment.source_classification,
+                         "classification_evidence": fragment.classification_evidence}
+                        for fragment in output.nonquestion_fragments
+                        if fragment.page <= unit.core_last_page - unit.first_page + 1
+                    ]
                 unresolved = [{"page": unit.first_page + fragment.page - 1,
                                "text": fragment.text, "reason": fragment.reason}
                               for fragment in output.unresolved_fragments]
@@ -391,7 +469,7 @@ def process_s2_one() -> bool:
                         else:
                             remaining.append(fragment)
                     unresolved = remaining
-                if not output.questions and not unresolved:
+                if not reference_only and not output.questions and not source_answers and not unresolved:
                     if not resolved_overlap:
                         unresolved = [{"page": unit.first_page, "text": "本页段没有识别出题目",
                                        "reason": "需核对原文件是否为空白、答案页或漏题"}]
@@ -401,12 +479,15 @@ def process_s2_one() -> bool:
                                                   "resolved_overlap_fragments": resolved_overlap,
                                                   "overlap_duplicates": overlap_duplicates,
                                                   "ignored_overlap_questions": ignored_overlap_questions,
+                                                  "ignored_nonquestion_sections": ignored_nonquestion_sections,
+                                                  "source_answers": source_answers,
+                                                  "skipped_reference": reference_only,
                                                   "usage": meta.get("usage") or {},
                                                   "estimated_cny": cost,
                                                   "elapsed_seconds": meta["elapsed_seconds"],
                                                   "response_id": meta.get("response_id")}
-                already_accounted = bool(meta.get("response_id") and meta["response_id"] in
-                                         (current.get("accounted_response_keys") or []))
+                already_accounted = reference_only or bool(meta.get("response_id") and meta["response_id"] in
+                                                      (current.get("accounted_response_keys") or []))
                 if not already_accounted:
                     current["calls"] = int(current.get("calls") or 0) + 1
                     if cost is None:
@@ -439,6 +520,7 @@ def process_s2_one() -> bool:
                 row.lease_until = None
                 db.commit()
     except Exception as exc:
+        logger.exception("S2 unit processing failed for batch %s", batch_id)
         with SessionLocal() as db:
             row = _locked_batch(db, batch_id, token)
             if row is not None:

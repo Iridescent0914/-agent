@@ -43,7 +43,7 @@ class ImportProblem(ValueError):
 
 
 # Bump when DOCX rendering changes so an identical upload does not reuse an old batch.
-DOCX_CONVERSION_VERSION = "libreoffice-math-v1"
+DOCX_CONVERSION_VERSION = "libreoffice-math-omml-v2"
 
 
 def content_fingerprint(question_text: str, options: object = None, assets: object = None) -> str:
