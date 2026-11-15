@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     question_import_max_files: int = 2
     question_import_max_candidates: int = 200
     question_import_retention_hours: int = 72
-    question_import_recent_batches: int = 7
+    question_import_recent_batches: int = 30
     question_import_worker_interval_seconds: int = 15
     question_import_lease_seconds: int = 120
     question_import_max_attempts: int = 3

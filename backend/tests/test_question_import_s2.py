@@ -18,11 +18,24 @@ from app.core.database import engine
 from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, _path_for, create_batch, retry_batch
 from app.services.question_import_s2 import (
     QwenPdfProvider, candidate_from_question, candidate_key, estimate_cost,
-    overlap_candidate_is_duplicate, prefer_incoming_overlap, resolved_overlap_option,
+    overlap_candidate_is_duplicate, resolved_overlap_option,
     decode_qwen_response, parse_model_output, plan_units, prepare_pdf,
 )
 from app.services.question_import_s2_worker import claim_s2, start_s2
 import app.services.question_import_s2_worker as s2_worker
+
+
+def test_source_answer_signal_is_advisory_and_page_checked():
+    unit = plan_units(2, pages_per_unit=2, overlap=0)[0]
+    output = parse_model_output({"complete": True, "questions": [],
+        "unresolved_fragments": [], "source_answer_signals": [
+            {"page": 2, "evidence": "原文有参考答案标题及结果"}]}, unit)
+    assert output.source_answer_signals[0].page == 2
+    with pytest.raises(ImportProblem) as error:
+        parse_model_output({"complete": True, "questions": [],
+            "unresolved_fragments": [], "source_answer_signals": [
+                {"page": 3, "evidence": "超出页段"}]}, unit)
+    assert error.value.code == "INVALID_MODEL_PAGE"
 
 
 @pytest.fixture
@@ -220,7 +233,7 @@ def test_overlap_same_page_number_matches_formula_notation_variants():
     assert not overlap_candidate_is_duplicate(first, second, boundary_page=5)
 
 
-def test_same_unit_partial_question_keeps_complete_candidate():
+def test_same_unit_partial_question_keeps_both_candidates_for_review():
     from scripts.reconcile_s2_overlap import audit
 
     source = {"file_id": str(uuid4()), "original_number": "8", "page_start": 13}
@@ -229,15 +242,15 @@ def test_same_unit_partial_question_keeps_complete_candidate():
     complete = json.loads(json.dumps(partial))
     complete["content"]["question_text"] = "计算：(1) $(-12)-(-15)$; (2) $0-2020$; (3) $(-7.5)-5.6$."
     assert overlap_candidate_is_duplicate(partial, complete, boundary_page=13)
-    assert prefer_incoming_overlap(partial, complete)
     items = [SimpleNamespace(id=uuid4(), ordinal=index, revision=1, payload=payload)
              for index, payload in enumerate((partial, complete), start=1)]
     batch = SimpleNamespace(stage="s2_completed", status="review_pending", checkpoint={"s2": {
         "units": [{"first_page": 13, "candidate_count": 2, "unresolved_fragments": []}]}})
-    duplicates, unresolved = audit(batch, items)
+    suspects, unresolved = audit(batch, items)
     assert unresolved == []
-    assert duplicates[0]["removed_item_id"] == str(items[0].id)
-    assert duplicates[0]["kept_item_id"] == str(items[1].id)
+    assert suspects[0]["other_item_id"] == str(items[0].id)
+    assert suspects[0]["candidate_item_id"] == str(items[1].id)
+    assert [item.ordinal for item in items] == [1, 2]
 
 
 def test_empty_array_response_reports_actual_failure():
@@ -593,13 +606,20 @@ def test_worker_resumes_by_unit_and_deduplicates_overlap(db, tmp_path, monkeypat
     assert batch.checkpoint["s2"]["units"][0]["ignored_overlap_questions"] == [
         {"original_number": "99", "page_start": 3}]
     second_unit = batch.checkpoint["s2"]["units"][1]
-    assert second_unit["candidate_count"] == 0
+    assert second_unit["candidate_count"] == 1
     assert second_unit["unresolved_fragments"] == []
-    assert len(second_unit["resolved_overlap_fragments"]) == 1
-    assert second_unit["overlap_duplicates"][0]["reason"] == "overlap_variant"
+    assert second_unit["resolved_overlap_fragments"] == []
+    assert len(second_unit["overlap_suspects"]) == 1
     from app.models import QuestionImportItem
     from sqlalchemy import select
-    assert len(list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch.id)))) == 1
+    items = list(db.scalars(select(QuestionImportItem).where(
+        QuestionImportItem.batch_id == batch.id).order_by(QuestionImportItem.ordinal)))
+    assert len(items) == 2
+    from scripts.reconcile_s2_overlap import audit
+    suspects, fragments = audit(batch, items)
+    assert len(suspects) == 1
+    assert len(fragments) == 0
+    assert [item.ordinal for item in items] == [1, 2]
 
 
 def test_failed_response_cost_is_counted_and_retry_calls_again(db, tmp_path, monkeypatch):

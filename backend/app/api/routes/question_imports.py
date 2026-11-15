@@ -16,7 +16,11 @@ from app.services.question_import import (
     update_candidate,
 )
 from app.services.question_import_s2_worker import start_s2
-from app.services.question_import_s3 import reconcile_source_answers
+from app.services.question_import_s3 import reconcile_source_answers, restore_nonquestion_fragment
+from app.services.question_import_s3_global import dedupe_batch
+from app.services.question_import_s3_review import (
+    list_review_issues, list_review_units, review_issue, review_unit,
+)
 
 
 router = APIRouter(prefix="/question-imports", tags=["question-imports"])
@@ -55,6 +59,10 @@ class CandidateUpdate(BaseModel):
 
 
 class S2StartRequest(BaseModel):
+    budget_cny: float = Field(gt=0)
+
+
+class S3ReviewRequest(BaseModel):
     budget_cny: float = Field(gt=0)
 
 
@@ -136,6 +144,44 @@ def list_items(batch_id: UUID, db: Session = Depends(get_db)):
 def reconcile_combined_source_answers(batch_id: UUID, db: Session = Depends(get_db)):
     """Link only unambiguous one-pass source answers; never confirm or import them."""
     return reconcile_source_answers(db, batch_id)
+
+
+@router.post("/{batch_id}/s3/dedupe-batch")
+def run_batch_dedup(batch_id: UUID, request: S3ReviewRequest, db: Session = Depends(get_db),
+                    operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
+    return dedupe_batch(db, batch_id, budget_cny=request.budget_cny, operator_token=operator_token)
+
+
+@router.post("/{batch_id}/s3/nonquestions/{unit_index}/{fragment_index}/restore")
+def restore_nonquestion(batch_id: UUID, unit_index: int, fragment_index: int,
+                        db: Session = Depends(get_db)):
+    return restore_nonquestion_fragment(db, batch_id, unit_index, fragment_index)
+
+
+@router.get("/{batch_id}/s3/review-issues")
+def read_review_issues(batch_id: UUID, db: Session = Depends(get_db)):
+    return list_review_issues(db, batch_id)
+
+
+@router.get("/{batch_id}/s3/review-units")
+def read_review_units(batch_id: UUID, db: Session = Depends(get_db)):
+    return list_review_units(db, batch_id)
+
+
+@router.post("/{batch_id}/s3/review-units/{unit_index}")
+def run_unit_review(batch_id: UUID, unit_index: int, request: S3ReviewRequest,
+                    db: Session = Depends(get_db),
+                    operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
+    return review_unit(db, batch_id, unit_index, budget_cny=request.budget_cny,
+                       operator_token=operator_token)
+
+
+@router.post("/{batch_id}/s3/review-issues/{key}")
+def run_issue_review(batch_id: UUID, key: str, request: S3ReviewRequest,
+                     db: Session = Depends(get_db),
+                     operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
+    return review_issue(db, batch_id, key, budget_cny=request.budget_cny,
+                        operator_token=operator_token)
 
 
 @router.patch("/{batch_id}/items/{item_id}", response_model=CandidateOut)

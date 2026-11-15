@@ -14,8 +14,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import QuestionImportBatch, QuestionImportItem
-from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, OWNER_SCOPE
-from app.services.question_import_s2 import COMBINED_PROMPT_VERSIONS
+from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, OWNER_SCOPE, add_candidate
+from app.services.question_import_s2 import (
+    COMBINED_PROMPT_VERSION, COMBINED_PROMPT_VERSIONS, ModelQuestion,
+    PageUnit, candidate_from_question,
+)
 
 
 def _number_key(value: object) -> str | None:
@@ -43,7 +46,7 @@ def _text_key(value: object) -> str:
 
 def _matching_excerpt(answer: dict[str, Any], targets: list[QuestionImportItem]) -> list[QuestionImportItem]:
     excerpt = _text_key(answer.get("question_excerpt"))
-    if len(excerpt) < 16:
+    if len(excerpt) < 4:
         return []
     return [item for item in targets if excerpt in _text_key(item.payload["content"]["question_text"])
             or _text_key(item.payload["content"]["question_text"]) in excerpt]
@@ -115,7 +118,7 @@ def _classify_overlap_duplicates(s2: dict[str, Any], result: dict[str, Any],
             "unassigned_answers": remaining, "overlap_duplicate_answers": duplicates}
 
 
-def reconcile_source_answers(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
+def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = False) -> dict[str, Any]:
     batch = db.scalar(select(QuestionImportBatch).where(
         QuestionImportBatch.id == batch_id,
         QuestionImportBatch.owner_scope == OWNER_SCOPE,
@@ -131,7 +134,7 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID) -> dict[str, Any]
         raise ImportProblem("S3_SOURCE_ANSWERS_MISSING", "旧批次未在一次提取中读取答案，需单独处理答案页", 409)
     existing_s3 = (batch.checkpoint or {}).get("s3") or {}
     previous_result = existing_s3.get("source_answer_reconciliation") or {}
-    if previous_result.get("schema_version") == "s3-source-answer-reconciliation-v3":
+    if not force and previous_result.get("schema_version") == "s3-source-answer-reconciliation-v3":
         return previous_result
     source = next(file for file in batch.files if file["role"] == "questions")
     if (source["media_type"] != "application/pdf"
@@ -143,7 +146,7 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID) -> dict[str, Any]
     items = list(db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch.id,
     ).order_by(QuestionImportItem.ordinal).with_for_update()))
-    if previous_result.get("schema_version") == "s3-source-answer-reconciliation-v2":
+    if not force and previous_result.get("schema_version") == "s3-source-answer-reconciliation-v2":
         result = _classify_overlap_duplicates(s2, previous_result, items)
         checkpoint = dict(batch.checkpoint or {})
         checkpoint["s3"] = {**existing_s3, "source_answer_reconciliation": result}
@@ -165,8 +168,15 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID) -> dict[str, Any]
             answer_count += 1
             key = _number_key(answer.get("original_number"))
             targets = by_number.get(key, []) if key else []
-            if len(targets) != 1 and answer.get("question_excerpt"):
-                targets = _matching_excerpt(answer, targets if key else items)
+            excerpt = answer.get("question_excerpt")
+            if excerpt and len(_text_key(excerpt)) >= 4:
+                excerpt_matches = _matching_excerpt(answer, targets if key else items)
+                if len(targets) != 1:
+                    targets = excerpt_matches
+                elif targets[0] not in excerpt_matches:
+                    unassigned.append({**answer, "reason": "question_excerpt_conflict",
+                                       "candidate_item_ids": [str(targets[0].id)]})
+                    continue
             reason = None
             if not key:
                 if len(targets) != 1:
@@ -178,7 +188,8 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID) -> dict[str, Any]
             if reason is None and not _replaceable_source_answer(targets[0]):
                 reason = "candidate_already_edited"
             if reason:
-                unassigned.append({**answer, "reason": reason})
+                unassigned.append({**answer, "reason": reason,
+                                   "candidate_item_ids": [str(item.id) for item in targets]})
             else:
                 matched[targets[0].id].append(answer)
 
@@ -229,9 +240,10 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID) -> dict[str, Any]
         payload["warnings"] = [warning for warning in (payload.get("warnings") or [])
                                if warning != "资料答案已关联，须对照原页由教师确认"]
         payload["warnings"].append("资料答案已关联，须对照原页由教师确认")
-        item.revision += 1
-        payload["revision"] = item.revision
-        item.payload = payload
+        if item.payload.get("answers") != [version] or item.payload.get("answer_match_status") != payload["answer_match_status"]:
+            item.revision += 1
+            payload["revision"] = item.revision
+            item.payload = payload
         linked_count += len(ordered)
 
     result = {"schema_version": "s3-source-answer-reconciliation-v2",
@@ -246,3 +258,58 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID) -> dict[str, Any]
     checkpoint["s3"] = {**existing_s3, "source_answer_reconciliation": result}
     batch.checkpoint = checkpoint
     return result
+
+
+def restore_nonquestion_fragment(db: Session, batch_id: uuid.UUID,
+                                 unit_index: int, fragment_index: int) -> dict[str, Any]:
+    """Restore a v5 model exclusion as a reviewable candidate, without trusting its label."""
+    batch = db.scalar(select(QuestionImportBatch).where(
+        QuestionImportBatch.id == batch_id,
+        QuestionImportBatch.owner_scope == OWNER_SCOPE,
+    ).with_for_update())
+    if batch is None:
+        raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
+    s2 = (batch.checkpoint or {}).get("s2") or {}
+    source_expired = batch.status == "failed" and batch.stage == "expired" and batch.files_purged_at is not None
+    if source_expired:
+        units = s2.get("units") or []
+        if not units or any(unit.get("status") != "completed" for unit in units):
+            raise ImportProblem("COMMIT_CONFLICT", "过期批次的 S2 切题尚未完成", 409)
+    elif batch.status != "review_pending" or batch.stage != "s2_completed":
+        raise ImportProblem("COMMIT_CONFLICT", "请先完成 S2 切题", 409)
+    if s2.get("prompt_version") != COMBINED_PROMPT_VERSION:
+        raise ImportProblem("S3_RESTORE_UNAVAILABLE", "该批次没有可恢复的完整非独立题原文", 409)
+    units = s2.get("units") or []
+    if unit_index < 0 or unit_index >= len(units):
+        raise ImportProblem("NOT_FOUND", "页段不存在", 404)
+    fragments = units[unit_index].get("ignored_nonquestion_sections") or []
+    if fragment_index < 0 or fragment_index >= len(fragments):
+        raise ImportProblem("NOT_FOUND", "片段不存在", 404)
+    fragment = fragments[fragment_index]
+    if not fragment.get("full_text") or not fragment.get("source_file_id"):
+        raise ImportProblem("S3_RESTORE_UNAVAILABLE", "该片段缺少可恢复的原文", 409)
+    checkpoint = dict(batch.checkpoint or {})
+    s3 = dict(checkpoint.get("s3") or {})
+    restored = dict(s3.get("restored_nonquestion_fragments") or {})
+    reference = f"{unit_index}:{fragment_index}"
+    if reference in restored:
+        return {"item_id": restored[reference], "already_restored": True}
+    page_start = fragment["page_start"]
+    page_end = fragment["page_end"]
+    question = ModelQuestion(original_number=fragment.get("original_number"),
+                             question_text=fragment["full_text"],
+                             page_start=1, page_end=page_end - page_start + 1)
+    unit = PageUnit(unit_index, page_start, page_end, page_start, page_end)
+    payload = candidate_from_question(fragment["source_file_id"], question, unit)
+    payload["warnings"].append("从模型排除片段恢复；须对照原页确认是否为独立题")
+    if source_expired:
+        payload["warnings"].append("原文件已过期；须重新取得原页后再确认")
+    payload["extraction"]["source_classification"] = "restored_for_review"
+    payload["extraction"]["classification_evidence"] = fragment["classification_evidence"]
+    payload["extraction"]["restored_from"] = reference
+    item = add_candidate(db, batch, payload)
+    restored[reference] = str(item.id)
+    s3["restored_nonquestion_fragments"] = restored
+    checkpoint["s3"] = s3
+    batch.checkpoint = checkpoint
+    return {"item_id": str(item.id), "already_restored": False}

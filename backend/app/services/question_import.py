@@ -166,7 +166,11 @@ def create_batch(db: Session, *, source_mode: str,
     if len(retained) >= settings.question_import_recent_batches:
         removable = next((row for row in retained if row.status in PURGEABLE_FOR_CAP), None)
         if removable is None:
-            raise ImportProblem("FILE_LIMIT_EXCEEDED", "最近上传批次均在处理中，请完成或取消旧批次", 409)
+            raise ImportProblem(
+                "FILE_LIMIT_EXCEEDED",
+                f"已有 {settings.question_import_recent_batches} 个批次保留原文件，且都不能自动清理；请取消不再使用的旧批次，或等待临时文件到期清理",
+                409,
+            )
         _purge_files(removable, now=now)
         db.flush()
     batch = QuestionImportBatch(
@@ -272,7 +276,9 @@ def add_candidate(db: Session, batch: QuestionImportBatch, payload: dict[str, An
     tags = dict(payload.get("tags") or {})
     tags["is_required"] = False
     payload["tags"] = tags
-    item = QuestionImportItem(id=item_id, batch_id=batch.id, ordinal=count + 1,
+    next_ordinal = (db.scalar(select(func.max(QuestionImportItem.ordinal)).where(
+        QuestionImportItem.batch_id == batch.id)) or 0) + 1
+    item = QuestionImportItem(id=item_id, batch_id=batch.id, ordinal=next_ordinal,
                               revision=1, payload=payload, is_fake=fake)
     db.add(item)
     db.flush()

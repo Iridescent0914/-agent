@@ -7,6 +7,7 @@ import hashlib
 import copy
 import logging
 import os
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -19,12 +20,12 @@ from app.models import QuestionImportBatch, QuestionImportItem
 from app.services.question_import import DOCX_CONVERSION_VERSION, OWNER_SCOPE, ImportProblem, _path_for, add_candidate, get_batch, require_s2_operator_token
 from app.services.question_import_s2 import (
     FLASH_MODEL, LEGACY_PROMPT_VERSION, PROMPT_VERSION, ModelOutput, PageUnit, QwenPdfProvider,
-    COMBINED_PROMPT_VERSION, COMBINED_PROMPT_VERSIONS, LEGACY_COMBINED_PROMPT_VERSION,
+    COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION, CLASSIFIED_COMBINED_PROMPT_VERSION,
+    COMBINED_PROMPT_VERSIONS, LEGACY_COMBINED_PROMPT_VERSION,
     ClassifiedCombinedModelOutput, CombinedModelOutput, combined_output_model,
     candidate_from_question, candidate_key,
-    decode_qwen_response, estimate_cost, overlap_candidate_is_duplicate, prefer_incoming_overlap,
+    decode_qwen_response, estimate_cost, overlap_candidate_is_duplicate,
     pdf_page_roles, pdf_unit_bytes, plan_units, prepare_pdf,
-    resolved_overlap_option,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_to
     s2["model"] = settings.question_import_s2_model
     # Existing paid v3 batches keep their original output contract on resume.
     s2["prompt_version"] = s2.get("prompt_version") or (
-        COMBINED_PROMPT_VERSION if batch.source_mode == "combined" else PROMPT_VERSION
+        FOCUSED_COMBINED_PROMPT_VERSION if batch.source_mode == "combined" else PROMPT_VERSION
     )
     if question_file["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         s2["conversion_version"] = DOCX_CONVERSION_VERSION
@@ -280,7 +281,7 @@ def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
               "capture_response": capture_response}
     if include_answers:
         kwargs["include_answers"] = True
-        if combined_prompt_version == LEGACY_COMBINED_PROMPT_VERSION:
+        if combined_prompt_version != COMBINED_PROMPT_VERSION:
             kwargs["combined_prompt_version"] = combined_prompt_version
         elif document_page_roles:
             kwargs["page_roles"] = document_page_roles[unit.first_page - 1:unit.last_page]
@@ -307,7 +308,10 @@ def process_s2_one() -> bool:
             raise ImportProblem("S2_CONFIG_CHANGED", "DOCX 转换器已修复公式处理，请重新上传以完整重跑 S2")
         pdf, pages, warnings = prepare_pdf(batch_id, source)
         document_page_roles = (pdf_page_roles(pdf) if batch.source_mode == "combined"
-                               and s2.get("prompt_version") != COMBINED_PROMPT_VERSION else [])
+                               and s2.get("prompt_version") not in {
+                                   FOCUSED_COMBINED_PROMPT_VERSION, COMBINED_PROMPT_VERSION,
+                                   CLASSIFIED_COMBINED_PROMPT_VERSION,
+                               } else [])
         if not s2.get("units"):
             units = plan_units(pages, pages_per_unit=get_settings().question_import_s2_pages_per_unit,
                                overlap=get_settings().question_import_s2_overlap_pages)
@@ -383,10 +387,10 @@ def process_s2_one() -> bool:
                     continue
                 existing_items = list(db.scalars(select(QuestionImportItem).where(
                     QuestionImportItem.batch_id == batch_id).with_for_update()))
-                previous_payloads = [item.payload for item in existing_items]
                 known = {candidate_key(item.payload) for item in existing_items}
                 selected = 0
                 overlap_duplicates = []
+                overlap_suspects = []
                 ignored_overlap_questions = []
                 ignored_nonquestion_sections = []
                 source_answers = []
@@ -425,25 +429,19 @@ def process_s2_one() -> bool:
                     if key in known:
                         overlap_duplicates.append({"original_number": payload["source"]["original_number"],
                                                    "page_start": payload["source"]["page_start"],
-                                                   "reason": "exact"})
+                                                   "reason": "exact", "discarded_payload": payload})
                         continue
                     duplicate = next((item for item in existing_items if overlap_candidate_is_duplicate(
                         item.payload, payload, boundary_page=unit.first_page)), None)
                     if duplicate is not None:
-                        replaced = prefer_incoming_overlap(duplicate.payload, payload)
-                        if replaced:
-                            original = duplicate.payload
-                            duplicate.payload = {**payload,
-                                                 "batch_id": original["batch_id"],
-                                                 "item_id": original["item_id"],
-                                                 "revision": original["revision"],
-                                                 "catalog_snapshot_sha256": original["catalog_snapshot_sha256"]}
-                        overlap_duplicates.append({"original_number": payload["source"]["original_number"],
-                                                   "page_start": payload["source"]["page_start"],
-                                                   "kept_item_id": str(duplicate.id), "reason": "overlap_variant",
-                                                   "replaced_with_richer_candidate": replaced})
-                        continue
-                    existing_items.append(add_candidate(db, row, payload))
+                        payload["duplicate_status"] = "suspected"
+                        payload["warnings"].append("与另一候选题疑似跨页重复；须核对原页后决定")
+                    created = add_candidate(db, row, payload)
+                    existing_items.append(created)
+                    if duplicate is not None:
+                        overlap_suspects.append({"candidate_item_id": str(created.id),
+                                                 "other_item_id": str(duplicate.id),
+                                                 "reason": "overlap_variant_requires_review"})
                     known.add(key)
                     selected += 1
                 if isinstance(output, ClassifiedCombinedModelOutput):
@@ -452,35 +450,40 @@ def process_s2_one() -> bool:
                          "page_start": unit.first_page + fragment.page - 1,
                          "excerpt": fragment.excerpt,
                          "section": fragment.source_classification,
-                         "classification_evidence": fragment.classification_evidence}
+                         "classification_evidence": fragment.classification_evidence,
+                         **({"full_text": fragment.full_text,
+                             "page_end": unit.first_page + fragment.page_end - 1,
+                             "source_file_id": source["file_id"]}
+                            if hasattr(fragment, "full_text") else {})}
                         for fragment in output.nonquestion_fragments
                         if fragment.page <= unit.core_last_page - unit.first_page + 1
                     ]
                 unresolved = [{"page": unit.first_page + fragment.page - 1,
                                "text": fragment.text, "reason": fragment.reason}
-                              for fragment in output.unresolved_fragments]
+                              for fragment in output.unresolved_fragments
+                              if not (unit.index > 0 and fragment.page == 1
+                                      and re.match(r"^\s*[（(]?[A-Da-d](?:[)）.．、:：]|\s+)", fragment.text))]
                 resolved_overlap = []
-                if unit.index > 0:
-                    remaining = []
-                    for fragment in unresolved:
-                        if resolved_overlap_option(fragment, boundary_page=unit.first_page,
-                                                   previous=previous_payloads):
-                            resolved_overlap.append(fragment)
-                        else:
-                            remaining.append(fragment)
-                    unresolved = remaining
-                if not reference_only and not output.questions and not source_answers and not unresolved:
+                if (s2.get("prompt_version") != FOCUSED_COMBINED_PROMPT_VERSION
+                        and not reference_only and not output.questions and not source_answers and not unresolved):
                     if not resolved_overlap:
                         unresolved = [{"page": unit.first_page, "text": "本页段没有识别出题目",
                                        "reason": "需核对原文件是否为空白、答案页或漏题"}]
+                source_answer_signals = [
+                    {"page": unit.first_page + signal.page - 1, "evidence": signal.evidence}
+                    for signal in output.source_answer_signals
+                    if signal.page <= unit.core_last_page - unit.first_page + 1
+                ]
                 current["units"][unit.index] = {**current["units"][unit.index], "status": "completed",
                                                   "candidate_count": selected,
                                                   "unresolved_fragments": unresolved,
                                                   "resolved_overlap_fragments": resolved_overlap,
                                                   "overlap_duplicates": overlap_duplicates,
+                                                  "overlap_suspects": overlap_suspects,
                                                   "ignored_overlap_questions": ignored_overlap_questions,
                                                   "ignored_nonquestion_sections": ignored_nonquestion_sections,
                                                   "source_answers": source_answers,
+                                                  "source_answer_signals": source_answer_signals,
                                                   "skipped_reference": reference_only,
                                                   "usage": meta.get("usage") or {},
                                                   "estimated_cny": cost,
