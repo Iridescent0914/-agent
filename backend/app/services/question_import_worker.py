@@ -119,7 +119,10 @@ def process_one() -> bool:
         db.commit()
     if claimed is None:
         from app.services.question_import_s2_worker import process_s2_one
-        return process_s2_one()
+        if process_s2_one():
+            return True
+        from app.services.question_import_s3_global import process_global_dedupe_one
+        return process_global_dedupe_one()
     batch_id, token = claimed
     try:
         with SessionLocal() as db:

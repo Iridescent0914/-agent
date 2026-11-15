@@ -52,6 +52,14 @@ def _matching_excerpt(answer: dict[str, Any], targets: list[QuestionImportItem])
             or _text_key(item.payload["content"]["question_text"]) in excerpt]
 
 
+def _substantive_excerpt(value: object) -> bool:
+    """A question number alone cannot corroborate or contradict a question stem."""
+    excerpt = _text_key(value)
+    if len(excerpt) < 4:
+        return False
+    return re.fullmatch(r"(?:第)?(?:\d+|[一二三四五六七八九十百零两]+)(?:小?题)?", excerpt) is None
+
+
 def _replaceable_source_answer(item: QuestionImportItem) -> bool:
     payload = item.payload
     answers = payload.get("answers") or []
@@ -169,7 +177,7 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
             key = _number_key(answer.get("original_number"))
             targets = by_number.get(key, []) if key else []
             excerpt = answer.get("question_excerpt")
-            if excerpt and len(_text_key(excerpt)) >= 4:
+            if _substantive_excerpt(excerpt):
                 excerpt_matches = _matching_excerpt(answer, targets if key else items)
                 if len(targets) != 1:
                     targets = excerpt_matches

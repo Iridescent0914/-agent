@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
 import httpx
@@ -13,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.database import SessionLocal
 from app.models import QuestionImportBatch, QuestionImportItem
 from app.services.question_import import OWNER_SCOPE, ImportProblem, require_s2_operator_token
 from app.services.question_import_s2 import FLASH_MODEL, estimate_cost
@@ -22,6 +24,8 @@ from app.services.question_import_s3_review import (
 )
 
 GLOBAL_DEDUPE_VERSION = "s3-global-dedupe-v1"
+GLOBAL_DEDUPE_MAX_OUTPUT_TOKENS = 8192
+logger = logging.getLogger(__name__)
 
 
 class DuplicateDecision(BaseModel):
@@ -43,7 +47,7 @@ def _model_context(items: list[QuestionImportItem], s2: dict[str, Any]) -> dict[
     return {
         "questions": [{"item_id": str(item.id), "number": (item.payload.get("source") or {}).get("original_number"),
                        "page": (item.payload.get("source") or {}).get("page_start"),
-                       "stem": ((item.payload.get("content") or {}).get("question_text") or "")[:700],
+                       "stem": (item.payload.get("content") or {}).get("question_text") or "",
                        "options": (item.payload.get("content") or {}).get("options") or []}
                       for item in items],
         "source_answers": [{"number": answer.get("original_number"), "page": answer.get("page_start"),
@@ -75,7 +79,8 @@ class QwenGlobalDedupProvider:
                        "name": "global_question_dedup", "strict": True,
                        "schema": GlobalDedupOutput.model_json_schema()}},
                    "include_tool_usage": True,
-                   "max_tokens": min(4096, self.settings.question_import_s2_max_output_tokens)}
+                   "max_tokens": min(GLOBAL_DEDUPE_MAX_OUTPUT_TOKENS,
+                                     self.settings.question_import_s2_max_output_tokens)}
         start = time.monotonic()
         try:
             with httpx.Client(timeout=self.settings.question_import_s2_timeout_seconds, transport=self.transport) as client:
@@ -108,9 +113,10 @@ class QwenGlobalDedupProvider:
 
 
 def dedupe_batch(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
-                 operator_token: str | None = None) -> dict[str, Any]:
+                 operator_token: str | None = None, automatic: bool = False) -> dict[str, Any]:
     settings = get_settings()
-    require_s2_operator_token(operator_token)
+    if not automatic:
+        require_s2_operator_token(operator_token)
     if (not settings.question_import_s2_enabled or not settings.question_import_s2_api_key
             or not settings.question_import_s2_base_url.startswith("https://")
             or settings.question_import_s2_model != FLASH_MODEL):
@@ -134,12 +140,21 @@ def dedupe_batch(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
     if len(items) < 2:
         if batch.source_mode == "combined":
             reconcile_source_answers(db, batch_id, force=True)
-        return {"status": "completed", "removed_duplicate_count": 0, "reviewed_candidate_count": len(items)}
+        result = {"status": "completed", "version": GLOBAL_DEDUPE_VERSION,
+                  "removed_duplicate_count": 0, "reviewed_candidate_count": len(items)}
+        checkpoint = dict(batch.checkpoint or {})
+        s3 = dict(checkpoint.get("s3") or {})
+        s3["global_dedupe"] = result
+        checkpoint["s3"] = s3
+        batch.checkpoint = checkpoint
+        db.commit()
+        return result
     if len(json.dumps(context, ensure_ascii=False)) > 150_000:
         raise ImportProblem("S3_GLOBAL_TOO_LARGE", "整批题目文字超过模型单次判重范围", 409)
     minimum_cost = (len(json.dumps(context, ensure_ascii=False)) / 2
                     * settings.question_import_s2_input_million_price_cny / 1_000_000
-                    + 4096 * settings.question_import_s2_output_million_price_cny / 1_000_000)
+                    + min(GLOBAL_DEDUPE_MAX_OUTPUT_TOKENS, settings.question_import_s2_max_output_tokens)
+                    * settings.question_import_s2_output_million_price_cny / 1_000_000)
     spent = _batch_review_spent(s3)
     if spent + minimum_cost > budget_cny:
         raise ImportProblem("S3_REVIEW_BUDGET", "整批判重预算不足", 409)
@@ -190,7 +205,7 @@ def dedupe_batch(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
     checkpoint["s3"] = s3
     batch.checkpoint = checkpoint
     db.commit()
-    if result["status"] == "completed" and batch.source_mode == "combined":
+    if result["status"] == "completed" and batch.source_mode == "combined" and not automatic:
         reviewed_answers = assigned_answers = 0
         review_error = None
         for issue in list_review_issues(db, batch_id):
@@ -217,3 +232,73 @@ def dedupe_batch(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
         batch.checkpoint = checkpoint
         db.commit()
     return result
+
+
+def process_global_dedupe_one() -> bool:
+    """Finish a newly started S2 batch without requiring a second button click."""
+    with SessionLocal() as db:
+        candidates = list(db.scalars(select(QuestionImportBatch).where(
+            QuestionImportBatch.owner_scope == OWNER_SCOPE,
+            QuestionImportBatch.status == "review_pending",
+            QuestionImportBatch.stage == "s2_completed",
+        ).order_by(QuestionImportBatch.created_at).with_for_update(skip_locked=True)))
+        def eligible(row: QuestionImportBatch) -> bool:
+            if not ((row.checkpoint or {}).get("s2") or {}).get("auto_global_dedupe"):
+                return False
+            prior = ((row.checkpoint or {}).get("s3") or {}).get("global_dedupe") or {}
+            if not prior:
+                return True
+            if prior.get("status") != "auto_claimed":
+                return False
+            try:
+                claimed_at = datetime.fromisoformat(prior["started_at"])
+                return claimed_at < datetime.now(timezone.utc) - timedelta(minutes=10)
+            except (KeyError, TypeError, ValueError):
+                return True
+
+        batch = next((row for row in candidates if eligible(row)), None)
+        if batch is None:
+            return False
+        batch_id = batch.id
+        s2 = (batch.checkpoint or {}).get("s2") or {}
+        remaining = float(s2.get("budget_cny") or 0) - float(s2.get("estimated_cny") or 0)
+        if s2.get("cost_unknown"):
+            remaining = 0
+        checkpoint = dict(batch.checkpoint or {})
+        s3 = dict(checkpoint.get("s3") or {})
+        s3["global_dedupe"] = {"status": "auto_claimed", "version": GLOBAL_DEDUPE_VERSION,
+                               "started_at": datetime.now(timezone.utc).isoformat()}
+        checkpoint["s3"] = s3
+        batch.checkpoint = checkpoint
+        db.commit()
+    try:
+        if remaining <= 0:
+            raise ImportProblem("S3_REVIEW_BUDGET", "S2 预算已用完，请增加预算后手动整理整批", 409)
+        with SessionLocal() as db:
+            dedupe_batch(db, batch_id, budget_cny=remaining, automatic=True)
+    except ImportProblem as exc:
+        status = "pending_budget" if exc.code in {"S3_REVIEW_BUDGET", "INVALID_S2_BUDGET"} else "failed"
+        with SessionLocal() as db:
+            batch = db.get(QuestionImportBatch, batch_id)
+            if batch is not None:
+                checkpoint = dict(batch.checkpoint or {})
+                s3 = dict(checkpoint.get("s3") or {})
+                s3["global_dedupe"] = {"status": status, "version": GLOBAL_DEDUPE_VERSION,
+                                       "error_code": exc.code, "error_message": str(exc)}
+                checkpoint["s3"] = s3
+                batch.checkpoint = checkpoint
+                db.commit()
+    except Exception:
+        logger.exception("Automatic whole-batch deduplication failed for %s", batch_id)
+        with SessionLocal() as db:
+            batch = db.get(QuestionImportBatch, batch_id)
+            if batch is not None:
+                checkpoint = dict(batch.checkpoint or {})
+                s3 = dict(checkpoint.get("s3") or {})
+                s3["global_dedupe"] = {"status": "failed", "version": GLOBAL_DEDUPE_VERSION,
+                                       "error_code": "S3_GLOBAL_FAILED",
+                                       "error_message": "整批自动判重失败，请手动重试"}
+                checkpoint["s3"] = s3
+                batch.checkpoint = checkpoint
+                db.commit()
+    return True

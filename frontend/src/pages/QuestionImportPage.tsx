@@ -10,7 +10,7 @@ type Batch = {
   stage: string
   files: Array<{ file_id: string; original_name: string; size_bytes: number; page_count: number | null; role: string }>
   checkpoint: {
-    s2?: { calls?: number; prompt_version?: string; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; ignored_nonquestion_sections?: Array<{ original_number: string | null; page_start: number; page_end?: number; excerpt?: string; full_text?: string; section: string; classification_evidence?: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
+    s2?: { calls?: number; prompt_version?: string; auto_global_dedupe?: boolean; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; ignored_nonquestion_sections?: Array<{ original_number: string | null; page_start: number; page_end?: number; excerpt?: string; full_text?: string; section: string; classification_evidence?: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
     s3?: { restored_nonquestion_fragments?: Record<string, string>; global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; removed_nonquestion_candidate_count?: number; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ original_number: string | null; text: string; page_start: number; reason: string; candidate_item_ids?: string[] }> } }
   }
   error_code: string | null
@@ -71,7 +71,14 @@ function stageLabel(batch: Batch): string {
   if (batch.stage === 'awaiting_s2') return '文件已校验，等待 S2 解析'
   if (batch.stage === 's2_queued') return '等待 S2 识别'
   if (batch.stage === 's2_processing') return '正在识别 PDF 页段'
-  if (batch.stage === 's2_completed') return 'S2 已完成，待人工核对'
+  if (batch.stage === 's2_completed') {
+    const dedupe = batch.checkpoint?.s3?.global_dedupe?.status
+    if (dedupe === 'auto_claimed' || dedupe === 'running') return '正在整批去重和关联答案'
+    if (dedupe === 'pending_budget') return '整批去重待补预算'
+    if (dedupe === 'failed') return '整批去重失败，可重试'
+    if (!dedupe && batch.checkpoint?.s2?.auto_global_dedupe) return '等待整批去重'
+    return 'S2 已完成，待人工核对'
+  }
   if (batch.stage === 's2_budget_paused') return 'S2 已暂停，需核对预算'
   if (batch.stage === 's2_failed') return 'S2 处理失败'
   if (batch.stage === 'files_saved') return '文件已保存，等待校验'
@@ -83,7 +90,7 @@ function stageLabel(batch: Batch): string {
 }
 
 export function QuestionImportPage() {
-  const [mode, setMode] = useState('questions_only')
+  const [mode, setMode] = useState('combined')
   const [questionFile, setQuestionFile] = useState<File | null>(null)
   const [answerFile, setAnswerFile] = useState<File | null>(null)
   const [batches, setBatches] = useState<Batch[]>([])
@@ -120,6 +127,15 @@ export function QuestionImportPage() {
     const timer = window.setInterval(() => { void reload() }, 10000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (!selectedBatchId) return
+    const timer = window.setInterval(() => {
+      void apiGet<Candidate[]>(`/question-imports/${selectedBatchId}/items`)
+        .then(setCandidates).catch(() => undefined)
+    }, 10000)
+    return () => window.clearInterval(timer)
+  }, [selectedBatchId])
 
   function upload() {
     if (!questionFile || (mode === 'separate' && !answerFile)) {
@@ -195,7 +211,7 @@ export function QuestionImportPage() {
     if (!operatorToken) { message.warning('请输入 S2 操作口令'); return }
     Modal.confirm({
       title: '确认发送题目文件到百炼？',
-      content: `将题目文件按页段发送给百炼 ${s2Config?.model || ''}。请确认文件不含学生个人信息。本批调用预算阈值为 ¥${budget}；这是基于已返回用量的停机阈值，单次调用可能使实际费用略高。`,
+      content: `将题目文件按页段发送给百炼 ${s2Config?.model || ''}，页段识别完成后自动把整批候选题发送给模型去重并关联原文答案。请确认文件不含学生个人信息。本批调用预算阈值为 ¥${budget}；这是基于已返回用量的停机阈值，单次调用可能使实际费用略高。`,
       okText: '开始识别', cancelText: '取消',
       onOk: async () => {
         try {
@@ -292,7 +308,7 @@ export function QuestionImportPage() {
     try {
       const result = await apiPost<{ linked_answer_count: number; overlap_duplicate_answers: unknown[]; unassigned_answers: unknown[] }>(
         `/question-imports/${batch.id}/s3/reconcile-source-answers`, {})
-      message.success(`已关联 ${result.linked_answer_count} 条资料答案；跨页重复 ${result.overlap_duplicate_answers.length} 条；待认领 ${result.unassigned_answers.length} 条`)
+      message[result.linked_answer_count ? 'success' : 'warning'](`原文件提取答案 ${result.linked_answer_count + result.unassigned_answers.length} 条，已关联 ${result.linked_answer_count} 条；跨页重复 ${result.overlap_duplicate_answers.length} 条；待认领 ${result.unassigned_answers.length} 条`)
       await reload(batch.id)
       if (selectedBatchId === batch.id) await viewCandidates(batch.id)
     } catch (error) { message.error(error instanceof Error ? error.message : '资料答案关联失败') }
@@ -321,7 +337,7 @@ export function QuestionImportPage() {
 
   return <Space direction="vertical" size="large" style={{ width: '100%' }}>
     <Card title="批量题目导入 · 内部识别与候选核对">
-      <Typography.Paragraph>上传后先校验文件；点击“开始 S2 识别”才会将页段发送到百炼并产生费用。题答同文件的新批次在同一次页段调用中分别提取独立题目与资料答案；S3 根据原题号和题干证据保守关联，结果只进入候选区。</Typography.Paragraph>
+      <Typography.Paragraph>上传后先校验文件；点击“开始 S2 识别”会按页段提取题目与原文答案，接着自动整批去重和关联答案。请先确认文件场景；题答同文件已设为默认选项。</Typography.Paragraph>
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         <Select aria-label="文件场景" value={mode} onChange={(value) => { setMode(value); setAnswerFile(null) }}
           options={Object.entries(modeLabels).map(([value, label]) => ({ value, label }))} style={{ width: 260 }} />
@@ -342,12 +358,28 @@ export function QuestionImportPage() {
           { title: '场景', dataIndex: 'source_mode', render: (value: string) => modeLabels[value] || value },
           { title: '文件', dataIndex: 'files', render: (files: Batch['files'], batch: Batch) => <Space wrap>{batch.id === focusedBatchId && <Tag color="blue">当前批次</Tag>}{files.map((file) => file.original_name).join('、')}</Space> },
           { title: '状态', render: (_, batch: Batch) => <Space direction="vertical" size={0}><Tag color={batch.status === 'failed' ? 'red' : batch.status === 'cancelled' ? 'default' : batch.status === 'review_pending' ? 'green' : 'blue'}>{stageLabel(batch)}</Tag>{batch.checkpoint?.s2 && <Typography.Text type="secondary">调用 {batch.checkpoint.s2.calls || 0} 次</Typography.Text>}{batch.error_message && <Typography.Text type="danger">{batch.error_message}</Typography.Text>}{batch.error_code === 'S2_REVIEW_REQUIRED' && <Typography.Text type="warning">请检查原文件对应页面并重新上传清晰版，或将批次号发给管理员；已完成的候选题仍可查看。批次号：<Typography.Text copyable={{ text: batch.id }}>{batch.id}</Typography.Text></Typography.Text>}{batch.error_code === 'CALL_LIMIT_REACHED' && <Typography.Text type="warning">已达到单批调用次数上限，请将批次号发给管理员：<Typography.Text copyable={{ text: batch.id }}>{batch.id}</Typography.Text></Typography.Text>}</Space> },
-           { title: '操作', render: (_, batch: Batch) => <Space wrap>{['awaiting_s2', 's2_budget_paused'].includes(batch.stage) && batch.error_code !== 'CALL_LIMIT_REACHED' && <Button disabled={!s2Config?.ready} onClick={() => confirmStart(batch)}>{batch.stage === 's2_budget_paused' ? '调整预算并继续识别' : '开始 S2 识别'}</Button>}{batch.checkpoint?.s2 && <Button onClick={() => void viewCandidates(batch.id)}>查看候选与页段</Button>}{batch.stage === 's2_completed' && batch.checkpoint?.s3?.global_dedupe?.status !== 'completed' && <Button type="primary" loading={reviewingKey === `batch:${batch.id}`} disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmBatchDedup(batch)}>模型整理整批题答</Button>}{batch.stage === 's2_completed' && batch.source_mode === 'combined' && ['question-import-combined-v1', 'question-import-combined-v2', 'question-import-combined-v3', 'question-import-combined-v4', 'question-import-combined-v5', 'question-import-combined-v6'].includes(batch.checkpoint?.s2?.prompt_version || '') && batch.checkpoint?.s3?.source_answer_reconciliation?.schema_version !== 's3-source-answer-reconciliation-v3' && <Button onClick={() => void reconcileAnswers(batch)}>{batch.checkpoint?.s3?.source_answer_reconciliation ? '重新校对题答' : '仅关联资料答案'}</Button>}{batch.status === 'failed' && batch.error_code !== 'S2_REVIEW_REQUIRED' && !batch.files_purged_at && <Button disabled={loading} onClick={() => confirmRetry(batch)}>{batch.error_code === 'INCOMPLETE_MODEL_OUTPUT' ? '自动调整页段并重试' : '重试'}</Button>}{!['cancelled', 'completed', 'completed_with_unassigned'].includes(batch.status) && <Button disabled={loading} onClick={() => void act(batch.id, 'cancel')}>取消</Button>}</Space> },
+           { title: '操作', render: (_, batch: Batch) => <Space wrap>
+             {['awaiting_s2', 's2_budget_paused'].includes(batch.stage) && batch.error_code !== 'CALL_LIMIT_REACHED' && <Button disabled={!s2Config?.ready} onClick={() => confirmStart(batch)}>{batch.stage === 's2_budget_paused' ? '调整预算并继续识别' : '开始 S2 识别'}</Button>}
+             {batch.checkpoint?.s2 && <Button onClick={() => void viewCandidates(batch.id)}>查看候选与页段</Button>}
+             {batch.stage === 's2_completed' && batch.checkpoint?.s3?.global_dedupe?.status !== 'completed' && !['auto_claimed', 'running'].includes(batch.checkpoint?.s3?.global_dedupe?.status || '') && !(batch.checkpoint?.s2?.auto_global_dedupe && !batch.checkpoint?.s3?.global_dedupe?.status) && <Button type="primary" loading={reviewingKey === `batch:${batch.id}`} disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmBatchDedup(batch)}>{batch.checkpoint?.s3?.global_dedupe?.status === 'pending_budget' ? '增加预算并整理整批' : '模型整理整批题答'}</Button>}
+             {batch.stage === 's2_completed' && batch.source_mode === 'combined' && <Button onClick={() => void reconcileAnswers(batch)}>校对题答</Button>}
+             {batch.status === 'failed' && batch.error_code !== 'S2_REVIEW_REQUIRED' && !batch.files_purged_at && <Button disabled={loading} onClick={() => confirmRetry(batch)}>{batch.error_code === 'INCOMPLETE_MODEL_OUTPUT' ? '自动调整页段并重试' : '重试'}</Button>}
+             {!['cancelled', 'completed', 'completed_with_unassigned'].includes(batch.status) && <Button disabled={loading} onClick={() => void act(batch.id, 'cancel')}>取消</Button>}
+           </Space> },
         ]} />
     </Card>
     <Modal title="候选题、来源答案与页段记录" open={!!selectedBatchId} width={900} footer={<Button onClick={() => setSelectedBatchId(null)}>关闭</Button>} onCancel={() => setSelectedBatchId(null)}>
       <Typography.Paragraph>整批模型整理会比较所有候选题，移除答案区重述题和重复题，然后自动关联资料答案。图形仅有线索，尚未完成 S3 题图裁剪；原文件不提供在线公开地址。</Typography.Paragraph>
+      {selectedBatch?.source_mode === 'combined' && <Typography.Paragraph>
+        S2 已提取原文答案 {sourceAnswers.length} 条；{reconciliation
+          ? `S3 已为 ${reconciliation.linked_question_count}/${candidates.length} 道题关联答案，答案显示在下方对应题目内。`
+          : selectedBatch?.stage === 's2_completed' && selectedBatch?.checkpoint?.s2?.auto_global_dedupe
+            ? '后台正在整批去重并关联题答，题目内的答案会在完成后自动刷新。'
+            : '尚未完成题答关联。'}
+      </Typography.Paragraph>}
       {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'completed' && <Typography.Paragraph>整批模型判重：比较 {selectedBatch.checkpoint.s3.global_dedupe.reviewed_candidate_count || 0} 道候选，移除 {selectedBatch.checkpoint.s3.global_dedupe.removed_duplicate_count || 0} 道重复题。</Typography.Paragraph>}
+      {['auto_claimed', 'running'].includes(selectedBatch?.checkpoint?.s3?.global_dedupe?.status || '') && <Typography.Paragraph>正在自动整批去重；请稍后刷新。</Typography.Paragraph>}
+      {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'pending_budget' && <Typography.Paragraph type="warning">S2 预算不足以进行整批判重；请在上方提高预算阈值后点击“增加预算并整理整批”。</Typography.Paragraph>}
       {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'failed' && <Typography.Paragraph type="warning">整批模型判重失败：{selectedBatch.checkpoint.s3.global_dedupe.error_message}</Typography.Paragraph>}
       <Typography.Paragraph type="secondary">每页只归一个主体页段；后续页作为跨页上下文重复传入模型。模型报告不完整后，重试会拆小主体页并向后多带上下文，所以传送范围会重叠。</Typography.Paragraph>
        <Typography.Paragraph type="secondary">页段内的“模型原始未确定片段”保留识别时的记录，可能已经通过后续校对或候选题修订解决；当前待认领答案以 S3 统计为准。</Typography.Paragraph>

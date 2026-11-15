@@ -20,7 +20,8 @@ from app.models import QuestionImportBatch, QuestionImportItem
 from app.services.question_import import DOCX_CONVERSION_VERSION, OWNER_SCOPE, ImportProblem, _path_for, add_candidate, get_batch, require_s2_operator_token
 from app.services.question_import_s2 import (
     FLASH_MODEL, LEGACY_PROMPT_VERSION, PROMPT_VERSION, ModelOutput, PageUnit, QwenPdfProvider,
-    COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION, CLASSIFIED_COMBINED_PROMPT_VERSION,
+    COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION, SECTIONED_COMBINED_PROMPT_VERSION,
+    CLASSIFIED_COMBINED_PROMPT_VERSION,
     COMBINED_PROMPT_VERSIONS, LEGACY_COMBINED_PROMPT_VERSION,
     ClassifiedCombinedModelOutput, CombinedModelOutput, combined_output_model,
     candidate_from_question, candidate_key,
@@ -60,12 +61,13 @@ def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_to
     if budget_cny <= float(s2.get("estimated_cny") or 0):
         raise ImportProblem("INVALID_S2_BUDGET", "新预算必须高于已估算费用")
     s2["budget_cny"] = budget_cny
+    s2["auto_global_dedupe"] = True
     if s2.get("model") and s2["model"] != settings.question_import_s2_model:
         raise ImportProblem("S2_CONFIG_CHANGED", "模型配置已变化，请新建批次", 409)
     s2["model"] = settings.question_import_s2_model
     # Existing paid v3 batches keep their original output contract on resume.
     s2["prompt_version"] = s2.get("prompt_version") or (
-        FOCUSED_COMBINED_PROMPT_VERSION if batch.source_mode == "combined" else PROMPT_VERSION
+        SECTIONED_COMBINED_PROMPT_VERSION if batch.source_mode == "combined" else PROMPT_VERSION
     )
     if question_file["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         s2["conversion_version"] = DOCX_CONVERSION_VERSION
@@ -283,7 +285,8 @@ def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
         kwargs["include_answers"] = True
         if combined_prompt_version != COMBINED_PROMPT_VERSION:
             kwargs["combined_prompt_version"] = combined_prompt_version
-        elif document_page_roles:
+        if document_page_roles and combined_prompt_version in {COMBINED_PROMPT_VERSION,
+                                                               SECTIONED_COMBINED_PROMPT_VERSION}:
             kwargs["page_roles"] = document_page_roles[unit.first_page - 1:unit.last_page]
     output, meta, _ = provider.extract(pdf_unit_bytes(pdf, unit), **kwargs)
     save_artifact({"output": output.model_dump(mode="json"), "meta": meta})
@@ -464,7 +467,8 @@ def process_s2_one() -> bool:
                               if not (unit.index > 0 and fragment.page == 1
                                       and re.match(r"^\s*[（(]?[A-Da-d](?:[)）.．、:：]|\s+)", fragment.text))]
                 resolved_overlap = []
-                if (s2.get("prompt_version") != FOCUSED_COMBINED_PROMPT_VERSION
+                if (s2.get("prompt_version") not in {FOCUSED_COMBINED_PROMPT_VERSION,
+                                                      SECTIONED_COMBINED_PROMPT_VERSION}
                         and not reference_only and not output.questions and not source_answers and not unresolved):
                     if not resolved_overlap:
                         unresolved = [{"page": unit.first_page, "text": "本页段没有识别出题目",

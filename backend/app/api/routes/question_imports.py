@@ -143,7 +143,7 @@ def list_items(batch_id: UUID, db: Session = Depends(get_db)):
 @router.post("/{batch_id}/s3/reconcile-source-answers")
 def reconcile_combined_source_answers(batch_id: UUID, db: Session = Depends(get_db)):
     """Link only unambiguous one-pass source answers; never confirm or import them."""
-    return reconcile_source_answers(db, batch_id)
+    return reconcile_source_answers(db, batch_id, force=True)
 
 
 @router.post("/{batch_id}/s3/dedupe-batch")

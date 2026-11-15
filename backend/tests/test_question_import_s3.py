@@ -14,7 +14,8 @@ from app.core.config import Settings, get_settings
 from app.core.database import engine
 from app.services.question_import import ImportProblem, add_candidate, create_batch
 from app.services.question_import_s2 import (
-    COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION, QwenPdfProvider, candidate_from_question,
+    COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION,
+    SECTIONED_COMBINED_PROMPT_VERSION, QwenPdfProvider, candidate_from_question,
     parse_model_output, plan_units,
 )
 from app.services.question_import_s2_worker import start_s2
@@ -22,6 +23,8 @@ from app.services.question_import_s3 import reconcile_source_answers, restore_no
 import app.services.question_import_s3 as s3_service
 import app.services.question_import_s2 as s2_service
 import app.services.question_import_s2_worker as s2_worker
+import app.services.question_import_s3_global as s3_global
+import app.services.question_import_worker as import_worker
 
 
 def test_overlap_duplicate_answers_are_not_pending_claims():
@@ -98,6 +101,70 @@ def test_page_heading_after_question_marks_page_mixed(monkeypatch):
     pages = [SimpleNamespace(extract_text=lambda value=value: value) for value in page_texts]
     monkeypatch.setattr(s2_service, "PdfReader", lambda *_args, **_kwargs: SimpleNamespace(pages=pages))
     assert s2_service.pdf_page_roles(b"not-a-real-pdf") == ["mixed", "answer", "mixed", "reference"]
+
+
+def test_sectioned_combined_prompt_extracts_answers_after_heading():
+    captured = {}
+
+    def respond(request: httpx.Request):
+        captured.update(json.loads(request.content))
+        return httpx.Response(200, json={"id": "sectioned-1", "choices": [{"finish_reason": "stop",
+            "message": {"content": json.dumps({"complete": True, "questions": [],
+                "source_answers": [{"original_number": "1", "answer_text": "2",
+                                    "page_start": 2, "page_end": 2}],
+                "unresolved_fragments": []}, ensure_ascii=False)}}],
+            "usage": {"prompt_tokens": 100, "completion_tokens": 30}})
+
+    settings = Settings(question_import_s2_api_key="test-only",
+                        question_import_s2_base_url="https://example.invalid/compatible-mode/v1")
+    output, _, _ = QwenPdfProvider(settings=settings, transport=httpx.MockTransport(respond)).extract(
+        _pdf(2), page_count=2, include_answers=True,
+        combined_prompt_version=SECTIONED_COMBINED_PROMPT_VERSION,
+        page_roles=["question", "answer"])
+    assert not output.questions
+    assert output.source_answers[0].answer_text == "2"
+    prompt = captured["messages"][0]["content"][1]["text"]
+    assert "第2页=参考答案区" in prompt
+    assert "questions 必须为空" in prompt
+    assert "nonquestion_fragments" not in captured["response_format"]["json_schema"]["schema"]["properties"]
+
+
+def test_completed_s2_queues_automatic_whole_batch_dedup(db, tmp_path, monkeypatch):
+    monkeypatch.setattr(get_settings(), "question_import_dir", tmp_path / "imports")
+    batch = create_batch(db, source_mode="combined", files=[("questions", "combined.pdf", _pdf())])
+    batch.status = "review_pending"
+    batch.stage = "s2_completed"
+    batch.checkpoint = {"s2": {"auto_global_dedupe": True,
+                               "budget_cny": 2, "estimated_cny": 0.4, "units": []}}
+    db.commit()
+    connection = db.get_bind()
+
+    def session_factory():
+        return Session(bind=connection, expire_on_commit=False,
+                       join_transaction_mode="create_savepoint")
+
+    seen = []
+    monkeypatch.setattr(s3_global, "SessionLocal", session_factory)
+    monkeypatch.setattr(s3_global, "dedupe_batch", lambda _db, batch_id, **kwargs: seen.append((batch_id, kwargs)))
+    assert s3_global.process_global_dedupe_one() is True
+    assert seen == [(batch.id, {"budget_cny": 1.6, "automatic": True})]
+    db.refresh(batch)
+    assert batch.checkpoint["s3"]["global_dedupe"]["status"] == "auto_claimed"
+    assert s3_global.process_global_dedupe_one() is False
+
+
+def test_import_worker_runs_automatic_dedup_after_s2(db, monkeypatch):
+    connection = db.get_bind()
+
+    def session_factory():
+        return Session(bind=connection, expire_on_commit=False,
+                       join_transaction_mode="create_savepoint")
+
+    monkeypatch.setattr(import_worker, "SessionLocal", session_factory)
+    monkeypatch.setattr(import_worker, "claim_one", lambda _db: None)
+    monkeypatch.setattr(s2_worker, "process_s2_one", lambda: False)
+    monkeypatch.setattr(s3_global, "process_global_dedupe_one", lambda: True)
+    assert import_worker.process_one() is True
 
 
 def test_combined_pdf_one_pass_returns_separate_source_answers():
@@ -190,7 +257,7 @@ def test_combined_answers_link_only_unique_unedited_question(db, tmp_path, monke
     batch = create_batch(db, source_mode="combined", files=[("questions", "combined.pdf", _pdf())])
     batch.stage = "awaiting_s2"
     start_s2(db, batch.id, budget_cny=2, operator_token="operator-test")
-    assert batch.checkpoint["s2"]["prompt_version"] == FOCUSED_COMBINED_PROMPT_VERSION
+    assert batch.checkpoint["s2"]["prompt_version"] == SECTIONED_COMBINED_PROMPT_VERSION
     source_id = batch.files[0]["file_id"]
     unit = plan_units(1, pages_per_unit=1, overlap=0)[0]
     for number in ("3", "3", "4", "5"):
@@ -241,6 +308,29 @@ def test_unique_number_with_conflicting_excerpt_stays_unassigned(db, tmp_path, m
     assert result["linked_answer_count"] == 0
     assert result["unassigned_answers"][0]["reason"] == "question_excerpt_conflict"
     assert not item.payload["answers"]
+
+
+def test_question_number_only_excerpt_does_not_block_answer_match(db, tmp_path, monkeypatch):
+    monkeypatch.setattr(get_settings(), "question_import_dir", tmp_path / "imports")
+    batch = create_batch(db, source_mode="combined", files=[("questions", "combined.pdf", _pdf())])
+    source_id = batch.files[0]["file_id"]
+    unit = plan_units(1, pages_per_unit=1, overlap=0)[0]
+    question = parse_model_output({"complete": True, "questions": [{**_question("21"),
+        "question_text": "数线上点 A、B 的位置如图所示，求点 Q 的位置"}],
+        "unresolved_fragments": []}, unit).questions[0]
+    item = add_candidate(db, batch, candidate_from_question(source_id, question, unit))
+    batch.status = "review_pending"
+    batch.stage = "s2_completed"
+    batch.checkpoint = {"s2": {"prompt_version": SECTIONED_COMBINED_PROMPT_VERSION,
+        "conversion_version": None,
+        "units": [{"source_answers": [{**_answer("21", "A"),
+            "source_file_id": source_id, "question_excerpt": "第21题"}]}]}}
+    db.flush()
+    result = reconcile_source_answers(db, batch.id)
+    assert result["linked_question_count"] == 1
+    assert result["linked_answer_count"] == 1
+    assert result["unassigned_answers"] == []
+    assert item.payload["answers"][0]["text"] == "A"
 
 
 def test_v5_nonquestion_can_be_restored_without_model_call(db, tmp_path, monkeypatch):
@@ -448,6 +538,7 @@ def test_reconcile_repairs_answer_restatements_and_reference_cards(db, tmp_path,
     from sqlalchemy import select
     remaining = list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch.id)))
     assert len(remaining) == 3
-    assert remaining[0].payload["answers"][0]["answer_id"] == "old-source"
+    first_page_item = next(item for item in remaining if item.payload["source"]["page_start"] == 1)
+    assert first_page_item.payload["answers"][0]["answer_id"] == "old-source"
     assert "excluded_nonquestion_candidates" not in batch.checkpoint["s3"]
     assert reconcile_source_answers(db, batch.id) == result
