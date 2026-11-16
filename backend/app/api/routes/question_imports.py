@@ -18,6 +18,9 @@ from app.services.question_import import (
 from app.services.question_import_s2_worker import start_s2
 from app.services.question_import_s3 import reconcile_source_answers, restore_nonquestion_fragment
 from app.services.question_import_s3_global import dedupe_batch
+from app.services.question_import_s3_images import (
+    crop_page, extract_images, image_bytes, list_images, render_page, set_candidate_image,
+)
 from app.services.question_import_s3_separate import start_separate_answers
 from app.services.question_import_s3_review import (
     list_review_issues, list_review_units, review_issue, review_unit,
@@ -65,6 +68,15 @@ class S2StartRequest(BaseModel):
 
 class S3ReviewRequest(BaseModel):
     budget_cny: float = Field(gt=0)
+
+
+class ImageCropRequest(BaseModel):
+    box: list[float] = Field(min_length=4, max_length=4)
+
+
+class ImageLinkRequest(BaseModel):
+    expected_revision: int = Field(ge=1)
+    linked: bool
 
 
 @router.post("", response_model=BatchOut, status_code=201)
@@ -139,6 +151,41 @@ def list_items(batch_id: UUID, db: Session = Depends(get_db)):
     return list(db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch_id
     ).order_by(QuestionImportItem.ordinal)))
+
+
+@router.get("/{batch_id}/s3/images")
+def read_images(batch_id: UUID, db: Session = Depends(get_db)):
+    return list_images(db, batch_id)
+
+
+@router.post("/{batch_id}/s3/images")
+def collect_images(batch_id: UUID, db: Session = Depends(get_db)):
+    return extract_images(db, batch_id)
+
+
+@router.get("/{batch_id}/s3/pages/{page_number}/preview")
+def read_question_page(batch_id: UUID, page_number: int, db: Session = Depends(get_db)):
+    return Response(content=render_page(db, batch_id, page_number), media_type="image/png",
+                    headers={"Cache-Control": "private, no-store"})
+
+
+@router.post("/{batch_id}/s3/pages/{page_number}/crop")
+def crop_question_page(batch_id: UUID, page_number: int, request: ImageCropRequest,
+                       db: Session = Depends(get_db)):
+    return crop_page(db, batch_id, page_number, request.box)
+
+
+@router.get("/{batch_id}/s3/images/{asset_id}/content")
+def read_question_image(batch_id: UUID, asset_id: UUID, db: Session = Depends(get_db)):
+    return Response(content=image_bytes(db, batch_id, asset_id), media_type="image/png",
+                    headers={"Cache-Control": "private, no-store"})
+
+
+@router.post("/{batch_id}/s3/images/{asset_id}/items/{item_id}", response_model=CandidateOut)
+def link_question_image(batch_id: UUID, asset_id: UUID, item_id: UUID, request: ImageLinkRequest,
+                        db: Session = Depends(get_db)):
+    return set_candidate_image(db, batch_id, item_id, asset_id,
+                               expected_revision=request.expected_revision, linked=request.linked)
 
 
 @router.post("/{batch_id}/s3/reconcile-source-answers")

@@ -318,6 +318,8 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         or not isinstance(changes["content"].get("asset_ids"), list)
     ):
         raise ImportProblem("INVALID_CANDIDATE", "题目内容结构无效")
+    if "content" in changes and changes["content"]["asset_ids"] != (payload.get("content") or {}).get("asset_ids", []):
+        raise ImportProblem("INVALID_CANDIDATE", "题图须通过原页核对与关联接口修改")
     if "answers" in changes and (
         not isinstance(changes["answers"], list)
         or any(not isinstance(value, dict) or not isinstance(value.get("answer_id"), str)
