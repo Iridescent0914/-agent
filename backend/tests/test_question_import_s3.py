@@ -436,10 +436,55 @@ def test_combined_worker_keeps_answers_from_same_paid_unit(db, tmp_path, monkeyp
     assert batch.stage == "s2_completed", batch.error_message
     unit = batch.checkpoint["s2"]["units"][0]
     assert unit["candidate_count"] == 2
-    assert unit["ignored_nonquestion_sections"][0]["section"] == "answer_restatement"
-    assert unit["ignored_nonquestion_sections"][0]["classification_evidence"] == "重述后紧跟答案 7"
+    assert "ignored_nonquestion_sections" not in unit
     assert unit["source_answers"][0]["text"] == "7"
     assert unit["source_answers"][0]["source_file_id"] == batch.files[0]["file_id"]
+
+
+def test_sectioned_worker_discards_answer_page_questions_without_recording_fragments(db, tmp_path, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "question_import_dir", tmp_path / "imports")
+    monkeypatch.setattr(settings, "question_import_s2_enabled", True)
+    monkeypatch.setattr(settings, "question_import_s2_api_key", "test-only")
+    monkeypatch.setattr(settings, "question_import_s2_operator_token", "operator-test")
+    monkeypatch.setattr(settings, "question_import_s2_base_url", "https://example.invalid/compatible-mode/v1")
+    batch = create_batch(db, source_mode="combined", files=[("questions", "combined.pdf", _pdf(2))])
+    batch.stage = "awaiting_s2"
+    start_s2(db, batch.id, budget_cny=2, operator_token="operator-test")
+    db.commit()
+    connection = db.get_bind()
+
+    def session_factory():
+        return Session(bind=connection, expire_on_commit=False,
+                       join_transaction_mode="create_savepoint")
+
+    monkeypatch.setattr(s2_worker, "SessionLocal", session_factory)
+    monkeypatch.setattr(s2_worker, "prepare_pdf", lambda *_: (tmp_path / "unused.pdf", 2, []))
+    monkeypatch.setattr(s2_worker, "pdf_unit_bytes", lambda *_: _pdf(2))
+    monkeypatch.setattr(s2_worker, "pdf_page_roles", lambda *_: ["question", "answer"])
+
+    class MockProvider:
+        def extract(self, *_args, **_kwargs):
+            question = _question("1")
+            answer_page_restatement = {**_question("1"), "page_start": 2, "page_end": 2}
+            output = parse_model_output({"complete": True,
+                "questions": [question, answer_page_restatement],
+                "source_answers": [{"original_number": "1", "answer_text": "A",
+                                    "page_start": 2, "page_end": 2}],
+                "unresolved_fragments": []},
+                plan_units(2, pages_per_unit=2, overlap=0)[0], include_answers=True,
+                combined_prompt_version=SECTIONED_COMBINED_PROMPT_VERSION)
+            return output, {"usage": {"prompt_tokens": 100, "completion_tokens": 50},
+                            "elapsed_seconds": 1.0, "response_id": "sectioned-worker-1"}, 1.0
+
+    monkeypatch.setattr(s2_worker, "QwenPdfProvider", MockProvider)
+    assert s2_worker.process_s2_one() is True
+    db.refresh(batch)
+    unit = batch.checkpoint["s2"]["units"][0]
+    assert batch.stage == "s2_completed", batch.error_message
+    assert unit["candidate_count"] == 1
+    assert unit["source_answers"][0]["text"] == "A"
+    assert "ignored_nonquestion_sections" not in unit
 
 
 def test_combined_worker_reads_reference_looking_pages_with_model(db, tmp_path, monkeypatch):

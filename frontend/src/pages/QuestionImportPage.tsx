@@ -10,8 +10,8 @@ type Batch = {
   stage: string
   files: Array<{ file_id: string; original_name: string; size_bytes: number; page_count: number | null; role: string }>
   checkpoint: {
-    s2?: { calls?: number; prompt_version?: string; auto_global_dedupe?: boolean; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; ignored_nonquestion_sections?: Array<{ original_number: string | null; page_start: number; page_end?: number; excerpt?: string; full_text?: string; section: string; classification_evidence?: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
-    s3?: { restored_nonquestion_fragments?: Record<string, string>; global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; removed_nonquestion_candidate_count?: number; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ original_number: string | null; text: string; page_start: number; reason: string; candidate_item_ids?: string[] }> } }
+    s2?: { calls?: number; prompt_version?: string; auto_global_dedupe?: boolean; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
+    s3?: { global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ original_number: string | null; text: string; page_start: number; reason: string; candidate_item_ids?: string[] }> } }
   }
   error_code: string | null
   error_message: string | null
@@ -314,19 +314,9 @@ export function QuestionImportPage() {
     } catch (error) { message.error(error instanceof Error ? error.message : '资料答案关联失败') }
   }
 
-  async function restoreNonquestion(batchId: string, unitIndex: number, fragmentIndex: number) {
-    try {
-      await apiPost(`/question-imports/${batchId}/s3/nonquestions/${unitIndex}/${fragmentIndex}/restore`, {})
-      message.success('已恢复为待核对候选题')
-      await reload(batchId)
-      await viewCandidates(batchId)
-    } catch (error) { message.error(error instanceof Error ? error.message : '恢复失败') }
-  }
-
   const selectedBatch = batches.find((item) => item.id === selectedBatchId)
   const s2 = selectedBatch?.checkpoint?.s2
   const reconciliation = selectedBatch?.checkpoint?.s3?.source_answer_reconciliation
-  const modelNonquestionCount = s2?.units?.reduce((count, unit) => count + (unit.ignored_nonquestion_sections?.length || 0), 0) || 0
   const suspectedIds = new Set(s2?.units?.flatMap((unit) => unit.overlap_suspects?.map((pair) => pair.candidate_item_id) || []) || [])
   const duplicateCandidates = selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'completed' ? []
     : candidates.filter((item) => item.payload.duplicate_status === 'suspected' || suspectedIds.has(item.id))
@@ -362,7 +352,7 @@ export function QuestionImportPage() {
              {['awaiting_s2', 's2_budget_paused'].includes(batch.stage) && batch.error_code !== 'CALL_LIMIT_REACHED' && <Button disabled={!s2Config?.ready} onClick={() => confirmStart(batch)}>{batch.stage === 's2_budget_paused' ? '调整预算并继续识别' : '开始 S2 识别'}</Button>}
              {batch.checkpoint?.s2 && <Button onClick={() => void viewCandidates(batch.id)}>查看候选与页段</Button>}
              {batch.stage === 's2_completed' && batch.checkpoint?.s3?.global_dedupe?.status !== 'completed' && !['auto_claimed', 'running'].includes(batch.checkpoint?.s3?.global_dedupe?.status || '') && !(batch.checkpoint?.s2?.auto_global_dedupe && !batch.checkpoint?.s3?.global_dedupe?.status) && <Button type="primary" loading={reviewingKey === `batch:${batch.id}`} disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmBatchDedup(batch)}>{batch.checkpoint?.s3?.global_dedupe?.status === 'pending_budget' ? '增加预算并整理整批' : '模型整理整批题答'}</Button>}
-             {batch.stage === 's2_completed' && batch.source_mode === 'combined' && <Button onClick={() => void reconcileAnswers(batch)}>校对题答</Button>}
+             {batch.stage === 's2_completed' && batch.source_mode === 'combined' && <Button onClick={() => void reconcileAnswers(batch)}>重新匹配答案</Button>}
              {batch.status === 'failed' && batch.error_code !== 'S2_REVIEW_REQUIRED' && !batch.files_purged_at && <Button disabled={loading} onClick={() => confirmRetry(batch)}>{batch.error_code === 'INCOMPLETE_MODEL_OUTPUT' ? '自动调整页段并重试' : '重试'}</Button>}
              {!['cancelled', 'completed', 'completed_with_unassigned'].includes(batch.status) && <Button disabled={loading} onClick={() => void act(batch.id, 'cancel')}>取消</Button>}
            </Space> },
@@ -382,16 +372,14 @@ export function QuestionImportPage() {
       {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'pending_budget' && <Typography.Paragraph type="warning">S2 预算不足以进行整批判重；请在上方提高预算阈值后点击“增加预算并整理整批”。</Typography.Paragraph>}
       {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'failed' && <Typography.Paragraph type="warning">整批模型判重失败：{selectedBatch.checkpoint.s3.global_dedupe.error_message}</Typography.Paragraph>}
       <Typography.Paragraph type="secondary">每页只归一个主体页段；后续页作为跨页上下文重复传入模型。模型报告不完整后，重试会拆小主体页并向后多带上下文，所以传送范围会重叠。</Typography.Paragraph>
-       <Typography.Paragraph type="secondary">页段内的“模型原始未确定片段”保留识别时的记录，可能已经通过后续校对或候选题修订解决；当前待认领答案以 S3 统计为准。</Typography.Paragraph>
         {s2?.units?.map((unit) => <div key={unit.index}>
-          <Typography.Paragraph>页段 {unit.index + 1}：主体为原文件第 {unit.core_first_page}–{unit.core_last_page} 页{unit.last_page > unit.core_last_page ? `，第 ${unit.core_last_page + 1}–${unit.last_page} 页仅作跨页上下文` : ''}；{unit.status === 'completed' ? `S2 当时提取 ${unit.candidate_count || 0} 题（下方展示当前候选）` : '待处理'}{unit.unresolved_fragments?.map((fragment, index) => <Typography.Text type="warning" key={index}>；第 {fragment.page} 页模型原始未确定片段：{fragment.text}（{fragment.reason}）</Typography.Text>)}</Typography.Paragraph>
+          <Typography.Paragraph>页段 {unit.index + 1}：主体为原文件第 {unit.core_first_page}–{unit.core_last_page} 页{unit.last_page > unit.core_last_page ? `，第 ${unit.core_last_page + 1}–${unit.last_page} 页仅作跨页上下文` : ''}；{unit.status === 'completed' ? `S2 当时提取 ${unit.candidate_count || 0} 题（下方展示当前候选）` : '待处理'}</Typography.Paragraph>
           {selectedBatch?.source_mode !== 'combined' && unit.source_answer_signals?.map((signal, index) => <Typography.Paragraph key={`answer-signal-${index}`} type="warning">第 {signal.page} 页可能含资料答案，请核对上传场景：{signal.evidence}</Typography.Paragraph>)}
           {!!unit.overlap_suspects?.length && <details><summary>S2 当时检出的疑似跨页重复 {unit.overlap_suspects.length} 对</summary>{unit.overlap_suspects.map((pair, index) => <Typography.Paragraph key={index}>候选 {pair.candidate_item_id} 与 {pair.other_item_id}；当前结果以整批模型判重为准。</Typography.Paragraph>)}</details>}
-          {!!unit.ignored_nonquestion_sections?.length && <details><summary>模型判为非独立题的片段 {unit.ignored_nonquestion_sections.length} 条（请核对）</summary>{unit.ignored_nonquestion_sections.map((fragment, index) => <Typography.Paragraph key={index}>第 {fragment.page_start}{fragment.page_end && fragment.page_end !== fragment.page_start ? `–${fragment.page_end}` : ''} 页，题号 {fragment.original_number || '缺失'}：<RichQuestionText text={fragment.full_text || fragment.excerpt || '旧版按页分类记录'} assets={[]} />依据：{fragment.classification_evidence || `旧版页类型 ${fragment.section}`}{fragment.full_text && selectedBatchId && <Button size="small" disabled={!!selectedBatch?.checkpoint?.s3?.restored_nonquestion_fragments?.[`${unit.index}:${index}`]} onClick={() => void restoreNonquestion(selectedBatchId, unit.index, index)}>{selectedBatch?.checkpoint?.s3?.restored_nonquestion_fragments?.[`${unit.index}:${index}`] ? '已恢复' : '恢复为候选'}</Button>}</Typography.Paragraph>)}</details>}
         </div>)}
       {selectedBatch?.source_mode === 'combined' && <details open={!reconciliation && sourceAnswers.length > 0}><summary>原文件提取答案 {sourceAnswers.length} 条（始终可查看）</summary>{sourceAnswers.length === 0 && <Typography.Paragraph type="warning">S2 未提取到资料答案，请核对答案页和页段记录。</Typography.Paragraph>}{sourceAnswers.map((answer, index) => <div key={index} className="question-import-answer"><Typography.Text type="secondary">第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}</details>}
       {reconciliation && <div>
-         <Typography.Paragraph>资料答案 {reconciliation.source_answer_count} 条，已关联 {reconciliation.linked_answer_count} 条，跨页重复 {reconciliation.overlap_duplicate_answers?.length || 0} 条，待认领 {reconciliation.unassigned_answers.length} 条；{s2?.prompt_version === 'question-import-combined-v6' ? '' : ['question-import-combined-v4', 'question-import-combined-v5'].includes(s2?.prompt_version || '') ? `模型另列 ${modelNonquestionCount} 条非独立题片段，详情见页段记录。` : `历史校对曾移除 ${reconciliation.removed_nonquestion_candidate_count || 0} 条候选。`}答案均未由教师确认。</Typography.Paragraph>
+         <Typography.Paragraph>资料答案 {reconciliation.source_answer_count} 条，已关联 {reconciliation.linked_answer_count} 条，跨页重复 {reconciliation.overlap_duplicate_answers?.length || 0} 条，待认领 {reconciliation.unassigned_answers.length} 条；答案均未由教师确认。</Typography.Paragraph>
          {reconciliation.overlap_duplicate_answers?.map((answer, index) => <div key={`overlap-${index}`} className="question-import-answer"><Typography.Text type="secondary">第 {answer.page_start} 页重复了第 {answer.matched_page} 页第 {answer.matched_original_number} 题的答案：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}
         {reconciliation.unassigned_answers.map((answer, index) => <div key={index} className="question-import-answer">
           <Typography.Text type="warning">第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}（{answer.reason}）：</Typography.Text>
@@ -420,7 +408,9 @@ export function QuestionImportPage() {
         { title: '序号', dataIndex: 'ordinal', width: 70 },
         { title: '原题号', render: (_, item: Candidate) => item.payload.source.original_number || '未识别', width: 90 },
         { title: '原页', render: (_, item: Candidate) => `${item.payload.source.page_start ?? '?'}–${item.payload.source.page_end ?? '?'}`, width: 90 },
-        { title: '模型分类依据', render: (_, item: Candidate) => item.payload.extraction?.classification_evidence || '旧批次未记录', width: 180 },
+        ...(candidates.some((item) => item.payload.extraction?.classification_evidence)
+          ? [{ title: '模型分类依据', render: (_: unknown, item: Candidate) => item.payload.extraction?.classification_evidence || '未记录', width: 180 }]
+          : []),
         { title: '题干与选项', render: (_, item: Candidate) => <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}><RichQuestionText key="stem" text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />{item.payload.content.options.map((option, index) => <RichQuestionText key={`option-${index}-${option.key}`} text={`${option.key}. ${option.text}`} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />)}{item.payload.extraction?.diagram_clues?.map((clue, index) => <Typography.Text type="warning" key={`clue-${index}`}>题图线索：{clue}</Typography.Text>)}{item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}{item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer"><Typography.Text>资料答案（待确认）：</Typography.Text>{answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}</div>)}{pendingAnswers.filter((answer) => (answer.candidate_item_ids?.includes(item.id) || (!answer.candidate_item_ids?.length && answerNumber(answer.original_number) && answerNumber(answer.original_number) === answerNumber(item.payload.source.original_number)))).map((answer, index) => <div key={`pending-${index}`} className="question-import-answer"><Typography.Text type="warning">第 {answer.page_start} 页资料答案（同题号，归属待确认）：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}{item.payload.warnings?.filter((warning) => warning !== '模型报告不确定片段；请人工复核' || !item.payload.extraction?.uncertain_fragments?.length).map((warning, index) => <Typography.Text type="warning" key={`warning-${index}`}>{warning}</Typography.Text>)}</Space> },
       ]} />
     </Modal>

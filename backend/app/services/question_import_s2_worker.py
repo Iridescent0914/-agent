@@ -23,7 +23,7 @@ from app.services.question_import_s2 import (
     COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION, SECTIONED_COMBINED_PROMPT_VERSION,
     CLASSIFIED_COMBINED_PROMPT_VERSION,
     COMBINED_PROMPT_VERSIONS, LEGACY_COMBINED_PROMPT_VERSION,
-    ClassifiedCombinedModelOutput, CombinedModelOutput, combined_output_model,
+    CombinedModelOutput, combined_output_model,
     candidate_from_question, candidate_key,
     decode_qwen_response, estimate_cost, overlap_candidate_is_duplicate,
     pdf_page_roles, pdf_unit_bytes, plan_units, prepare_pdf,
@@ -395,7 +395,6 @@ def process_s2_one() -> bool:
                 overlap_duplicates = []
                 overlap_suspects = []
                 ignored_overlap_questions = []
-                ignored_nonquestion_sections = []
                 source_answers = []
                 page_roles = document_page_roles if include_answers else []
                 if include_answers:
@@ -419,9 +418,6 @@ def process_s2_one() -> bool:
                 for question in output.questions:
                     original_page = unit.first_page + question.page_start - 1
                     if page_roles and page_roles[original_page - 1] not in {"question", "mixed"}:
-                        ignored_nonquestion_sections.append({"original_number": question.original_number,
-                                                              "page_start": original_page,
-                                                              "section": page_roles[original_page - 1]})
                         continue
                     if question.page_start > unit.core_last_page - unit.first_page + 1:
                         ignored_overlap_questions.append({"original_number": question.original_number,
@@ -447,20 +443,6 @@ def process_s2_one() -> bool:
                                                  "reason": "overlap_variant_requires_review"})
                     known.add(key)
                     selected += 1
-                if isinstance(output, ClassifiedCombinedModelOutput):
-                    ignored_nonquestion_sections = [
-                        {"original_number": fragment.original_number,
-                         "page_start": unit.first_page + fragment.page - 1,
-                         "excerpt": fragment.excerpt,
-                         "section": fragment.source_classification,
-                         "classification_evidence": fragment.classification_evidence,
-                         **({"full_text": fragment.full_text,
-                             "page_end": unit.first_page + fragment.page_end - 1,
-                             "source_file_id": source["file_id"]}
-                            if hasattr(fragment, "full_text") else {})}
-                        for fragment in output.nonquestion_fragments
-                        if fragment.page <= unit.core_last_page - unit.first_page + 1
-                    ]
                 unresolved = [{"page": unit.first_page + fragment.page - 1,
                                "text": fragment.text, "reason": fragment.reason}
                               for fragment in output.unresolved_fragments
@@ -485,7 +467,6 @@ def process_s2_one() -> bool:
                                                   "overlap_duplicates": overlap_duplicates,
                                                   "overlap_suspects": overlap_suspects,
                                                   "ignored_overlap_questions": ignored_overlap_questions,
-                                                  "ignored_nonquestion_sections": ignored_nonquestion_sections,
                                                   "source_answers": source_answers,
                                                   "source_answer_signals": source_answer_signals,
                                                   "skipped_reference": reference_only,
@@ -493,6 +474,7 @@ def process_s2_one() -> bool:
                                                   "estimated_cny": cost,
                                                   "elapsed_seconds": meta["elapsed_seconds"],
                                                   "response_id": meta.get("response_id")}
+                current["units"][unit.index].pop("ignored_nonquestion_sections", None)
                 already_accounted = reference_only or bool(meta.get("response_id") and meta["response_id"] in
                                                       (current.get("accounted_response_keys") or []))
                 if not already_accounted:
