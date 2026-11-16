@@ -1,4 +1,4 @@
-import { Button, Card, Empty, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag, Typography, message } from 'antd'
+import { Alert, Button, Card, Empty, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag, Typography, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { apiPost, apiGet, apiUrl } from '../api/client'
 import { RichQuestionText } from '../components/RichQuestionText'
@@ -25,6 +25,10 @@ type ReviewIssue = {
   key: string
   kind: string
   summary: string
+  fragment_text?: string | null
+  fragment_reason?: string | null
+  answer_text?: string | null
+  answer_number?: string | null
   page_numbers: number[]
   candidate_item_ids: string[]
   candidate_total: number
@@ -64,7 +68,7 @@ const modeLabels: Record<string, string> = {
 
 const reviewVerdictLabels: Record<string, string> = {
   same_question: '可能是同一题', different_questions: '可能是不同题',
-  match_candidate: '可能归属所列候选', no_match: '未找到可信归属', uncertain: '无法判断',
+  match_candidate: '可能归属所列候选', no_match: '未找到可信归属', false_positive: '疑似提取误读，原页无此片段', uncertain: '仍无法确定，需人工核对',
 }
 
 function stageLabel(batch: Batch): string {
@@ -252,14 +256,25 @@ export function QuestionImportPage() {
     if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
     Modal.confirm({
       title: '确认发送问题原页给百炼复核？',
-      content: `问题：${issue.summary}。将原文件第 ${issue.page_numbers.join('、')} 页及相关候选题文字发送给百炼 ${s2Config?.model || ''}。本批 S3 复核预算阈值为 ¥${budget}，单次调用仍可能略超阈值；模型确认同题或答案归属后会自动处理，未确定片段仍只记录建议。`,
+      content: `问题：${issue.summary}。将${batch.source_mode === 'separate' ? '题目文件' : '原文件'}第 ${issue.page_numbers.join('、')} 页及相关候选题文字发送给百炼 ${s2Config?.model || ''}${issue.kind === 'fragment' ? '，先核对片段是否真实存在，再判断归属' : ''}。本批 S3 复核预算阈值为 ¥${budget}，单次调用仍可能略超阈值；未确定片段只记录模型建议。`,
       okText: '发送并复核', cancelText: '取消',
       onOk: async () => {
         setReviewingKey(issue.key)
         try {
           const result = await apiPost<ReviewIssue['review']>(`/question-imports/${batch.id}/s3/review-issues/${issue.key}`,
             { budget_cny: budget }, undefined, { 'X-Import-S2-Token': operatorToken })
-          message[result?.status === 'completed' ? 'success' : 'warning'](result?.status === 'completed' ? '模型复核已保存，确定的重复题或答案归属已处理' : result?.error_message || '复核尚未完成')
+          if (result?.status === 'completed') {
+            message[result.advice?.verdict === 'uncertain' ? 'warning' : 'success'](
+              result.advice?.verdict === 'uncertain'
+                ? '模型仍无法确定，复核建议已保存，需人工核对'
+                : result.advice?.verdict === 'false_positive'
+                  ? '模型认为原片段是提取误读，建议对照原页确认'
+                : issue.kind === 'fragment'
+                  ? '片段复核建议已保存，仍需人工核对'
+                  : '模型复核已保存，确定的重复题或答案归属已处理')
+          } else {
+            message.warning(result?.error_message || '复核尚未完成')
+          }
           await reload(batch.id)
           await viewCandidates(batch.id)
         } catch (error) { message.error(error instanceof Error ? error.message : '复核失败') }
@@ -272,7 +287,7 @@ export function QuestionImportPage() {
     if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
     Modal.confirm({
       title: `确认一次复核第 ${unit.unit_index + 1} 页段的多个问题？`,
-      content: `将原文件第 ${unit.page_numbers.join('、')} 页和相关候选文字一次发送给百炼 ${s2Config?.model || ''}，同时复核 ${unit.issue_keys.length} 个问题${unit.skipped_count ? `；另有 ${unit.skipped_count} 个问题需单独处理` : ''}。本批 S3 预算阈值为 ¥${budget}；单次调用可能略超阈值。模型确认同题或答案归属后会自动处理。`,
+      content: `将${batch.source_mode === 'separate' ? '题目文件' : '原文件'}第 ${unit.page_numbers.join('、')} 页和相关候选文字一次发送给百炼 ${s2Config?.model || ''}，同时复核 ${unit.issue_keys.length} 个问题${unit.skipped_count ? `；另有 ${unit.skipped_count} 个问题需单独处理` : ''}。本批 S3 预算阈值为 ¥${budget}；单次调用可能略超阈值。模型确认同题或答案归属后会自动处理。`,
       okText: '发送页段复核', cancelText: '取消',
       onOk: async () => {
         const key = `unit:${unit.unit_index}`
@@ -406,12 +421,15 @@ export function QuestionImportPage() {
       {['auto_claimed', 'running'].includes(selectedBatch?.checkpoint?.s3?.global_dedupe?.status || '') && <Typography.Paragraph>正在自动整批去重；请稍后刷新。</Typography.Paragraph>}
       {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'pending_budget' && <Typography.Paragraph type="warning">S2 预算不足以进行整批判重；请在上方提高预算阈值后点击“增加预算并整理整批”。</Typography.Paragraph>}
       {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'failed' && <Typography.Paragraph type="warning">整批模型判重失败：{selectedBatch.checkpoint.s3.global_dedupe.error_message}</Typography.Paragraph>}
-      <Typography.Paragraph type="secondary">每页只归一个主体页段；后续页作为跨页上下文重复传入模型。模型报告不完整后，重试会拆小主体页并向后多带上下文，所以传送范围会重叠。</Typography.Paragraph>
-        {s2?.units?.map((unit) => <div key={unit.index}>
+      {!!s2?.units?.length && <details key={`${selectedBatch?.id}:s2-units`}>
+        <summary>题目识别页段记录（{s2.units.length} 段）</summary>
+        <Typography.Paragraph type="secondary">每页只归一个主体页段；后续页作为跨页上下文重复传入模型。模型报告不完整后，重试会拆小主体页并向后多带上下文，所以传送范围会重叠。</Typography.Paragraph>
+        {s2.units.map((unit) => <div key={unit.index}>
           <Typography.Paragraph>页段 {unit.index + 1}：主体为原文件第 {unit.core_first_page}–{unit.core_last_page} 页{unit.last_page > unit.core_last_page ? `，第 ${unit.core_last_page + 1}–${unit.last_page} 页仅作跨页上下文` : ''}；{unit.status === 'completed' ? `S2 当时提取 ${unit.candidate_count || 0} 题（下方展示当前候选）` : '待处理'}</Typography.Paragraph>
           {selectedBatch?.source_mode !== 'combined' && unit.source_answer_signals?.map((signal, index) => <Typography.Paragraph key={`answer-signal-${index}`} type="warning">第 {signal.page} 页可能含资料答案，请核对上传场景：{signal.evidence}</Typography.Paragraph>)}
           {!!unit.overlap_suspects?.length && <details><summary>S2 当时检出的疑似跨页重复 {unit.overlap_suspects.length} 对</summary>{unit.overlap_suspects.map((pair, index) => <Typography.Paragraph key={index}>候选 {pair.candidate_item_id} 与 {pair.other_item_id}；当前结果以整批模型判重为准。</Typography.Paragraph>)}</details>}
         </div>)}
+      </details>}
       {['combined', 'separate'].includes(selectedBatch?.source_mode || '') && <details key={selectedBatch?.id}><summary>{selectedBatch?.source_mode === 'separate' ? '答案文件' : '原文件'}提取答案 {sourceAnswers.length} 条（点击展开）</summary>{sourceAnswers.length === 0 && <Typography.Paragraph type="warning">尚未提取到资料答案，请核对答案页和页段记录。</Typography.Paragraph>}{sourceAnswers.map((answer, index) => <div key={index} className="question-import-answer"><Typography.Text type="secondary">{selectedBatch?.source_mode === 'separate' ? '答案文件' : '原文件'}第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}</details>}
       {separateAnswers?.units?.flatMap((unit) => unit.unresolved_fragments || []).map((fragment, index) => <Typography.Paragraph key={`answer-unresolved-${index}`} type="warning">答案文件第 {fragment.page} 页待核对：{fragment.text}（{fragment.reason}）</Typography.Paragraph>)}
       {reconciliation && <div>
@@ -426,23 +444,77 @@ export function QuestionImportPage() {
              </div>)}
            </details>}
       </div>}
-      {!!reviewIssues.length && <div>
-        <Typography.Title level={5}>按问题复核原页</Typography.Title>
-        <Typography.Paragraph type="secondary">同一页段有多个问题时，可一次发送相关原页。模型确认同题或答案归属后会自动处理；无法确定的片段保留复核记录。</Typography.Paragraph>
+      {!!reviewIssues.length && <details key={`${selectedBatch?.id}:review-issues`}>
+        <summary>按问题复核原页（{reviewIssues.length} 个问题）</summary>
+        <Typography.Paragraph type="secondary">同一页段有多个问题时，可一次发送相关原页。重复题和答案归属可能由系统自动处理；未确定片段只保存模型建议，题目不会自动修改。</Typography.Paragraph>
         {reviewUnits.filter((unit) => unit.issue_keys.length > 1).map((unit) => <Typography.Paragraph key={`unit-${unit.unit_index}`}>
           第 {unit.unit_index + 1} 页段：待复核 {unit.issue_keys.length} 个问题，原页 {unit.page_numbers.join('、')}，候选 {unit.candidate_count} 条。
           {selectedBatch && <Button size="small" type="primary" loading={reviewingKey === `unit:${unit.unit_index}`} disabled={!unit.available || !s2Config?.ready || selectedBatch.status !== 'review_pending' || !!selectedBatch.files_purged_at} onClick={() => confirmUnitReview(selectedBatch, unit)}>一次复核本页段</Button>}
           {!unit.available && <Typography.Text type="warning"> 本页段超过单次范围，请逐条复核。</Typography.Text>}
         </Typography.Paragraph>)}
-        {reviewIssues.map((issue) => <Typography.Paragraph key={issue.key}>
-          {issue.summary}；原页 {issue.page_numbers.join('、') || '不可复核'}；候选 {issue.candidate_item_ids.length} 条{issue.candidate_total > issue.candidate_item_ids.length ? `（共 ${issue.candidate_total} 条，仅列部分供模型参考）` : ''}。
-          {issue.review?.status === 'completed' && issue.review.advice && <span> 模型建议：{reviewVerdictLabels[issue.review.advice.verdict] || issue.review.advice.verdict}；依据第 {issue.review.advice.source_page} 页“{issue.review.advice.evidence_quote}”；{issue.review.advice.reason}{issue.review.advice.candidate_item_id ? `；候选 ${issue.review.advice.candidate_item_id}` : ''}；估算 ¥{issue.review.estimated_cny ?? '未知'}。</span>}
-          {issue.review?.stale && <Typography.Text type="warning"> 候选内容已变化，此建议已过时，请以当前原页和候选为准。</Typography.Text>}
-          {issue.review?.status === 'failed' && <Typography.Text type="warning"> 复核失败：{issue.review.error_message}；可能已产生费用。</Typography.Text>}
-          {issue.review?.status === 'running' && <Typography.Text type="secondary"> 复核进行中，请稍后刷新。</Typography.Text>}
-          {!issue.review && selectedBatch && <Button size="small" loading={reviewingKey === issue.key} disabled={!issue.page_numbers.length || !s2Config?.ready || selectedBatch.status !== 'review_pending' || !!selectedBatch.files_purged_at || (issue.kind === 'answer' && (!issue.candidate_item_ids.length || (issue.recall_method === 'number' && issue.candidate_total > issue.candidate_item_ids.length)))} onClick={() => confirmIssueReview(selectedBatch, issue)}>发送原页复核</Button>}
-        </Typography.Paragraph>)}
-      </div>}
+        {reviewIssues.map((issue) => {
+          const advice = issue.review?.status === 'completed' ? issue.review.advice : undefined
+          const matchedCandidate = candidates.find((item) => item.id === advice?.candidate_item_id)
+          const candidateSummaries = issue.kind === 'overlap' ? issue.candidate_item_ids.map((id) => {
+            const item = candidates.find((candidate) => candidate.id === id)
+            return item ? `候选第 ${item.ordinal} 题（原题号 ${item.payload.source.original_number || '未识别'}，原页 ${item.payload.source.page_start ?? '未知'}）` : `候选 ID ${id}`
+          }) : []
+          const candidateLabel = matchedCandidate
+            ? `候选第 ${matchedCandidate.ordinal} 题（原题号 ${matchedCandidate.payload.source.original_number || '未识别'}，原页 ${matchedCandidate.payload.source.page_start ?? '未知'}）`
+            : advice?.candidate_item_id ? `候选 ID ${advice.candidate_item_id}` : null
+          const verdictLabel = issue.kind === 'fragment' && advice?.verdict === 'match_candidate'
+            ? '片段存在，可能归属所列候选题'
+            : issue.kind === 'fragment' && advice?.verdict === 'no_match'
+              ? '片段存在，但未找到可信归属'
+              : advice ? reviewVerdictLabels[advice.verdict] || advice.verdict : ''
+          const reviewStatus = !issue.review ? '待复核'
+            : issue.review.status === 'failed' ? '复核失败'
+              : issue.review.status === 'running' ? '复核中'
+                : issue.review.stale ? '建议已过时'
+                  : advice?.verdict === 'uncertain' ? '需人工核对'
+                    : issue.kind === 'fragment' ? '待人工对照原页'
+                      : issue.kind === 'answer' ? advice?.verdict === 'match_candidate' ? '待教师确认' : '待人工认领'
+                        : '模型结果已保存'
+          return <Card key={issue.key} size="small" style={{ marginTop: 12 }}
+            title={`${selectedBatch?.source_mode === 'separate' ? '题目文件' : '原文件'}${issue.summary}`}
+            extra={<Tag color={issue.review?.status === 'failed' ? 'red' : issue.review?.status === 'running' ? 'blue' : reviewStatus === '模型结果已保存' ? 'green' : 'orange'}>
+              {reviewStatus}
+            </Tag>}>
+            {issue.kind === 'fragment' && <>
+              <Typography.Paragraph><Typography.Text strong>待核对片段：</Typography.Text></Typography.Paragraph>
+              <RichQuestionText text={issue.fragment_text || '内容未记录'} assets={[]} />
+              <Typography.Paragraph type="secondary">首次提取报告：{issue.fragment_reason || '原因未记录'}</Typography.Paragraph>
+            </>}
+            {issue.kind === 'answer' && <>
+              <Typography.Paragraph><Typography.Text strong>待认领答案：</Typography.Text>原题号 {issue.answer_number || '缺失'}</Typography.Paragraph>
+              <RichQuestionText text={issue.answer_text || '内容未记录'} assets={[]} />
+            </>}
+            {!!candidateSummaries.length && <Typography.Paragraph>待比较题目：{candidateSummaries.join('；')}</Typography.Paragraph>}
+            <Typography.Paragraph type="secondary">
+              复核涉及原页：{issue.page_numbers.join('、') || '不可复核'}{issue.kind === 'fragment' && '（含邻近题目上下文）'}。{issue.kind === 'fragment'
+                ? `邻近候选题 ${issue.candidate_item_ids.length} 道，仅供判断归属，不表示这些题有错误。`
+                : `候选 ${issue.candidate_item_ids.length} 条。`}
+              {issue.candidate_total > issue.candidate_item_ids.length && `共 ${issue.candidate_total} 条候选，仅列部分供模型参考。`}
+            </Typography.Paragraph>
+            {advice && <Alert showIcon type={advice.verdict === 'false_positive' ? 'info' : issue.kind === 'fragment' || advice.verdict === 'uncertain' ? 'warning' : 'success'}
+              message={`模型复核结果：${verdictLabel}`}
+              description={<Space direction="vertical" size={4}>
+                {candidateLabel && <Typography.Text>模型指向：{candidateLabel}</Typography.Text>}
+                <Typography.Text>原页依据：第 {advice.source_page} 页“{advice.evidence_quote}”</Typography.Text>
+                <Typography.Text>判断理由：{advice.reason}</Typography.Text>
+                {issue.kind === 'fragment' && <Typography.Text strong>
+                  {advice.verdict === 'false_positive'
+                    ? '模型认为该片段是提取误读，请对照原页确认；题目未自动修改。'
+                    : '请根据模型复核结果，人工对照原页处理；题目不会自动修改。'}
+                </Typography.Text>}
+              </Space>} />}
+            {issue.review?.stale && <Typography.Paragraph type="warning">候选内容已变化，此建议已过时，请以当前原页和候选为准。</Typography.Paragraph>}
+            {issue.review?.status === 'failed' && <Alert type="warning" showIcon message={`复核失败：${issue.review.error_message}；可能已产生费用。`} />}
+            {issue.review?.status === 'running' && <Typography.Paragraph type="secondary">复核进行中，请稍后刷新。</Typography.Paragraph>}
+            {!issue.review && selectedBatch && <Button size="small" loading={reviewingKey === issue.key} disabled={!issue.page_numbers.length || !s2Config?.ready || selectedBatch.status !== 'review_pending' || !!selectedBatch.files_purged_at || (issue.kind === 'answer' && (!issue.candidate_item_ids.length || (issue.recall_method === 'number' && issue.candidate_total > issue.candidate_item_ids.length)))} onClick={() => confirmIssueReview(selectedBatch, issue)}>发送原页复核</Button>}
+          </Card>
+        })}
+      </details>}
       {!!duplicateCandidates.length && <Typography.Paragraph><Button size="small" onClick={() => setShowDuplicateCandidates((value) => !value)}>{showDuplicateCandidates ? '收起' : '显示'}疑似重复候选 {duplicateCandidates.length} 条</Button><Typography.Text type="secondary"> 原始记录仍保留；确认不是重复题时可展开核对。</Typography.Text></Typography.Paragraph>}
       <Table rowKey="id" dataSource={visibleCandidates} size="small" pagination={{ pageSize: 10 }} columns={[
         { title: '序号', dataIndex: 'ordinal', width: 70 },

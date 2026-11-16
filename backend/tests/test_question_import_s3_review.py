@@ -104,6 +104,32 @@ def test_issue_review_requires_operator_token_before_model_call(db, tmp_path, mo
     assert not ((batch.checkpoint or {}).get("s3") or {}).get("issue_reviews")
 
 
+def test_separate_question_fragment_reports_content_and_stable_nearby_pages(db, tmp_path, monkeypatch):
+    monkeypatch.setattr(get_settings(), "question_import_dir", tmp_path / "imports")
+    batch = create_batch(db, source_mode="separate", files=[
+        ("questions", "questions.pdf", _pdf(8)), ("answers", "answers.pdf", _pdf(1))])
+    batch.status = "review_pending"
+    batch.stage = "s2_completed"
+    batch.checkpoint = {"s2": {"units": [{"unresolved_fragments": [{
+        "page": 7, "text": "数轴标签 1/0", "reason": "无法判断归属",
+    }]}]}}
+    for page in [6, 6, 8, 7, 7, 7, 7, 7, 7]:
+        add_candidate(db, batch, {"source": {"page_start": page, "page_end": page},
+                                  "content": {"question_text": f"第 {page} 页题目", "options": []}})
+    db.flush()
+    items = list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch.id)))
+    forward = review_service._issue_rows(batch, items)[0]
+    backward = review_service._issue_rows(batch, list(reversed(items)))[0]
+    assert [candidate["item_id"] for candidate in forward["candidates"]] == [
+        candidate["item_id"] for candidate in backward["candidates"]]
+    issue = list_review_issues(db, batch.id)[0]
+    assert issue["kind"] == "fragment"
+    assert issue["fragment_text"] == "数轴标签 1/0"
+    assert issue["fragment_reason"] == "无法判断归属"
+    assert issue["page_numbers"] == [6, 7]
+    assert len(issue["candidate_item_ids"]) == 8
+
+
 def test_issue_review_rejects_budget_below_page_cost(db, tmp_path, monkeypatch):
     batch, _, _ = _batch_with_overlap(db, tmp_path, monkeypatch)
     with pytest.raises(ImportProblem) as exc:
@@ -214,6 +240,8 @@ def test_unassigned_answer_is_grouped_by_source_page(db, tmp_path, monkeypatch):
     issues = list_review_issues(db, batch.id)
     assert issues[0]["key"] == "answer:0"
     assert issues[0]["unit_index"] == 0
+    assert issues[0]["answer_text"] == "2"
+    assert issues[0]["answer_number"] == "1"
     assert list_review_units(db, batch.id)[0]["issue_keys"] == ["answer:0"]
 
     class FakeProvider:
@@ -276,3 +304,56 @@ def test_model_review_maps_local_evidence_page_to_original(monkeypatch):
     assert advice["source_page"] == 8
     assert advice["verdict"] == "same_question"
     assert meta["estimated_cny"] is not None
+
+
+def test_fragment_review_can_identify_ocr_false_positive(monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "question_import_s2_api_key", "test-only")
+    monkeypatch.setattr(settings, "question_import_s2_base_url", "https://example.invalid/compatible-mode/v1")
+    issue = {"kind": "fragment", "content": {"page": 7, "text": "1/0", "reason": "suspected table"},
+             "candidates": []}
+
+    def respond(request: httpx.Request):
+        prompt = json.loads(request.content)["messages"][0]["content"][1]["text"]
+        assert "先核对待查片段是否真的出现在原页" in prompt
+        assert "false_positive" in prompt
+        return httpx.Response(200, json={"id": "review-false-positive", "choices": [{
+            "finish_reason": "stop", "message": {"content": json.dumps({
+                "verdict": "false_positive", "candidate_item_id": None,
+                "evidence_page": 1, "evidence_quote": "a, b, 0, c",
+                "reason": "The original page contains a number line, not a table.",
+            })}}]})
+
+    advice, _ = QwenIssueReviewProvider(transport=httpx.MockTransport(respond)).review(_pdf(), issue, [7])
+    assert advice["verdict"] == "false_positive"
+    assert advice["source_page"] == 7
+
+
+def test_fragment_false_positive_is_saved_on_first_review_without_changing_questions(db, tmp_path, monkeypatch):
+    batch, first, second = _batch_with_overlap(db, tmp_path, monkeypatch)
+    batch.checkpoint = {"s2": {"units": [{"unresolved_fragments": [{
+        "page": 2, "text": "1/0", "reason": "suspected OCR table",
+    }]}]}}
+    db.flush()
+    calls = []
+
+    class FakeProvider:
+        def review(self, pdf_data, issue, pages):
+            calls.append((issue["kind"], pages))
+            return {"verdict": "false_positive", "candidate_item_id": None,
+                    "evidence_page": 2, "source_page": 2,
+                    "evidence_quote": "a, b, 0, c", "reason": "The page has a number line."}, {
+                        "estimated_cny": 0.02, "response_id": "new-review"}
+
+    monkeypatch.setattr(review_service, "QwenIssueReviewProvider", FakeProvider)
+    result = review_issue(db, batch.id, "fragment:0:0", budget_cny=1,
+                          operator_token="operator-test")
+    assert result["advice"]["verdict"] == "false_positive"
+    assert calls == [("fragment", [1, 2])]
+    assert review_service._review_call_count(batch.checkpoint["s3"]["issue_reviews"]) == 1
+    assert review_service._review_spent(batch.checkpoint["s3"]["issue_reviews"]) == pytest.approx(0.02)
+    assert {item.id for item in db.scalars(select(QuestionImportItem).where(
+        QuestionImportItem.batch_id == batch.id))} == {first.id, second.id}
+    assert review_issue(db, batch.id, "fragment:0:0", budget_cny=1,
+                        operator_token="operator-test") == result
+    assert len(calls) == 1

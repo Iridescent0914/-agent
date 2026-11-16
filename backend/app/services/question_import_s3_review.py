@@ -25,7 +25,7 @@ from app.services.question_import import (
 from app.services.question_import_s2 import FLASH_MODEL, estimate_cost, prepare_pdf
 from app.services.question_import_s3 import _answer_id, reconcile_source_answers
 
-REVIEW_VERSION = "s3-issue-review-v1"
+REVIEW_VERSION = "s3-issue-review-v2"
 MAX_REVIEW_PAGES = 4
 MAX_REVIEW_CANDIDATES = 8
 MAX_GROUP_PAGES = 8
@@ -35,7 +35,7 @@ MAX_GROUP_CANDIDATES = 40
 
 class ModelIssueAdvice(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
-    verdict: Literal["same_question", "different_questions", "match_candidate", "no_match", "uncertain"]
+    verdict: Literal["same_question", "different_questions", "match_candidate", "no_match", "false_positive", "uncertain"]
     candidate_item_id: str | None
     evidence_page: int = Field(ge=1)
     evidence_quote: str = Field(min_length=1)
@@ -76,7 +76,8 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
             if isinstance(page, int) and page > 0:
                 nearby = [item for item in items if isinstance((item.payload.get("source") or {}).get("page_start"), int)
                           and abs(item.payload["source"]["page_start"] - page) <= 2]
-                nearby.sort(key=lambda item: abs(item.payload["source"]["page_start"] - page))
+                nearby.sort(key=lambda item: (
+                    abs(item.payload["source"]["page_start"] - page), item.ordinal, str(item.id)))
                 rows.append({"key": f"fragment:{unit_index}:{index}", "kind": "fragment", "unit_index": unit_index,
                              "summary": f"第 {page} 页未确定片段", "content": fragment,
                              "candidates": [_candidate_context(item) for item in nearby[:MAX_REVIEW_CANDIDATES]]})
@@ -154,6 +155,10 @@ def list_review_issues(db: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]
             review = {**review, "stale": review.get("issue_fingerprint") != current_fingerprint}
         result.append({"key": issue["key"], "kind": issue["kind"], "unit_index": issue["unit_index"],
                        "summary": issue["summary"],
+                       "fragment_text": issue["content"].get("text") if issue["kind"] == "fragment" else None,
+                       "fragment_reason": issue["content"].get("reason") if issue["kind"] == "fragment" else None,
+                       "answer_text": issue["content"].get("text") if issue["kind"] == "answer" else None,
+                       "answer_number": issue["content"].get("original_number") if issue["kind"] == "answer" else None,
                        "page_numbers": pages, "candidate_item_ids": [c["item_id"] for c in issue["candidates"]],
                        "candidate_total": issue.get("candidate_total", len(issue["candidates"])),
                        "recall_method": issue.get("recall_method"),
@@ -167,6 +172,9 @@ def _validated_advice(advice: ModelIssueAdvice, issue: dict[str, Any], pages: li
         raise ImportProblem("INVALID_MODEL_OUTPUT", "模型引用了未发送的页或候选题；本次调用可能已产生费用")
     if issue["kind"] == "overlap":
         valid = advice.verdict in {"same_question", "different_questions", "uncertain"} and advice.candidate_item_id is None
+    elif issue["kind"] == "fragment":
+        valid = advice.verdict in {"match_candidate", "no_match", "false_positive", "uncertain"} and (
+            (advice.verdict == "match_candidate") == (advice.candidate_item_id is not None))
     else:
         valid = advice.verdict in {"match_candidate", "no_match", "uncertain"} and (
             (advice.verdict == "match_candidate") == (advice.candidate_item_id is not None))
@@ -188,7 +196,12 @@ class QwenIssueReviewProvider:
             "evidence_quote 必须是所发送原页中可核对的短原文，evidence_page 是本 PDF 内页码。"
             "不要改写题目、生成答案、删除候选或替教师确认。"
             "跨页重复问题 verdict 只能是 same_question、different_questions、uncertain，candidate_item_id 为 null；"
-            "答案或片段归属问题 verdict 只能是 match_candidate、no_match、uncertain，"
+            "先核对待查片段是否真的出现在原页，不要把首次 OCR 提取结果当作事实。"
+            "若原页实际是数轴、图形、文字或其他内容，首次提取的表格或公式并不存在，"
+            "片段问题选 false_positive，并说明原页实际内容；不要因此改写候选题。"
+            "片段问题 verdict 只能是 match_candidate、no_match、false_positive、uncertain；"
+            "no_match 表示片段确实存在但未找到可信归属，不能用于表示 OCR 误读。"
+            "答案归属问题 verdict 只能是 match_candidate、no_match、uncertain；"
             "只有 match_candidate 时填写给定候选 ID，其余为 null。"
             + json.dumps({"kind": issue["kind"], "content": issue["content"],
                           "candidates": issue["candidates"]}, ensure_ascii=False)
@@ -236,7 +249,12 @@ class QwenGroupReviewProvider(QwenIssueReviewProvider):
             "结合 PDF 原页、跨页上下文和候选题文字判断；看不清、候选不足或无法唯一确定时选 uncertain。"
             "evidence_quote 须是所发送原页中可核对的短原文。"
             "跨页重复题 verdict 只能是 same_question、different_questions、uncertain，candidate_item_id 为 null。"
-            "答案或碎片归属 verdict 只能是 match_candidate、no_match、uncertain；"
+            "先逐项核对待查片段是否真的出现在原页，不要把首次 OCR 提取结果当作事实。"
+            "若原页实际是数轴、图形、文字或其他内容，首次提取的片段并不存在，"
+            "该片段选 false_positive 并说明原页实际内容。"
+            "片段问题 verdict 只能是 match_candidate、no_match、false_positive、uncertain；"
+            "no_match 表示片段确实存在但没有可信归属，不能用于表示 OCR 误读。"
+            "答案归属问题只能是 match_candidate、no_match、uncertain；"
             "只有 match_candidate 时填写所列候选 ID。不要删题、改题、自动配答案或代替教师确认。"
             + json.dumps({"issues": [{"issue_key": issue["key"], "kind": issue["kind"],
                                       "content": issue["content"],
