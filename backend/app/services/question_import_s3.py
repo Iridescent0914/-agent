@@ -1,4 +1,4 @@
-"""S3 reconciliation of source answers from combined question and answer files."""
+"""S3 reconciliation of answers extracted from combined or separate files."""
 
 from __future__ import annotations
 
@@ -135,18 +135,27 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
         raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
     if batch.status != "review_pending" or batch.stage != "s2_completed":
         raise ImportProblem("COMMIT_CONFLICT", "请先完成 S2 切题", 409)
-    if batch.source_mode != "combined":
-        raise ImportProblem("S3_SOURCE_MODE", "此入口仅处理题答同文件批次", 409)
+    if batch.source_mode not in {"combined", "separate"}:
+        raise ImportProblem("S3_SOURCE_MODE", "此批次没有待关联的资料答案", 409)
     s2 = (batch.checkpoint or {}).get("s2") or {}
-    if s2.get("prompt_version") not in COMBINED_PROMPT_VERSIONS:
-        raise ImportProblem("S3_SOURCE_ANSWERS_MISSING", "旧批次未在一次提取中读取答案，需单独处理答案页", 409)
     existing_s3 = (batch.checkpoint or {}).get("s3") or {}
+    if batch.source_mode == "combined":
+        if s2.get("prompt_version") not in COMBINED_PROMPT_VERSIONS:
+            raise ImportProblem("S3_SOURCE_ANSWERS_MISSING", "旧批次未在一次提取中读取答案，需单独处理答案页", 409)
+        source_units = s2
+        source_version = s2.get("prompt_version")
+    else:
+        source_units = existing_s3.get("separate_answers") or {}
+        if source_units.get("status") != "completed":
+            raise ImportProblem("S3_SOURCE_ANSWERS_MISSING", "请先完成答案文件识别", 409)
+        source_version = source_units.get("version")
     previous_result = existing_s3.get("source_answer_reconciliation") or {}
     if not force and previous_result.get("schema_version") == "s3-source-answer-reconciliation-v3":
         return previous_result
-    source = next(file for file in batch.files if file["role"] == "questions")
+    source = next(file for file in batch.files if file["role"] == (
+        "questions" if batch.source_mode == "combined" else "answers"))
     if (source["media_type"] != "application/pdf"
-            and s2.get("conversion_version") != DOCX_CONVERSION_VERSION
+            and source_units.get("conversion_version") != DOCX_CONVERSION_VERSION
             and previous_result.get("schema_version") != "s3-source-answer-reconciliation-v2"):
         raise ImportProblem("S3_CONFIG_CHANGED",
                             "DOCX 转换器已更新，请重新上传并完整重跑 S2，避免新旧 PDF 页码混用", 409)
@@ -155,7 +164,7 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
         QuestionImportItem.batch_id == batch.id,
     ).order_by(QuestionImportItem.ordinal).with_for_update()))
     if not force and previous_result.get("schema_version") == "s3-source-answer-reconciliation-v2":
-        result = _classify_overlap_duplicates(s2, previous_result, items)
+        result = _classify_overlap_duplicates(source_units, previous_result, items)
         checkpoint = dict(batch.checkpoint or {})
         checkpoint["s3"] = {**existing_s3, "source_answer_reconciliation": result}
         batch.checkpoint = checkpoint
@@ -171,7 +180,7 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
     matched: dict[uuid.UUID, list[dict[str, Any]]] = defaultdict(list)
     unassigned: list[dict[str, Any]] = []
     answer_count = 0
-    for unit in s2.get("units") or []:
+    for unit in source_units.get("units") or []:
         for answer in unit.get("source_answers") or []:
             answer_count += 1
             key = _number_key(answer.get("original_number"))
@@ -260,8 +269,8 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
               "removed_nonquestion_candidate_count": 0,
               "deduplicated_answer_count": duplicate_answer_count,
               "unassigned_answers": unassigned,
-              "source_prompt_version": s2.get("prompt_version")}
-    result = _classify_overlap_duplicates(s2, result, items)
+              "source_prompt_version": source_version}
+    result = _classify_overlap_duplicates(source_units, result, items)
     checkpoint = dict(batch.checkpoint or {})
     checkpoint["s3"] = {**existing_s3, "source_answer_reconciliation": result}
     batch.checkpoint = checkpoint

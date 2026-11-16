@@ -18,6 +18,7 @@ from app.services.question_import import (
 from app.services.question_import_s2_worker import start_s2
 from app.services.question_import_s3 import reconcile_source_answers, restore_nonquestion_fragment
 from app.services.question_import_s3_global import dedupe_batch
+from app.services.question_import_s3_separate import start_separate_answers
 from app.services.question_import_s3_review import (
     list_review_issues, list_review_units, review_issue, review_unit,
 )
@@ -141,9 +142,17 @@ def list_items(batch_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/{batch_id}/s3/reconcile-source-answers")
-def reconcile_combined_source_answers(batch_id: UUID, db: Session = Depends(get_db)):
-    """Link only unambiguous one-pass source answers; never confirm or import them."""
+def reconcile_extracted_source_answers(batch_id: UUID, db: Session = Depends(get_db)):
+    """Link only unambiguous source answers; never confirm or import them."""
     return reconcile_source_answers(db, batch_id, force=True)
+
+
+@router.post("/{batch_id}/s3/start-separate-answers", response_model=BatchOut)
+def start_separate_answer_extraction(batch_id: UUID, request: S3ReviewRequest,
+                                     db: Session = Depends(get_db),
+                                     operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
+    return start_separate_answers(db, batch_id, budget_cny=request.budget_cny,
+                                  operator_token=operator_token)
 
 
 @router.post("/{batch_id}/s3/dedupe-batch")
