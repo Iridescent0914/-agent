@@ -10,7 +10,7 @@ type Batch = {
   stage: string
   files: Array<{ file_id: string; original_name: string; size_bytes: number; page_count: number | null; role: string }>
   checkpoint: {
-    s2?: { calls?: number; page_count?: number; prompt_version?: string; figure_version?: string; auto_global_dedupe?: boolean; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
+    s2?: { calls?: number; page_count?: number; prompt_version?: string; auto_global_dedupe?: boolean; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
     s3?: { global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number }; separate_answers?: { status: string; calls?: number; error_message?: string; units?: Array<{ index: number; first_page: number; core_last_page: number; status: string; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ original_number: string | null; text: string; page_start: number; reason: string; candidate_item_ids?: string[] }> } }
   }
   error_code: string | null
@@ -480,18 +480,18 @@ export function QuestionImportPage() {
         ]} />
     </Card>
     <Modal title="候选题、来源答案与页段记录" open={!!selectedBatchId} width={900} footer={<Button onClick={() => setSelectedBatchId(null)}>关闭</Button>} onCancel={() => setSelectedBatchId(null)}>
-      <Typography.Paragraph>新批次按 PDF 页段自动提取位图，并在同次模型调用中识别题目、原文答案和所需题图；缺少独立题图时按模型坐标自动裁剪。已匹配图片直接显示在对应题目处。</Typography.Paragraph>
-      {selectedBatch?.stage === 's2_completed' && <Card size="small" title={`无法匹配到题目的图片（${unmatchedImages.length}）`} style={{ marginBottom: 16 }}>
-        {!s2?.figure_version && <Alert type="info" showIcon style={{ marginBottom: 12 }} message="此批次识别时尚未启用自动题图定位" description="新建批次会在 S2 识别题答时一并定位题图。" />}
+      <Typography.Paragraph>按 PDF 页段自动提取位图，并在同次模型调用中识别题目、原文答案和所需题图；缺少独立题图时按模型坐标自动裁剪。已匹配图片直接显示在对应题目处。</Typography.Paragraph>
+      {selectedBatch?.stage === 's2_completed' && <Card size="small" style={{ marginBottom: 16 }}><details>
+        <summary>无法匹配到题目的图片（{unmatchedImages.length}）</summary>
         {!images?.files_available && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message="临时题图已过期，无法显示或修改；请重新上传文件" />}
         {unmatchedImages.length === 0 ? <Typography.Text type="secondary">暂无未匹配图片</Typography.Text> : images?.files_available ? <>
           <Typography.Paragraph type="warning">无法匹配到题目，请人工复核。</Typography.Paragraph>
           <Space wrap>{unmatchedImages.map((asset) => <div key={asset.asset_id} style={{ width: 180 }}>
             <img src={apiUrl(`/question-imports/${selectedBatch.id}/s3/images/${asset.asset_id}/content`)} alt="未匹配的题图" style={{ maxWidth: 180, maxHeight: 160, objectFit: 'contain' }} />
-            <div><Typography.Text type="secondary">{asset.page ? `第 ${asset.page} 页` : '上传图片'} · {asset.kind === 'embedded' ? 'PDF 提取' : asset.kind === 'model_crop' ? '自动裁剪' : asset.kind === 'upload' ? '上传图片' : '历史图片'}</Typography.Text></div>
+            <div><Typography.Text type="secondary">{asset.page ? `第 ${asset.page} 页` : '上传图片'} · {asset.kind === 'embedded' ? 'PDF 提取' : asset.kind === 'model_crop' ? '自动裁剪' : asset.kind === 'upload' ? '上传图片' : '题图'}</Typography.Text></div>
           </div>)}</Space>
         </> : null}
-      </Card>}
+      </details></Card>}
       {['combined', 'separate'].includes(selectedBatch?.source_mode || '') && <Typography.Paragraph>
         原文答案已提取 {sourceAnswers.length} 条；{reconciliation
           ? `S3 已为 ${reconciliation.linked_question_count}/${candidates.length} 道题关联答案，答案显示在下方对应题目内。`

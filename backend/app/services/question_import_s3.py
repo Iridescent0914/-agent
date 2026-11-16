@@ -170,7 +170,7 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
     existing_s3 = (batch.checkpoint or {}).get("s3") or {}
     if batch.source_mode == "combined":
         if s2.get("prompt_version") not in COMBINED_PROMPT_VERSIONS:
-            raise ImportProblem("S3_SOURCE_ANSWERS_MISSING", "旧批次未在一次提取中读取答案，需单独处理答案页", 409)
+            raise ImportProblem("S3_SOURCE_ANSWERS_MISSING", "本批次未提取资料答案，请重新上传并识别", 409)
         source_units = s2
         source_version = s2.get("prompt_version")
     else:

@@ -168,7 +168,7 @@ def create_batch(db: Session, *, source_mode: str,
         if removable is None:
             raise ImportProblem(
                 "FILE_LIMIT_EXCEEDED",
-                f"已有 {settings.question_import_recent_batches} 个批次保留原文件，且都不能自动清理；请取消不再使用的旧批次，或等待临时文件到期清理",
+                f"已有 {settings.question_import_recent_batches} 个批次保留原文件，且都不能自动清理；请取消不再使用的批次，或等待临时文件到期清理",
                 409,
             )
         _purge_files(removable, now=now)
