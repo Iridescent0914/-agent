@@ -127,6 +127,7 @@ export function QuestionImportPage() {
   const [reviewingKey, setReviewingKey] = useState<string | null>(null)
   const [images, setImages] = useState<ImageInventory | null>(null)
   const [imageBusy, setImageBusy] = useState(false)
+  const [unmatchedImageTargets, setUnmatchedImageTargets] = useState<Record<string, string>>({})
 
   async function reload(focusBatchId?: string) {
     try {
@@ -258,6 +259,7 @@ export function QuestionImportPage() {
       }
       setCandidates(items)
       setImages(imageRows)
+      setUnmatchedImageTargets({})
       setShowDuplicateCandidates(false)
       setReviewIssues(issues)
       setReviewUnits(units)
@@ -421,6 +423,10 @@ export function QuestionImportPage() {
     && (selectedBatch?.source_mode !== 'separate' || separateAnswers?.status === 'completed')
   const matchedImageIds = new Set(candidates.flatMap((candidate) => candidate.payload.content.asset_ids || []))
   const unmatchedImages = (images?.assets || []).filter((asset) => !matchedImageIds.has(asset.asset_id) && !asset.duplicate_of_kept_image)
+  const imageTargetOptions = candidates.filter((candidate) => !candidate.is_fake).map((candidate) => ({
+    value: candidate.id,
+    label: `第 ${candidate.ordinal} 题${candidate.payload.source.original_number ? `（原题号 ${candidate.payload.source.original_number}）` : ''}${candidate.payload.source.page_start ? ` · 第 ${candidate.payload.source.page_start} 页` : ''} · ${candidate.payload.content.question_text.replace(/\s+/g, ' ').slice(0, 48)}`,
+  }))
 
   function renderCandidateContent(item: Candidate) {
     const assetIds = item.payload.content.asset_ids || []
@@ -492,6 +498,14 @@ export function QuestionImportPage() {
             <img src={apiUrl(`/question-imports/${selectedBatch.id}/s3/images/${asset.asset_id}/content`)} alt="未匹配的题图" style={{ maxWidth: 180, maxHeight: 160, objectFit: 'contain' }} />
             <div><Typography.Text type="secondary">{asset.page ? `第 ${asset.page} 页` : '上传图片'} · {asset.kind === 'embedded' ? 'PDF 提取' : asset.kind === 'model_crop' ? '自动裁剪' : asset.kind === 'upload' ? '上传图片' : '题图'}</Typography.Text></div>
             {!!asset.removed_candidate_for_item_ids?.length && <div><Typography.Text type="warning">来自已去重题目，请核对保留题是否缺图</Typography.Text></div>}
+            <Space direction="vertical" size="small" style={{ width: '100%', marginTop: 8 }}>
+              <Select aria-label="选择要关联的题目" placeholder="选择对应题目" showSearch optionFilterProp="label" style={{ width: '100%' }}
+                value={unmatchedImageTargets[asset.asset_id]}
+                options={imageTargetOptions}
+                onChange={(itemId: string) => setUnmatchedImageTargets((current) => ({ ...current, [asset.asset_id]: itemId }))} />
+              <Button size="small" type="primary" disabled={imageBusy || !images?.files_available || !imageTargetOptions.some((option) => option.value === unmatchedImageTargets[asset.asset_id])}
+                onClick={() => { const target = candidates.find((candidate) => candidate.id === unmatchedImageTargets[asset.asset_id]); if (target && selectedBatch) void linkQuestionImage(selectedBatch, asset, target, true) }}>关联到题目</Button>
+            </Space>
           </div>)}</Space>
         </> : null}
       </details></Card>}

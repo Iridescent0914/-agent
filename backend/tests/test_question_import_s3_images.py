@@ -42,15 +42,17 @@ def private_dir(tmp_path, monkeypatch):
     return settings.question_import_dir
 
 
-def _pdf() -> bytes:
+def _pdf(*, pages: int = 1, image_page: int = 1) -> bytes:
     image = Image.new("RGB", (40, 30), "red")
     buffer = BytesIO()
     image.save(buffer, format="PNG")
     document = fitz.open()
-    page = document.new_page(width=300, height=300)
-    page.insert_image(fitz.Rect(20, 20, 100, 80), stream=buffer.getvalue())
-    page.draw_line((150, 150), (240, 150), color=(0, 0, 1), width=2)
-    page.draw_circle((200, 180), 20, color=(0, 0, 1))
+    for index in range(1, pages + 1):
+        page = document.new_page(width=300, height=300)
+        if index == image_page:
+            page.insert_image(fitz.Rect(20, 20, 100, 80), stream=buffer.getvalue())
+            page.draw_line((150, 150), (240, 150), color=(0, 0, 1), width=2)
+            page.draw_circle((200, 180), 20, color=(0, 0, 1))
     result = document.tobytes()
     document.close()
     return result
@@ -100,6 +102,30 @@ def test_embedded_image_is_private_and_can_be_linked(db, private_dir):
     batch.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
     assert purge_expired_import_files(db) == 1
     assert not list(private_dir.rglob("*"))
+
+
+def test_teacher_can_match_unassigned_image_from_later_answer_page(db, private_dir):
+    batch = create_batch(db, source_mode="combined",
+                         files=[("questions", "combined.pdf", _pdf(pages=2, image_page=2))])
+    batch.status = "review_pending"
+    batch.stage = "s2_completed"
+    payload = fake_candidate(batch.id)
+    payload["source"].update({"file_id": batch.files[0]["file_id"], "page_start": 1, "page_end": 1})
+    candidate = add_candidate(db, batch, payload)
+    asset = extract_images(db, batch.id)["assets"][0]
+    assert asset["page"] == 2
+    assert list_images(db, batch.id)["assets"][0]["candidate_item_ids"] == []
+
+    linked = set_candidate_image(db, batch.id, candidate.id, UUID(asset["asset_id"]),
+                                 expected_revision=1, linked=True)
+    assert linked.payload["content"]["asset_ids"] == [asset["asset_id"]]
+    assert list_images(db, batch.id)["assets"][0]["candidate_item_ids"] == [str(candidate.id)]
+    linked.payload = {**linked.payload, "source": {**linked.payload["source"], "file_id": str(uuid4())}}
+    db.flush()
+    with pytest.raises(ImportProblem) as wrong_file:
+        set_candidate_image(db, batch.id, candidate.id, UUID(asset["asset_id"]),
+                            expected_revision=2, linked=True)
+    assert wrong_file.value.code == "IMAGE_SOURCE_CONFLICT"
 
 
 def test_candidate_upload_survives_later_embedded_scan(db, private_dir):

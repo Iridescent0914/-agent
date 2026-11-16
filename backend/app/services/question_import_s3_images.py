@@ -313,11 +313,9 @@ def set_candidate_image(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
     if asset.get("kind") == "upload" and asset.get("uploaded_for_item_id") != str(item_id):
         raise ImportProblem("IMAGE_SOURCE_CONFLICT", "上传图片只可关联到原候选题", 409)
     source = item.payload.get("source") or {}
-    if linked and (source.get("file_id") != asset["source_file_id"] or
-            not isinstance(source.get("page_start"), int) or
-            not isinstance(source.get("page_end"), int) or
-            not source["page_start"] <= asset["page"] <= source["page_end"]):
-        raise ImportProblem("IMAGE_SOURCE_CONFLICT", "题图不在该题的原文件页段内，请核对原页", 409)
+    # A teacher may match a figure repeated later in the same question file to an earlier question.
+    if linked and source.get("file_id") != asset["source_file_id"]:
+        raise ImportProblem("IMAGE_SOURCE_CONFLICT", "题图与候选题不属于同一题目文件", 409)
     payload = dict(item.payload)
     content = dict(payload.get("content") or {})
     asset_ids = list(content.get("asset_ids") or [])
