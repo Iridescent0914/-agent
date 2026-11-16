@@ -5,6 +5,8 @@ import { ReadOnlyMath } from './ReadOnlyMath'
 
 const richTokenPattern = /\[ASSET:([^\]]+)\]|\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|(?<!\\)\$([^\n$]+?)\$/g
 const bareLatexPattern = /\\{1,2}(?:dfrac|tfrac|frac|sqrt|times|div|cdot|leq|geq|neq|pi|alpha|beta|theta|angle|triangle|overline|dot|sum|int|pm|infty)(?:[A-Za-z0-9\\{}_^+\-*/=<>|().,])*/g
+const leftDelimiterPattern = /\\{1,2}left(?:\\{1,2}[{}]|[()[\]{}|.])/g
+const pairedDelimiterPattern = /\\{1,2}(left|right)(?:\\{1,2}[{}]|[()[\]{}|.])/g
 const repeatingDecimalPattern = /\d+(?:\.\d+)?(?:\\{1,2}dot\{[^{}\n]+\})+/g
 const powerPattern = /-?\s*(?:\([^()\n]+\)|[A-Za-z0-9]+)\s*\^\s*(?:\{[^{}\n]+\}|[A-Za-z0-9]+)/g
 const fractionExpressionPattern = /(?:\([+-]?\d+(?:\.\d+)?(?:\s+\d+\/\d+|\/\d+)?\)|[+-]?\d+(?:\s+\d+)?\/\d+)(?:\s*[+-]\s*(?:\([+-]?\d+(?:\.\d+)?(?:\s+\d+\/\d+|\/\d+)?\)|[+-]?\d+(?:\s+\d+)?\/\d+))*/g
@@ -21,6 +23,26 @@ function normalizePlainMath(value: string): string {
   return normalizeLatex(value)
     .replace(/(\d+)\s+(\d+)\s*\/\s*(\d+)/g, '$1\\frac{$2}{$3}')
     .replace(/(\d+)\s*\/\s*(\d+)/g, '\\frac{$1}{$2}')
+}
+
+function nextPairedMath(value: string, cursor: number): { at: number; raw: string } | null {
+  leftDelimiterPattern.lastIndex = cursor
+  let left: RegExpExecArray | null
+  while ((left = leftDelimiterPattern.exec(value))) {
+    // A broken pair must not consume the next subquestion's math.
+    const lineEnd = value.indexOf('\n', left.index)
+    const limit = lineEnd < 0 ? value.length : lineEnd
+    pairedDelimiterPattern.lastIndex = left.index
+    let depth = 0
+    let delimiter: RegExpExecArray | null
+    while ((delimiter = pairedDelimiterPattern.exec(value)) && delimiter.index < limit) {
+      depth += delimiter[1] === 'left' ? 1 : -1
+      if (depth === 0) {
+        return { at: left.index, raw: value.slice(left.index, pairedDelimiterPattern.lastIndex) }
+      }
+    }
+  }
+  return null
 }
 
 function splitBareMath(value: string, mathFragments: string[]): RichSegment[] {
@@ -43,6 +65,8 @@ function splitBareMath(value: string, mathFragments: string[]): RichSegment[] {
       const at = value.indexOf(fragment, cursor)
       if (at >= 0) consider(at, fragment, normalizePlainMath(fragment))
     }
+    const paired = nextPairedMath(value, cursor)
+    if (paired) consider(paired.at, paired.raw, normalizeLatex(paired.raw))
     for (const pattern of [repeatingDecimalPattern, bareLatexPattern, powerPattern, fractionExpressionPattern]) {
       pattern.lastIndex = cursor
       let match: RegExpExecArray | null
