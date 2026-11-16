@@ -18,10 +18,26 @@ class PrintItemOut(BaseModel):
     assets: list[dict[str, Any]]
 
 
+PrintSourceModule = Literal["required", "personalized", "history", "weekly_summary", "unclassified"]
+
+
+class PrintAnswerBlankOut(BaseModel):
+    item_id: str
+    blank_no: int
+    kind: Literal["choice", "fill_blank", "true_false", "manual"]
+
+
+class PrintAnswerSubquestionOut(BaseModel):
+    subquestion_no: int
+    blanks: list[PrintAnswerBlankOut]
+
+
 class AnswerSlotOut(BaseModel):
     order_no: int
     blank_ids: list[str]
     kind: str
+    source_module: PrintSourceModule
+    subquestions: list[PrintAnswerSubquestionOut]
 
 
 class PrintViewOut(BaseModel):
@@ -30,8 +46,9 @@ class PrintViewOut(BaseModel):
     student_code: str
     version_no: int
     instance_code: str
-    layout_version: str = "m6-print-v1"
+    layout_version: str = "answer-card-v2"
     is_active: bool
+    assignment_type: str
     items: list[PrintItemOut]
     answer_slots: list[AnswerSlotOut]
 

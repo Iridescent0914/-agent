@@ -17,20 +17,22 @@ test('student print view keeps the instance code and exposes no answer key', asy
       student_code: 'S001',
       version_no: 1,
       instance_code: 'RAT-M600-0001',
-      layout_version: 'm6-print-v1',
+      layout_version: 'answer-card-v2', assignment_type: 'practice',
       is_active: true,
       items: [{
         id: '00000000-0000-4000-8000-000000000063', order_no: 1,
         question_snapshot: { question_text: '计算：-1 + 2 = ____', question_type: 'fill_blank' },
         options_snapshot: null, assets: [],
       }],
-      answer_slots: [{ order_no: 1, blank_ids: ['answer'], kind: 'fill_blank' }],
+      answer_slots: [{ order_no: 1, blank_ids: ['answer'], kind: 'fill_blank', source_module: 'required',
+        subquestions: [{ subquestion_no: 1, blanks: [{ item_id: 'answer', blank_no: 1, kind: 'fill_blank' }] }],
+      }],
     }),
   }))
   await page.goto(`/paper-instances/${paperId}/print`)
   await expect(page.getByRole('heading', { name: 'M6 有理数练习' })).toBeVisible()
   await expect(page.getByText('RAT-M600-0001', { exact: false }).first()).toBeVisible()
-  await expect(page.getByText('统一答题区', { exact: false })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '答题卡', exact: true })).toBeVisible()
   await expect(page.getByText('标准答案', { exact: false })).toHaveCount(0)
   await noOverflow(page)
 })

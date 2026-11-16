@@ -1,5 +1,22 @@
 import type { AssetInfo } from './index'
 
+export type PrintSourceModule = 'required' | 'personalized' | 'history' | 'weekly_summary' | 'unclassified'
+
+export interface PrintAnswerSlot {
+  order_no: number
+  blank_ids: string[]
+  kind: string
+  source_module: PrintSourceModule
+  subquestions: Array<{
+    subquestion_no: number
+    blanks: Array<{
+      item_id: string
+      blank_no: number
+      kind: 'choice' | 'fill_blank' | 'true_false' | 'manual'
+    }>
+  }>
+}
+
 export interface PrintView {
   paper_instance_id: string
   assignment_title: string
@@ -8,6 +25,7 @@ export interface PrintView {
   instance_code: string
   layout_version: string
   is_active: boolean
+  assignment_type: string
   items: Array<{
     id: string
     order_no: number
@@ -15,7 +33,7 @@ export interface PrintView {
     options_snapshot: unknown
     assets: AssetInfo[]
   }>
-  answer_slots: Array<{ order_no: number; blank_ids: string[]; kind: string }>
+  answer_slots: PrintAnswerSlot[]
 }
 
 export type RecognitionStatus = 'readable' | 'blank' | 'missing' | 'illegible' | 'ambiguous'
