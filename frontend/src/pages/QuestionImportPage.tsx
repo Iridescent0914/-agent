@@ -69,14 +69,23 @@ const reviewVerdictLabels: Record<string, string> = {
 
 function stageLabel(batch: Batch): string {
   if (batch.stage === 'awaiting_s2') return '文件已校验，等待 S2 解析'
-  if (batch.stage === 's2_queued') return '等待 S2 识别'
-  if (batch.stage === 's2_processing') return '正在识别 PDF 页段'
+  if (batch.stage === 's2_queued') return '等待识别题目文件'
+  if (batch.stage === 's2_processing') return '正在识别题目文件页段'
   if (batch.stage === 's2_completed') {
     const dedupe = batch.checkpoint?.s3?.global_dedupe?.status
-    if (dedupe === 'auto_claimed' || dedupe === 'running') return '正在整批去重和关联答案'
+    if (dedupe === 'auto_claimed' || dedupe === 'running') return batch.source_mode === 'combined' ? '正在整批去重和关联答案' : '正在整批去重题目'
     if (dedupe === 'pending_budget') return '整批去重待补预算'
     if (dedupe === 'failed') return '整批去重失败，可重试'
     if (!dedupe && batch.checkpoint?.s2?.auto_global_dedupe) return '等待整批去重'
+    if (batch.source_mode === 'separate' && dedupe === 'completed') {
+      const answers = batch.checkpoint?.s3?.separate_answers?.status
+      if (answers === 'queued') return '答案文件等待识别'
+      if (answers === 'processing') return '正在识别答案文件'
+      if (answers === 'paused') return '答案文件识别已暂停'
+      if (answers === 'failed') return '答案文件识别失败，可重试'
+      if (answers === 'completed') return '答案文件识别完成，待核对'
+      return '题目去重完成，待启动答案文件识别'
+    }
     return 'S2 已完成，待人工核对'
   }
   if (batch.stage === 's2_budget_paused') return 'S2 已暂停，需核对预算'
@@ -343,11 +352,10 @@ export function QuestionImportPage() {
     ? separateAnswers?.units?.flatMap((unit) => unit.source_answers || [])
     : s2?.units?.flatMap((unit) => unit.source_answers || [])) || []
   const pendingAnswers = reconciliation?.unassigned_answers || sourceAnswers
-  const answerNumber = (value: string | null) => value?.normalize('NFKC').trim().replace(/^第\s*/, '').replace(/\s*题?[.．、:：\s]*$/, '') || ''
 
   return <Space direction="vertical" size="large" style={{ width: '100%' }}>
     <Card title="批量题目导入 · 内部识别与候选核对">
-      <Typography.Paragraph>上传后先校验文件；S2 按页段提取题目并自动整批去重。同文件场景同时提取答案；分文件场景在 S2 完成后单独启动答案文件识别。请先确认文件场景。</Typography.Paragraph>
+      <Typography.Paragraph>上传后先校验文件；S2 按页段提取题目并自动整批去重。同文件场景同时提取答案；分文件场景先读取题目文件，整批去重完成后，在批次操作栏点击“识别答案文件”才会读取答案文件。请先确认文件场景。</Typography.Paragraph>
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         <Select aria-label="文件场景" value={mode} onChange={(value) => { setMode(value); setAnswerFile(null) }}
           options={Object.entries(modeLabels).map(([value, label]) => ({ value, label }))} style={{ width: 260 }} />
@@ -371,7 +379,7 @@ export function QuestionImportPage() {
            { title: '操作', render: (_, batch: Batch) => <Space wrap>
              {['awaiting_s2', 's2_budget_paused'].includes(batch.stage) && batch.error_code !== 'CALL_LIMIT_REACHED' && <Button disabled={!s2Config?.ready} onClick={() => confirmStart(batch)}>{batch.stage === 's2_budget_paused' ? '调整预算并继续识别' : '开始 S2 识别'}</Button>}
              {batch.checkpoint?.s2 && <Button onClick={() => void viewCandidates(batch.id)}>查看候选与页段</Button>}
-             {batch.stage === 's2_completed' && batch.checkpoint?.s3?.global_dedupe?.status !== 'completed' && !['auto_claimed', 'running'].includes(batch.checkpoint?.s3?.global_dedupe?.status || '') && !(batch.checkpoint?.s2?.auto_global_dedupe && !batch.checkpoint?.s3?.global_dedupe?.status) && <Button type="primary" loading={reviewingKey === `batch:${batch.id}`} disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmBatchDedup(batch)}>{batch.checkpoint?.s3?.global_dedupe?.status === 'pending_budget' ? '增加预算并整理整批' : '模型整理整批题答'}</Button>}
+             {batch.stage === 's2_completed' && batch.checkpoint?.s3?.global_dedupe?.status !== 'completed' && !['auto_claimed', 'running'].includes(batch.checkpoint?.s3?.global_dedupe?.status || '') && !(batch.checkpoint?.s2?.auto_global_dedupe && !batch.checkpoint?.s3?.global_dedupe?.status) && <Button type="primary" loading={reviewingKey === `batch:${batch.id}`} disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmBatchDedup(batch)}>{batch.checkpoint?.s3?.global_dedupe?.status === 'pending_budget' ? '增加预算并整理整批' : batch.source_mode === 'separate' ? '模型整理整批题目' : '模型整理整批题答'}</Button>}
              {batch.stage === 's2_completed' && batch.source_mode === 'separate' && batch.checkpoint?.s3?.global_dedupe?.status === 'completed' && !['queued', 'processing', 'completed'].includes(batch.checkpoint?.s3?.separate_answers?.status || '') && <Button type="primary" disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmSeparateAnswers(batch)}>{batch.checkpoint?.s3?.separate_answers?.status === 'paused' ? '增加预算并继续识别答案' : batch.checkpoint?.s3?.separate_answers?.status === 'failed' ? '重试答案识别' : '识别答案文件'}</Button>}
              {batch.stage === 's2_completed' && (batch.source_mode === 'combined' || batch.checkpoint?.s3?.separate_answers?.status === 'completed') && <Button onClick={() => void reconcileAnswers(batch)}>重新匹配答案</Button>}
              {batch.status === 'failed' && batch.error_code !== 'S2_REVIEW_REQUIRED' && !batch.files_purged_at && <Button disabled={loading} onClick={() => confirmRetry(batch)}>{batch.error_code === 'INCOMPLETE_MODEL_OUTPUT' ? '自动调整页段并重试' : '重试'}</Button>}
@@ -400,7 +408,7 @@ export function QuestionImportPage() {
           {selectedBatch?.source_mode !== 'combined' && unit.source_answer_signals?.map((signal, index) => <Typography.Paragraph key={`answer-signal-${index}`} type="warning">第 {signal.page} 页可能含资料答案，请核对上传场景：{signal.evidence}</Typography.Paragraph>)}
           {!!unit.overlap_suspects?.length && <details><summary>S2 当时检出的疑似跨页重复 {unit.overlap_suspects.length} 对</summary>{unit.overlap_suspects.map((pair, index) => <Typography.Paragraph key={index}>候选 {pair.candidate_item_id} 与 {pair.other_item_id}；当前结果以整批模型判重为准。</Typography.Paragraph>)}</details>}
         </div>)}
-      {['combined', 'separate'].includes(selectedBatch?.source_mode || '') && <details open={!reconciliation && sourceAnswers.length > 0}><summary>{selectedBatch?.source_mode === 'separate' ? '答案文件' : '原文件'}提取答案 {sourceAnswers.length} 条（始终可查看）</summary>{sourceAnswers.length === 0 && <Typography.Paragraph type="warning">尚未提取到资料答案，请核对答案页和页段记录。</Typography.Paragraph>}{sourceAnswers.map((answer, index) => <div key={index} className="question-import-answer"><Typography.Text type="secondary">{selectedBatch?.source_mode === 'separate' ? '答案文件' : '原文件'}第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}</details>}
+      {['combined', 'separate'].includes(selectedBatch?.source_mode || '') && <details key={selectedBatch?.id}><summary>{selectedBatch?.source_mode === 'separate' ? '答案文件' : '原文件'}提取答案 {sourceAnswers.length} 条（点击展开）</summary>{sourceAnswers.length === 0 && <Typography.Paragraph type="warning">尚未提取到资料答案，请核对答案页和页段记录。</Typography.Paragraph>}{sourceAnswers.map((answer, index) => <div key={index} className="question-import-answer"><Typography.Text type="secondary">{selectedBatch?.source_mode === 'separate' ? '答案文件' : '原文件'}第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}</details>}
       {separateAnswers?.units?.flatMap((unit) => unit.unresolved_fragments || []).map((fragment, index) => <Typography.Paragraph key={`answer-unresolved-${index}`} type="warning">答案文件第 {fragment.page} 页待核对：{fragment.text}（{fragment.reason}）</Typography.Paragraph>)}
       {reconciliation && <div>
          <Typography.Paragraph>资料答案 {reconciliation.source_answer_count} 条，已关联 {reconciliation.linked_answer_count} 条，跨页重复 {reconciliation.overlap_duplicate_answers?.length || 0} 条，待认领 {reconciliation.unassigned_answers.length} 条；答案均未由教师确认。</Typography.Paragraph>
@@ -435,7 +443,7 @@ export function QuestionImportPage() {
         ...(candidates.some((item) => item.payload.extraction?.classification_evidence)
           ? [{ title: '模型分类依据', render: (_: unknown, item: Candidate) => item.payload.extraction?.classification_evidence || '未记录', width: 180 }]
           : []),
-        { title: '题干与选项', render: (_, item: Candidate) => <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}><RichQuestionText key="stem" text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />{item.payload.content.options.map((option, index) => <RichQuestionText key={`option-${index}-${option.key}`} text={`${option.key}. ${option.text}`} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />)}{item.payload.extraction?.diagram_clues?.map((clue, index) => <Typography.Text type="warning" key={`clue-${index}`}>题图线索：{clue}</Typography.Text>)}{item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}{item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer"><Typography.Text>资料答案（待确认）：</Typography.Text>{answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}</div>)}{pendingAnswers.filter((answer) => (answer.candidate_item_ids?.includes(item.id) || (!answer.candidate_item_ids?.length && answerNumber(answer.original_number) && answerNumber(answer.original_number) === answerNumber(item.payload.source.original_number)))).map((answer, index) => <div key={`pending-${index}`} className="question-import-answer"><Typography.Text type="warning">第 {answer.page_start} 页资料答案（同题号，归属待确认）：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}{item.payload.warnings?.filter((warning) => warning !== '模型报告不确定片段；请人工复核' || !item.payload.extraction?.uncertain_fragments?.length).map((warning, index) => <Typography.Text type="warning" key={`warning-${index}`}>{warning}</Typography.Text>)}</Space> },
+        { title: '题干与选项', render: (_, item: Candidate) => <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}><RichQuestionText key="stem" text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />{item.payload.content.options.map((option, index) => <RichQuestionText key={`option-${index}-${option.key}`} text={`${option.key}. ${option.text}`} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />)}{item.payload.extraction?.diagram_clues?.map((clue, index) => <Typography.Text type="warning" key={`clue-${index}`}>题图线索：{clue}</Typography.Text>)}{item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}{item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer"><Typography.Text>资料答案（待确认）：</Typography.Text>{answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}</div>)}{pendingAnswers.filter((answer) => answer.candidate_item_ids?.length === 1 && answer.candidate_item_ids[0] === item.id).map((answer, index) => <div key={`pending-${index}`} className="question-import-answer"><Typography.Text type="warning">第 {answer.page_start} 页资料答案（归属待确认）：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}{item.payload.warnings?.filter((warning) => warning !== '模型报告不确定片段；请人工复核' || !item.payload.extraction?.uncertain_fragments?.length).map((warning, index) => <Typography.Text type="warning" key={`warning-${index}`}>{warning}</Typography.Text>)}</Space> },
       ]} />
     </Modal>
   </Space>

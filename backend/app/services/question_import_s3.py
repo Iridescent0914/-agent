@@ -10,11 +10,13 @@ import uuid
 from collections import defaultdict
 from typing import Any
 
+from pypdf import PdfReader
+from pypdf.errors import PdfReadError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import QuestionImportBatch, QuestionImportItem
-from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, OWNER_SCOPE, add_candidate
+from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, OWNER_SCOPE, _path_for, add_candidate
 from app.services.question_import_s2 import (
     COMBINED_PROMPT_VERSION, COMBINED_PROMPT_VERSIONS, ModelQuestion,
     PageUnit, candidate_from_question,
@@ -58,6 +60,33 @@ def _substantive_excerpt(value: object) -> bool:
     if len(excerpt) < 4:
         return False
     return re.fullmatch(r"(?:第)?(?:\d+|[一二三四五六七八九十百零两]+)(?:小?题)?", excerpt) is None
+
+
+def _source_sections(batch: QuestionImportBatch, role: str) -> dict[int, str]:
+    """Read explicit exercise identifiers from PDF page headers, carrying them over continuation pages."""
+    source = next((file for file in batch.files if file["role"] == role), None)
+    if not source or source["media_type"] != "application/pdf":
+        return {}
+    path = _path_for(batch.id, uuid.UUID(source["file_id"]))
+    if not path.is_file():
+        return {}
+    sections: dict[int, str] = {}
+    current: str | None = None
+    try:
+        for page_number, page in enumerate(PdfReader(str(path)).pages, start=1):
+            header = unicodedata.normalize("NFKC", (page.extract_text() or "")[:500])
+            keys = {match.lower() for match in re.findall(
+                r"(?:^|\n)\s*习题\s*([A-Za-z]\d+(?:[-.]\d+)+)", header,
+            )}
+            if len(keys) > 1:
+                current = None
+            elif keys:
+                current = next(iter(keys))
+            if current:
+                sections[page_number] = current
+    except (OSError, PdfReadError, ValueError):
+        return {}
+    return sections
 
 
 def _replaceable_source_answer(item: QuestionImportItem) -> bool:
@@ -176,6 +205,8 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
         key = _number_key((item.payload.get("source") or {}).get("original_number"))
         if key:
             by_number[key].append(item)
+    question_sections = _source_sections(batch, "questions") if batch.source_mode == "separate" else {}
+    answer_sections = _source_sections(batch, "answers") if question_sections else {}
 
     matched: dict[uuid.UUID, list[dict[str, Any]]] = defaultdict(list)
     unassigned: list[dict[str, Any]] = []
@@ -185,8 +216,21 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
             answer_count += 1
             key = _number_key(answer.get("original_number"))
             targets = by_number.get(key, []) if key else []
+            answer_section = answer_sections.get(answer.get("page_start"))
+            section_unique = False
+            if answer_section and targets:
+                section_matches = [item for item in targets if question_sections.get(
+                    (item.payload.get("source") or {}).get("page_start")) == answer_section]
+                if section_matches:
+                    targets = section_matches
+                    section_unique = len(section_matches) == 1
+                elif all(question_sections.get((item.payload.get("source") or {}).get("page_start"))
+                         for item in targets):
+                    unassigned.append({**answer, "reason": "section_conflict",
+                                       "candidate_item_ids": [str(item.id) for item in targets]})
+                    continue
             excerpt = answer.get("question_excerpt")
-            if _substantive_excerpt(excerpt):
+            if not section_unique and _substantive_excerpt(excerpt):
                 excerpt_matches = _matching_excerpt(answer, targets if key else items)
                 if len(targets) != 1:
                     targets = excerpt_matches

@@ -18,6 +18,8 @@ from app.services.question_import_s3_separate import (
     QwenSeparateAnswerProvider, decode_answer_response, process_separate_answers_one,
     start_separate_answers, validate_answer_output,
 )
+from app.services.question_import_s3 import reconcile_source_answers
+import app.services.question_import_s3 as reconciliation_service
 import app.services.question_import_s3_separate as separate_service
 
 
@@ -146,6 +148,37 @@ def test_separate_answer_worker_links_only_unique_number_to_answer_file(db, tmp_
     assert process_separate_answers_one() is False
     assert len(list(db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch.id)))) == 3
+
+
+def test_repeated_numbers_match_only_with_same_explicit_exercise_section(db, tmp_path, monkeypatch):
+    _configure(monkeypatch, tmp_path)
+    batch = create_batch(db, source_mode="separate", files=[
+        ("questions", "questions.pdf", _pdf()), ("answers", "answers.pdf", _pdf())])
+    first = _candidate(batch, db, "1", "第一讲的题目")
+    second = _candidate(batch, db, "1", "第二讲的题目")
+    second.payload = {**second.payload, "source": {**second.payload["source"], "page_start": 2}}
+    source_id = batch.files[1]["file_id"]
+    batch.status = "review_pending"
+    batch.stage = "s2_completed"
+    batch.checkpoint = {"s2": {}, "s3": {"separate_answers": {
+        "status": "completed", "version": "test", "units": [{"source_answers": [
+            {"original_number": "1", "subquestion_number": None, "text": "第一讲答案",
+             "page_start": 3, "source_file_id": source_id,
+             "question_excerpt": "第二讲的题目"},
+            {"original_number": "1", "subquestion_number": None, "text": "第二讲答案",
+             "page_start": 4, "source_file_id": source_id},
+        ]}]}}}
+    monkeypatch.setattr(reconciliation_service, "_source_sections", lambda _batch, role: (
+        {1: "l7-1", 2: "l7-2"} if role == "questions" else {3: "l7-1", 4: "l7-2"}))
+    db.flush()
+
+    result = reconcile_source_answers(db, batch.id, force=True)
+    db.flush()
+    db.refresh(first)
+    db.refresh(second)
+    assert result["linked_question_count"] == 2
+    assert first.payload["answers"][0]["text"] == "第一讲答案"
+    assert second.payload["answers"][0]["text"] == "第二讲答案"
 
 
 def test_invalid_paid_answer_response_is_recorded_before_explicit_retry(db, tmp_path, monkeypatch):

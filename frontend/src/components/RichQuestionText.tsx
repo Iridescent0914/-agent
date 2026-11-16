@@ -4,7 +4,8 @@ import type { AssetInfo } from '../types'
 import { ReadOnlyMath } from './ReadOnlyMath'
 
 const richTokenPattern = /\[ASSET:([^\]]+)\]|\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|(?<!\\)\$([^\n$]+?)\$/g
-const bareLatexPattern = /\\{1,2}(?:dfrac|tfrac|frac|sqrt|times|div|cdot|leq|geq|neq|pi|alpha|beta|theta|angle|triangle|overline|sum|int|pm|infty)(?:[A-Za-z0-9\\{}_^+\-*/=<>|().,])*/g
+const bareLatexPattern = /\\{1,2}(?:dfrac|tfrac|frac|sqrt|times|div|cdot|leq|geq|neq|pi|alpha|beta|theta|angle|triangle|overline|dot|sum|int|pm|infty)(?:[A-Za-z0-9\\{}_^+\-*/=<>|().,])*/g
+const repeatingDecimalPattern = /\d+(?:\.\d+)?(?:\\{1,2}dot\{[^{}\n]+\})+/g
 const powerPattern = /-?\s*(?:\([^()\n]+\)|[A-Za-z0-9]+)\s*\^\s*(?:\{[^{}\n]+\}|[A-Za-z0-9]+)/g
 const fractionExpressionPattern = /(?:\([+-]?\d+(?:\.\d+)?(?:\s+\d+\/\d+|\/\d+)?\)|[+-]?\d+(?:\s+\d+)?\/\d+)(?:\s*[+-]\s*(?:\([+-]?\d+(?:\.\d+)?(?:\s+\d+\/\d+|\/\d+)?\)|[+-]?\d+(?:\s+\d+)?\/\d+))*/g
 
@@ -42,7 +43,7 @@ function splitBareMath(value: string, mathFragments: string[]): RichSegment[] {
       const at = value.indexOf(fragment, cursor)
       if (at >= 0) consider(at, fragment, normalizePlainMath(fragment))
     }
-    for (const pattern of [bareLatexPattern, powerPattern, fractionExpressionPattern]) {
+    for (const pattern of [repeatingDecimalPattern, bareLatexPattern, powerPattern, fractionExpressionPattern]) {
       pattern.lastIndex = cursor
       let match: RegExpExecArray | null
       while ((match = pattern.exec(value))) {
