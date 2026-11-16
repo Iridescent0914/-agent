@@ -109,14 +109,40 @@ def list_images(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
     batch = get_batch(db, batch_id)
     state = _image_state(batch)
     linked: dict[str, list[str]] = {}
-    for item in db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch_id)):
+    items = list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch_id)))
+    active = {str(item.id): item for item in items}
+    assets = state.get("assets") or []
+    hashes = {asset["asset_id"]: asset.get("sha256") for asset in assets}
+    removed_rows = ((batch.checkpoint or {}).get("s3") or {}).get("model_removed_duplicates") or {}
+    removed_to_kept = {row["removed_item_id"]: row["kept_item_id"] for row in removed_rows.values()}
+    removed_images: dict[str, set[str]] = {}
+    for row in removed_rows.values():
+        kept_id = row["kept_item_id"]
+        for _ in range(len(removed_to_kept) + 1):
+            if kept_id not in removed_to_kept:
+                break
+            kept_id = removed_to_kept[kept_id]
+        if kept_id in active:
+            for asset_id in (row.get("removed_payload") or {}).get("content", {}).get("asset_ids") or []:
+                removed_images.setdefault(str(asset_id), set()).add(kept_id)
+    for item in items:
         for asset_id in (item.payload.get("content") or {}).get("asset_ids") or []:
             linked.setdefault(str(asset_id), []).append(str(item.id))
+    def decorated(asset: dict[str, Any]) -> dict[str, Any]:
+        asset_id = asset["asset_id"]
+        keepers = sorted(removed_images.get(asset_id) or [])
+        exact_duplicate = any(
+            hashes.get(asset_id) is not None and hashes[asset_id] == hashes.get(kept_asset_id)
+            for kept_id in keepers
+            for kept_asset_id in (active[kept_id].payload.get("content") or {}).get("asset_ids") or []
+        )
+        return {**asset, "candidate_item_ids": linked.get(asset_id, []),
+                "removed_candidate_for_item_ids": keepers,
+                "duplicate_of_kept_image": exact_duplicate}
     return {"version": state.get("version"), "page_count": state.get("page_count"),
             "embedded_scanned": state.get("embedded_scanned", bool(state.get("version"))),
             "files_available": batch.files_purged_at is None and batch.expires_at > datetime.now(timezone.utc),
-            "assets": [{**asset, "candidate_item_ids": linked.get(asset["asset_id"], [])}
-                       for asset in state.get("assets") or []]}
+            "assets": [decorated(asset) for asset in assets]}
 
 
 def extract_images(db: Session, batch_id: uuid.UUID, *,

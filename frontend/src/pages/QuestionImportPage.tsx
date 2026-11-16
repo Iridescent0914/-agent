@@ -63,7 +63,7 @@ type Candidate = {
 
 type S2Config = { ready: boolean; model: string; max_budget_cny: number; max_output_tokens: number; pages_per_unit: number; overlap_pages: number }
 
-type ImageAsset = { asset_id: string; kind: string; page: number | null; bbox: number[] | null; width: number; height: number; sha256: string; candidate_item_ids: string[] }
+type ImageAsset = { asset_id: string; kind: string; page: number | null; bbox: number[] | null; width: number; height: number; sha256: string; candidate_item_ids: string[]; removed_candidate_for_item_ids?: string[]; duplicate_of_kept_image?: boolean }
 type ImageInventory = { version: string | null; page_count: number | null; embedded_scanned: boolean; files_available: boolean; assets: ImageAsset[] }
 
 const modeLabels: Record<string, string> = {
@@ -420,12 +420,13 @@ export function QuestionImportPage() {
     && (!dedupeStatus || dedupeStatus === 'completed')
     && (selectedBatch?.source_mode !== 'separate' || separateAnswers?.status === 'completed')
   const matchedImageIds = new Set(candidates.flatMap((candidate) => candidate.payload.content.asset_ids || []))
-  const unmatchedImages = (images?.assets || []).filter((asset) => !matchedImageIds.has(asset.asset_id))
+  const unmatchedImages = (images?.assets || []).filter((asset) => !matchedImageIds.has(asset.asset_id) && !asset.duplicate_of_kept_image)
 
   function renderCandidateContent(item: Candidate) {
     const assetIds = item.payload.content.asset_ids || []
     const clues = item.payload.extraction?.diagram_clues || []
     const figureMissing = !assetIds.length && (clues.length > 0 || ['complete', 'uncertain'].includes(item.payload.extraction?.figure_status || ''))
+    const removedCandidateImages = unmatchedImages.filter((asset) => asset.removed_candidate_for_item_ids?.includes(item.id))
     return <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}>
       <RichQuestionText text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />
       {item.payload.content.options.map((option, index) => <RichQuestionText key={`option-${index}-${option.key}`} text={`${option.key}. ${option.text}`} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />)}
@@ -436,6 +437,7 @@ export function QuestionImportPage() {
       {figureMissing && clues.map((clue, index) => <Typography.Text type="warning" key={`clue-${index}`}>题图线索：{clue}</Typography.Text>)}
       {figureMissing && clues.length === 0 && <Typography.Text type="warning">题图线索：模型未提供具体描述</Typography.Text>}
       {figureMissing && <Typography.Text type="warning">题图尚未裁剪；请对照原页复核</Typography.Text>}
+      {removedCandidateImages.length > 0 && <Typography.Text type="warning">去重题目有 {removedCandidateImages.length} 张未自动转移的图片，请在上方“无法匹配到题目的图片”中核对是否缺图。</Typography.Text>}
       {selectedBatch?.stage === 's2_completed' && <label>添加图片：<input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageBusy || !images?.files_available} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file && selectedBatch) void uploadCandidateImage(selectedBatch, item, file) }} /></label>}
       {item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}
       {item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer"><Typography.Text>资料答案（待确认）：</Typography.Text>{answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}</div>)}
@@ -489,6 +491,7 @@ export function QuestionImportPage() {
           <Space wrap>{unmatchedImages.map((asset) => <div key={asset.asset_id} style={{ width: 180 }}>
             <img src={apiUrl(`/question-imports/${selectedBatch.id}/s3/images/${asset.asset_id}/content`)} alt="未匹配的题图" style={{ maxWidth: 180, maxHeight: 160, objectFit: 'contain' }} />
             <div><Typography.Text type="secondary">{asset.page ? `第 ${asset.page} 页` : '上传图片'} · {asset.kind === 'embedded' ? 'PDF 提取' : asset.kind === 'model_crop' ? '自动裁剪' : asset.kind === 'upload' ? '上传图片' : '题图'}</Typography.Text></div>
+            {!!asset.removed_candidate_for_item_ids?.length && <div><Typography.Text type="warning">来自已去重题目，请核对保留题是否缺图</Typography.Text></div>}
           </div>)}</Space>
         </> : null}
       </details></Card>}

@@ -23,7 +23,7 @@ from app.services.question_import_s3_review import (
     _apply_overlap_advice, _batch_review_spent, list_review_issues, review_issue,
 )
 
-GLOBAL_DEDUPE_VERSION = "s3-global-dedupe-v1"
+GLOBAL_DEDUPE_VERSION = "s3-global-dedupe-v2"
 GLOBAL_DEDUPE_MAX_OUTPUT_TOKENS = 8192
 logger = logging.getLogger(__name__)
 
@@ -65,8 +65,10 @@ class QwenGlobalDedupProvider:
     def review(self, context: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         prompt = (
             "你负责对整份数学资料做跨页段去重。下面列出了所有提取到的候选题，另列出了资料答案。"
-            "答案区常把前面题目原文重述一遍；即使相隔很多页，也应把该重述判为 answer_restatement，"
-            "保留前面真正的题目，并删除答案区的重复候选。文字格式、空格、下划线不同不代表新题。"
+            "答案区可能完整重述前面的题目；确认是同一题时，即使相隔很多页，也应标为 answer_restatement，"
+            "保留前面原题，删除后面的重复候选。若文件从答案解析开始、没有前面的同题，完整题目必须保留。"
+            "文字格式、空格、下划线不同不代表新题。判重只决定保留和删除哪条题目候选，"
+            "不得据此合并、复制或改写答案与图片；答案会另行按来源关联。"
             "另有真正重复的题目时标为 same_question。不同题目或无法确定的题目不要列入 duplicates。"
             "必须逐一比较整份列表，不要只检查相邻页或相同题号；不要编造题目、题号、答案或候选 ID。"
             "keep_item_id 和 remove_item_id 必须来自列表，每个 remove_item_id 最多出现一次；"

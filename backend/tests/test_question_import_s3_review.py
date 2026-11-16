@@ -19,6 +19,7 @@ from app.services.question_import_s3_review import (
     list_review_units, review_issue, review_unit,
 )
 import app.services.question_import_s3_review as review_service
+from app.services.question_import_s3_images import list_images
 
 
 @pytest.fixture
@@ -97,7 +98,7 @@ def test_issue_review_sends_only_issue_pages_and_is_idempotent(db, tmp_path, mon
     assert not list_review_issues(db, batch.id)
 
 
-def test_deduplication_keeps_auto_linked_image_on_surviving_question(db, tmp_path, monkeypatch):
+def test_deduplication_does_not_transfer_image_or_answer(db, tmp_path, monkeypatch):
     batch, first, second = _batch_with_overlap(db, tmp_path, monkeypatch)
     asset_id = str(uuid4())
     file_id = batch.files[0]["file_id"]
@@ -107,6 +108,7 @@ def test_deduplication_keeps_auto_linked_image_on_surviving_question(db, tmp_pat
                              "page_start": 1, "page_end": 1}
         item.payload = payload
     first.payload = {**first.payload, "content": {**first.payload["content"], "asset_ids": [asset_id]}}
+    first.payload = {**first.payload, "answers": [{"text": "3", "answer_source": "source_extracted"}]}
     batch.checkpoint = {**batch.checkpoint, "s3": {"images": {"assets": [{"asset_id": asset_id,
                                                                        "page": 1}]}}}
     db.flush()
@@ -115,7 +117,35 @@ def test_deduplication_keeps_auto_linked_image_on_surviving_question(db, tmp_pat
          "content": {"other_item_id": str(first.id), "candidate_item_id": str(second.id)}},
         {"verdict": "same_question", "source_page": 1,
          "evidence_quote": "计算 1+2", "reason": "题干相同"}, keep_item_id=str(second.id))
-    assert second.payload["content"]["asset_ids"] == [asset_id]
+    assert not second.payload["content"].get("asset_ids")
+    assert not second.payload.get("answers")
+    audit = batch.checkpoint["s3"]["model_removed_duplicates"]["overlap:0:0"]
+    assert audit["removed_payload"]["content"]["asset_ids"] == [asset_id]
+    assert audit["removed_payload"]["answers"][0]["text"] == "3"
+    inventory = list_images(db, batch.id)
+    assert inventory["assets"][0]["removed_candidate_for_item_ids"] == [str(second.id)]
+    assert not inventory["assets"][0]["duplicate_of_kept_image"]
+
+
+def test_removed_image_is_duplicate_only_when_kept_image_hash_matches(db, tmp_path, monkeypatch):
+    batch, first, second = _batch_with_overlap(db, tmp_path, monkeypatch)
+    removed_asset, kept_asset = str(uuid4()), str(uuid4())
+    first.payload = {**first.payload, "content": {**first.payload["content"], "asset_ids": [removed_asset]}}
+    second.payload = {**second.payload, "content": {**second.payload["content"], "asset_ids": [kept_asset]}}
+    batch.checkpoint = {**batch.checkpoint, "s3": {"images": {"assets": [
+        {"asset_id": removed_asset, "sha256": "same"},
+        {"asset_id": kept_asset, "sha256": "same"}]}}}
+    db.flush()
+    assert review_service._apply_overlap_advice(db, batch,
+        {"key": "overlap:0:0", "kind": "overlap",
+         "content": {"other_item_id": str(first.id), "candidate_item_id": str(second.id)}},
+        {"verdict": "same_question", "source_page": 1,
+         "evidence_quote": "计算 1+2", "reason": "题干相同"}, keep_item_id=str(second.id))
+    removed_image = next(asset for asset in list_images(db, batch.id)["assets"]
+                         if asset["asset_id"] == removed_asset)
+    assert removed_image["duplicate_of_kept_image"]
+    assert removed_image["removed_candidate_for_item_ids"] == [str(second.id)]
+    assert second.payload["content"]["asset_ids"] == [kept_asset]
 
 
 def test_issue_review_requires_operator_token_before_model_call(db, tmp_path, monkeypatch):

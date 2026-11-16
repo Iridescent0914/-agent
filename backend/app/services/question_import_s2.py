@@ -35,12 +35,13 @@ LEGACY_PROMPT_VERSION = "question-import-s2-v2"
 COMBINED_PROMPT_VERSION = "question-import-combined-v5"
 FOCUSED_COMBINED_PROMPT_VERSION = "question-import-combined-v6"
 SECTIONED_COMBINED_PROMPT_VERSION = "question-import-combined-v7"
+INCLUSIVE_COMBINED_PROMPT_VERSION = "question-import-combined-v8"
 CLASSIFIED_COMBINED_PROMPT_VERSION = "question-import-combined-v4"
 HEADING_COMBINED_PROMPT_VERSION = "question-import-combined-v3"
 PREVIOUS_COMBINED_PROMPT_VERSION = "question-import-combined-v2"
 LEGACY_COMBINED_PROMPT_VERSION = "question-import-combined-v1"
 COMBINED_PROMPT_VERSIONS = {
-    SECTIONED_COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION,
+    INCLUSIVE_COMBINED_PROMPT_VERSION, SECTIONED_COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION,
     COMBINED_PROMPT_VERSION, CLASSIFIED_COMBINED_PROMPT_VERSION,
     HEADING_COMBINED_PROMPT_VERSION,
     PREVIOUS_COMBINED_PROMPT_VERSION, LEGACY_COMBINED_PROMPT_VERSION,
@@ -174,7 +175,8 @@ class AuditableCombinedModelOutput(ClassifiedCombinedModelOutput):
 
 
 def combined_output_model(version: str):
-    if version in {FOCUSED_COMBINED_PROMPT_VERSION, SECTIONED_COMBINED_PROMPT_VERSION}:
+    if version in {FOCUSED_COMBINED_PROMPT_VERSION, SECTIONED_COMBINED_PROMPT_VERSION,
+                   INCLUSIVE_COMBINED_PROMPT_VERSION}:
         return CombinedModelOutput
     if version == COMBINED_PROMPT_VERSION:
         return AuditableCombinedModelOutput
@@ -622,7 +624,26 @@ class QwenPdfProvider:
             "这只用于提示场景可能选错，不改变上传者选择，也不把答案混入题干。"
         )
         if include_answers:
-            if combined_prompt_version in {FOCUSED_COMBINED_PROMPT_VERSION, SECTIONED_COMBINED_PROMPT_VERSION}:
+            if combined_prompt_version == INCLUSIVE_COMBINED_PROMPT_VERSION:
+                roles = page_roles if page_roles is not None else pdf_page_roles(pdf_data)
+                if len(roles) != page_count:
+                    raise ImportProblem("INVALID_S2_CONFIG", "PDF 章节页数与处理页段不一致")
+                role_labels = {"question": "题目章节", "answer": "答案章节",
+                               "reference": "参考资料章节", "mixed": "页内混排"}
+                role_text = "、".join(f"第{i}页={role_labels[role]}" for i, role in enumerate(roles, 1))
+                prompt += (
+                    f"可搜索文字中的章节标题提示：{role_text}。标题只提示答案或资料的来源，不能决定是否提取题目。"
+                    "逐页识别能够完整转录、可独立使用的题目；即使文件开头就是‘参考答案与试题解析’，"
+                    "其中完整重述的题目也放入 questions。题目区和答案区都按同一标准处理，"
+                    "不要根据是否在其他页出现过同题自行去重，跨页段重复留给整批去重。"
+                    "解析步骤、只有题号或残缺题干的内容、目录、知识讲解和示范解法不作为题目。"
+                    "原文明确给出的答案另放入 source_answers，即使同页也同时提取；不要把答案混进题干。"
+                    "主体页开始的题若需要下一页才能完整转录，可以利用重叠页补全；"
+                    "不要把仅在重叠页新开始的题单独输出。"
+                    "无法完整辨认的题目或答案放入 unresolved_fragments。"
+                    "题图需和相应 questions 对应；缺少自动提取的题图时给出裁剪坐标。"
+                )
+            elif combined_prompt_version in {FOCUSED_COMBINED_PROMPT_VERSION, SECTIONED_COMBINED_PROMPT_VERSION}:
                 prompt += (
                     "本文件同时含题目与答案。只返回主体页内真正开始的独立题目和原文明确给出的答案。"
                     "重叠页只用于补全主体页已开始的题目或答案；不要把重叠页新开始的题单独输出。"
@@ -737,7 +758,10 @@ class QwenPdfProvider:
                 "figure_status 为 no_figure、complete、uncertain：没有题图时填 no_figure 且 figures=[]；"
                 "只有所有需要的图都列出时填 complete；"
                 "看不清、无法可靠定位或归属时填 uncertain，不要猜坐标或题目归属。"
-                "不要把普通行内公式、装饰图或答案区插图当作独立题图。"
+                + ("不要把普通行内公式、装饰图或仅用于解析步骤的插图当作独立题图；"
+                   "答案章节中的完整题目若需要题图，也须按相同标准对应或定位。"
+                   if combined_prompt_version == INCLUSIVE_COMBINED_PROMPT_VERSION else
+                   "不要把普通行内公式、装饰图或答案区插图当作独立题图。")
                 + json.dumps({"embedded_images": embedded_images}, ensure_ascii=False)
             )
         output_model = combined_output_model(combined_prompt_version) if include_answers else ModelOutput

@@ -22,6 +22,7 @@ from app.services.question_import import DOCX_CONVERSION_VERSION, OWNER_SCOPE, I
 from app.services.question_import_s2 import (
     FLASH_MODEL, LEGACY_PROMPT_VERSION, PROMPT_VERSION, ModelOutput, PageUnit, QwenPdfProvider,
     COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION, SECTIONED_COMBINED_PROMPT_VERSION,
+    INCLUSIVE_COMBINED_PROMPT_VERSION,
     CLASSIFIED_COMBINED_PROMPT_VERSION,
     COMBINED_PROMPT_VERSIONS, LEGACY_COMBINED_PROMPT_VERSION,
     CombinedModelOutput, combined_output_model,
@@ -72,7 +73,7 @@ def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_to
     s2["model"] = settings.question_import_s2_model
     # Existing paid v3 batches keep their original output contract on resume.
     s2["prompt_version"] = s2.get("prompt_version") or (
-        SECTIONED_COMBINED_PROMPT_VERSION if batch.source_mode == "combined" else PROMPT_VERSION
+        INCLUSIVE_COMBINED_PROMPT_VERSION if batch.source_mode == "combined" else PROMPT_VERSION
     )
     if question_file["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         s2["conversion_version"] = DOCX_CONVERSION_VERSION
@@ -292,7 +293,8 @@ def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
         if combined_prompt_version != COMBINED_PROMPT_VERSION:
             kwargs["combined_prompt_version"] = combined_prompt_version
         if document_page_roles and combined_prompt_version in {COMBINED_PROMPT_VERSION,
-                                                               SECTIONED_COMBINED_PROMPT_VERSION}:
+                                                               SECTIONED_COMBINED_PROMPT_VERSION,
+                                                               INCLUSIVE_COMBINED_PROMPT_VERSION}:
             kwargs["page_roles"] = document_page_roles[unit.first_page - 1:unit.last_page]
     pdf_data = pdf_unit_bytes(pdf, unit)
     if embedded_images is not None:
@@ -372,7 +374,8 @@ def process_s2_one() -> bool:
             if state["status"] == "completed":
                 continue
             include_answers = s2.get("prompt_version") in COMBINED_PROMPT_VERSIONS
-            reference_only = include_answers and bool(document_page_roles) and all(
+            inclusive_combined = s2.get("prompt_version") == INCLUSIVE_COMBINED_PROMPT_VERSION
+            reference_only = include_answers and not inclusive_combined and bool(document_page_roles) and all(
                 role == "reference" for role in document_page_roles[unit.core_first_page - 1:unit.core_last_page]
             )
             if not reference_only and (s2.get("cost_unknown") or float(s2.get("estimated_cny") or 0) >= float(s2["budget_cny"])):
@@ -425,7 +428,7 @@ def process_s2_one() -> bool:
                         if answer.page_start > unit.core_last_page - unit.first_page + 1:
                             continue
                         original_answer_page = unit.first_page + answer.page_start - 1
-                        if page_roles and page_roles[original_answer_page - 1] == "reference":
+                        if not inclusive_combined and page_roles and page_roles[original_answer_page - 1] == "reference":
                             continue
                         source_answers.append({
                             "source_file_id": source["file_id"],
@@ -440,7 +443,7 @@ def process_s2_one() -> bool:
                         })
                 for question in output.questions:
                     original_page = unit.first_page + question.page_start - 1
-                    if page_roles and page_roles[original_page - 1] not in {"question", "mixed"}:
+                    if not inclusive_combined and page_roles and page_roles[original_page - 1] not in {"question", "mixed"}:
                         continue
                     if question.page_start > unit.core_last_page - unit.first_page + 1:
                         ignored_overlap_questions.append({"original_number": question.original_number,
@@ -487,7 +490,8 @@ def process_s2_one() -> bool:
                                       and re.match(r"^\s*[（(]?[A-Da-d](?:[)）.．、:：]|\s+)", fragment.text))]
                 resolved_overlap = []
                 if (s2.get("prompt_version") not in {FOCUSED_COMBINED_PROMPT_VERSION,
-                                                      SECTIONED_COMBINED_PROMPT_VERSION}
+                                                      SECTIONED_COMBINED_PROMPT_VERSION,
+                                                      INCLUSIVE_COMBINED_PROMPT_VERSION}
                         and not reference_only and not output.questions and not source_answers and not unresolved):
                     if not resolved_overlap:
                         unresolved = [{"page": unit.first_page, "text": "本页段没有识别出题目",

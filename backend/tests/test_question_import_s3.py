@@ -15,7 +15,8 @@ from app.core.database import engine
 from app.services.question_import import ImportProblem, add_candidate, create_batch
 from app.services.question_import_s2 import (
     COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION,
-    SECTIONED_COMBINED_PROMPT_VERSION, QwenPdfProvider, candidate_from_question,
+    SECTIONED_COMBINED_PROMPT_VERSION, INCLUSIVE_COMBINED_PROMPT_VERSION,
+    QwenPdfProvider, candidate_from_question,
     parse_model_output, plan_units,
 )
 from app.services.question_import_s2_worker import start_s2
@@ -103,7 +104,7 @@ def test_page_heading_after_question_marks_page_mixed(monkeypatch):
     assert s2_service.pdf_page_roles(b"not-a-real-pdf") == ["mixed", "answer", "mixed", "reference"]
 
 
-def test_sectioned_combined_prompt_extracts_answers_after_heading():
+def test_inclusive_combined_prompt_extracts_questions_and_answers_after_heading():
     captured = {}
 
     def respond(request: httpx.Request):
@@ -119,13 +120,14 @@ def test_sectioned_combined_prompt_extracts_answers_after_heading():
                         question_import_s2_base_url="https://example.invalid/compatible-mode/v1")
     output, _, _ = QwenPdfProvider(settings=settings, transport=httpx.MockTransport(respond)).extract(
         _pdf(2), page_count=2, include_answers=True,
-        combined_prompt_version=SECTIONED_COMBINED_PROMPT_VERSION,
+        combined_prompt_version=INCLUSIVE_COMBINED_PROMPT_VERSION,
         page_roles=["question", "answer"])
     assert not output.questions
     assert output.source_answers[0].answer_text == "2"
     prompt = captured["messages"][0]["content"][1]["text"]
-    assert "第2页=参考答案区" in prompt
-    assert "questions 必须为空" in prompt
+    assert "第2页=答案章节" in prompt
+    assert "标题只提示答案或资料的来源" in prompt
+    assert "questions 必须为空" not in prompt
     assert "nonquestion_fragments" not in captured["response_format"]["json_schema"]["schema"]["properties"]
 
 
@@ -257,7 +259,7 @@ def test_combined_answers_link_only_unique_unedited_question(db, tmp_path, monke
     batch = create_batch(db, source_mode="combined", files=[("questions", "combined.pdf", _pdf())])
     batch.stage = "awaiting_s2"
     start_s2(db, batch.id, budget_cny=2, operator_token="operator-test")
-    assert batch.checkpoint["s2"]["prompt_version"] == SECTIONED_COMBINED_PROMPT_VERSION
+    assert batch.checkpoint["s2"]["prompt_version"] == INCLUSIVE_COMBINED_PROMPT_VERSION
     source_id = batch.files[0]["file_id"]
     unit = plan_units(1, pages_per_unit=1, overlap=0)[0]
     for number in ("3", "3", "4", "5"):
@@ -441,7 +443,9 @@ def test_combined_worker_keeps_answers_from_same_paid_unit(db, tmp_path, monkeyp
     assert unit["source_answers"][0]["source_file_id"] == batch.files[0]["file_id"]
 
 
-def test_sectioned_worker_discards_answer_page_questions_without_recording_fragments(db, tmp_path, monkeypatch):
+@pytest.mark.parametrize("opening_role", ["answer", "reference"])
+def test_inclusive_worker_keeps_complete_questions_when_file_starts_with_answers(
+        db, tmp_path, monkeypatch, opening_role):
     settings = get_settings()
     monkeypatch.setattr(settings, "question_import_dir", tmp_path / "imports")
     monkeypatch.setattr(settings, "question_import_s2_enabled", True)
@@ -461,7 +465,7 @@ def test_sectioned_worker_discards_answer_page_questions_without_recording_fragm
     monkeypatch.setattr(s2_worker, "SessionLocal", session_factory)
     monkeypatch.setattr(s2_worker, "prepare_pdf", lambda *_: (tmp_path / "unused.pdf", 2, []))
     monkeypatch.setattr(s2_worker, "pdf_unit_bytes", lambda *_: _pdf(2))
-    monkeypatch.setattr(s2_worker, "pdf_page_roles", lambda *_: ["question", "answer"])
+    monkeypatch.setattr(s2_worker, "pdf_page_roles", lambda *_: [opening_role, opening_role])
 
     class MockProvider:
         def extract(self, *_args, **_kwargs):
@@ -473,7 +477,7 @@ def test_sectioned_worker_discards_answer_page_questions_without_recording_fragm
                                     "page_start": 2, "page_end": 2}],
                 "unresolved_fragments": []},
                 plan_units(2, pages_per_unit=2, overlap=0)[0], include_answers=True,
-                combined_prompt_version=SECTIONED_COMBINED_PROMPT_VERSION)
+                combined_prompt_version=INCLUSIVE_COMBINED_PROMPT_VERSION)
             return output, {"usage": {"prompt_tokens": 100, "completion_tokens": 50},
                             "elapsed_seconds": 1.0, "response_id": "sectioned-worker-1"}, 1.0
 
@@ -482,7 +486,8 @@ def test_sectioned_worker_discards_answer_page_questions_without_recording_fragm
     db.refresh(batch)
     unit = batch.checkpoint["s2"]["units"][0]
     assert batch.stage == "s2_completed", batch.error_message
-    assert unit["candidate_count"] == 1
+    assert batch.checkpoint["s2"]["prompt_version"] == INCLUSIVE_COMBINED_PROMPT_VERSION
+    assert unit["candidate_count"] == 2
     assert unit["source_answers"][0]["text"] == "A"
     assert "ignored_nonquestion_sections" not in unit
 
