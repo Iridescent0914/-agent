@@ -368,10 +368,31 @@ def _apply_overlap_advice(db: Session, batch: QuestionImportBatch, issue: dict[s
     if kept_answers and removed_answers and [answer.get("text") for answer in kept_answers] != [
             answer.get("text") for answer in removed_answers]:
         return False
+    payload = dict(keeper.payload)
+    changed = False
     if removed_answers and not kept_answers:
-        payload = dict(keeper.payload)
         payload["answers"] = copy.deepcopy(removed_answers)
         payload["answer_match_status"] = duplicate.payload.get("answer_match_status")
+        changed = True
+    kept_source = payload.get("source") or {}
+    duplicate_source = duplicate.payload.get("source") or {}
+    if kept_source.get("file_id") == duplicate_source.get("file_id"):
+        image_pages = {asset["asset_id"]: asset["page"] for asset in
+                       (((batch.checkpoint or {}).get("s3") or {}).get("images") or {}).get("assets") or []}
+        content = dict(payload.get("content") or {})
+        asset_ids = list(content.get("asset_ids") or [])
+        for asset_id in (duplicate.payload.get("content") or {}).get("asset_ids") or []:
+            page = image_pages.get(asset_id)
+            if (asset_id not in asset_ids and isinstance(page, int)
+                    and isinstance(kept_source.get("page_start"), int)
+                    and isinstance(kept_source.get("page_end"), int)
+                    and kept_source["page_start"] <= page <= kept_source["page_end"]):
+                asset_ids.append(asset_id)
+        if asset_ids != content.get("asset_ids", []):
+            content["asset_ids"] = asset_ids
+            payload["content"] = content
+            changed = True
+    if changed:
         keeper.revision += 1
         payload["revision"] = keeper.revision
         keeper.payload = payload

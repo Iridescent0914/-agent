@@ -54,6 +54,14 @@ class ModelOption(BaseModel):
     text: str
 
 
+class ModelFigure(BaseModel):
+    """A source image or a region to render, within one model PDF page."""
+    model_config = ConfigDict(extra="forbid", strict=True)
+    page: int = Field(ge=1)
+    asset_id: str | None = None
+    bbox: list[float] | None = None  # left, top, right, bottom on a 0..999 page grid
+
+
 class ModelSubquestion(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     key: str
@@ -87,6 +95,8 @@ class ModelQuestion(BaseModel):
     subquestions: list[str | ModelSubquestion | ModelNumberedSubquestion | ModelLabeledSubquestion | ModelOriginalNumberSubquestion] = Field(default_factory=list)
     math_fragments: list[str] = Field(default_factory=list)
     diagram_clues: list[str] = Field(default_factory=list)
+    figures: list[ModelFigure] = Field(default_factory=list)
+    figure_status: Literal["no_figure", "complete", "uncertain"] = "uncertain"
     page_start: int = Field(ge=1)
     page_end: int = Field(ge=1)
     uncertain_fragments: list[str] = Field(default_factory=list)
@@ -583,7 +593,9 @@ class QwenPdfProvider:
                 capture_response: Callable[[dict, float], None] | None = None,
                 include_answers: bool = False,
                 combined_prompt_version: str = COMBINED_PROMPT_VERSION,
-                page_roles: list[str] | None = None) -> tuple[ModelOutput | CombinedModelOutput, dict, float]:
+                 page_roles: list[str] | None = None,
+                 embedded_images: list[dict] | None = None,
+                 page_previews: list[bytes] | None = None) -> tuple[ModelOutput | CombinedModelOutput, dict, float]:
         core_page_count = page_count if core_page_count is None else core_page_count
         if not 1 <= core_page_count <= page_count:
             raise ImportProblem("INVALID_S2_CONFIG", "PDF 主体页数无效")
@@ -710,14 +722,34 @@ class QwenPdfProvider:
                 "不要把解题步骤、解析、模型自行计算的结果当成资料答案；看不清的内容放入"
                 "unresolved_fragments。题目和答案分别输出，不要决定两者的对应关系。"
             )
+        if embedded_images is not None:
+            if page_previews is None or len(page_previews) != page_count:
+                raise ImportProblem("INVALID_S2_CONFIG", "题图原页预览数量与 PDF 页段不符")
+            prompt += (
+                "同时检查每道题需要的图。下面的 embedded_images 是程序从本页段 PDF 自动提取的位图，"
+                "其中 page 是本 PDF 内页码，bbox 为原页宽高归一化到 0..999 的坐标。"
+                "每道题在 figures 中逐张列出所需题图：只有位图本身就是该题独立、完整的题图时，"
+                "才填写其 asset_id，bbox=null；整页扫描图、含多道题的拼图不能直接作为单题题图。"
+                "若没有这样的现成位图，或位图缺少必要线条、文字标注，则 asset_id=null，"
+                "填写完整题图 bbox=[左,上,右,下]。"
+                "坐标以随 PDF 按顺序发送的原页预览图为准，范围 0..999；只裁题图及必要标注，不包含整道题干。"
+                "page 使用本 PDF 内页码；图跨页时按页分别列出。"
+                "figure_status 为 no_figure、complete、uncertain：没有题图时填 no_figure 且 figures=[]；"
+                "只有所有需要的图都列出时填 complete；"
+                "看不清、无法可靠定位或归属时填 uncertain，不要猜坐标或题目归属。"
+                "不要把普通行内公式、装饰图或答案区插图当作独立题图。"
+                + json.dumps({"embedded_images": embedded_images}, ensure_ascii=False)
+            )
         output_model = combined_output_model(combined_prompt_version) if include_answers else ModelOutput
+        content = [{"type": "file", "file": {"file_data": "data:application/pdf;base64," + base64.b64encode(pdf_data).decode("ascii"),
+                                             "filename": "question-pages.pdf"}}]
+        if page_previews is not None:
+            content.extend({"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(png).decode("ascii")}}
+                           for png in page_previews)
+        content.append({"type": "text", "text": prompt})
         payload = {
             "model": self.settings.question_import_s2_model,
-            "messages": [{"role": "user", "content": [
-                {"type": "file", "file": {"file_data": "data:application/pdf;base64," + base64.b64encode(pdf_data).decode("ascii"),
-                                          "filename": "question-pages.pdf"}},
-                {"type": "text", "text": prompt},
-            ]}],
+            "messages": [{"role": "user", "content": content}],
             "response_format": {"type": "json_schema", "json_schema": {
                 "name": "s2_page_questions_answers" if include_answers else "s2_page_questions",
                 "strict": True, "schema": output_model.model_json_schema(),

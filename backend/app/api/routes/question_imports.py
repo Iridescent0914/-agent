@@ -19,7 +19,7 @@ from app.services.question_import_s2_worker import start_s2
 from app.services.question_import_s3 import reconcile_source_answers, restore_nonquestion_fragment
 from app.services.question_import_s3_global import dedupe_batch
 from app.services.question_import_s3_images import (
-    crop_page, extract_images, image_bytes, list_images, render_page, set_candidate_image,
+    extract_images, image_bytes, list_images, set_candidate_image, upload_candidate_image,
 )
 from app.services.question_import_s3_separate import start_separate_answers
 from app.services.question_import_s3_review import (
@@ -68,10 +68,6 @@ class S2StartRequest(BaseModel):
 
 class S3ReviewRequest(BaseModel):
     budget_cny: float = Field(gt=0)
-
-
-class ImageCropRequest(BaseModel):
-    box: list[float] = Field(min_length=4, max_length=4)
 
 
 class ImageLinkRequest(BaseModel):
@@ -163,18 +159,6 @@ def collect_images(batch_id: UUID, db: Session = Depends(get_db)):
     return extract_images(db, batch_id)
 
 
-@router.get("/{batch_id}/s3/pages/{page_number}/preview")
-def read_question_page(batch_id: UUID, page_number: int, db: Session = Depends(get_db)):
-    return Response(content=render_page(db, batch_id, page_number), media_type="image/png",
-                    headers={"Cache-Control": "private, no-store"})
-
-
-@router.post("/{batch_id}/s3/pages/{page_number}/crop")
-def crop_question_page(batch_id: UUID, page_number: int, request: ImageCropRequest,
-                       db: Session = Depends(get_db)):
-    return crop_page(db, batch_id, page_number, request.box)
-
-
 @router.get("/{batch_id}/s3/images/{asset_id}/content")
 def read_question_image(batch_id: UUID, asset_id: UUID, db: Session = Depends(get_db)):
     return Response(content=image_bytes(db, batch_id, asset_id), media_type="image/png",
@@ -186,6 +170,23 @@ def link_question_image(batch_id: UUID, asset_id: UUID, item_id: UUID, request: 
                         db: Session = Depends(get_db)):
     return set_candidate_image(db, batch_id, item_id, asset_id,
                                expected_revision=request.expected_revision, linked=request.linked)
+
+
+@router.post("/{batch_id}/s3/items/{item_id}/images", response_model=CandidateOut)
+async def upload_import_candidate_image(batch_id: UUID, item_id: UUID,
+                                        expected_revision: int = Form(...), file: UploadFile = File(...),
+                                        db: Session = Depends(get_db)):
+    if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
+        raise ImportProblem("INVALID_IMAGE", "仅支持 JPG、PNG 或 WebP 图片", 415)
+    limit = get_settings().question_asset_max_upload_bytes
+    payload = await file.read(limit + 1)
+    await file.close()
+    if not payload:
+        raise ImportProblem("INVALID_IMAGE", "图片文件不能为空", 422)
+    if len(payload) > limit:
+        raise ImportProblem("IMAGE_LIMIT_EXCEEDED", "单张图片不能超过 8MB", 413)
+    return upload_candidate_image(db, batch_id, item_id, payload,
+                                  expected_revision=expected_revision)
 
 
 @router.post("/{batch_id}/s3/reconcile-source-answers")

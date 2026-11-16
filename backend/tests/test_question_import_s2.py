@@ -9,19 +9,23 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import httpx
+import pymupdf as fitz
 import pytest
 from pypdf import PdfWriter
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.core.database import engine
+from app.models import QuestionImportItem
 from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, _path_for, create_batch, retry_batch
 from app.services.question_import_s2 import (
-    QwenPdfProvider, candidate_from_question, candidate_key, estimate_cost,
+    FOCUSED_COMBINED_PROMPT_VERSION, QwenPdfProvider, candidate_from_question, candidate_key, estimate_cost,
     overlap_candidate_is_duplicate, resolved_overlap_option,
     decode_qwen_response, parse_model_output, plan_units, prepare_pdf,
 )
 from app.services.question_import_s2_worker import claim_s2, start_s2
+from app.services.question_import_s3_images import list_images
 import app.services.question_import_s2_worker as s2_worker
 
 
@@ -389,6 +393,79 @@ def test_qwen_private_file_payload_and_cost():
     assert estimate_cost({"prompt_tokens": 10, "completion_tokens": 2}, settings=settings) is None
 
 
+def test_qwen_one_page_call_returns_question_answer_and_figure_location():
+    captured = {}
+
+    def respond(request: httpx.Request):
+        captured.update(json.loads(request.content))
+        return httpx.Response(200, json={"id": "figure-response", "choices": [{"finish_reason": "stop", "message": {
+            "content": json.dumps({"complete": True, "questions": [{**_model_question(),
+                "figure_status": "complete", "figures": [{"page": 1, "asset_id": None,
+                    "bbox": [450, 450, 850, 720]}]}], "source_answers": [{"original_number": "1",
+                    "subquestion_number": None, "answer_text": "3", "page_start": 1, "page_end": 1,
+                    "uncertain_fragments": [], "question_excerpt": None, "answer_form": "answer_only"}],
+                    "unresolved_fragments": []})}}], "usage": {"prompt_tokens": 100,
+                    "completion_tokens": 50, "x_tools": {"pdf_page_parser": {"count": 1}}}})
+
+    settings = Settings(question_import_s2_api_key="test-only",
+                        question_import_s2_base_url="https://example.invalid/compatible-mode/v1")
+    provider = QwenPdfProvider(settings=settings, transport=httpx.MockTransport(respond))
+    output, _, _ = provider.extract(_pdf(), page_count=1, include_answers=True,
+                                    embedded_images=[{"asset_id": "known-image", "page": 1,
+                                                      "bbox": [10, 10, 100, 100]}],
+                                    page_previews=[b"\x89PNG\r\n\x1a\n"],
+                                    combined_prompt_version=FOCUSED_COMBINED_PROMPT_VERSION)
+    assert output.questions[0].figures[0].bbox == [450, 450, 850, 720]
+    assert output.source_answers[0].answer_text == "3"
+    content = captured["messages"][0]["content"]
+    assert [part["type"] for part in content] == ["file", "image_url", "text"]
+    assert content[1]["image_url"]["url"].startswith("data:image/png;base64,")
+    assert "known-image" in content[2]["text"]
+
+
+def test_new_s2_batch_crops_model_figure_and_links_it_to_question(db, tmp_path, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "question_import_dir", tmp_path / "imports")
+    monkeypatch.setattr(settings, "question_import_s2_enabled", True)
+    monkeypatch.setattr(settings, "question_import_s2_api_key", "test-only")
+    monkeypatch.setattr(settings, "question_import_s2_operator_token", "operator-test")
+    monkeypatch.setattr(settings, "question_import_s2_base_url", "https://example.invalid/compatible-mode/v1")
+    document = fitz.open()
+    page = document.new_page(width=300, height=300)
+    page.draw_line((150, 150), (240, 150), color=(0, 0, 1))
+    batch = create_batch(db, source_mode="questions_only", files=[("questions", "figure.pdf", document.tobytes())])
+    document.close()
+    batch.stage = "awaiting_s2"
+    db.flush()
+    start_s2(db, batch.id, budget_cny=1, operator_token="operator-test")
+    db.commit()
+    connection = db.get_bind()
+    monkeypatch.setattr(s2_worker, "SessionLocal", lambda: Session(
+        bind=connection, expire_on_commit=False, join_transaction_mode="create_savepoint"))
+
+    class MockProvider:
+        def extract(self, _pdf_data, **kwargs):
+            assert kwargs["embedded_images"] == []
+            assert len(kwargs["page_previews"]) == 1
+            output = parse_model_output({"complete": True, "questions": [{**_model_question(),
+                "diagram_clues": ["蓝色线段"], "figure_status": "complete",
+                "figures": [{"page": 1, "asset_id": None, "bbox": [450, 450, 850, 720]}]}],
+                "unresolved_fragments": []}, plan_units(1, pages_per_unit=1, overlap=0)[0])
+            return output, {"usage": {"prompt_tokens": 100, "completion_tokens": 50,
+                            "x_tools": {"pdf_page_parser": {"count": 1}}},
+                            "elapsed_seconds": 1.0, "response_id": "figure-test"}, 1.0
+
+    monkeypatch.setattr(s2_worker, "QwenPdfProvider", MockProvider)
+    assert s2_worker.process_s2_one() is True
+    db.refresh(batch)
+    assert batch.stage == "s2_completed"
+    candidate = db.scalar(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch.id))
+    asset_ids = candidate.payload["content"]["asset_ids"]
+    assert len(asset_ids) == 1
+    assert list_images(db, batch.id)["assets"][0]["kind"] == "model_crop"
+    assert candidate.payload["extraction"]["figure_status"] == "complete"
+
+
 def test_qwen_prompt_limits_extraction_to_core_pages():
     captured = {}
 
@@ -573,7 +650,7 @@ def test_worker_resumes_by_unit_and_deduplicates_overlap(db, tmp_path, monkeypat
     calls = []
 
     class MockProvider:
-        def extract(self, data, *, page_count, core_page_count, capture_response=None):
+        def extract(self, data, *, page_count, core_page_count, capture_response=None, **kwargs):
             calls.append((page_count, core_page_count))
             first = len(calls) == 1
             question = {**_model_question(page=2 if first else 1),
@@ -646,7 +723,7 @@ def test_failed_response_cost_is_counted_and_retry_calls_again(db, tmp_path, mon
     calls = []
 
     class ResponseProvider:
-        def extract(self, _data, *, page_count, core_page_count, capture_response):
+        def extract(self, _data, *, page_count, core_page_count, capture_response, **kwargs):
             calls.append(len(calls) + 1)
             content = "[]" if len(calls) == 1 else json.dumps({"complete": True, "questions": [_model_question()],
                                                                  "unresolved_fragments": []})
@@ -704,7 +781,7 @@ def test_incomplete_retry_replans_failed_unit_without_restarting_batch(db, tmp_p
     calls = []
 
     class ResponseProvider:
-        def extract(self, _data, *, page_count, core_page_count, capture_response):
+        def extract(self, _data, *, page_count, core_page_count, capture_response, **kwargs):
             calls.append((page_count, core_page_count))
             body = {"id": f"response-{len(calls)}", "choices": [{"finish_reason": "stop", "message": {
                 "content": json.dumps({"complete": len(calls) > 1,

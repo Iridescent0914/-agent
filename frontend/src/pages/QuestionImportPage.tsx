@@ -1,6 +1,6 @@
 import { Alert, Button, Card, Empty, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag, Typography, message } from 'antd'
-import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { apiPost, apiGet, apiUrl } from '../api/client'
+import { useEffect, useState } from 'react'
+import { apiPost, apiPostForm, apiGet, apiUrl } from '../api/client'
 import { RichQuestionText } from '../components/RichQuestionText'
 
 type Batch = {
@@ -10,7 +10,7 @@ type Batch = {
   stage: string
   files: Array<{ file_id: string; original_name: string; size_bytes: number; page_count: number | null; role: string }>
   checkpoint: {
-    s2?: { calls?: number; page_count?: number; prompt_version?: string; auto_global_dedupe?: boolean; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
+    s2?: { calls?: number; page_count?: number; prompt_version?: string; figure_version?: string; auto_global_dedupe?: boolean; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
     s3?: { global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number }; separate_answers?: { status: string; calls?: number; error_message?: string; units?: Array<{ index: number; first_page: number; core_last_page: number; status: string; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ original_number: string | null; text: string; page_start: number; reason: string; candidate_item_ids?: string[] }> } }
   }
   error_code: string | null
@@ -53,7 +53,7 @@ type Candidate = {
   payload: {
     source: { original_number: string | null; page_start: number | null; page_end: number | null }
     content: { question_text: string; options: Array<{ key: string; text: string }>; asset_ids?: string[] }
-    extraction?: { math_fragments?: string[]; diagram_clues?: string[]; uncertain_fragments?: string[]; source_classification?: string; classification_evidence?: string }
+    extraction?: { math_fragments?: string[]; diagram_clues?: string[]; figure_status?: 'no_figure' | 'complete' | 'uncertain'; uncertain_fragments?: string[]; source_classification?: string; classification_evidence?: string }
     answers?: Array<{ answer_id: string; answer_source: string; text: string | null; teacher_confirmed: boolean }>
     answer_match_status?: string
     duplicate_status?: string
@@ -63,7 +63,7 @@ type Candidate = {
 
 type S2Config = { ready: boolean; model: string; max_budget_cny: number; max_output_tokens: number; pages_per_unit: number; overlap_pages: number }
 
-type ImageAsset = { asset_id: string; kind: 'embedded' | 'crop'; page: number; bbox: number[]; width: number; height: number; sha256: string; candidate_item_ids: string[] }
+type ImageAsset = { asset_id: string; kind: string; page: number | null; bbox: number[] | null; width: number; height: number; sha256: string; candidate_item_ids: string[] }
 type ImageInventory = { version: string | null; page_count: number | null; embedded_scanned: boolean; files_available: boolean; assets: ImageAsset[] }
 
 const modeLabels: Record<string, string> = {
@@ -126,11 +126,7 @@ export function QuestionImportPage() {
   const [reviewUnits, setReviewUnits] = useState<ReviewUnit[]>([])
   const [reviewingKey, setReviewingKey] = useState<string | null>(null)
   const [images, setImages] = useState<ImageInventory | null>(null)
-  const [imageTargets, setImageTargets] = useState<Record<string, string>>({})
   const [imageBusy, setImageBusy] = useState(false)
-  const [pageNumber, setPageNumber] = useState(1)
-  const [cropRect, setCropRect] = useState<[number, number, number, number] | null>(null)
-  const [dragStart, setDragStart] = useState<[number, number] | null>(null)
 
   async function reload(focusBatchId?: string) {
     try {
@@ -249,17 +245,19 @@ export function QuestionImportPage() {
 
   async function viewCandidates(id: string) {
     try {
-      const [items, issues, units, imageRows] = await Promise.all([
+      const [items, issues, units, initialImages] = await Promise.all([
         apiGet<Candidate[]>(`/question-imports/${id}/items`),
         apiGet<ReviewIssue[]>(`/question-imports/${id}/s3/review-issues`),
         apiGet<ReviewUnit[]>(`/question-imports/${id}/s3/review-units`),
         apiGet<ImageInventory>(`/question-imports/${id}/s3/images`),
       ])
+      let imageRows = initialImages
+      if (!imageRows.embedded_scanned && imageRows.files_available && batches.find((batch) => batch.id === id)?.stage === 's2_completed') {
+        try { imageRows = await apiPost<ImageInventory>(`/question-imports/${id}/s3/images`, {}) }
+        catch (error) { message.warning(error instanceof Error ? error.message : 'PDF 图片自动提取失败') }
+      }
       setCandidates(items)
       setImages(imageRows)
-      setImageTargets({})
-      setPageNumber(1)
-      setCropRect(null)
       setShowDuplicateCandidates(false)
       setReviewIssues(issues)
       setReviewUnits(units)
@@ -271,28 +269,6 @@ export function QuestionImportPage() {
     setImages(await apiGet<ImageInventory>(`/question-imports/${id}/s3/images`))
   }
 
-  async function extractQuestionImages(batch: Batch) {
-    setImageBusy(true)
-    try {
-      const result = await apiPost<ImageInventory>(`/question-imports/${batch.id}/s3/images`, {})
-      setImages(result)
-      message.success(`整份 PDF 扫描完成，找到 ${result.assets.filter((asset) => asset.kind === 'embedded').length} 处嵌入图`)
-    } catch (error) { message.error(error instanceof Error ? error.message : '题图提取失败') }
-    finally { setImageBusy(false) }
-  }
-
-  async function cropQuestionImage(batch: Batch) {
-    if (!cropRect) return
-    setImageBusy(true)
-    try {
-      await apiPost(`/question-imports/${batch.id}/s3/pages/${pageNumber}/crop`, { box: cropRect })
-      await refreshImages(batch.id)
-      setCropRect(null)
-      message.success('裁剪图已保存，请核对缩略图后关联候选题')
-    } catch (error) { message.error(error instanceof Error ? error.message : '裁剪失败') }
-    finally { setImageBusy(false) }
-  }
-
   async function linkQuestionImage(batch: Batch, asset: ImageAsset, candidate: Candidate, linked: boolean) {
     setImageBusy(true)
     try {
@@ -300,32 +276,28 @@ export function QuestionImportPage() {
         { expected_revision: candidate.revision, linked })
       setCandidates((rows) => rows.map((row) => row.id === updated.id ? updated : row))
       await refreshImages(batch.id)
-      message.success(linked ? '题图已关联，仍须核对是否完整' : '已取消关联')
+      message.success(linked ? '题图已关联' : '题图已删除')
     } catch (error) {
       message.error(error instanceof Error ? error.message : '题图关联失败')
       setCandidates(await apiGet<Candidate[]>(`/question-imports/${batch.id}/items`).catch(() => candidates))
     } finally { setImageBusy(false) }
   }
 
-  function pagePoint(event: ReactPointerEvent<HTMLDivElement>): [number, number] {
-    const rect = event.currentTarget.getBoundingClientRect()
-    return [Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
-            Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))]
-  }
-
-  function renderImageAsset(batch: Batch, asset: ImageAsset) {
-    const pageCandidates = candidates.filter((candidate) => candidate.payload.source.page_start !== null && candidate.payload.source.page_end !== null && candidate.payload.source.page_start <= asset.page && asset.page <= candidate.payload.source.page_end)
-    return <Card key={asset.asset_id} size="small" style={{ marginTop: 8 }} title={`${asset.kind === 'crop' ? '框选题图' : 'PDF 嵌入图'} · 第 ${asset.page} 页`}>
-      <Space direction="vertical" style={{ width: '100%' }}>
-        <img src={apiUrl(`/question-imports/${batch.id}/s3/images/${asset.asset_id}/content`)} alt={`第 ${asset.page} 页待核对题图`} style={{ maxWidth: 440, maxHeight: 260, objectFit: 'contain', border: '1px solid #ddd' }} />
-        <Typography.Text type="secondary">来源框：{asset.bbox.map((value) => value.toFixed(3)).join('，')}；SHA-256：{asset.sha256.slice(0, 12)}…</Typography.Text>
-        <Space wrap><Select placeholder="选择同页候选题" style={{ width: 260 }} value={imageTargets[asset.asset_id]}
-          onChange={(value) => setImageTargets((current) => ({ ...current, [asset.asset_id]: value }))}
-          options={pageCandidates.map((candidate) => ({ value: candidate.id, label: `候选 ${candidate.ordinal} · 原题号 ${candidate.payload.source.original_number || '未识别'}` }))} />
-          <Button disabled={!imageTargets[asset.asset_id] || imageBusy || asset.candidate_item_ids.includes(imageTargets[asset.asset_id])} onClick={() => { const candidate = candidates.find((item) => item.id === imageTargets[asset.asset_id]); if (candidate) void linkQuestionImage(batch, asset, candidate, true) }}>关联候选题</Button></Space>
-        {asset.candidate_item_ids.map((id) => { const candidate = candidates.find((item) => item.id === id); return candidate && <Space key={id}><Tag color="blue">已关联候选 {candidate.ordinal}</Tag><Button size="small" disabled={imageBusy} onClick={() => void linkQuestionImage(batch, asset, candidate, false)}>取消关联</Button></Space> })}
-      </Space>
-    </Card>
+  async function uploadCandidateImage(batch: Batch, candidate: Candidate, file: File) {
+    if (file.size > 8 * 1024 * 1024) { message.error('单张图片不能超过 8 MB'); return }
+    const body = new FormData()
+    body.set('expected_revision', String(candidate.revision))
+    body.set('file', file)
+    setImageBusy(true)
+    try {
+      const updated = await apiPostForm<Candidate>(`/question-imports/${batch.id}/s3/items/${candidate.id}/images`, body)
+      setCandidates((rows) => rows.map((row) => row.id === updated.id ? updated : row))
+      await refreshImages(batch.id)
+      message.success('图片已添加到该题')
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '题图上传失败')
+      setCandidates(await apiGet<Candidate[]>(`/question-imports/${batch.id}/items`).catch(() => candidates))
+    } finally { setImageBusy(false) }
   }
 
   function confirmIssueReview(batch: Batch, issue: ReviewIssue) {
@@ -447,14 +419,31 @@ export function QuestionImportPage() {
   const answerMatchingComplete = !!reconciliation && selectedBatch?.stage === 's2_completed'
     && (!dedupeStatus || dedupeStatus === 'completed')
     && (selectedBatch?.source_mode !== 'separate' || separateAnswers?.status === 'completed')
-  const embeddedImages = images?.assets.filter((asset) => asset.kind === 'embedded') || []
-  const pageEmbeddedImages = embeddedImages.filter((asset) => asset.page === pageNumber)
-  const pageCroppedImages = images?.assets.filter((asset) => asset.page === pageNumber && asset.kind === 'crop') || []
-  const embeddedPages = [...new Set(embeddedImages.map((asset) => asset.page))].sort((left, right) => left - right)
-  const pageDiagramCandidates = candidates.filter((candidate) =>
-    candidate.payload.extraction?.diagram_clues?.length &&
-    candidate.payload.source.page_start !== null && candidate.payload.source.page_end !== null &&
-    candidate.payload.source.page_start <= pageNumber && pageNumber <= candidate.payload.source.page_end)
+  const matchedImageIds = new Set(candidates.flatMap((candidate) => candidate.payload.content.asset_ids || []))
+  const unmatchedImages = (images?.assets || []).filter((asset) => !matchedImageIds.has(asset.asset_id))
+
+  function renderCandidateContent(item: Candidate) {
+    const assetIds = item.payload.content.asset_ids || []
+    const clues = item.payload.extraction?.diagram_clues || []
+    const figureMissing = !assetIds.length && (clues.length > 0 || ['complete', 'uncertain'].includes(item.payload.extraction?.figure_status || ''))
+    return <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}>
+      <RichQuestionText text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />
+      {item.payload.content.options.map((option, index) => <RichQuestionText key={`option-${index}-${option.key}`} text={`${option.key}. ${option.text}`} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />)}
+      {images?.files_available && assetIds.map((id) => { const asset = images.assets.find((value) => value.asset_id === id); return asset && selectedBatch && <div key={id}>
+        <img src={apiUrl(`/question-imports/${selectedBatch.id}/s3/images/${id}/content`)} alt={`候选 ${item.ordinal} 题的题图`} style={{ display: 'block', maxWidth: '100%', width: 320, maxHeight: 280, objectFit: 'contain', marginBottom: 6 }} />
+        <Button size="small" danger disabled={imageBusy || !images?.files_available} onClick={() => void linkQuestionImage(selectedBatch, asset, item, false)}>删除图片</Button>
+      </div> })}
+      {figureMissing && clues.map((clue, index) => <Typography.Text type="warning" key={`clue-${index}`}>题图线索：{clue}</Typography.Text>)}
+      {figureMissing && clues.length === 0 && <Typography.Text type="warning">题图线索：模型未提供具体描述</Typography.Text>}
+      {figureMissing && <Typography.Text type="warning">题图尚未裁剪；请对照原页复核</Typography.Text>}
+      {selectedBatch?.stage === 's2_completed' && <label>添加图片：<input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageBusy || !images?.files_available} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file && selectedBatch) void uploadCandidateImage(selectedBatch, item, file) }} /></label>}
+      {item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}
+      {item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer"><Typography.Text>资料答案（待确认）：</Typography.Text>{answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}</div>)}
+      {answerMatchingComplete && !item.payload.answers?.some((answer) => !!answer.text?.trim()) && <Typography.Text type="warning">无答案</Typography.Text>}
+      {pendingAnswers.filter((answer) => answer.candidate_item_ids?.length === 1 && answer.candidate_item_ids[0] === item.id).map((answer, index) => <div key={`pending-${index}`} className="question-import-answer"><Typography.Text type="warning">第 {answer.page_start} 页资料答案（归属待确认）：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}
+      {item.payload.warnings?.filter((warning) => !['资料答案已关联，须对照原页由教师确认', '题图尚未裁剪；请对照原页复核', '题图已自动关联，须核对原页和图片完整性', '题图已关联，须对照原页核对图片内容和完整性'].includes(warning) && (warning !== '模型报告不确定片段；请人工复核' || !item.payload.extraction?.uncertain_fragments?.length)).map((warning, index) => <Typography.Text type="warning" key={`warning-${index}`}>{warning}</Typography.Text>)}
+    </Space>
+  }
 
   return <Space direction="vertical" size="large" style={{ width: '100%' }}>
     <Card title="批量题目导入 · 内部识别与候选核对">
@@ -491,41 +480,17 @@ export function QuestionImportPage() {
         ]} />
     </Card>
     <Modal title="候选题、来源答案与页段记录" open={!!selectedBatchId} width={900} footer={<Button onClick={() => setSelectedBatchId(null)}>关闭</Button>} onCancel={() => setSelectedBatchId(null)}>
-      <Typography.Paragraph>整批模型整理会比较所有候选题并移除重复题；同文件答案随后自动关联，分文件答案需单独识别。题图需对照原页核对后手动关联，不能仅凭模型的图形线索确认。</Typography.Paragraph>
-      {selectedBatch?.stage === 's2_completed' && <Card size="small" title="题图提取与原页核对" style={{ marginBottom: 16 }}>
-        <Typography.Paragraph>绿色框是已自动提取的 PDF 位图，蓝色框是已保存的选区。对照原页：题图没有被框住，或框内缺少题图的一部分时，再手工框选完整题图。模型题图线索仅供核对，不能保证找出所有缺图。</Typography.Paragraph>
-        {!images?.files_available ? <Alert type="warning" showIcon message="原文件已过期，无法继续提取或核对题图；请重新上传" /> : <>
-          <Space wrap style={{ marginBottom: 12 }}>
-            <Button onClick={() => void extractQuestionImages(selectedBatch)} loading={imageBusy} disabled={images?.embedded_scanned}>{images?.embedded_scanned ? '整份 PDF 嵌入图已扫描' : '扫描整份 PDF 嵌入图'}</Button>
-            <Typography.Text>自动提取 {embeddedImages.length} 处；手工框选 {images?.assets.filter((asset) => asset.kind === 'crop').length || 0} 处；待关联 {images?.assets.filter((asset) => !asset.candidate_item_ids.length).length || 0} 处</Typography.Text>
-            <Select value={pageNumber} onChange={(value) => { setPageNumber(value); setCropRect(null) }} style={{ width: 200 }}
-              options={Array.from({ length: s2?.page_count || images?.page_count || 0 }, (_, index) => ({ value: index + 1, label: `第 ${index + 1} 页 · 自动 ${embeddedImages.filter((asset) => asset.page === index + 1).length} · 框选 ${images?.assets.filter((asset) => asset.page === index + 1 && asset.kind === 'crop').length || 0}` }))} />
-          </Space>
-          {!images?.embedded_scanned
-            ? <Alert type="info" showIcon style={{ marginBottom: 12 }} message="尚未扫描 PDF 嵌入图" description="点击“扫描整份 PDF 嵌入图”后，可查看自动提取的图片及其原页位置；框选题图无需先扫描。" />
-            : embeddedImages.length === 0
-              ? <Alert type="info" showIcon style={{ marginBottom: 12 }} message="扫描完成：未找到独立存放的位图" description="请对照原页，按需框选数轴、几何图或扫描页中的题图。" />
-              : <Space wrap style={{ marginBottom: 12 }}><Typography.Text strong>自动提取图片所在页：</Typography.Text>{embeddedPages.map((page) => <Button key={page} size="small" type={pageNumber === page ? 'primary' : 'default'} onClick={() => { setPageNumber(page); setCropRect(null) }}>第 {page} 页（{embeddedImages.filter((asset) => asset.page === page).length}）</Button>)}</Space>}
-          <Typography.Paragraph style={{ marginBottom: 8 }}>本页：自动提取 {pageEmbeddedImages.length} 处，手工框选 {pageCroppedImages.length} 处。{pageDiagramCandidates.length ? `模型提示 ${pageDiagramCandidates.length} 道候选题可能含图，请核对是否已有完整题图。` : '模型没有报告题图线索，仍请对照原页检查。'}</Typography.Paragraph>
-          {pageDiagramCandidates.map((candidate) => <Typography.Paragraph key={candidate.id} type="secondary" style={{ marginBottom: 4 }}>候选 {candidate.ordinal}（原题号 {candidate.payload.source.original_number || '未识别'}）：{candidate.payload.extraction?.diagram_clues?.join('；')}；{candidate.payload.content.asset_ids?.length ? `已关联 ${candidate.payload.content.asset_ids.length} 张题图` : '尚未关联题图，请核对绿色框，必要时手工框选'}</Typography.Paragraph>)}
-          <div style={{ position: 'relative', width: 'min(100%, 720px)', cursor: 'crosshair', touchAction: 'none' }}
-            onPointerDown={(event) => { const point = pagePoint(event); setDragStart(point); setCropRect([point[0], point[1], point[0], point[1]]); event.currentTarget.setPointerCapture(event.pointerId) }}
-            onPointerMove={(event) => { if (!dragStart) return; const point = pagePoint(event); setCropRect([Math.min(dragStart[0], point[0]), Math.min(dragStart[1], point[1]), Math.max(dragStart[0], point[0]), Math.max(dragStart[1], point[1])]) }}
-            onPointerUp={() => setDragStart(null)}>
-            <img src={apiUrl(`/question-imports/${selectedBatch.id}/s3/pages/${pageNumber}/preview`)} alt={`题目文件第 ${pageNumber} 页原页`} draggable={false} style={{ width: '100%', display: 'block' }} />
-            {pageEmbeddedImages.map((asset, index) => <div key={asset.asset_id} style={{ position: 'absolute', left: `${asset.bbox[0] * 100}%`, top: `${asset.bbox[1] * 100}%`, width: `${(asset.bbox[2] - asset.bbox[0]) * 100}%`, height: `${(asset.bbox[3] - asset.bbox[1]) * 100}%`, border: '2px solid #389e0d', pointerEvents: 'none', boxSizing: 'border-box' }}><span style={{ background: '#389e0d', color: '#fff', fontSize: 12 }}>自动 {index + 1}</span></div>)}
-            {pageCroppedImages.map((asset, index) => <div key={asset.asset_id} style={{ position: 'absolute', left: `${asset.bbox[0] * 100}%`, top: `${asset.bbox[1] * 100}%`, width: `${(asset.bbox[2] - asset.bbox[0]) * 100}%`, height: `${(asset.bbox[3] - asset.bbox[1]) * 100}%`, border: '2px dashed #1677ff', pointerEvents: 'none', boxSizing: 'border-box' }}><span style={{ background: '#1677ff', color: '#fff', fontSize: 12 }}>框选 {index + 1}</span></div>)}
-            {cropRect && <div style={{ position: 'absolute', left: `${cropRect[0] * 100}%`, top: `${cropRect[1] * 100}%`, width: `${(cropRect[2] - cropRect[0]) * 100}%`, height: `${(cropRect[3] - cropRect[1]) * 100}%`, border: '2px solid #1677ff', background: '#1677ff24', pointerEvents: 'none', boxSizing: 'border-box' }} />}
-          </div>
-          <Space style={{ marginTop: 8, marginBottom: 12 }}>
-            <Button type="primary" disabled={!cropRect || cropRect[2] - cropRect[0] < 0.01 || cropRect[3] - cropRect[1] < 0.01} loading={imageBusy} onClick={() => void cropQuestionImage(selectedBatch)}>只保存选区</Button>
-            {cropRect && <Button onClick={() => setCropRect(null)}>清除选区</Button>}
-          </Space>
-          {!!pageEmbeddedImages.length && <Typography.Title level={5}>本页自动提取的图（{pageEmbeddedImages.length}）</Typography.Title>}
-          {pageEmbeddedImages.map((asset) => renderImageAsset(selectedBatch, asset))}
-          {!!pageCroppedImages.length && <Typography.Title level={5} style={{ marginTop: 16 }}>本页手工框选的图（{pageCroppedImages.length}）</Typography.Title>}
-          {pageCroppedImages.map((asset) => renderImageAsset(selectedBatch, asset))}
-        </>}
+      <Typography.Paragraph>新批次按 PDF 页段自动提取位图，并在同次模型调用中识别题目、原文答案和所需题图；缺少独立题图时按模型坐标自动裁剪。已匹配图片直接显示在对应题目处。</Typography.Paragraph>
+      {selectedBatch?.stage === 's2_completed' && <Card size="small" title={`无法匹配到题目的图片（${unmatchedImages.length}）`} style={{ marginBottom: 16 }}>
+        {!s2?.figure_version && <Alert type="info" showIcon style={{ marginBottom: 12 }} message="此批次识别时尚未启用自动题图定位" description="新建批次会在 S2 识别题答时一并定位题图。" />}
+        {!images?.files_available && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message="临时题图已过期，无法显示或修改；请重新上传文件" />}
+        {unmatchedImages.length === 0 ? <Typography.Text type="secondary">暂无未匹配图片</Typography.Text> : images?.files_available ? <>
+          <Typography.Paragraph type="warning">无法匹配到题目，请人工复核。</Typography.Paragraph>
+          <Space wrap>{unmatchedImages.map((asset) => <div key={asset.asset_id} style={{ width: 180 }}>
+            <img src={apiUrl(`/question-imports/${selectedBatch.id}/s3/images/${asset.asset_id}/content`)} alt="未匹配的题图" style={{ maxWidth: 180, maxHeight: 160, objectFit: 'contain' }} />
+            <div><Typography.Text type="secondary">{asset.page ? `第 ${asset.page} 页` : '上传图片'} · {asset.kind === 'embedded' ? 'PDF 提取' : asset.kind === 'model_crop' ? '自动裁剪' : asset.kind === 'upload' ? '上传图片' : '历史图片'}</Typography.Text></div>
+          </div>)}</Space>
+        </> : null}
       </Card>}
       {['combined', 'separate'].includes(selectedBatch?.source_mode || '') && <Typography.Paragraph>
         原文答案已提取 {sourceAnswers.length} 条；{reconciliation
@@ -642,11 +607,7 @@ export function QuestionImportPage() {
         ...(candidates.some((item) => item.payload.extraction?.classification_evidence)
           ? [{ title: '模型分类依据', render: (_: unknown, item: Candidate) => item.payload.extraction?.classification_evidence || '未记录', width: 180 }]
           : []),
-        { title: '已关联题图', width: 130, render: (_: unknown, item: Candidate) => <Space direction="vertical">
-          {(item.payload.content.asset_ids || []).map((id) => { const asset = images?.assets.find((value) => value.asset_id === id); return asset && selectedBatch && <div key={id}><img src={apiUrl(`/question-imports/${selectedBatch.id}/s3/images/${id}/content`)} alt={`候选 ${item.ordinal} 题的关联图`} style={{ width: 100, maxHeight: 100, objectFit: 'contain' }} /><Typography.Text type="secondary">第 {asset.page} 页</Typography.Text></div> })}
-          {!(item.payload.content.asset_ids || []).length && item.payload.extraction?.diagram_clues?.length ? <Typography.Text type="warning">待核对</Typography.Text> : null}
-        </Space> },
-        { title: '题干与选项', render: (_, item: Candidate) => <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}><RichQuestionText key="stem" text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />{item.payload.content.options.map((option, index) => <RichQuestionText key={`option-${index}-${option.key}`} text={`${option.key}. ${option.text}`} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />)}{item.payload.extraction?.diagram_clues?.map((clue, index) => <Typography.Text type="warning" key={`clue-${index}`}>题图线索：{clue}</Typography.Text>)}{item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}{item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer"><Typography.Text>资料答案（待确认）：</Typography.Text>{answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}</div>)}{answerMatchingComplete && !item.payload.answers?.some((answer) => !!answer.text?.trim()) && <Typography.Text type="warning">无答案</Typography.Text>}{pendingAnswers.filter((answer) => answer.candidate_item_ids?.length === 1 && answer.candidate_item_ids[0] === item.id).map((answer, index) => <div key={`pending-${index}`} className="question-import-answer"><Typography.Text type="warning">第 {answer.page_start} 页资料答案（归属待确认）：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}{item.payload.warnings?.filter((warning) => warning !== '资料答案已关联，须对照原页由教师确认' && (warning !== '模型报告不确定片段；请人工复核' || !item.payload.extraction?.uncertain_fragments?.length)).map((warning, index) => <Typography.Text type="warning" key={`warning-${index}`}>{warning}</Typography.Text>)}</Space> },
+        { title: '题目、题图与答案', render: (_, item: Candidate) => renderCandidateContent(item) },
       ]} />
     </Modal>
   </Space>

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from io import BytesIO
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -94,6 +95,27 @@ def test_issue_review_sends_only_issue_pages_and_is_idempotent(db, tmp_path, mon
     assert audit["kept_item_id"] == str(saved[0].id)
     assert audit["removed_payload"]["content"]["question_text"]
     assert not list_review_issues(db, batch.id)
+
+
+def test_deduplication_keeps_auto_linked_image_on_surviving_question(db, tmp_path, monkeypatch):
+    batch, first, second = _batch_with_overlap(db, tmp_path, monkeypatch)
+    asset_id = str(uuid4())
+    file_id = batch.files[0]["file_id"]
+    for item in (first, second):
+        payload = dict(item.payload)
+        payload["source"] = {**payload["source"], "file_id": file_id,
+                             "page_start": 1, "page_end": 1}
+        item.payload = payload
+    first.payload = {**first.payload, "content": {**first.payload["content"], "asset_ids": [asset_id]}}
+    batch.checkpoint = {**batch.checkpoint, "s3": {"images": {"assets": [{"asset_id": asset_id,
+                                                                       "page": 1}]}}}
+    db.flush()
+    assert review_service._apply_overlap_advice(db, batch,
+        {"key": "overlap:0:0", "kind": "overlap",
+         "content": {"other_item_id": str(first.id), "candidate_item_id": str(second.id)}},
+        {"verdict": "same_question", "source_page": 1,
+         "evidence_quote": "计算 1+2", "reason": "题干相同"}, keep_item_id=str(second.id))
+    assert second.payload["content"]["asset_ids"] == [asset_id]
 
 
 def test_issue_review_requires_operator_token_before_model_call(db, tmp_path, monkeypatch):

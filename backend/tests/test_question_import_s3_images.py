@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pymupdf as fitz
 import pytest
@@ -14,8 +14,10 @@ from app.core.config import get_settings
 from app.core.database import engine, get_db
 from app.main import app
 from app.services.question_import import ImportProblem, add_candidate, create_batch, purge_expired_import_files, update_candidate
+from app.services.question_import_s2 import ModelQuestion
 from app.services.question_import_s3_images import (
-    crop_page, extract_images, image_bytes, list_images, render_page, set_candidate_image,
+    extract_images, image_bytes, list_images, question_figure_assets, set_candidate_image,
+    upload_candidate_image,
 )
 from app.services.question_import_worker import fake_candidate
 
@@ -66,7 +68,7 @@ def _batch_with_candidate(db):
     return batch, candidate
 
 
-def test_embedded_image_and_vector_crop_are_private_and_reviewable(db, private_dir):
+def test_embedded_image_is_private_and_can_be_linked(db, private_dir):
     batch, candidate = _batch_with_candidate(db)
     first = extract_images(db, batch.id)
     assert first["page_count"] == 1
@@ -80,19 +82,14 @@ def test_embedded_image_and_vector_crop_are_private_and_reviewable(db, private_d
     with Image.open(BytesIO(embedded_png)) as rendered:
         red, green, blue = rendered.getpixel((rendered.width // 2, rendered.height // 2))
         assert red > 200 and green < 80 and blue < 80
-    assert render_page(db, batch.id, 1).startswith(b"\x89PNG")
     assert extract_images(db, batch.id)["assets"] == first["assets"]
 
-    crop = crop_page(db, batch.id, 1, [0.45, 0.45, 0.85, 0.72])
-    assert crop["kind"] == "crop"
-    assert crop["page"] == 1
-    assert crop["bbox"] == [0.45, 0.45, 0.85, 0.72]
-    linked = set_candidate_image(db, batch.id, candidate.id, UUID(crop["asset_id"]),
+    linked = set_candidate_image(db, batch.id, candidate.id, UUID(embedded["asset_id"]),
                                  expected_revision=1, linked=True)
-    assert linked.payload["content"]["asset_ids"] == [crop["asset_id"]]
+    assert linked.payload["content"]["asset_ids"] == [embedded["asset_id"]]
     assert linked.revision == 2
     with pytest.raises(ImportProblem) as stale:
-        set_candidate_image(db, batch.id, candidate.id, UUID(crop["asset_id"]),
+        set_candidate_image(db, batch.id, candidate.id, UUID(embedded["asset_id"]),
                             expected_revision=1, linked=False)
     assert stale.value.code == "REVISION_CONFLICT"
     with pytest.raises(ImportProblem) as forged:
@@ -105,22 +102,81 @@ def test_embedded_image_and_vector_crop_are_private_and_reviewable(db, private_d
     assert not list(private_dir.rglob("*"))
 
 
-def test_crop_only_saves_selected_region_before_optional_embedded_scan(db, private_dir):
-    batch, _ = _batch_with_candidate(db)
-    crop = crop_page(db, batch.id, 1, [0.45, 0.45, 0.85, 0.72])
+def test_candidate_upload_survives_later_embedded_scan(db, private_dir):
+    batch, candidate = _batch_with_candidate(db)
+    image = BytesIO()
+    Image.new("RGB", (32, 24), "blue").save(image, format="PNG")
+    uploaded = upload_candidate_image(db, batch.id, candidate.id, image.getvalue(), expected_revision=1)
+    uploaded_id = uploaded.payload["content"]["asset_ids"][0]
     first = list_images(db, batch.id)
     assert first["embedded_scanned"] is False
-    assert [asset["asset_id"] for asset in first["assets"]] == [crop["asset_id"]]
+    assert [asset["asset_id"] for asset in first["assets"]] == [uploaded_id]
     assert list(private_dir.rglob("s3-image-*.png")) and len(list(private_dir.rglob("s3-image-*.png"))) == 1
 
     scanned = extract_images(db, batch.id)
     assert scanned["embedded_scanned"] is True
-    assert {asset["kind"] for asset in scanned["assets"]} == {"crop", "embedded"}
+    assert {asset["kind"] for asset in scanned["assets"]} == {"upload", "embedded"}
     assert len(scanned["assets"]) == 2
     assert extract_images(db, batch.id)["assets"] == scanned["assets"]
 
 
-def test_image_endpoints_reject_invalid_box_and_other_page(db, private_dir):
+def test_s2_model_reuses_embedded_image_and_crops_missing_vector_figure(db, private_dir):
+    batch, _ = _batch_with_candidate(db)
+    token = uuid4()
+    batch.status = "parsing"
+    batch.stage = "s2_processing"
+    batch.worker_token = token
+    db.flush()
+    inventory = extract_images(db, batch.id, s2_worker_token=token)
+    embedded_id = inventory["assets"][0]["asset_id"]
+    question = ModelQuestion.model_validate({
+        "question_text": "根据两幅图作答", "page_start": 1, "page_end": 1,
+        "diagram_clues": ["红色图和蓝色图"], "figure_status": "complete",
+        "figures": [{"page": 1, "asset_id": embedded_id, "bbox": None},
+                    {"page": 1, "asset_id": None, "bbox": [450, 450, 850, 720]}],
+    })
+    ids, issues = question_figure_assets(db, batch.id, token, batch.files[0]["file_id"], 1, question)
+    assert not issues
+    assert ids[0] == embedded_id
+    assert {asset["kind"] for asset in list_images(db, batch.id)["assets"]} == {"embedded", "model_crop"}
+    batch.status = "review_pending"
+    batch.stage = "s2_completed"
+    db.flush()
+    assert image_bytes(db, batch.id, UUID(ids[1])).startswith(b"\x89PNG")
+
+    batch.status = "parsing"
+    batch.stage = "s2_processing"
+    db.flush()
+    invalid = question.model_copy(update={"figures": [question.figures[0].model_copy(update={"page": 2})]})
+    assert question_figure_assets(db, batch.id, token, batch.files[0]["file_id"], 1, invalid)[0] == []
+
+
+def test_s2_does_not_attach_a_scanned_page_as_one_question_figure(db, private_dir):
+    image = Image.new("RGB", (300, 300), "white")
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    document = fitz.open()
+    page = document.new_page(width=300, height=300)
+    page.insert_image(page.rect, stream=buffer.getvalue())
+    batch = create_batch(db, source_mode="questions_only",
+                         files=[("questions", "scan.pdf", document.tobytes())])
+    document.close()
+    token = uuid4()
+    batch.status = "parsing"
+    batch.stage = "s2_processing"
+    batch.worker_token = token
+    db.flush()
+    asset_id = extract_images(db, batch.id, s2_worker_token=token)["assets"][0]["asset_id"]
+    question = ModelQuestion.model_validate({
+        "question_text": "见图求解", "page_start": 1, "page_end": 1,
+        "figure_status": "complete", "figures": [{"page": 1, "asset_id": asset_id}],
+    })
+    ids, issues = question_figure_assets(db, batch.id, token, batch.files[0]["file_id"], 1, question)
+    assert ids == []
+    assert any("整页扫描图" in issue for issue in issues)
+
+
+def test_image_endpoints_upload_and_delete_per_candidate(db, private_dir):
     batch, candidate = _batch_with_candidate(db)
     app.dependency_overrides[get_db] = lambda: db
     try:
@@ -128,15 +184,33 @@ def test_image_endpoints_reject_invalid_box_and_other_page(db, private_dir):
         base = f"/api/v1/question-imports/{batch.id}/s3"
         images = client.post(base + "/images").json()
         assert len(images["assets"]) == 1
-        assert client.get(base + "/pages/1/preview").headers["cache-control"] == "private, no-store"
-        assert client.get(base + "/pages/2/preview").status_code == 404
-        assert client.post(base + "/pages/1/crop", json={"box": [0.8, 0.3, 0.2, 0.5]}).status_code == 422
+        assert client.get(base + "/pages/1/preview").status_code == 404
+        assert client.post(base + "/pages/1/crop", json={"box": [0.8, 0.3, 0.2, 0.5]}).status_code == 404
         asset_id = images["assets"][0]["asset_id"]
         assert client.get(base + f"/images/{asset_id}/content").headers["content-type"] == "image/png"
         attached = client.post(base + f"/images/{asset_id}/items/{candidate.id}",
                                json={"expected_revision": 1, "linked": True})
         assert attached.status_code == 200, attached.text
         assert attached.json()["payload"]["content"]["asset_ids"] == [asset_id]
+        uploaded_png = BytesIO()
+        Image.new("RGB", (24, 16), "blue").save(uploaded_png, format="PNG")
+        upload_url = base + f"/items/{candidate.id}/images"
+        assert client.post(upload_url, data={"expected_revision": "2"},
+                           files={"file": ("bad.txt", b"bad", "text/plain")}).status_code == 415
+        uploaded = client.post(upload_url, data={"expected_revision": "2"},
+                               files={"file": ("diagram.png", uploaded_png.getvalue(), "image/png")})
+        assert uploaded.status_code == 200, uploaded.text
+        uploaded_id = uploaded.json()["payload"]["content"]["asset_ids"][1]
+        assert client.post(upload_url, data={"expected_revision": "2"},
+                           files={"file": ("diagram.png", uploaded_png.getvalue(), "image/png")}).status_code == 409
+        inventory = client.get(base + "/images").json()
+        assert next(asset for asset in inventory["assets"] if asset["asset_id"] == uploaded_id)["kind"] == "upload"
+        assert client.get(base + f"/images/{uploaded_id}/content").headers["content-type"] == "image/png"
+        removed = client.post(base + f"/images/{uploaded_id}/items/{candidate.id}",
+                              json={"expected_revision": 3, "linked": False})
+        assert removed.status_code == 200, removed.text
+        assert removed.json()["payload"]["content"]["asset_ids"] == [asset_id]
+        assert all(asset["asset_id"] != uploaded_id for asset in client.get(base + "/images").json()["assets"])
         assert client.get("/assets/question_imports/" + asset_id).status_code == 404
     finally:
         app.dependency_overrides.pop(get_db, None)

@@ -406,7 +406,7 @@ def test_combined_worker_keeps_answers_from_same_paid_unit(db, tmp_path, monkeyp
 
     class MockProvider:
         def extract(self, data, *, page_count, core_page_count, capture_response=None,
-                    include_answers=False, page_roles=None):
+                    include_answers=False, page_roles=None, **kwargs):
             assert include_answers is True
             assert page_count == core_page_count == 2
             assert page_roles is None

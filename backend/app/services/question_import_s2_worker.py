@@ -11,6 +11,7 @@ import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import pymupdf as fitz
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -28,8 +29,10 @@ from app.services.question_import_s2 import (
     decode_qwen_response, estimate_cost, overlap_candidate_is_duplicate,
     pdf_page_roles, pdf_unit_bytes, plan_units, prepare_pdf,
 )
+from app.services.question_import_s3_images import _render, extract_images, question_figure_assets
 
 logger = logging.getLogger(__name__)
+FIGURE_VERSION = "s2-figure-coverage-v1"
 
 
 def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_token: str | None = None) -> QuestionImportBatch:
@@ -54,6 +57,8 @@ def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_to
         raise ImportProblem("INVALID_FILE", "批次缺少题目文件")
     checkpoint = dict(batch.checkpoint or {})
     s2 = dict(checkpoint.get("s2") or {})
+    if not s2:
+        s2["figure_version"] = FIGURE_VERSION
     question_file = next(item for item in batch.files if item["role"] == "questions")
     if (question_file["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             and s2.get("units") and s2.get("conversion_version") != DOCX_CONVERSION_VERSION):
@@ -247,7 +252,8 @@ def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
                   *, retry_invalid: bool = False,
                   include_answers: bool = False,
                   combined_prompt_version: str = COMBINED_PROMPT_VERSION,
-                  document_page_roles: list[str] | None = None) -> tuple[ModelOutput | CombinedModelOutput, dict]:
+                   document_page_roles: list[str] | None = None,
+                   embedded_images: list[dict] | None = None) -> tuple[ModelOutput | CombinedModelOutput, dict]:
     artifact = _result_path(batch_id, file_id, unit.index)
     if artifact.is_file():
         data = json.loads(artifact.read_text(encoding="utf-8"))
@@ -288,7 +294,12 @@ def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
         if document_page_roles and combined_prompt_version in {COMBINED_PROMPT_VERSION,
                                                                SECTIONED_COMBINED_PROMPT_VERSION}:
             kwargs["page_roles"] = document_page_roles[unit.first_page - 1:unit.last_page]
-    output, meta, _ = provider.extract(pdf_unit_bytes(pdf, unit), **kwargs)
+    pdf_data = pdf_unit_bytes(pdf, unit)
+    if embedded_images is not None:
+        with fitz.open(stream=pdf_data, filetype="pdf") as document:
+            kwargs["page_previews"] = [_render(page, page.rect, scale=1.5)[0] for page in document]
+        kwargs["embedded_images"] = embedded_images
+    output, meta, _ = provider.extract(pdf_data, **kwargs)
     save_artifact({"output": output.model_dump(mode="json"), "meta": meta})
     return output, meta
 
@@ -310,6 +321,11 @@ def process_s2_one() -> bool:
                 and s2.get("units") and s2.get("conversion_version") != DOCX_CONVERSION_VERSION):
             raise ImportProblem("S2_CONFIG_CHANGED", "DOCX 转换器已修复公式处理，请重新上传以完整重跑 S2")
         pdf, pages, warnings = prepare_pdf(batch_id, source)
+        embedded_inventory = None
+        if s2.get("figure_version") == FIGURE_VERSION:
+            with SessionLocal() as db:
+                embedded_inventory = extract_images(db, batch_id, s2_worker_token=token)
+                db.commit()
         document_page_roles = (pdf_page_roles(pdf) if batch.source_mode == "combined"
                                and s2.get("prompt_version") not in {
                                    FOCUSED_COMBINED_PROMPT_VERSION, COMBINED_PROMPT_VERSION,
@@ -371,6 +387,12 @@ def process_s2_one() -> bool:
                 meta = {"usage": {}, "elapsed_seconds": 0.0, "response_id": None}
                 cost = 0.0
             else:
+                unit_images = ([{"asset_id": asset["asset_id"],
+                                 "page": asset["page"] - unit.first_page + 1,
+                                 "bbox": [round(value * 999) for value in asset["bbox"]]}
+                                for asset in embedded_inventory["assets"]
+                                if asset["kind"] == "embedded" and unit.first_page <= asset["page"] <= unit.last_page]
+                               if embedded_inventory is not None else None)
                 output, meta = _extract_unit(batch_id, source["file_id"], pdf, unit,
                                              retry_invalid=failed_unit.get("index") == unit.index
                                              and failed_unit.get("code") in {
@@ -379,7 +401,8 @@ def process_s2_one() -> bool:
                                                  "MODEL_OUTPUT_TRUNCATED",
                                              }, include_answers=include_answers,
                                              combined_prompt_version=s2.get("prompt_version", COMBINED_PROMPT_VERSION),
-                                             document_page_roles=document_page_roles)
+                                              document_page_roles=document_page_roles,
+                                              embedded_images=unit_images)
                 cost = estimate_cost(meta.get("usage") or {})
             with SessionLocal() as db:
                 row = _locked_batch(db, batch_id, token)
@@ -435,6 +458,20 @@ def process_s2_one() -> bool:
                     if duplicate is not None:
                         payload["duplicate_status"] = "suspected"
                         payload["warnings"].append("与另一候选题疑似跨页重复；须核对原页后决定")
+                    if embedded_inventory is not None:
+                        asset_ids, figure_issues = question_figure_assets(
+                            db, batch_id, token, source["file_id"], unit.first_page, question)
+                        payload["content"]["asset_ids"] = asset_ids
+                        payload["warnings"] = [warning for warning in payload["warnings"]
+                                               if warning != "题图尚未裁剪；请对照原页复核"]
+                        if asset_ids:
+                            payload["warnings"].append("题图已自动关联，须核对原页和图片完整性")
+                        elif question.figure_status != "no_figure" or question.diagram_clues:
+                            payload["warnings"].append("题图尚未裁剪；请对照原页复核")
+                        if figure_issues:
+                            payload["warnings"].extend(figure_issues)
+                        payload["extraction"]["figure_status"] = question.figure_status
+                        payload["extraction"]["figure_issues"] = figure_issues
                     created = add_candidate(db, row, payload)
                     existing_items.append(created)
                     if duplicate is not None:
