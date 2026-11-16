@@ -352,6 +352,10 @@ export function QuestionImportPage() {
     ? separateAnswers?.units?.flatMap((unit) => unit.source_answers || [])
     : s2?.units?.flatMap((unit) => unit.source_answers || [])) || []
   const pendingAnswers = reconciliation?.unassigned_answers || sourceAnswers
+  const dedupeStatus = selectedBatch?.checkpoint?.s3?.global_dedupe?.status
+  const answerMatchingComplete = !!reconciliation && selectedBatch?.stage === 's2_completed'
+    && (!dedupeStatus || dedupeStatus === 'completed')
+    && (selectedBatch?.source_mode !== 'separate' || separateAnswers?.status === 'completed')
 
   return <Space direction="vertical" size="large" style={{ width: '100%' }}>
     <Card title="批量题目导入 · 内部识别与候选核对">
@@ -411,12 +415,16 @@ export function QuestionImportPage() {
       {['combined', 'separate'].includes(selectedBatch?.source_mode || '') && <details key={selectedBatch?.id}><summary>{selectedBatch?.source_mode === 'separate' ? '答案文件' : '原文件'}提取答案 {sourceAnswers.length} 条（点击展开）</summary>{sourceAnswers.length === 0 && <Typography.Paragraph type="warning">尚未提取到资料答案，请核对答案页和页段记录。</Typography.Paragraph>}{sourceAnswers.map((answer, index) => <div key={index} className="question-import-answer"><Typography.Text type="secondary">{selectedBatch?.source_mode === 'separate' ? '答案文件' : '原文件'}第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}</details>}
       {separateAnswers?.units?.flatMap((unit) => unit.unresolved_fragments || []).map((fragment, index) => <Typography.Paragraph key={`answer-unresolved-${index}`} type="warning">答案文件第 {fragment.page} 页待核对：{fragment.text}（{fragment.reason}）</Typography.Paragraph>)}
       {reconciliation && <div>
-         <Typography.Paragraph>资料答案 {reconciliation.source_answer_count} 条，已关联 {reconciliation.linked_answer_count} 条，跨页重复 {reconciliation.overlap_duplicate_answers?.length || 0} 条，待认领 {reconciliation.unassigned_answers.length} 条；答案均未由教师确认。</Typography.Paragraph>
-         {reconciliation.overlap_duplicate_answers?.map((answer, index) => <div key={`overlap-${index}`} className="question-import-answer"><Typography.Text type="secondary">第 {answer.page_start} 页重复了第 {answer.matched_page} 页第 {answer.matched_original_number} 题的答案：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}
-        {reconciliation.unassigned_answers.map((answer, index) => <div key={index} className="question-import-answer">
-          <Typography.Text type="warning">第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}（{answer.reason}）：</Typography.Text>
-          <RichQuestionText text={answer.text} assets={[]} />
-        </div>)}
+         <Typography.Paragraph>资料答案 {reconciliation.source_answer_count} 条，已关联 {reconciliation.linked_answer_count} 条，跨页重复 {reconciliation.overlap_duplicate_answers?.length || 0} 条，待认领 {reconciliation.unassigned_answers.length} 条。{reconciliation.linked_answer_count > 0 && '资料答案已关联，须对照原页由教师确认。'}</Typography.Paragraph>
+         {!!((reconciliation.overlap_duplicate_answers?.length || 0) + reconciliation.unassigned_answers.length) &&
+           <details key={`${selectedBatch?.id}:reconciliation`}>
+             <summary>查看跨页重复与待认领答案（{(reconciliation.overlap_duplicate_answers?.length || 0) + reconciliation.unassigned_answers.length} 条）</summary>
+             {reconciliation.overlap_duplicate_answers?.map((answer, index) => <div key={`overlap-${index}`} className="question-import-answer"><Typography.Text type="secondary">第 {answer.page_start} 页重复了第 {answer.matched_page} 页第 {answer.matched_original_number} 题的答案：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}
+             {reconciliation.unassigned_answers.map((answer, index) => <div key={index} className="question-import-answer">
+               <Typography.Text type="warning">第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}（{answer.reason}）：</Typography.Text>
+               <RichQuestionText text={answer.text} assets={[]} />
+             </div>)}
+           </details>}
       </div>}
       {!!reviewIssues.length && <div>
         <Typography.Title level={5}>按问题复核原页</Typography.Title>
@@ -443,7 +451,7 @@ export function QuestionImportPage() {
         ...(candidates.some((item) => item.payload.extraction?.classification_evidence)
           ? [{ title: '模型分类依据', render: (_: unknown, item: Candidate) => item.payload.extraction?.classification_evidence || '未记录', width: 180 }]
           : []),
-        { title: '题干与选项', render: (_, item: Candidate) => <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}><RichQuestionText key="stem" text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />{item.payload.content.options.map((option, index) => <RichQuestionText key={`option-${index}-${option.key}`} text={`${option.key}. ${option.text}`} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />)}{item.payload.extraction?.diagram_clues?.map((clue, index) => <Typography.Text type="warning" key={`clue-${index}`}>题图线索：{clue}</Typography.Text>)}{item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}{item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer"><Typography.Text>资料答案（待确认）：</Typography.Text>{answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}</div>)}{pendingAnswers.filter((answer) => answer.candidate_item_ids?.length === 1 && answer.candidate_item_ids[0] === item.id).map((answer, index) => <div key={`pending-${index}`} className="question-import-answer"><Typography.Text type="warning">第 {answer.page_start} 页资料答案（归属待确认）：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}{item.payload.warnings?.filter((warning) => warning !== '模型报告不确定片段；请人工复核' || !item.payload.extraction?.uncertain_fragments?.length).map((warning, index) => <Typography.Text type="warning" key={`warning-${index}`}>{warning}</Typography.Text>)}</Space> },
+        { title: '题干与选项', render: (_, item: Candidate) => <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}><RichQuestionText key="stem" text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />{item.payload.content.options.map((option, index) => <RichQuestionText key={`option-${index}-${option.key}`} text={`${option.key}. ${option.text}`} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />)}{item.payload.extraction?.diagram_clues?.map((clue, index) => <Typography.Text type="warning" key={`clue-${index}`}>题图线索：{clue}</Typography.Text>)}{item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}{item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer"><Typography.Text>资料答案（待确认）：</Typography.Text>{answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}</div>)}{answerMatchingComplete && !item.payload.answers?.some((answer) => !!answer.text?.trim()) && <Typography.Text type="warning">无答案</Typography.Text>}{pendingAnswers.filter((answer) => answer.candidate_item_ids?.length === 1 && answer.candidate_item_ids[0] === item.id).map((answer, index) => <div key={`pending-${index}`} className="question-import-answer"><Typography.Text type="warning">第 {answer.page_start} 页资料答案（归属待确认）：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}{item.payload.warnings?.filter((warning) => warning !== '资料答案已关联，须对照原页由教师确认' && (warning !== '模型报告不确定片段；请人工复核' || !item.payload.extraction?.uncertain_fragments?.length)).map((warning, index) => <Typography.Text type="warning" key={`warning-${index}`}>{warning}</Typography.Text>)}</Space> },
       ]} />
     </Modal>
   </Space>

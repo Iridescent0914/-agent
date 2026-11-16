@@ -128,6 +128,49 @@ def _artifact_path(batch_id: uuid.UUID, file_id: str, index: int) -> Path:
     return source.with_name(source.name + f".s3-answer-unit{index}.json")
 
 
+def _adapt_incomplete_answer_unit(state: dict, batch_id: uuid.UUID, file_id: str) -> None:
+    if state.get("error_code") not in {"INCOMPLETE_MODEL_OUTPUT", "MODEL_OUTPUT_TRUNCATED"}:
+        return
+    index = state.get("failed_unit_index")
+    units = state.get("units") or []
+    if not isinstance(index, int) or not 0 <= index < len(units):
+        raise ImportProblem("S3_CONFIG_CHANGED", "失败的答案页段检查点无效，请联系管理员")
+    unit = units[index]
+    if (unit["index"] != index or unit["status"] != "pending"
+            or any(row["status"] != "pending" for row in units[index + 1:])
+            or any(_artifact_path(batch_id, file_id, row["index"]).exists()
+                   for row in units[index + 1:])):
+        raise ImportProblem("S3_CONFIG_CHANGED", "答案页段状态不一致，请联系管理员核对")
+
+    page_count = int(state["page_count"])
+    core_count = unit["core_last_page"] - unit["core_first_page"] + 1
+    if core_count > 1:
+        midpoint = unit["core_first_page"] + (core_count - 1) // 2
+        context = max(2, unit["last_page"] - unit["core_last_page"])
+        first = {**unit, "core_last_page": midpoint,
+                 "last_page": min(page_count, midpoint + context)}
+        second = {**unit, "index": index + 1,
+                  "first_page": midpoint + 1, "core_first_page": midpoint + 1,
+                  "last_page": min(page_count, unit["core_last_page"] + context)}
+        units[index:index + 1] = [first, second]
+        for position in range(index + 2, len(units)):
+            units[position]["index"] = position
+        action = "split_core"
+    elif state["error_code"] == "MODEL_OUTPUT_TRUNCATED":
+        raise ImportProblem("S3_ANSWER_REVIEW_REQUIRED",
+                            f"答案文件第 {unit['first_page']} 页输出过长；请拆分原文件或联系管理员调整回答上限")
+    elif unit["last_page"] < page_count:
+        unit["last_page"] = min(page_count, unit["last_page"] + 2)
+        action = "extend_context"
+    else:
+        raise ImportProblem("S3_ANSWER_REVIEW_REQUIRED",
+                            f"答案文件第 {unit['first_page']} 页起始的答案已检查后续全部页面，模型仍未完整转录；请核对原页")
+    state.setdefault("recovery_history", []).append({
+        "failed_index": index, "first_page": unit["first_page"],
+        "core_last_page": unit["core_last_page"], "action": action,
+    })
+
+
 def start_separate_answers(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
                            operator_token: str | None = None) -> QuestionImportBatch:
     settings = get_settings()
@@ -163,6 +206,7 @@ def start_separate_answers(db: Session, batch_id: uuid.UUID, *, budget_cny: floa
     if (source["media_type"] != "application/pdf" and state.get("units")
             and state.get("conversion_version") != DOCX_CONVERSION_VERSION):
         raise ImportProblem("S3_CONFIG_CHANGED", "答案 DOCX 转换器版本变化，请重新上传", 409)
+    _adapt_incomplete_answer_unit(state, batch_id, source["file_id"])
     state.update({"status": "queued", "version": SEPARATE_ANSWER_VERSION,
                   "budget_cny": budget_cny, "source_file_id": source["file_id"],
                   "source_sha256": source["sha256"], "model": settings.question_import_s2_model,

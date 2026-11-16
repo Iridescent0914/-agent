@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from io import BytesIO
 
 import httpx
@@ -15,7 +16,8 @@ from app.models import QuestionImportItem
 from app.services.question_import import ImportProblem, add_candidate, create_batch
 from app.services.question_import_s2 import PageUnit, candidate_from_question, ModelQuestion
 from app.services.question_import_s3_separate import (
-    QwenSeparateAnswerProvider, decode_answer_response, process_separate_answers_one,
+    QwenSeparateAnswerProvider, _adapt_incomplete_answer_unit, decode_answer_response,
+    process_separate_answers_one,
     start_separate_answers, validate_answer_output,
 )
 from app.services.question_import_s3 import reconcile_source_answers
@@ -36,9 +38,10 @@ def db():
             transaction.rollback()
 
 
-def _pdf() -> bytes:
+def _pdf(page_count: int = 1) -> bytes:
     writer = PdfWriter()
-    writer.add_blank_page(width=612, height=792)
+    for _ in range(page_count):
+        writer.add_blank_page(width=612, height=792)
     output = BytesIO()
     writer.write(output)
     return output.getvalue()
@@ -233,3 +236,84 @@ def test_invalid_paid_answer_response_is_recorded_before_explicit_retry(db, tmp_
     assert batch.checkpoint["s3"]["separate_answers"]["calls"] == 2
     assert batch.checkpoint["s3"]["separate_answers"]["status"] == "completed"
     assert item.payload["answers"][0]["text"] == "2"
+
+
+@pytest.mark.parametrize("failure_code", ["INCOMPLETE_MODEL_OUTPUT", "MODEL_OUTPUT_TRUNCATED"])
+def test_incomplete_answer_retry_splits_failed_core_and_keeps_completed_unit(
+        db, tmp_path, monkeypatch, failure_code):
+    _configure(monkeypatch, tmp_path)
+    monkeypatch.setattr(get_settings(), "question_import_s2_pages_per_unit", 4)
+    monkeypatch.setattr(get_settings(), "question_import_s2_overlap_pages", 1)
+    batch = create_batch(db, source_mode="separate", files=[
+        ("questions", "questions.pdf", _pdf()), ("answers", "answers.pdf", _pdf(6))])
+    batch.status = "review_pending"
+    batch.stage = "s2_completed"
+    batch.checkpoint = {"s2": {"auto_global_dedupe": True},
+                        "s3": {"global_dedupe": {"status": "completed"}}}
+    start_separate_answers(db, batch.id, budget_cny=2, operator_token="operator-test")
+    db.commit()
+    connection = db.get_bind()
+    monkeypatch.setattr(separate_service, "SessionLocal", lambda: Session(
+        bind=connection, expire_on_commit=False, join_transaction_mode="create_savepoint"))
+
+    class Provider:
+        calls = []
+
+        def extract(self, _pdf_data, *, page_count, core_page_count, capture_response=None):
+            self.calls.append((page_count, core_page_count))
+            if len(self.calls) == 2:
+                capture_response({"id": "paid-incomplete", "usage": {
+                    "prompt_tokens": 100, "completion_tokens": 30,
+                    "x_tools": {"pdf_page_parser": {"count": page_count}}}}, 1.0)
+                raise ImportProblem(failure_code, "答案页段未完整转录")
+            return validate_answer_output({"complete": True, "source_answers": [],
+                                           "unresolved_fragments": []}, page_count), {
+                "usage": {"prompt_tokens": 100, "completion_tokens": 30,
+                          "x_tools": {"pdf_page_parser": {"count": page_count}}},
+                "response_id": f"answer-{len(self.calls)}", "elapsed_seconds": 1.0}
+
+    monkeypatch.setattr(separate_service, "QwenSeparateAnswerProvider", Provider)
+    assert process_separate_answers_one() is True
+    assert process_separate_answers_one() is True
+    db.refresh(batch)
+    state = batch.checkpoint["s3"]["separate_answers"]
+    assert state["status"] == "failed" and state["calls"] == 2
+    assert [unit["status"] for unit in state["units"]] == ["completed", "pending"]
+
+    start_separate_answers(db, batch.id, budget_cny=2, operator_token="operator-test")
+    db.commit()
+    db.refresh(batch)
+    state = batch.checkpoint["s3"]["separate_answers"]
+    assert [(unit["core_first_page"], unit["core_last_page"]) for unit in state["units"]] == [
+        (1, 4), (5, 5), (6, 6)]
+    assert state["recovery_history"][-1]["action"] == "split_core"
+    assert process_separate_answers_one() is True
+    assert process_separate_answers_one() is True
+    db.refresh(batch)
+    state = batch.checkpoint["s3"]["separate_answers"]
+    assert Provider.calls == [(5, 4), (2, 2), (2, 1), (1, 1)]
+    assert state["status"] == "completed" and state["calls"] == 4
+    assert batch.checkpoint["s3"]["source_answer_reconciliation"]["source_answer_count"] == 0
+
+
+def test_single_page_answer_retry_extends_context_or_requires_review(tmp_path, monkeypatch):
+    _configure(monkeypatch, tmp_path)
+    batch_id, file_id = uuid.uuid4(), str(uuid.uuid4())
+    unit = {**PageUnit(0, 1, 2, 1, 1).__dict__, "status": "pending"}
+    state = {"error_code": "INCOMPLETE_MODEL_OUTPUT", "failed_unit_index": 0,
+             "page_count": 5, "units": [unit]}
+    _adapt_incomplete_answer_unit(state, batch_id, file_id)
+    assert state["units"][0]["last_page"] == 4
+    assert state["recovery_history"][-1]["action"] == "extend_context"
+
+    state["error_code"] = "MODEL_OUTPUT_TRUNCATED"
+    with pytest.raises(ImportProblem) as truncated:
+        _adapt_incomplete_answer_unit(state, batch_id, file_id)
+    assert truncated.value.code == "S3_ANSWER_REVIEW_REQUIRED"
+    assert state["units"][0]["last_page"] == 4
+
+    state["error_code"] = "INCOMPLETE_MODEL_OUTPUT"
+    state["units"][0]["last_page"] = 5
+    with pytest.raises(ImportProblem) as no_more_pages:
+        _adapt_incomplete_answer_unit(state, batch_id, file_id)
+    assert no_more_pages.value.code == "S3_ANSWER_REVIEW_REQUIRED"
