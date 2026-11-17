@@ -8,6 +8,7 @@ import json
 import logging
 import time
 import uuid
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
@@ -206,7 +207,7 @@ class QwenLabelProvider:
 
 
 def start_labels(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
-                 operator_token: str | None = None) -> QuestionImportBatch:
+                 operator_token: str | None = None, rerun: bool = False) -> QuestionImportBatch:
     require_s2_operator_token(operator_token)
     settings = get_settings()
     if (not settings.question_import_s2_enabled or not settings.question_import_s2_api_key
@@ -235,7 +236,10 @@ def start_labels(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
     prior = s3.get("labels") or {}
     if prior.get("groups") and prior.get("version") != LABEL_VERSION:
         raise ImportProblem("S3_LABEL_MIGRATION_REQUIRED", "旧标签分组尚未迁移，请先完成数据库升级", 409)
-    if prior.get("status") in {"queued", "processing", "completed"}:
+    if rerun:
+        if prior.get("status") != "completed":
+            raise ImportProblem("S3_LABEL_UNAVAILABLE", "请先完成当前整批标签任务", 409)
+    elif prior.get("status") in {"queued", "processing", "completed"}:
         raise ImportProblem("COMMIT_CONFLICT", "标签任务已排队、进行中或完成", 409)
     if prior.get("cost_unknown"):
         raise ImportProblem("S3_LABEL_COST_UNKNOWN", "上次调用用量未知，请先核对账单", 409)
@@ -247,11 +251,22 @@ def start_labels(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
         QuestionImportItem.batch_id == batch_id).order_by(QuestionImportItem.ordinal)))
     if any(item.is_fake for item in items):
         raise ImportProblem("S3_LABEL_UNAVAILABLE", "模拟候选题不能调用正式标签模型", 409)
-    groups = _groups(items) if not prior.get("groups") else []
+    groups = _groups(items) if rerun or not prior.get("groups") else []
     checkpoint = dict(batch.checkpoint or {})
     s3 = dict(checkpoint.get("s3") or {})
-    state = dict(s3.get("labels") or {})
-    if not state.get("groups"):
+    state = deepcopy(s3.get("labels") or {})
+    if rerun:
+        if state.get("groups"):
+            s3.setdefault("label_group_audit", []).append({
+                "version": state.get("version"), "groups": state["groups"],
+                "calls": state.get("calls"), "estimated_cny": state.get("estimated_cny"),
+            })
+        state.pop("skipped_item_ids", None)
+        state["overwrite_manual_tags"] = True
+        state["groups"] = [{"index": index, "status": "pending", "items": group}
+                           for index, group in enumerate(groups)]
+    elif not state.get("groups"):
+        state["overwrite_manual_tags"] = False
         state["groups"] = [{"index": index, "status": "pending", "items": group}
                            for index, group in enumerate(groups)]
     else:
@@ -271,54 +286,9 @@ def start_labels(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
     return batch
 
 
-def retry_item_labels(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID, *, expected_revision: int,
-                      budget_cny: float, operator_token: str | None = None) -> QuestionImportBatch:
-    """Queue one changed or uncertain candidate after the initial batch has finished."""
-    require_s2_operator_token(operator_token)
-    settings = get_settings()
-    if not 0 < budget_cny <= settings.question_import_s2_max_budget_cny:
-        raise ImportProblem("INVALID_S3_BUDGET", "标签建议预算超出允许范围")
-    if (not settings.question_import_s2_enabled or not settings.question_import_s2_api_key
-            or not settings.question_import_s2_base_url.startswith("https://")
-            or settings.question_import_s2_model != FLASH_MODEL):
-        raise ImportProblem("S3_LABEL_NOT_CONFIGURED", "标签建议模型尚未配置", 409)
-    batch = db.scalar(select(QuestionImportBatch).where(
-        QuestionImportBatch.id == batch_id, QuestionImportBatch.owner_scope == OWNER_SCOPE).with_for_update())
-    if batch is None:
-        raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
-    state = dict((((batch.checkpoint or {}).get("s3") or {}).get("labels") or {}))
-    if batch.status != "review_pending" or batch.stage != "s2_completed" or state.get("status") != "completed":
-        raise ImportProblem("S3_LABEL_UNAVAILABLE", "请先完成整批标签建议", 409)
-    if state.get("cost_unknown"):
-        raise ImportProblem("S3_LABEL_COST_UNKNOWN", "上次调用用量未知，请先核对账单", 409)
-    if batch.files_purged_at or batch.expires_at <= datetime.now(timezone.utc):
-        raise ImportProblem("FILE_EXPIRED", "原文件和题图已过期，请重新上传", 409)
-    if batch.catalog_snapshot_sha256 != hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest():
-        raise ImportProblem("CATALOG_CHANGED", "正式标签目录已变化，请重新上传批次", 409)
-    if budget_cny <= float(state.get("estimated_cny") or 0):
-        raise ImportProblem("INVALID_S3_BUDGET", "新预算须高于已记录费用")
-    item = db.scalar(select(QuestionImportItem).where(
-        QuestionImportItem.batch_id == batch.id, QuestionImportItem.id == item_id).with_for_update())
-    if item is None:
-        raise ImportProblem("NOT_FOUND", "候选题不存在", 404)
-    if item.revision != expected_revision:
-        raise ImportProblem("REVISION_CONFLICT", "候选题已被修改，请刷新", 409)
-    if item.is_fake or item.payload.get("teacher_decision") not in {None, "pending"}:
-        raise ImportProblem("S3_LABEL_UNAVAILABLE", "已审核或模拟候选题不能重新建议", 409)
-    group = _groups([item])[0]
-    state["groups"].append({"index": max((row["index"] for row in state["groups"]), default=-1) + 1,
-                            "status": "pending", "items": group})
-    state.update({"status": "queued", "budget_cny": budget_cny})
-    checkpoint = dict(batch.checkpoint or {})
-    s3 = dict(checkpoint.get("s3") or {})
-    s3["labels"] = state
-    checkpoint["s3"] = s3
-    batch.checkpoint = checkpoint
-    return batch
-
-
 def _apply_suggestions(db: Session, batch: QuestionImportBatch, group: dict,
-                       suggestions: list[dict], allowed: dict[str, dict]) -> tuple[int, list[str]]:
+                       suggestions: list[dict], allowed: dict[str, dict],
+                       *, overwrite_manual_tags: bool = False) -> tuple[int, list[str]]:
     rows = {str(item.id): item for item in db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch.id).with_for_update())}
     applied = 0
@@ -338,15 +308,14 @@ def _apply_suggestions(db: Session, batch: QuestionImportBatch, group: dict,
         previous = payload.get("label_suggestion") or {}
         replace_previous = bool(previous)
         overrides = set(previous.get("teacher_overrides") or [])
-        # Suggestions may fill empty fields, but never overwrite a teacher's existing choices.
-        if "question_type" not in overrides and (tags.get("question_type") in {None, "unknown"} or (
-                replace_previous and tags.get("question_type") == previous.get("question_type"))):
+        if overwrite_manual_tags or ("question_type" not in overrides and (tags.get("question_type") in {None, "unknown"} or (
+                replace_previous and tags.get("question_type") == previous.get("question_type")))):
             tags["question_type"] = result["question_type"]
-        if "difficulty" not in overrides and (tags.get("difficulty") is None or (
-                replace_previous and tags.get("difficulty") == previous.get("difficulty"))):
+        if overwrite_manual_tags or ("difficulty" not in overrides and (tags.get("difficulty") is None or (
+                replace_previous and tags.get("difficulty") == previous.get("difficulty")))):
             tags["difficulty"] = result["difficulty"]
-        if "main_kp_code" not in overrides and (not tags.get("main_kp_code") or (
-                replace_previous and tags.get("main_kp_code") == previous.get("main_kp_code"))):
+        if overwrite_manual_tags or ("main_kp_code" not in overrides and (not tags.get("main_kp_code") or (
+                replace_previous and tags.get("main_kp_code") == previous.get("main_kp_code")))):
             if result["main_kp_code"]:
                 kp = allowed[result["main_kp_code"]]
                 tags.update({"main_kp_code": result["main_kp_code"], "grade": kp["grade"],
@@ -361,7 +330,7 @@ def _apply_suggestions(db: Session, batch: QuestionImportBatch, group: dict,
                                         "version": LABEL_VERSION, "revision": item.revision + 1,
                                         "fingerprint": entry["fingerprint"],
                                         "catalog_snapshot_sha256": batch.catalog_snapshot_sha256,
-                                        "teacher_overrides": sorted(overrides),
+                                        "teacher_overrides": [] if overwrite_manual_tags else sorted(overrides),
                                         "stale": False}
         item.revision += 1
         payload["revision"] = item.revision
@@ -397,7 +366,7 @@ def process_labels_one() -> bool:
         batch_id = batch.id
         checkpoint = dict(batch.checkpoint or {})
         s3 = dict(checkpoint.get("s3") or {})
-        state = dict(s3["labels"])
+        state = deepcopy(s3["labels"])
         if state["status"] == "processing":
             try:
                 started = datetime.fromisoformat(state["started_at"])
@@ -484,7 +453,7 @@ def process_labels_one() -> bool:
             if batch is not None:
                 checkpoint = dict(batch.checkpoint or {})
                 s3 = dict(checkpoint.get("s3") or {})
-                state = dict(s3["labels"])
+                state = deepcopy(s3["labels"])
                 state["calls"] += 0 if failure else 1
                 if known_cost is not None:
                     state["estimated_cny"] = round(float(state["estimated_cny"]) + known_cost, 6)
@@ -509,11 +478,13 @@ def process_labels_one() -> bool:
             return True
         checkpoint = dict(batch.checkpoint or {})
         s3 = dict(checkpoint.get("s3") or {})
-        state = dict(s3["labels"])
+        state = deepcopy(s3["labels"])
         unit = next(row for row in state["groups"] if row["index"] == group["index"])
         if unit["status"] == "completed":
             return True
-        applied, late_skipped = _apply_suggestions(db, batch, group, suggestions, allowed)
+        applied, late_skipped = _apply_suggestions(
+            db, batch, group, suggestions, allowed,
+            overwrite_manual_tags=bool(state.get("overwrite_manual_tags")))
         unit.update({"status": "completed", "suggestions": suggestions,
                      "applied_count": applied,
                      "skipped_item_ids": [*group["skipped_item_ids"], *late_skipped], **meta})

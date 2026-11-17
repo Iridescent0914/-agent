@@ -22,7 +22,7 @@ from app.services.question_import_s3_images import (
     extract_images, image_bytes, list_images, set_candidate_image, upload_candidate_image,
 )
 from app.services.question_import_s3_separate import start_separate_answers
-from app.services.question_import_s3_labels import _allowed_kps, retry_item_labels, start_labels
+from app.services.question_import_s3_labels import _allowed_kps, start_labels
 from app.services.question_import_s3_review import (
     list_review_issues, list_review_units, review_issue, review_unit,
 )
@@ -69,10 +69,6 @@ class S2StartRequest(BaseModel):
 
 class S3ReviewRequest(BaseModel):
     budget_cny: float = Field(gt=0)
-
-
-class S3LabelRetryRequest(S3ReviewRequest):
-    expected_revision: int = Field(ge=1)
 
 
 class ImageLinkRequest(BaseModel):
@@ -224,12 +220,12 @@ def start_label_suggestions(batch_id: UUID, request: S3ReviewRequest,
                         operator_token=operator_token)
 
 
-@router.post("/{batch_id}/s3/items/{item_id}/retry-labels", response_model=BatchOut)
-def retry_label_suggestion(batch_id: UUID, item_id: UUID, request: S3LabelRetryRequest,
-                           db: Session = Depends(get_db),
-                           operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
-    return retry_item_labels(db, batch_id, item_id, expected_revision=request.expected_revision,
-                             budget_cny=request.budget_cny, operator_token=operator_token)
+@router.post("/{batch_id}/s3/rerun-labels", response_model=BatchOut)
+def rerun_label_suggestions(batch_id: UUID, request: S3ReviewRequest,
+                            db: Session = Depends(get_db),
+                            operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
+    return start_labels(db, batch_id, budget_cny=request.budget_cny,
+                        operator_token=operator_token, rerun=True)
 
 
 @router.post("/{batch_id}/s3/dedupe-batch")

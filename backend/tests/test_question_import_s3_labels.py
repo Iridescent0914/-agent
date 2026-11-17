@@ -18,7 +18,7 @@ from app.services.question_import import ImportProblem, add_candidate, create_ba
 from app.services import question_import as import_service
 from app.services import question_import_s3_labels as labels_service
 from app.services.question_import_s3_labels import (
-    QwenLabelProvider, _allowed_kps, _groups, _split_failed_group, process_labels_one, retry_item_labels, start_labels,
+    QwenLabelProvider, _allowed_kps, _groups, _split_failed_group, process_labels_one, start_labels,
     validate_suggestions,
 )
 
@@ -209,25 +209,31 @@ def test_label_stage_waits_for_dedupe_then_preserves_candidate_identity(db, tmp_
         QuestionImportItem.batch_id == batch.id)))) == 2
 
     update_candidate(db, batch.id, first.id, expected_revision=first.revision,
-                     changes={"tags": {"difficulty": 5, "main_kp_code": None}})
+                     changes={"tags": {"question_type": "true_false", "difficulty": 5,
+                                       "main_kp_code": None, "is_required": True}})
     content = dict(first.payload["content"])
     content["question_text"] = "计算一加二"
     update_candidate(db, batch.id, first.id, expected_revision=first.revision,
                      changes={"content": content})
     assert first.payload["label_suggestion"]["stale"] is True
-    with pytest.raises(ImportProblem) as stale_revision:
-        retry_item_labels(db, batch.id, first.id, expected_revision=first.revision - 1,
-                          budget_cny=1, operator_token="operator-test")
-    assert stale_revision.value.code == "REVISION_CONFLICT"
-    retry_item_labels(db, batch.id, first.id, expected_revision=first.revision,
-                      budget_cny=1, operator_token="operator-test")
+    with pytest.raises(ImportProblem) as already_complete:
+        start_labels(db, batch.id, budget_cny=1, operator_token="operator-test")
+    assert already_complete.value.code == "COMMIT_CONFLICT"
+    start_labels(db, batch.id, budget_cny=1, operator_token="operator-test", rerun=True)
+    assert len(batch.checkpoint["s3"]["label_group_audit"]) == 1
+    assert batch.checkpoint["s3"]["labels"]["overwrite_manual_tags"] is True
+    assert [entry["item_id"] for entry in batch.checkpoint["s3"]["labels"]["groups"][0]["items"]] == [
+        str(first.id), str(second.id)]
     db.commit()
 
     class RetryProvider:
         def suggest(self, group, allowed, images):
-            assert [entry["item_id"] for entry in group] == [str(first.id)]
+            assert [entry["item_id"] for entry in group] == [str(first.id), str(second.id)]
             return ([{**_suggestion(str(first.id)), "main_kp_code": kp_code,
                       "alternative_kp_codes": [], "difficulty": 2,
+                      "question_type": "solution"},
+                     {**_suggestion(str(second.id)), "main_kp_code": kp_code,
+                      "alternative_kp_codes": [], "difficulty": 3,
                       "question_type": "solution"}],
                     {"usage": {"prompt_tokens": 50, "completion_tokens": 20},
                      "estimated_cny": 0.005, "response_id": "labels-2"})
@@ -235,16 +241,19 @@ def test_label_stage_waits_for_dedupe_then_preserves_candidate_identity(db, tmp_
     monkeypatch.setattr(labels_service, "QwenLabelProvider", RetryProvider)
     assert process_labels_one() is True
     db.refresh(first)
+    db.refresh(second)
     db.refresh(batch)
     assert first.payload["label_suggestion"]["stale"] is False
     assert first.payload["label_suggestion"]["difficulty"] == 2
-    assert first.payload["tags"]["difficulty"] == 5  # Teacher's edit wins.
-    assert first.payload["tags"]["main_kp_code"] is None  # Explicitly cleared KP stays empty.
-    assert first.payload["tags"]["question_type"] == "solution"  # Unedited field follows new advice.
+    assert first.payload["tags"]["difficulty"] == 2
+    assert first.payload["tags"]["main_kp_code"] == kp_code
+    assert first.payload["tags"]["question_type"] == "solution"
+    assert first.payload["tags"]["is_required"] is True  # The model does not suggest this field.
+    assert first.payload["label_suggestion"]["teacher_overrides"] == []
+    assert second.payload["tags"]["difficulty"] == 3
     assert batch.checkpoint["s3"]["labels"]["calls"] == 2
 
-    retry_item_labels(db, batch.id, first.id, expected_revision=first.revision,
-                      budget_cny=1, operator_token="operator-test")
+    start_labels(db, batch.id, budget_cny=1, operator_token="operator-test", rerun=True)
     db.commit()
 
     class InvalidPaidProvider:
@@ -260,13 +269,15 @@ def test_label_stage_waits_for_dedupe_then_preserves_candidate_identity(db, tmp_
     db.refresh(batch)
     failed = batch.checkpoint["s3"]["labels"]
     assert failed["status"] == "failed" and failed["cost_unknown"] is False
+    assert failed["overwrite_manual_tags"] is True
     assert failed["calls"] == 3 and failed["estimated_cny"] > 0.015
     start_labels(db, batch.id, budget_cny=1, operator_token="operator-test")
     assert batch.checkpoint["s3"]["labels"]["status"] == "queued"
-    newer_content = dict(first.payload["content"])
-    newer_content["question_text"] = "计算一加三"
-    update_candidate(db, batch.id, first.id, expected_revision=first.revision,
-                     changes={"content": newer_content})
+    for item in (first, second):
+        newer_content = dict(item.payload["content"])
+        newer_content["question_text"] += "（已修改）"
+        update_candidate(db, batch.id, item.id, expected_revision=item.revision,
+                         changes={"content": newer_content})
     db.commit()
 
     class NeverProvider:
@@ -274,11 +285,16 @@ def test_label_stage_waits_for_dedupe_then_preserves_candidate_identity(db, tmp_
             raise AssertionError("stale candidate must not be sent to the model")
 
     monkeypatch.setattr(labels_service, "QwenLabelProvider", NeverProvider)
-    assert process_labels_one() is True
+    for _ in range(4):
+        assert process_labels_one() is True
+        db.refresh(batch)
+        if batch.checkpoint["s3"]["labels"]["status"] == "completed":
+            break
     db.refresh(batch)
     finished = batch.checkpoint["s3"]["labels"]
-    assert finished["status"] == "completed" and finished["calls"] == 3
-    assert finished["groups"][-1]["skipped_item_ids"] == [str(first.id)]
+    assert finished["status"] == "completed" and finished["calls"] == 3, finished["groups"]
+    assert {item_id for group in finished["groups"] for item_id in group.get("skipped_item_ids", [])} == {
+        str(first.id), str(second.id)}
 
 
 def test_separate_labels_require_completed_answer_association(db, tmp_path, monkeypatch):

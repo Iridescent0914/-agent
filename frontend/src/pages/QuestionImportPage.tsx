@@ -67,6 +67,14 @@ type Candidate = {
 type S2Config = { ready: boolean; model: string; max_budget_cny: number; max_output_tokens: number; pages_per_unit: number; overlap_pages: number }
 type LabelCatalogPoint = { code: string; name: string; grade: string; chapter_name: string; section: string; core_literacies: string[] }
 type LabelEdit = { question_type?: string; difficulty?: number | null; main_kp_code?: string | null; is_required?: boolean }
+
+function hasImportLabels(item: Candidate): boolean {
+  const tags = item.payload.tags
+  return !!tags && ['choice', 'fill_blank', 'calculation', 'solution', 'true_false'].includes(tags.question_type || '')
+    && Number.isInteger(tags.difficulty) && (tags.difficulty ?? 0) >= 1 && (tags.difficulty ?? 0) <= 5
+    && !!tags.main_kp_code && !!tags.grade && !!tags.chapter_code && !!tags.section
+    && !!tags.core_literacies?.length
+}
 const questionTypeLabels: Record<string, string> = { choice: '选择题', fill_blank: '填空题', calculation: '计算题', solution: '解答题', true_false: '判断题', unknown: '待确认' }
 
 type ImageAsset = { asset_id: string; kind: string; page: number | null; bbox: number[] | null; width: number; height: number; sha256: string; candidate_item_ids: string[]; removed_candidate_for_item_ids?: string[]; duplicate_of_kept_image?: boolean }
@@ -382,11 +390,11 @@ export function QuestionImportPage() {
       onOk: async () => {
         setReviewingKey(`batch:${batch.id}`)
         try {
-          const result = await apiPost<{ status: string; removed_duplicate_count?: number; error_message?: string }>(
+          const result = await apiPost<{ status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string }>(
             `/question-imports/${batch.id}/s3/dedupe-batch`, { budget_cny: budget }, undefined,
             { 'X-Import-S2-Token': operatorToken })
           message[result.status === 'completed' ? 'success' : 'warning'](result.status === 'completed'
-            ? `整批判重完成，移除 ${result.removed_duplicate_count || 0} 道重复候选${batch.source_mode === 'combined' ? '，已重新关联资料答案' : ''}`
+            ? `去重后保留 ${(result.reviewed_candidate_count || 0) - (result.removed_duplicate_count || 0)} 道题`
             : result.error_message || '整批判重未完成')
           await reload(batch.id)
           if (selectedBatchId === batch.id) await viewCandidates(batch.id)
@@ -413,38 +421,21 @@ export function QuestionImportPage() {
     })
   }
 
-  function confirmLabels(batch: Batch) {
+  function confirmLabels(batch: Batch, rerun = false) {
     if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
     const replan = batch.checkpoint?.s3?.labels?.error_code === 'S3_LABEL_REPLAN_REQUIRED'
     Modal.confirm({
-      title: replan ? '按新规则重新处理整批标签？' : '生成本批候选题的标签建议？',
-      content: `${replan ? '旧分组已停用。本次会按每组最多 12 题重新处理整批候选题；此前已成功的题目也会再次发送并产生费用，历史费用仍计入累计预算。' : '仅处理已去重且已完成资料答案关联的候选题。'}将题干、选项和已关联题图分组发送给百炼 ${s2Config?.model || ''}；模型建议题型、难度和主属 KP，教师仍须核对。预算阈值 ¥${budget}；单次调用可能超过阈值。`,
-      okText: '开始生成标签', cancelText: '取消',
+      title: rerun ? '全部重新打标签？' : replan ? '按新规则重新处理整批标签？' : '生成本批候选题的标签建议？',
+      content: `${rerun ? '将整批候选题按每组最多 12 题重新发送给模型；新结果会覆盖此前手动修改的题型、难度和主属知识点，必做标记保留。原调用费用仍计入累计预算，本次会产生新费用。' : replan ? '旧分组已停用。本次会按每组最多 12 题重新处理整批候选题；此前已成功的题目也会再次发送并产生费用，历史费用仍计入累计预算。' : '仅处理已去重且已完成资料答案关联的候选题。'}将题干、选项和已关联题图分组发送给百炼 ${s2Config?.model || ''}；模型建议题型、难度和主属 KP，教师仍须核对。预算阈值 ¥${budget}；单次调用可能超过阈值。`,
+      okText: rerun ? '全部重新打标签' : '开始生成标签', cancelText: '取消',
       onOk: async () => {
         try {
-          await apiPost(`/question-imports/${batch.id}/s3/start-labels`,
+          await apiPost(`/question-imports/${batch.id}/s3/${rerun ? 'rerun-labels' : 'start-labels'}`,
             { budget_cny: budget }, undefined, { 'X-Import-S2-Token': operatorToken })
+          if (rerun) setLabelEdits({})
           message.success('标签建议已排队')
           await reload(batch.id)
         } catch (error) { message.error(error instanceof Error ? error.message : '启动标签建议失败') }
-      },
-    })
-  }
-
-  function confirmRetryLabels(item: Candidate) {
-    if (!selectedBatch || !budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
-    const batchId = selectedBatch.id
-    Modal.confirm({
-      title: `重新建议第 ${item.ordinal} 题的标签？`,
-      content: `将当前题干、选项和已关联题图发送给百炼 ${s2Config?.model || ''}。本批累计费用的预算阈值为 ¥${budget}，教师仍须核对建议。`,
-      okText: '重新建议', cancelText: '取消',
-      onOk: async () => {
-        try {
-          await apiPost(`/question-imports/${batchId}/s3/items/${item.id}/retry-labels`,
-            { expected_revision: item.revision, budget_cny: budget }, undefined, { 'X-Import-S2-Token': operatorToken })
-          message.success('本题标签建议已排队')
-          await reload(batchId)
-        } catch (error) { message.error(error instanceof Error ? error.message : '重新建议标签失败') }
       },
     })
   }
@@ -466,9 +457,9 @@ export function QuestionImportPage() {
 
   async function reconcileAnswers(batch: Batch) {
     try {
-      const result = await apiPost<{ source_answer_count: number; linked_answer_count: number; overlap_duplicate_answers: unknown[]; unassigned_answers: unknown[] }>(
+      const result = await apiPost<{ linked_question_count: number }>(
         `/question-imports/${batch.id}/s3/reconcile-source-answers`, {})
-      message[result.linked_answer_count ? 'success' : 'warning'](`原文件提取答案 ${result.source_answer_count} 条，已关联 ${result.linked_answer_count} 条；跨页重复 ${result.overlap_duplicate_answers.length} 条；待认领 ${result.unassigned_answers.length} 条`)
+      message[result.linked_question_count ? 'success' : 'warning'](`已为 ${result.linked_question_count} 道题关联答案`)
       await reload(batch.id)
       if (selectedBatchId === batch.id) await viewCandidates(batch.id)
     } catch (error) { message.error(error instanceof Error ? error.message : '资料答案关联失败') }
@@ -524,10 +515,11 @@ export function QuestionImportPage() {
       {selectedBatch?.stage === 's2_completed' && <label>添加图片：<input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageBusy || !images?.files_available} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file && selectedBatch) void uploadCandidateImage(selectedBatch, item, file) }} /></label>}
       {item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}
       {item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer"><Typography.Text>资料答案（待确认）：</Typography.Text>{answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}</div>)}
-      {(suggestion || labelTask) && <Card size="small" title="入库标签建议 · 待教师核对" style={{ width: '100%' }}>
-        {suggestion?.stale && <Typography.Paragraph type="warning">题干或题图已变化，原标签建议已过时。请重新建议或手动核对调整。</Typography.Paragraph>}
+      {selectedBatch?.stage === 's2_completed' && <Card size="small" title="入库标签 · 待教师核对" style={{ width: '100%' }}>
+        {!hasImportLabels(item) && <Typography.Paragraph type="warning">无标签，请人工打标签</Typography.Paragraph>}
+        {suggestion?.stale && <Typography.Paragraph type="warning">题干或题图已变化，原标签建议已过时。请全部重新打标签或手动核对调整。</Typography.Paragraph>}
         {suggestion && (suggestion.uncertainty || suggestion.alternative_kp_codes.length > 0) && <Typography.Paragraph type="secondary">{suggestion.uncertainty ? `不确定：${suggestion.uncertainty}` : ''}{suggestion.alternative_kp_codes.length ? `${suggestion.uncertainty ? '；' : ''}备选知识点：${suggestion.alternative_kp_codes.map((code) => labelCatalog.find((point) => point.code === code)?.name || '知识点名称待加载').join('、')}` : ''}</Typography.Paragraph>}
-        {!suggestion && <Typography.Paragraph type="warning">{skippedByTask ? '本题在排队后发生变化，未发送给模型；可在本批完成后重新建议。' : ['queued', 'processing'].includes(labelTask?.status || '') ? '标签任务尚未处理本题；也可先人工填写。' : '本题没有可用的标签建议，请人工填写或重试标签任务。'}</Typography.Paragraph>}
+        {!suggestion && <Typography.Paragraph type="warning">{skippedByTask ? '本题在排队后发生变化，未发送给模型；请人工填写，或在本批完成后全部重新打标签。' : ['queued', 'processing'].includes(labelTask?.status || '') ? '标签任务尚未处理本题；也可先人工填写。' : '本题没有可用的模型建议，请人工填写或全部重新打标签。'}</Typography.Paragraph>}
         <Space wrap>
           <label>题型：<Select aria-label={`第 ${item.ordinal} 题题型`} style={{ width: 120 }} value={edit.question_type ?? tags.question_type ?? 'unknown'}
             options={Object.entries(questionTypeLabels).map(([value, label]) => ({ value, label }))}
@@ -542,7 +534,6 @@ export function QuestionImportPage() {
             options={[{ value: false, label: '否' }, { value: true, label: '是' }]}
             onChange={(value: boolean) => setLabelEdits((current) => ({ ...current, [item.id]: { ...current[item.id], is_required: value } }))} /></label>
           <Button size="small" disabled={!Object.keys(edit).length} loading={labelSaving === item.id} onClick={() => void saveLabels(item)}>保存调整</Button>
-          {selectedBatch?.checkpoint?.s3?.labels?.status === 'completed' && <Button size="small" disabled={!s2Config?.ready || !!selectedBatch.files_purged_at} onClick={() => confirmRetryLabels(item)}>重新建议本题</Button>}
         </Space>
         <div><Typography.Text type="secondary">当前派生标签：年级：{selectedKp?.grade || tags.grade || '待定'}；章：{selectedKp?.chapter_name || (tags.main_kp_code ? '名称待加载' : '待定')}；节：{selectedKp?.section || tags.section || '待定'}；核心素养：{(selectedKp?.core_literacies || tags.core_literacies || []).join('、') || '待定'}；必做：{tags.is_required ? '是' : '否（默认）'}；状态：{item.payload.label_status === 'out_of_scope' ? '超出当前知识点范围或无法判断' : '待核对'}</Typography.Text></div>
       </Card>}
@@ -582,6 +573,7 @@ export function QuestionImportPage() {
              {batch.stage === 's2_completed' && batch.source_mode === 'separate' && batch.checkpoint?.s3?.global_dedupe?.status === 'completed' && !['queued', 'processing', 'completed'].includes(batch.checkpoint?.s3?.separate_answers?.status || '') && <Button type="primary" disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmSeparateAnswers(batch)}>{batch.checkpoint?.s3?.separate_answers?.status === 'paused' ? '增加预算并继续识别答案' : batch.checkpoint?.s3?.separate_answers?.status === 'failed' ? '重试答案识别' : '识别答案文件'}</Button>}
              {batch.stage === 's2_completed' && (batch.source_mode === 'combined' || batch.checkpoint?.s3?.separate_answers?.status === 'completed') && <Button onClick={() => void reconcileAnswers(batch)}>重新匹配答案</Button>}
              {batch.stage === 's2_completed' && batch.checkpoint?.s3?.global_dedupe?.status === 'completed' && (batch.source_mode === 'questions_only' || (batch.source_mode === 'combined' && !!batch.checkpoint?.s3?.source_answer_reconciliation) || (batch.source_mode === 'separate' && batch.checkpoint?.s3?.separate_answers?.status === 'completed' && !!batch.checkpoint?.s3?.source_answer_reconciliation)) && !['queued', 'processing', 'completed'].includes(batch.checkpoint?.s3?.labels?.status || '') && !batch.checkpoint?.s3?.labels?.cost_unknown && <Button type="primary" disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmLabels(batch)}>{batch.checkpoint?.s3?.labels?.status === 'paused' ? '增加预算并继续打标签' : batch.checkpoint?.s3?.labels?.status === 'failed' ? '重试标签建议' : '生成入库标签建议'}</Button>}
+             {batch.stage === 's2_completed' && batch.checkpoint?.s3?.labels?.status === 'completed' && <Button disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmLabels(batch, true)}>全部重新打标签</Button>}
              {batch.checkpoint?.s3?.labels?.cost_unknown && <Typography.Text type="warning">标签调用费用未知，请先核对账单后处理</Typography.Text>}
              {batch.status === 'failed' && batch.error_code !== 'S2_REVIEW_REQUIRED' && !batch.files_purged_at && <Button disabled={loading} onClick={() => confirmRetry(batch)}>{batch.error_code === 'INCOMPLETE_MODEL_OUTPUT' ? '自动调整页段并重试' : '重试'}</Button>}
              {!['cancelled', 'completed', 'completed_with_unassigned'].includes(batch.status) && <Button disabled={loading} onClick={() => void act(batch.id, 'cancel')}>取消</Button>}
@@ -590,6 +582,7 @@ export function QuestionImportPage() {
     </Card>
     <Modal title="候选题、来源答案与页段记录" open={!!selectedBatchId} width={900} footer={<Button onClick={() => setSelectedBatchId(null)}>关闭</Button>} onCancel={() => setSelectedBatchId(null)}>
       <Typography.Paragraph>按 PDF 页段自动提取位图，并在同次模型调用中识别题目、原文答案和所需题图；缺少独立题图时按模型坐标自动裁剪。已匹配图片直接显示在对应题目处。</Typography.Paragraph>
+      {selectedBatch?.stage === 's2_completed' && candidates.some((item) => !hasImportLabels(item)) && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={`还有 ${candidates.filter((item) => !hasImportLabels(item)).length} 道题缺少完整入库标签，请人工打标签；所有题都有标签后才能入库。`} />}
       {selectedBatch?.stage === 's2_completed' && <Card size="small" style={{ marginBottom: 16 }}><details>
         <summary>无法匹配到题目的图片（{unmatchedImages.length}）</summary>
         {!images?.files_available && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message="临时题图已过期，无法显示或修改；请重新上传文件" />}
@@ -611,15 +604,15 @@ export function QuestionImportPage() {
         </> : null}
       </details></Card>}
       {['combined', 'separate'].includes(selectedBatch?.source_mode || '') && <Typography.Paragraph>
-        原文答案已提取 {sourceAnswers.length} 条；{reconciliation
-          ? `S3 已为 ${reconciliation.linked_question_count}/${candidates.length} 道题关联答案，答案显示在下方对应题目内。`
+        {reconciliation
+          ? `已为 ${reconciliation.linked_question_count}/${candidates.length} 道题关联答案。`
           : selectedBatch?.source_mode === 'separate'
             ? `答案文件识别状态：${separateAnswers?.status || '未开始'}。`
           : selectedBatch?.stage === 's2_completed' && selectedBatch?.checkpoint?.s2?.auto_global_dedupe
             ? '后台正在整批去重并关联题答，题目内的答案会在完成后自动刷新。'
             : '尚未完成题答关联。'}
       </Typography.Paragraph>}
-      {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'completed' && <Typography.Paragraph>整批模型判重：比较 {selectedBatch.checkpoint.s3.global_dedupe.reviewed_candidate_count || 0} 道候选，移除 {selectedBatch.checkpoint.s3.global_dedupe.removed_duplicate_count || 0} 道重复题。</Typography.Paragraph>}
+      {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'completed' && <Typography.Paragraph>去重后保留 {candidates.length} 道题。</Typography.Paragraph>}
       {['auto_claimed', 'running'].includes(selectedBatch?.checkpoint?.s3?.global_dedupe?.status || '') && <Typography.Paragraph>正在自动整批去重；请稍后刷新。</Typography.Paragraph>}
       {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'pending_budget' && <Typography.Paragraph type="warning">S2 预算不足以进行整批判重；请在上方提高预算阈值后点击“增加预算并整理整批”。</Typography.Paragraph>}
       {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'failed' && <Typography.Paragraph type="warning">整批模型判重失败：{selectedBatch.checkpoint.s3.global_dedupe.error_message}</Typography.Paragraph>}
@@ -632,20 +625,15 @@ export function QuestionImportPage() {
           {!!unit.overlap_suspects?.length && <details><summary>S2 当时检出的疑似跨页重复 {unit.overlap_suspects.length} 对</summary>{unit.overlap_suspects.map((pair, index) => <Typography.Paragraph key={index}>候选 {pair.candidate_item_id} 与 {pair.other_item_id}；当前结果以整批模型判重为准。</Typography.Paragraph>)}</details>}
         </div>)}
       </details>}
-      {['combined', 'separate'].includes(selectedBatch?.source_mode || '') && <details key={selectedBatch?.id}><summary>{selectedBatch?.source_mode === 'separate' ? '答案文件' : '原文件'}提取答案 {sourceAnswers.length} 条（点击展开）</summary>{sourceAnswers.length === 0 && <Typography.Paragraph type="warning">尚未提取到资料答案，请核对答案页和页段记录。</Typography.Paragraph>}{sourceAnswers.map((answer, index) => <div key={index} className="question-import-answer"><Typography.Text type="secondary">{selectedBatch?.source_mode === 'separate' ? '答案文件' : '原文件'}第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}</details>}
       {separateAnswers?.units?.flatMap((unit) => unit.unresolved_fragments || []).map((fragment, index) => <Typography.Paragraph key={`answer-unresolved-${index}`} type="warning">答案文件第 {fragment.page} 页待核对：{fragment.text}（{fragment.reason}）</Typography.Paragraph>)}
-      {reconciliation && <div>
-         <Typography.Paragraph>资料答案 {reconciliation.source_answer_count} 条，已关联 {reconciliation.linked_answer_count} 条，跨页重复 {reconciliation.overlap_duplicate_answers?.length || 0} 条，待认领 {reconciliation.unassigned_answers.length} 条。{reconciliation.linked_answer_count > 0 && '资料答案已关联，须对照原页由教师确认。'}</Typography.Paragraph>
-         {!!((reconciliation.overlap_duplicate_answers?.length || 0) + reconciliation.unassigned_answers.length) &&
+      {reconciliation && reconciliation.unassigned_answers.length > 0 &&
            <details key={`${selectedBatch?.id}:reconciliation`}>
-             <summary>查看跨页重复与待认领答案（{(reconciliation.overlap_duplicate_answers?.length || 0) + reconciliation.unassigned_answers.length} 条）</summary>
-             {reconciliation.overlap_duplicate_answers?.map((answer, index) => <div key={`overlap-${index}`} className="question-import-answer"><Typography.Text type="secondary">第 {answer.page_start} 页重复了第 {answer.matched_page} 页第 {answer.matched_original_number} 题的答案：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}
+             <summary>待核对归属的答案（{reconciliation.unassigned_answers.length} 条）</summary>
              {reconciliation.unassigned_answers.map((answer, index) => <div key={index} className="question-import-answer">
                <Typography.Text type="warning">第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}（{answer.reason}）：</Typography.Text>
                <RichQuestionText text={answer.text} assets={[]} />
              </div>)}
            </details>}
-      </div>}
       {!!reviewIssues.length && <details key={`${selectedBatch?.id}:review-issues`}>
         <summary>按问题复核原页（{reviewIssues.length} 个问题）</summary>
         <Typography.Paragraph type="secondary">同一页段有多个问题时，可一次发送相关原页。重复题和答案归属可能由系统自动处理；未确定片段只保存模型建议，题目不会自动修改。</Typography.Paragraph>
