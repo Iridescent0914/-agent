@@ -148,6 +148,13 @@ def test_separate_answer_worker_links_only_unique_number_to_answer_file(db, tmp_
     assert answer["teacher_confirmed"] is False
     assert answer["evidence"][0]["file_id"] == batch.files[1]["file_id"]
     assert first.payload["selected_answer_id"] is None
+    first.revision = 4
+    first.payload = {**first.payload, "revision": 4}
+    db.flush()
+    rematched = reconcile_source_answers(db, batch.id, force=True)
+    assert rematched["linked_answer_count"] == 1
+    assert first.revision == 4
+    assert first.payload["answers"][0] == answer
     assert process_separate_answers_one() is False
     assert len(list(db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch.id)))) == 3

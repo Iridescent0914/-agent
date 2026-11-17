@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import QuestionImportBatch, QuestionImportItem
-from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, OWNER_SCOPE, _path_for, add_candidate
+from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, OWNER_SCOPE, _path_for, active_candidate, add_candidate
 from app.services.question_import_s2 import (
     COMBINED_PROMPT_VERSION, COMBINED_PROMPT_VERSIONS, ModelQuestion,
     PageUnit, candidate_from_question,
@@ -96,6 +96,15 @@ def _replaceable_source_answer(item: QuestionImportItem) -> bool:
             and not payload.get("selected_answer_id")
             and all(answer.get("answer_source") == "source_extracted"
                     and not answer.get("teacher_confirmed") for answer in answers))
+
+
+def _already_linked_source_answer(item: QuestionImportItem, version: dict[str, Any]) -> bool:
+    """Recognize the same source answer without changing a later teacher edit."""
+    return any(
+        answer.get("answer_source") == "source_extracted"
+        and all(answer.get(field) == version[field] for field in ("answer_id", "text", "evidence"))
+        for answer in (item.payload.get("answers") or [])
+    )
 
 
 def _classify_overlap_duplicates(s2: dict[str, Any], result: dict[str, Any],
@@ -189,9 +198,9 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
         raise ImportProblem("S3_CONFIG_CHANGED",
                             "DOCX 转换器已更新，请重新上传并完整重跑 S2，避免新旧 PDF 页码混用", 409)
 
-    items = list(db.scalars(select(QuestionImportItem).where(
+    items = [item for item in db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch.id,
-    ).order_by(QuestionImportItem.ordinal).with_for_update()))
+    ).order_by(QuestionImportItem.ordinal).with_for_update()) if active_candidate(item)]
     if not force and previous_result.get("schema_version") == "s3-source-answer-reconciliation-v2":
         result = _classify_overlap_duplicates(source_units, previous_result, items)
         checkpoint = dict(batch.checkpoint or {})
@@ -246,8 +255,6 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
                 reason = "question_not_found"
             elif len(targets) != 1:
                 reason = "repeated_question_number"
-            if reason is None and not _replaceable_source_answer(targets[0]):
-                reason = "candidate_already_edited"
             if reason:
                 unassigned.append({**answer, "reason": reason,
                                    "candidate_item_ids": [str(item.id) for item in targets]})
@@ -293,6 +300,14 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
         version = {"answer_id": _answer_id(ordered), "answer_source": "source_extracted",
                    "text": "\n".join(text_parts), "evidence": evidence,
                    "teacher_confirmed": False}
+        if _already_linked_source_answer(item, version):
+            linked_count += len(ordered)
+            continue
+        if not _replaceable_source_answer(item):
+            unassigned.extend({**answer, "reason": "candidate_already_edited",
+                               "candidate_item_ids": [str(item.id)]} for answer in ordered)
+            del matched[item.id]
+            continue
         payload = dict(item.payload)
         payload["answers"] = [version]
         payload["answer_match_status"] = (

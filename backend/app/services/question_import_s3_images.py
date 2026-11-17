@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models import QuestionImportBatch, QuestionImportItem
-from app.services.question_import import OWNER_SCOPE, ImportProblem, get_batch
+from app.services.question_import import OWNER_SCOPE, ImportProblem, _editable_after_dedupe, active_candidate, get_batch
 from app.services.question_import_s2 import prepare_pdf
 
 
@@ -110,8 +110,10 @@ def list_images(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
     state = _image_state(batch)
     linked: dict[str, list[str]] = {}
     items = list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch_id)))
-    active = {str(item.id): item for item in items}
-    assets = state.get("assets") or []
+    active = {str(item.id): item for item in items if active_candidate(item)}
+    deleted_ids = {str(item.id) for item in items if not active_candidate(item)}
+    assets = [asset for asset in state.get("assets") or []
+              if not (asset.get("kind") == "upload" and asset.get("uploaded_for_item_id") in deleted_ids)]
     hashes = {asset["asset_id"]: asset.get("sha256") for asset in assets}
     removed_rows = ((batch.checkpoint or {}).get("s3") or {}).get("model_removed_duplicates") or {}
     removed_to_kept = {row["removed_item_id"]: row["kept_item_id"] for row in removed_rows.values()}
@@ -299,6 +301,7 @@ def image_bytes(db: Session, batch_id: uuid.UUID, asset_id: uuid.UUID) -> bytes:
 def set_candidate_image(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
                         asset_id: uuid.UUID, *, expected_revision: int, linked: bool) -> QuestionImportItem:
     batch = _live_batch(db, batch_id, lock=True)
+    _editable_after_dedupe(batch)
     asset = next((row for row in _image_state(batch).get("assets") or []
                   if row["asset_id"] == str(asset_id)), None)
     if asset is None or not _asset_path(batch_id, asset_id).is_file():
@@ -306,7 +309,7 @@ def set_candidate_image(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
     item = db.scalar(select(QuestionImportItem).where(
         QuestionImportItem.id == item_id, QuestionImportItem.batch_id == batch_id,
     ).with_for_update())
-    if item is None:
+    if item is None or not active_candidate(item):
         raise ImportProblem("NOT_FOUND", "候选题不存在", 404)
     if item.revision != expected_revision:
         raise ImportProblem("REVISION_CONFLICT", "候选题已被修改，请刷新", 409)
@@ -357,10 +360,11 @@ def upload_candidate_image(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
                            payload_bytes: bytes, *, expected_revision: int) -> QuestionImportItem:
     """Normalize a teacher image and attach it to exactly one staged candidate."""
     batch = _live_batch(db, batch_id, lock=True)
+    _editable_after_dedupe(batch)
     item = db.scalar(select(QuestionImportItem).where(
         QuestionImportItem.id == item_id, QuestionImportItem.batch_id == batch_id,
     ).with_for_update())
-    if item is None:
+    if item is None or not active_candidate(item):
         raise ImportProblem("NOT_FOUND", "候选题不存在", 404)
     if item.revision != expected_revision:
         raise ImportProblem("REVISION_CONFLICT", "候选题已被修改，请刷新", 409)

@@ -12,8 +12,8 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.models import QuestionImportBatch, QuestionImportItem
 from app.services.question_import import (
-    OWNER_SCOPE, ImportProblem, cancel_batch, create_batch, get_batch, retry_batch,
-    update_candidate,
+    OWNER_SCOPE, ImportProblem, active_candidate, cancel_batch, create_batch,
+    create_teacher_candidate, delete_teacher_candidate, get_batch, retry_batch, update_candidate,
 )
 from app.services.question_import_s2_worker import start_s2
 from app.services.question_import_s3 import reconcile_source_answers, restore_nonquestion_fragment
@@ -61,6 +61,18 @@ class CandidateOut(BaseModel):
 class CandidateUpdate(BaseModel):
     expected_revision: int = Field(ge=1)
     changes: dict
+
+
+class CandidateCreate(BaseModel):
+    question_text: str
+    options: list[dict[str, str]] = Field(default_factory=list)
+    answer_text: str | None = None
+    original_number: str | None = None
+    source_page: int | None = None
+
+
+class CandidateDelete(BaseModel):
+    expected_revision: int = Field(ge=1)
 
 
 class S2StartRequest(BaseModel):
@@ -153,9 +165,17 @@ def start_extraction(batch_id: UUID, request: S2StartRequest, db: Session = Depe
 @router.get("/{batch_id}/items", response_model=list[CandidateOut])
 def list_items(batch_id: UUID, db: Session = Depends(get_db)):
     get_batch(db, batch_id)
-    return list(db.scalars(select(QuestionImportItem).where(
+    return [item for item in db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch_id
-    ).order_by(QuestionImportItem.ordinal)))
+    ).order_by(QuestionImportItem.ordinal)) if active_candidate(item)]
+
+
+@router.post("/{batch_id}/items", response_model=CandidateOut, status_code=201)
+def create_item(batch_id: UUID, request: CandidateCreate, db: Session = Depends(get_db)):
+    return create_teacher_candidate(db, batch_id, question_text=request.question_text,
+                                    options=request.options, answer_text=request.answer_text,
+                                    original_number=request.original_number,
+                                    source_page=request.source_page)
 
 
 @router.get("/{batch_id}/s3/images")
@@ -272,3 +292,10 @@ def patch_item(batch_id: UUID, item_id: UUID, request: CandidateUpdate,
     return update_candidate(db, batch_id, item_id,
                             expected_revision=request.expected_revision,
                             changes=request.changes)
+
+
+@router.delete("/{batch_id}/items/{item_id}")
+def delete_item(batch_id: UUID, item_id: UUID, request: CandidateDelete,
+                db: Session = Depends(get_db)):
+    delete_teacher_candidate(db, batch_id, item_id, expected_revision=request.expected_revision)
+    return {"deleted": True}

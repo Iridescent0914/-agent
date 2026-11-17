@@ -29,6 +29,22 @@ PURGEABLE_FOR_CAP = {"completed", "completed_with_unassigned", "cancelled"}
 MODES = {"questions_only", "combined", "separate"}
 
 
+def active_candidate(item: QuestionImportItem) -> bool:
+    return not (item.payload or {}).get("teacher_deleted_at")
+
+
+def _editable_after_dedupe(batch: QuestionImportBatch) -> None:
+    s3 = (batch.checkpoint or {}).get("s3") or {}
+    if (batch.status != "review_pending" or batch.stage != "s2_completed"
+            or (s3.get("global_dedupe") or {}).get("status") != "completed"):
+        raise ImportProblem("COMMIT_CONFLICT", "请在整批去重完成后修改候选题", 409)
+    if batch.source_mode == "separate" and (s3.get("separate_answers") or {}).get("status") != "completed":
+        raise ImportProblem("COMMIT_CONFLICT", "请在答案文件识别完成后修改候选题", 409)
+    labels = (s3.get("labels") or {}).get("status")
+    if labels in {"queued", "processing"}:
+        raise ImportProblem("COMMIT_CONFLICT", "标签建议生成期间不可修改题目，请等待任务完成", 409)
+
+
 def require_s2_operator_token(provided: str | None) -> None:
     expected = get_settings().question_import_s2_operator_token
     if not expected or not provided or not secrets.compare_digest(expected, provided):
@@ -264,7 +280,10 @@ def add_candidate(db: Session, batch: QuestionImportBatch, payload: dict[str, An
     ).with_for_update())
     if batch is None:
         raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
-    count = db.scalar(select(func.count(QuestionImportItem.id)).where(QuestionImportItem.batch_id == batch.id)) or 0
+    count = db.scalar(select(func.count(QuestionImportItem.id)).where(
+        QuestionImportItem.batch_id == batch.id,
+        ~QuestionImportItem.payload.has_key("teacher_deleted_at"),
+    )) or 0
     if count >= get_settings().question_import_max_candidates:
         raise ImportProblem("FILE_LIMIT_EXCEEDED", "候选题数量超过试点上限", 413)
     item_id = uuid.uuid4()
@@ -285,21 +304,118 @@ def add_candidate(db: Session, batch: QuestionImportBatch, payload: dict[str, An
     return item
 
 
+def _mark_answer_reconciliation_stale(batch: QuestionImportBatch) -> None:
+    checkpoint = dict(batch.checkpoint or {})
+    s3 = dict(checkpoint.get("s3") or {})
+    result = s3.get("source_answer_reconciliation")
+    if result:
+        s3["source_answer_reconciliation"] = {**result, "manual_candidate_changes_pending": True}
+        checkpoint["s3"] = s3
+        batch.checkpoint = checkpoint
+
+
+def create_teacher_candidate(db: Session, batch_id: uuid.UUID, *, question_text: str,
+                             options: list[dict[str, str]], answer_text: str | None = None,
+                             original_number: str | None = None,
+                             source_page: int | None = None) -> QuestionImportItem:
+    batch = db.scalar(select(QuestionImportBatch).where(
+        QuestionImportBatch.id == batch_id, QuestionImportBatch.owner_scope == OWNER_SCOPE,
+    ).with_for_update())
+    if batch is None:
+        raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
+    _editable_after_dedupe(batch)
+    if batch.catalog_snapshot_sha256 != hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest():
+        raise ImportProblem("CATALOG_CHANGED", "正式标签目录已变化，请重新上传批次", 409)
+    if (not isinstance(question_text, str) or not question_text.strip() or len(question_text) > 30000
+            or not isinstance(options, list) or len(options) > 20
+            or any(not isinstance(option, dict) or not isinstance(option.get("key"), str)
+                   or not option["key"].strip() or not isinstance(option.get("text"), str)
+                   or not option["text"].strip() or len(option["text"]) > 10000 for option in options)):
+        raise ImportProblem("INVALID_CANDIDATE", "题干或选项为空、结构无效或过长")
+    cleaned_options = [{"key": option["key"].strip(), "text": option["text"].strip()}
+                       for option in options]
+    if len({option["key"] for option in cleaned_options}) != len(cleaned_options):
+        raise ImportProblem("INVALID_CANDIDATE", "选项编号不能重复")
+    if answer_text is not None and (not isinstance(answer_text, str) or not answer_text.strip()
+                                    or len(answer_text) > 30000):
+        raise ImportProblem("INVALID_CANDIDATE", "答案须为非空且不超过 30000 字的文本")
+    if original_number is not None and (not isinstance(original_number, str)
+                                        or len(original_number) > 80):
+        raise ImportProblem("INVALID_CANDIDATE", "原题号无效")
+    page_count = ((batch.checkpoint or {}).get("s2") or {}).get("page_count")
+    if source_page is not None and (isinstance(source_page, bool) or not isinstance(source_page, int)
+                                    or source_page < 1 or (page_count and source_page > page_count)):
+        raise ImportProblem("INVALID_CANDIDATE", "来源页码超出题目文件范围")
+    source_file = next(file for file in batch.files if file["role"] == "questions")
+    answer_id = "teacher-" + str(uuid.uuid4()) if answer_text else None
+    payload = {
+        "schema_version": "import-candidate-v1",
+        "source": {"file_id": source_file["file_id"],
+                   "original_number": original_number.strip() or None if original_number else None,
+                   "page_start": source_page, "page_end": source_page, "evidence": []},
+        "content": {"question_text": question_text.strip(), "options": cleaned_options,
+                    "solution": None, "asset_ids": []},
+        "tags": {"question_type": "unknown", "difficulty": None, "grade": None,
+                 "chapter_code": None, "section": None, "main_kp_code": None,
+                 "core_literacies": [], "is_required": False},
+        "answers": ([{"answer_id": answer_id, "answer_source": "teacher_entered",
+                     "text": answer_text.strip(), "evidence": [], "teacher_confirmed": False}]
+                    if answer_id else []),
+        "selected_answer_id": answer_id, "answer_match_status": "not_applicable",
+        "precheck_status": "not_run", "label_status": "needs_confirmation",
+        "teacher_decision": "pending", "commit_intent": "library_only",
+        "duplicate_status": "none", "field_confidence": {}, "field_evidence": {},
+        "warnings": ["教师新增题目，请核对是否与本批已有题目重复"],
+        "extraction": {"prompt_version": "teacher-entered-v1", "subquestions": [],
+                       "math_fragments": [], "diagram_clues": [], "uncertain_fragments": []},
+        "teacher_added_at": datetime.now(timezone.utc).isoformat(),
+    }
+    item = add_candidate(db, batch, payload)
+    _mark_answer_reconciliation_stale(batch)
+    return item
+
+
+def delete_teacher_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
+                             *, expected_revision: int) -> None:
+    batch = db.scalar(select(QuestionImportBatch).where(
+        QuestionImportBatch.id == batch_id, QuestionImportBatch.owner_scope == OWNER_SCOPE,
+    ).with_for_update())
+    if batch is None:
+        raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
+    _editable_after_dedupe(batch)
+    item = db.scalar(select(QuestionImportItem).where(
+        QuestionImportItem.id == item_id, QuestionImportItem.batch_id == batch.id,
+    ).with_for_update())
+    if item is None or not active_candidate(item):
+        raise ImportProblem("NOT_FOUND", "候选题不存在", 404)
+    if item.revision != expected_revision:
+        raise ImportProblem("REVISION_CONFLICT", "候选题已被修改，请刷新", 409)
+    item.revision += 1
+    item.payload = {**item.payload, "revision": item.revision,
+                    "teacher_deleted_at": datetime.now(timezone.utc).isoformat()}
+    _mark_answer_reconciliation_stale(batch)
+
+
 def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
                      *, expected_revision: int, changes: dict[str, Any]) -> QuestionImportItem:
-    batch = get_batch(db, batch_id)
+    batch = db.scalar(select(QuestionImportBatch).where(
+        QuestionImportBatch.id == batch_id, QuestionImportBatch.owner_scope == OWNER_SCOPE,
+    ).with_for_update())
+    if batch is None:
+        raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
     if batch.status in {"cancelled", "completed", "completed_with_unassigned"}:
         raise ImportProblem("COMMIT_CONFLICT", "批次当前不可编辑", 409)
     item = db.scalar(select(QuestionImportItem).where(
         QuestionImportItem.id == item_id, QuestionImportItem.batch_id == batch.id,
     ).with_for_update())
-    if item is None:
+    if item is None or not active_candidate(item):
         raise ImportProblem("NOT_FOUND", "候选题不存在", 404)
     if item.revision != expected_revision:
         raise ImportProblem("REVISION_CONFLICT", "候选题已被修改，请刷新", 409)
     if batch.catalog_snapshot_sha256 != hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest():
         raise ImportProblem("CATALOG_CHANGED", "正式标签目录已变化，请重新上传批次", 409)
-    allowed = {"content", "tags", "answers", "selected_answer_id", "teacher_decision", "commit_intent", "warnings"}
+    allowed = {"content", "tags", "answers", "selected_answer_id", "teacher_decision", "commit_intent", "warnings",
+               "teacher_answer_text"}
     if not changes or set(changes) - allowed:
         raise ImportProblem("INVALID_CANDIDATE", "候选题修改字段无效")
     payload = dict(item.payload)
@@ -320,6 +436,21 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         raise ImportProblem("INVALID_CANDIDATE", "题目内容结构无效")
     if "content" in changes and changes["content"]["asset_ids"] != (payload.get("content") or {}).get("asset_ids", []):
         raise ImportProblem("INVALID_CANDIDATE", "题图须通过原页核对与关联接口修改")
+    if "content" in changes:
+        content = changes["content"]
+        if (not content["question_text"].strip() or len(content["question_text"]) > 30000
+                or len(content["options"]) > 20
+                or any(not isinstance(option, dict) or not isinstance(option.get("key"), str)
+                       or not option["key"].strip() or not isinstance(option.get("text"), str)
+                       or not option["text"].strip() or len(option["text"]) > 10000
+                       for option in content["options"])
+                or len({option["key"].strip() for option in content["options"]}) != len(content["options"])):
+            raise ImportProblem("INVALID_CANDIDATE", "题干或选项为空、重复或过长")
+    if "teacher_answer_text" in changes:
+        answer_text = changes["teacher_answer_text"]
+        if (not isinstance(answer_text, str) or not answer_text.strip()
+                or len(answer_text) > 30000):
+            raise ImportProblem("INVALID_CANDIDATE", "请填写非空且不超过 30000 字的答案")
     if "answers" in changes and (
         not isinstance(changes["answers"], list)
         or any(not isinstance(value, dict) or not isinstance(value.get("answer_id"), str)
@@ -331,6 +462,8 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         or any(not isinstance(value, str) for value in changes["warnings"])
     ):
         raise ImportProblem("INVALID_CANDIDATE", "提示信息结构无效")
+    if set(changes) & {"content", "answers", "selected_answer_id", "teacher_answer_text"}:
+        _editable_after_dedupe(batch)
     if "tags" in changes:
         submitted = changes["tags"]
         if not isinstance(submitted, dict) or set(submitted) - {
@@ -369,7 +502,23 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
             tags.update({"grade": None, "chapter_code": None, "section": None,
                          "core_literacies": []})
         payload["tags"] = tags
-    payload.update({key: value for key, value in changes.items() if key != "tags"})
+    payload.update({key: value for key, value in changes.items() if key not in {"tags", "teacher_answer_text"}})
+    if "teacher_answer_text" in changes:
+        answers = list(payload.get("answers") or [])
+        version = {"answer_id": "teacher-" + str(uuid.uuid4()), "answer_source": "teacher_entered",
+                   "text": changes["teacher_answer_text"].strip(), "evidence": [],
+                   "teacher_confirmed": False}
+        payload["answers"] = [*answers, version]
+        payload["selected_answer_id"] = version["answer_id"]
+    if "content" in changes or "teacher_answer_text" in changes:
+        payload["teacher_decision"] = "pending"
+    if "content" in changes and payload.get("answers"):
+        payload["answer_match_status"] = "uncertain"
+        warnings = list(payload.get("warnings") or [])
+        warning = "题目已修改，请重新核对答案是否仍适用"
+        if warning not in warnings:
+            warnings.append(warning)
+        payload["warnings"] = warnings
     # Model metadata, source evidence, batch identity and fake marker are immutable here.
     answers = payload.get("answers", [])
     if not isinstance(answers, list) or any(not isinstance(answer, dict) for answer in answers):

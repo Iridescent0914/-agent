@@ -21,7 +21,7 @@ from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.models import KnowledgePoint, QuestionImportBatch, QuestionImportItem
 from app.services.knowledge_catalog import CATALOG_PATH, formal_kps_by_code, formal_literacy_dimensions
-from app.services.question_import import OWNER_SCOPE, ImportProblem, require_s2_operator_token
+from app.services.question_import import OWNER_SCOPE, ImportProblem, active_candidate, require_s2_operator_token
 from app.services.question_import_s2 import FLASH_MODEL
 from app.services.question_import_s3_images import image_bytes
 
@@ -247,8 +247,8 @@ def start_labels(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
         raise ImportProblem("INVALID_S3_BUDGET", "新预算须高于已记录费用")
     if not _allowed_kps(db):
         raise ImportProblem("TAG_OUT_OF_SCOPE", "当前没有可入库的正式知识点", 409)
-    items = list(db.scalars(select(QuestionImportItem).where(
-        QuestionImportItem.batch_id == batch_id).order_by(QuestionImportItem.ordinal)))
+    items = [item for item in db.scalars(select(QuestionImportItem).where(
+        QuestionImportItem.batch_id == batch_id).order_by(QuestionImportItem.ordinal)) if active_candidate(item)]
     if any(item.is_fake for item in items):
         raise ImportProblem("S3_LABEL_UNAVAILABLE", "模拟候选题不能调用正式标签模型", 409)
     groups = _groups(items) if rerun or not prior.get("groups") else []
@@ -290,7 +290,7 @@ def _apply_suggestions(db: Session, batch: QuestionImportBatch, group: dict,
                        suggestions: list[dict], allowed: dict[str, dict],
                        *, overwrite_manual_tags: bool = False) -> tuple[int, list[str]]:
     rows = {str(item.id): item for item in db.scalars(select(QuestionImportItem).where(
-        QuestionImportItem.batch_id == batch.id).with_for_update())}
+        QuestionImportItem.batch_id == batch.id).with_for_update()) if active_candidate(item)}
     applied = 0
     skipped: list[str] = []
     by_id = {result["item_id"]: result for result in suggestions}
@@ -391,7 +391,7 @@ def process_labels_one() -> bool:
             db.commit()
             return True
         current_items = {str(item.id): item for item in db.scalars(select(QuestionImportItem).where(
-            QuestionImportItem.batch_id == batch_id).with_for_update())}
+            QuestionImportItem.batch_id == batch_id).with_for_update()) if active_candidate(item)}
         active_items = [entry for entry in group["items"]
                         if (item := current_items.get(entry["item_id"])) is not None
                         and item.revision == entry["revision"]

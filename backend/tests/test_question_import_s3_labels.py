@@ -276,8 +276,13 @@ def test_label_stage_waits_for_dedupe_then_preserves_candidate_identity(db, tmp_
     for item in (first, second):
         newer_content = dict(item.payload["content"])
         newer_content["question_text"] += "（已修改）"
-        update_candidate(db, batch.id, item.id, expected_revision=item.revision,
-                         changes={"content": newer_content})
+        with pytest.raises(ImportProblem) as busy:
+            update_candidate(db, batch.id, item.id, expected_revision=item.revision,
+                             changes={"content": newer_content})
+        assert busy.value.code == "COMMIT_CONFLICT"
+        # Simulate a concurrent internal correction to verify stale group entries are skipped.
+        item.revision += 1
+        item.payload = {**item.payload, "content": newer_content, "revision": item.revision}
     db.commit()
 
     class NeverProvider:

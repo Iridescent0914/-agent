@@ -1,6 +1,6 @@
 import { Alert, Button, Card, Empty, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag, Typography, message } from 'antd'
 import { useEffect, useState } from 'react'
-import { apiPost, apiPostForm, apiGet, apiPatch, apiUrl } from '../api/client'
+import { apiDelete, apiPost, apiPostForm, apiGet, apiPatch, apiUrl } from '../api/client'
 import { RichQuestionText } from '../components/RichQuestionText'
 
 type Batch = {
@@ -11,7 +11,7 @@ type Batch = {
   files: Array<{ file_id: string; original_name: string; size_bytes: number; page_count: number | null; role: string }>
   checkpoint: {
     s2?: { calls?: number; page_count?: number; prompt_version?: string; auto_global_dedupe?: boolean; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
-    s3?: { global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number }; separate_answers?: { status: string; calls?: number; error_message?: string; units?: Array<{ index: number; first_page: number; core_last_page: number; status: string; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }; labels?: { status: string; calls?: number; estimated_cny?: number; cost_unknown?: boolean; error_code?: string; error_message?: string; skipped_item_ids?: string[]; groups?: Array<{ index: number; status: string; applied_count?: number; skipped_item_ids?: string[] }> }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ original_number: string | null; text: string; page_start: number; reason: string; candidate_item_ids?: string[] }> } }
+    s3?: { global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number }; separate_answers?: { status: string; calls?: number; error_message?: string; units?: Array<{ index: number; first_page: number; core_last_page: number; status: string; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }; labels?: { status: string; calls?: number; estimated_cny?: number; cost_unknown?: boolean; error_code?: string; error_message?: string; skipped_item_ids?: string[]; groups?: Array<{ index: number; status: string; applied_count?: number; skipped_item_ids?: string[] }> }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; manual_candidate_changes_pending?: boolean; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ original_number: string | null; text: string; page_start: number; reason: string; candidate_item_ids?: string[] }> } }
   }
   error_code: string | null
   error_message: string | null
@@ -55,6 +55,7 @@ type Candidate = {
     content: { question_text: string; options: Array<{ key: string; text: string }>; asset_ids?: string[] }
     extraction?: { math_fragments?: string[]; diagram_clues?: string[]; figure_status?: 'no_figure' | 'complete' | 'uncertain'; uncertain_fragments?: string[]; source_classification?: string; classification_evidence?: string }
     answers?: Array<{ answer_id: string; answer_source: string; text: string | null; teacher_confirmed: boolean }>
+    selected_answer_id?: string | null
     answer_match_status?: string
     duplicate_status?: string
     label_status?: string
@@ -67,6 +68,26 @@ type Candidate = {
 type S2Config = { ready: boolean; model: string; max_budget_cny: number; max_output_tokens: number; pages_per_unit: number; overlap_pages: number }
 type LabelCatalogPoint = { code: string; name: string; grade: string; chapter_name: string; section: string; core_literacies: string[] }
 type LabelEdit = { question_type?: string; difficulty?: number | null; main_kp_code?: string | null; is_required?: boolean }
+type CandidateEditor = {
+  itemId: string
+  revision: number
+  questionText: string
+  options: Array<{ key: string; text: string }>
+  answerText: string
+  originalQuestionText: string
+  originalOptions: Array<{ key: string; text: string }>
+  originalAnswerText: string
+}
+type NewCandidateDraft = {
+  questionText: string
+  options: Array<{ key: string; text: string }>
+  answerText: string
+  originalNumber: string
+  sourcePage: number | null
+}
+const emptyCandidateDraft = (): NewCandidateDraft => ({
+  questionText: '', options: [], answerText: '', originalNumber: '', sourcePage: null,
+})
 
 function hasImportLabels(item: Candidate): boolean {
   const tags = item.payload.tags
@@ -151,6 +172,18 @@ export function QuestionImportPage() {
   const [labelCatalog, setLabelCatalog] = useState<LabelCatalogPoint[]>([])
   const [labelEdits, setLabelEdits] = useState<Record<string, LabelEdit>>({})
   const [labelSaving, setLabelSaving] = useState<string | null>(null)
+  const [candidateEditor, setCandidateEditor] = useState<CandidateEditor | null>(null)
+  const [candidateSaving, setCandidateSaving] = useState(false)
+  const [newCandidateOpen, setNewCandidateOpen] = useState(false)
+  const [newCandidateDraft, setNewCandidateDraft] = useState<NewCandidateDraft>(emptyCandidateDraft)
+  const [creatingCandidate, setCreatingCandidate] = useState(false)
+  const [deletingCandidateId, setDeletingCandidateId] = useState<string | null>(null)
+
+  function closeCandidateModal() {
+    setCandidateEditor(null)
+    setNewCandidateOpen(false)
+    setSelectedBatchId(null)
+  }
 
   async function reload(focusBatchId?: string) {
     try {
@@ -455,14 +488,92 @@ export function QuestionImportPage() {
     finally { setLabelSaving(null) }
   }
 
-  async function reconcileAnswers(batch: Batch) {
+  function startEditingCandidate(item: Candidate) {
+    const answers = item.payload.answers || []
+    const currentAnswer = answers.find((answer) => answer.answer_id === item.payload.selected_answer_id)
+      || [...answers].reverse().find((answer) => answer.answer_source === 'teacher_entered')
+      || answers[0]
+    const questionText = item.payload.content.question_text
+    const options = item.payload.content.options.map((option) => ({ ...option }))
+    const answerText = currentAnswer?.text || ''
+    setCandidateEditor({ itemId: item.id, revision: item.revision, questionText, options, answerText,
+      originalQuestionText: questionText, originalOptions: options.map((option) => ({ ...option })), originalAnswerText: answerText })
+  }
+
+  async function saveCandidate(item: Candidate) {
+    if (!selectedBatch || !candidateEditor || candidateEditor.itemId !== item.id) return
+    const questionText = candidateEditor.questionText.trim()
+    const options = candidateEditor.options.map((option) => ({ key: option.key.trim(), text: option.text.trim() }))
+    const answerText = candidateEditor.answerText.trim()
+    if (!questionText || options.some((option) => !option.key || !option.text)
+      || new Set(options.map((option) => option.key)).size !== options.length) {
+      message.warning('请填写题干，并检查选项内容及编号是否为空或重复')
+      return
+    }
+    const contentChanged = questionText !== candidateEditor.originalQuestionText
+      || JSON.stringify(options) !== JSON.stringify(candidateEditor.originalOptions)
+    const answerChanged = answerText !== candidateEditor.originalAnswerText.trim()
+    if (!contentChanged && !answerChanged) { setCandidateEditor(null); return }
+    if (answerChanged && !answerText) { message.warning('修改后的答案不能为空'); return }
+    const changes: Record<string, unknown> = {}
+    if (contentChanged) changes.content = { ...item.payload.content, question_text: questionText, options }
+    if (answerChanged) changes.teacher_answer_text = answerText
+    setCandidateSaving(true)
     try {
-      const result = await apiPost<{ linked_question_count: number }>(
-        `/question-imports/${batch.id}/s3/reconcile-source-answers`, {})
-      message[result.linked_question_count ? 'success' : 'warning'](`已为 ${result.linked_question_count} 道题关联答案`)
-      await reload(batch.id)
-      if (selectedBatchId === batch.id) await viewCandidates(batch.id)
-    } catch (error) { message.error(error instanceof Error ? error.message : '资料答案关联失败') }
+      await apiPatch(`/question-imports/${selectedBatch.id}/items/${item.id}`,
+        { expected_revision: candidateEditor.revision, changes })
+      setCandidateEditor(null)
+      await viewCandidates(selectedBatch.id)
+      message.success('题目与答案修改已保存，请核对答案和入库标签')
+    } catch (error) { message.error(error instanceof Error ? error.message : '保存题目与答案失败') }
+    finally { setCandidateSaving(false) }
+  }
+
+  async function createCandidate() {
+    if (!selectedBatch || !canEditCandidates) return
+    const questionText = newCandidateDraft.questionText.trim()
+    const options = newCandidateDraft.options.map((option) => ({ key: option.key.trim(), text: option.text.trim() }))
+    if (!questionText || options.some((option) => !option.key || !option.text)
+      || new Set(options.map((option) => option.key)).size !== options.length) {
+      message.warning('请填写题干，并检查选项内容及编号是否为空或重复')
+      return
+    }
+    setCreatingCandidate(true)
+    try {
+      await apiPost(`/question-imports/${selectedBatch.id}/items`, {
+        question_text: questionText, options,
+        answer_text: newCandidateDraft.answerText.trim() || null,
+        original_number: newCandidateDraft.originalNumber.trim() || null,
+        source_page: newCandidateDraft.sourcePage,
+      })
+      setNewCandidateOpen(false)
+      setNewCandidateDraft(emptyCandidateDraft())
+      await viewCandidates(selectedBatch.id)
+      await reload(selectedBatch.id)
+      message.success('题目已新增，请核对重复情况与入库标签')
+    } catch (error) { message.error(error instanceof Error ? error.message : '新增题目失败') }
+    finally { setCreatingCandidate(false) }
+  }
+
+  function confirmDeleteCandidate(item: Candidate) {
+    if (!selectedBatch || !canEditCandidates) return
+    const batchId = selectedBatch.id
+    Modal.confirm({
+      title: `删除第 ${item.ordinal} 题？`,
+      content: '删除后此题不再参与答案关联或打标签；原候选记录会保留以供追溯。',
+      okText: '删除题目', okButtonProps: { danger: true }, cancelText: '取消',
+      onOk: async () => {
+        setDeletingCandidateId(item.id)
+        try {
+          await apiDelete(`/question-imports/${batchId}/items/${item.id}`, { expected_revision: item.revision })
+          setCandidateEditor((current) => current?.itemId === item.id ? null : current)
+          await viewCandidates(batchId)
+          await reload(batchId)
+          message.success('题目已删除')
+        } catch (error) { message.error(error instanceof Error ? error.message : '删除题目失败') }
+        finally { setDeletingCandidateId(null) }
+      },
+    })
   }
 
   const selectedBatch = batches.find((item) => item.id === selectedBatchId)
@@ -478,6 +589,10 @@ export function QuestionImportPage() {
     : s2?.units?.flatMap((unit) => unit.source_answers || [])) || []
   const pendingAnswers = reconciliation?.unassigned_answers || sourceAnswers
   const dedupeStatus = selectedBatch?.checkpoint?.s3?.global_dedupe?.status
+  const labelTaskStatus = selectedBatch?.checkpoint?.s3?.labels?.status
+  const canEditCandidates = selectedBatch?.status === 'review_pending' && selectedBatch.stage === 's2_completed'
+    && dedupeStatus === 'completed' && (selectedBatch.source_mode !== 'separate' || separateAnswers?.status === 'completed')
+    && !['queued', 'processing'].includes(labelTaskStatus || '')
   const answerMatchingComplete = !!reconciliation && selectedBatch?.stage === 's2_completed'
     && (!dedupeStatus || dedupeStatus === 'completed')
     && (selectedBatch?.source_mode !== 'separate' || separateAnswers?.status === 'completed')
@@ -506,15 +621,46 @@ export function QuestionImportPage() {
       {item.payload.content.options.map((option, index) => <RichQuestionText key={`option-${index}-${option.key}`} text={`${option.key}. ${option.text}`} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />)}
       {images?.files_available && assetIds.map((id) => { const asset = images.assets.find((value) => value.asset_id === id); return asset && selectedBatch && <div key={id}>
         <img src={apiUrl(`/question-imports/${selectedBatch.id}/s3/images/${id}/content`)} alt={`候选 ${item.ordinal} 题的题图`} style={{ display: 'block', maxWidth: '100%', width: 320, maxHeight: 280, objectFit: 'contain', marginBottom: 6 }} />
-        <Button size="small" danger disabled={imageBusy || !images?.files_available} onClick={() => void linkQuestionImage(selectedBatch, asset, item, false)}>删除图片</Button>
+        <Button size="small" danger disabled={!canEditCandidates || imageBusy || !images?.files_available} onClick={() => void linkQuestionImage(selectedBatch, asset, item, false)}>删除图片</Button>
       </div> })}
       {figureMissing && clues.map((clue, index) => <Typography.Text type="warning" key={`clue-${index}`}>题图线索：{clue}</Typography.Text>)}
       {figureMissing && clues.length === 0 && <Typography.Text type="warning">题图线索：模型未提供具体描述</Typography.Text>}
       {figureMissing && <Typography.Text type="warning">题图尚未裁剪；请对照原页复核</Typography.Text>}
       {removedCandidateImages.length > 0 && <Typography.Text type="warning">去重题目有 {removedCandidateImages.length} 张未自动转移的图片，请在上方“无法匹配到题目的图片”中核对是否缺图。</Typography.Text>}
-      {selectedBatch?.stage === 's2_completed' && <label>添加图片：<input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageBusy || !images?.files_available} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file && selectedBatch) void uploadCandidateImage(selectedBatch, item, file) }} /></label>}
+      {canEditCandidates && <label>添加图片：<input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageBusy || !images?.files_available} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file && selectedBatch) void uploadCandidateImage(selectedBatch, item, file) }} /></label>}
       {item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}
-      {item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer"><Typography.Text>资料答案（待确认）：</Typography.Text>{answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}</div>)}
+      {item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer">
+        <Typography.Text>{answer.answer_source === 'teacher_entered' ? '教师答案' : answer.answer_source === 'source_extracted' ? '资料答案' : '答案'}{answer.answer_id === item.payload.selected_answer_id ? '（当前采用）' : ''}：</Typography.Text>
+        {answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}
+      </div>)}
+      {item.payload.warnings?.includes('题目已修改，请重新核对答案是否仍适用') && <Typography.Text type="warning">题目已修改，请重新核对答案是否仍适用。</Typography.Text>}
+      {canEditCandidates && candidateEditor?.itemId !== item.id && <Space>
+        <Button size="small" onClick={() => startEditingCandidate(item)}>编辑题目和答案</Button>
+        <Button size="small" danger loading={deletingCandidateId === item.id} onClick={() => confirmDeleteCandidate(item)}>删除题目</Button>
+      </Space>}
+      {candidateEditor?.itemId === item.id && <Card size="small" title="编辑题目和答案" style={{ width: '100%' }}>
+        {candidateEditor.revision !== item.revision && <Alert type="warning" showIcon message="此题在编辑期间已更新。请取消编辑后重新打开，避免覆盖新修改。" style={{ marginBottom: 12 }} />}
+        <Typography.Paragraph>题干</Typography.Paragraph>
+        <Input.TextArea value={candidateEditor.questionText} autoSize={{ minRows: 3, maxRows: 12 }} maxLength={30000}
+          onChange={(event) => setCandidateEditor((current) => current ? { ...current, questionText: event.target.value } : current)} />
+        <Typography.Paragraph style={{ marginTop: 12 }}>选项</Typography.Paragraph>
+        {candidateEditor.options.map((option, index) => <Space key={index} style={{ display: 'flex', marginBottom: 8 }} align="start">
+          <Input aria-label={`第 ${index + 1} 个选项编号`} style={{ width: 70 }} value={option.key} maxLength={20}
+            onChange={(event) => setCandidateEditor((current) => current ? { ...current, options: current.options.map((value, i) => i === index ? { ...value, key: event.target.value } : value) } : current)} />
+          <Input.TextArea aria-label={`第 ${index + 1} 个选项内容`} style={{ width: 550, maxWidth: '55vw' }} value={option.text} autoSize={{ minRows: 1, maxRows: 5 }} maxLength={10000}
+            onChange={(event) => setCandidateEditor((current) => current ? { ...current, options: current.options.map((value, i) => i === index ? { ...value, text: event.target.value } : value) } : current)} />
+          <Button size="small" danger onClick={() => setCandidateEditor((current) => current ? { ...current, options: current.options.filter((_, i) => i !== index) } : current)}>删除</Button>
+        </Space>)}
+        {candidateEditor.options.length < 20 && <Button size="small" onClick={() => setCandidateEditor((current) => current ? { ...current, options: [...current.options, { key: String.fromCharCode(65 + current.options.length), text: '' }] } : current)}>添加选项</Button>}
+        <Typography.Paragraph style={{ marginTop: 16 }}>答案</Typography.Paragraph>
+        <Input.TextArea value={candidateEditor.answerText} autoSize={{ minRows: 3, maxRows: 12 }} maxLength={30000}
+          placeholder="可填写教师修订后的答案；留空表示暂不提供" onChange={(event) => setCandidateEditor((current) => current ? { ...current, answerText: event.target.value } : current)} />
+        <Typography.Paragraph type="secondary" style={{ marginTop: 8 }}>修改答案会新增教师答案版本，原资料答案保留。修改题目后请重新核对答案与标签。</Typography.Paragraph>
+        <Space>
+          <Button type="primary" loading={candidateSaving} disabled={!canEditCandidates || candidateEditor.revision !== item.revision} onClick={() => void saveCandidate(item)}>保存修改</Button>
+          <Button disabled={candidateSaving} onClick={() => setCandidateEditor(null)}>取消</Button>
+        </Space>
+      </Card>}
       {selectedBatch?.stage === 's2_completed' && <Card size="small" title="入库标签 · 待教师核对" style={{ width: '100%' }}>
         {!hasImportLabels(item) && <Typography.Paragraph type="warning">无标签，请人工打标签</Typography.Paragraph>}
         {suggestion?.stale && <Typography.Paragraph type="warning">题干或题图已变化，原标签建议已过时。请全部重新打标签或手动核对调整。</Typography.Paragraph>}
@@ -571,7 +717,6 @@ export function QuestionImportPage() {
              {batch.checkpoint?.s2 && <Button onClick={() => void viewCandidates(batch.id)}>查看候选与页段</Button>}
              {batch.stage === 's2_completed' && batch.checkpoint?.s3?.global_dedupe?.status !== 'completed' && !['auto_claimed', 'running'].includes(batch.checkpoint?.s3?.global_dedupe?.status || '') && !(batch.checkpoint?.s2?.auto_global_dedupe && !batch.checkpoint?.s3?.global_dedupe?.status) && <Button type="primary" loading={reviewingKey === `batch:${batch.id}`} disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmBatchDedup(batch)}>{batch.checkpoint?.s3?.global_dedupe?.status === 'pending_budget' ? '增加预算并整理整批' : batch.source_mode === 'separate' ? '模型整理整批题目' : '模型整理整批题答'}</Button>}
              {batch.stage === 's2_completed' && batch.source_mode === 'separate' && batch.checkpoint?.s3?.global_dedupe?.status === 'completed' && !['queued', 'processing', 'completed'].includes(batch.checkpoint?.s3?.separate_answers?.status || '') && <Button type="primary" disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmSeparateAnswers(batch)}>{batch.checkpoint?.s3?.separate_answers?.status === 'paused' ? '增加预算并继续识别答案' : batch.checkpoint?.s3?.separate_answers?.status === 'failed' ? '重试答案识别' : '识别答案文件'}</Button>}
-             {batch.stage === 's2_completed' && (batch.source_mode === 'combined' || batch.checkpoint?.s3?.separate_answers?.status === 'completed') && <Button onClick={() => void reconcileAnswers(batch)}>重新匹配答案</Button>}
              {batch.stage === 's2_completed' && batch.checkpoint?.s3?.global_dedupe?.status === 'completed' && (batch.source_mode === 'questions_only' || (batch.source_mode === 'combined' && !!batch.checkpoint?.s3?.source_answer_reconciliation) || (batch.source_mode === 'separate' && batch.checkpoint?.s3?.separate_answers?.status === 'completed' && !!batch.checkpoint?.s3?.source_answer_reconciliation)) && !['queued', 'processing', 'completed'].includes(batch.checkpoint?.s3?.labels?.status || '') && !batch.checkpoint?.s3?.labels?.cost_unknown && <Button type="primary" disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmLabels(batch)}>{batch.checkpoint?.s3?.labels?.status === 'paused' ? '增加预算并继续打标签' : batch.checkpoint?.s3?.labels?.status === 'failed' ? '重试标签建议' : '生成入库标签建议'}</Button>}
              {batch.stage === 's2_completed' && batch.checkpoint?.s3?.labels?.status === 'completed' && <Button disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmLabels(batch, true)}>全部重新打标签</Button>}
              {batch.checkpoint?.s3?.labels?.cost_unknown && <Typography.Text type="warning">标签调用费用未知，请先核对账单后处理</Typography.Text>}
@@ -580,8 +725,17 @@ export function QuestionImportPage() {
            </Space> },
         ]} />
     </Card>
-    <Modal title="候选题、来源答案与页段记录" open={!!selectedBatchId} width={900} footer={<Button onClick={() => setSelectedBatchId(null)}>关闭</Button>} onCancel={() => setSelectedBatchId(null)}>
-      <Typography.Paragraph>按 PDF 页段自动提取位图，并在同次模型调用中识别题目、原文答案和所需题图；缺少独立题图时按模型坐标自动裁剪。已匹配图片直接显示在对应题目处。</Typography.Paragraph>
+    <Modal title="候选题、来源答案与页段记录" open={!!selectedBatchId} width={900} footer={<Button onClick={closeCandidateModal}>关闭</Button>} onCancel={closeCandidateModal}>
+      <Typography.Paragraph>按 PDF 页段自动提取位图，并由模型识别题目和所需题图；题答同文件时还会在同次调用中提取原文答案。缺少独立题图时按模型坐标自动裁剪。已匹配图片直接显示在对应题目处。</Typography.Paragraph>
+      <Alert type="info" showIcon style={{ marginBottom: 12 }}
+        message={selectedBatch?.source_mode === 'separate'
+          ? '先提取题目、整批去重，再识别答案文件；答案识别完成后才能增删改题目和答案。'
+          : '先提取题目、整批去重；去重完成后才能增删改题目和答案。'}
+        description="可在打标签前后增删改。首次打标签和“全部重新打标签”使用启动时的当前题目；修改已打标签的题目或答案不会自动重算标签，修改题目后请复核原标签。全部重新打标签会覆盖已有的题型、难度和主属知识点。" />
+      {canEditCandidates && <Space style={{ marginBottom: 12 }}>
+        <Button type="primary" onClick={() => { setNewCandidateDraft(emptyCandidateDraft()); setNewCandidateOpen(true) }}>新增题目</Button>
+        <Typography.Text type="secondary">新增题目请人工核对重复情况；可在打标签前或后修改。</Typography.Text>
+      </Space>}
       {selectedBatch?.stage === 's2_completed' && candidates.some((item) => !hasImportLabels(item)) && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={`还有 ${candidates.filter((item) => !hasImportLabels(item)).length} 道题缺少完整入库标签，请人工打标签；所有题都有标签后才能入库。`} />}
       {selectedBatch?.stage === 's2_completed' && <Card size="small" style={{ marginBottom: 16 }}><details>
         <summary>无法匹配到题目的图片（{unmatchedImages.length}）</summary>
@@ -597,7 +751,7 @@ export function QuestionImportPage() {
                 value={unmatchedImageTargets[asset.asset_id]}
                 options={imageTargetOptions}
                 onChange={(itemId: string) => setUnmatchedImageTargets((current) => ({ ...current, [asset.asset_id]: itemId }))} />
-              <Button size="small" type="primary" disabled={imageBusy || !images?.files_available || !imageTargetOptions.some((option) => option.value === unmatchedImageTargets[asset.asset_id])}
+              <Button size="small" type="primary" disabled={!canEditCandidates || imageBusy || !images?.files_available || !imageTargetOptions.some((option) => option.value === unmatchedImageTargets[asset.asset_id])}
                 onClick={() => { const target = candidates.find((candidate) => candidate.id === unmatchedImageTargets[asset.asset_id]); if (target && selectedBatch) void linkQuestionImage(selectedBatch, asset, target, true) }}>关联到题目</Button>
             </Space>
           </div>)}</Space>
@@ -605,7 +759,9 @@ export function QuestionImportPage() {
       </details></Card>}
       {['combined', 'separate'].includes(selectedBatch?.source_mode || '') && <Typography.Paragraph>
         {reconciliation
-          ? `已为 ${reconciliation.linked_question_count}/${candidates.length} 道题关联答案。`
+          ? reconciliation.manual_candidate_changes_pending
+            ? `题目增删后，当前 ${candidates.filter((item) => item.payload.answers?.some((answer) => answer.answer_source === 'source_extracted')).length}/${candidates.length} 道题保留资料答案关联；原关联统计和待认领清单基于增删前，请人工核对。`
+            : `已为 ${reconciliation.linked_question_count}/${candidates.length} 道题关联答案。`
           : selectedBatch?.source_mode === 'separate'
             ? `答案文件识别状态：${separateAnswers?.status || '未开始'}。`
           : selectedBatch?.stage === 's2_completed' && selectedBatch?.checkpoint?.s2?.auto_global_dedupe
@@ -715,6 +871,32 @@ export function QuestionImportPage() {
           : []),
         { title: '题目、题图与答案', render: (_, item: Candidate) => renderCandidateContent(item) },
       ]} />
+    </Modal>
+    <Modal title="新增候选题" open={newCandidateOpen} width={760}
+      onCancel={() => setNewCandidateOpen(false)}
+      footer={<Space><Button disabled={creatingCandidate} onClick={() => setNewCandidateOpen(false)}>取消</Button><Button type="primary" loading={creatingCandidate} onClick={() => void createCandidate()}>保存新题</Button></Space>}>
+      <Typography.Paragraph type="secondary">新增题目保留在当前导入批次中；来源题号和页码可选，答案可稍后编辑。新题需要人工核对重复与标签。</Typography.Paragraph>
+      <Space wrap style={{ marginBottom: 12 }}>
+        <Input aria-label="原题号" placeholder="原题号（可选）" value={newCandidateDraft.originalNumber} maxLength={80}
+          onChange={(event) => setNewCandidateDraft((current) => ({ ...current, originalNumber: event.target.value }))} />
+        <InputNumber aria-label="题目来源页码" placeholder="来源页码（可选）" min={1} max={s2?.page_count} value={newCandidateDraft.sourcePage}
+          onChange={(value) => setNewCandidateDraft((current) => ({ ...current, sourcePage: value }))} />
+      </Space>
+      <Typography.Paragraph>题干</Typography.Paragraph>
+      <Input.TextArea value={newCandidateDraft.questionText} autoSize={{ minRows: 3, maxRows: 12 }} maxLength={30000}
+        onChange={(event) => setNewCandidateDraft((current) => ({ ...current, questionText: event.target.value }))} />
+      <Typography.Paragraph style={{ marginTop: 12 }}>选项（非选择题可不填）</Typography.Paragraph>
+      {newCandidateDraft.options.map((option, index) => <Space key={index} style={{ display: 'flex', marginBottom: 8 }} align="start">
+        <Input aria-label={`新题第 ${index + 1} 个选项编号`} style={{ width: 70 }} value={option.key} maxLength={20}
+          onChange={(event) => setNewCandidateDraft((current) => ({ ...current, options: current.options.map((value, i) => i === index ? { ...value, key: event.target.value } : value) }))} />
+        <Input.TextArea aria-label={`新题第 ${index + 1} 个选项内容`} style={{ width: 520, maxWidth: '55vw' }} value={option.text} autoSize={{ minRows: 1, maxRows: 5 }} maxLength={10000}
+          onChange={(event) => setNewCandidateDraft((current) => ({ ...current, options: current.options.map((value, i) => i === index ? { ...value, text: event.target.value } : value) }))} />
+        <Button size="small" danger onClick={() => setNewCandidateDraft((current) => ({ ...current, options: current.options.filter((_, i) => i !== index) }))}>删除</Button>
+      </Space>)}
+      {newCandidateDraft.options.length < 20 && <Button size="small" onClick={() => setNewCandidateDraft((current) => ({ ...current, options: [...current.options, { key: String.fromCharCode(65 + current.options.length), text: '' }] }))}>添加选项</Button>}
+      <Typography.Paragraph style={{ marginTop: 16 }}>答案（可选）</Typography.Paragraph>
+      <Input.TextArea value={newCandidateDraft.answerText} autoSize={{ minRows: 3, maxRows: 12 }} maxLength={30000}
+        onChange={(event) => setNewCandidateDraft((current) => ({ ...current, answerText: event.target.value }))} />
     </Modal>
   </Space>
 }

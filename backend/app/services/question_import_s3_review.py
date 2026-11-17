@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models import QuestionImportBatch, QuestionImportItem
 from app.services.question_import import (
-    DOCX_CONVERSION_VERSION, OWNER_SCOPE, ImportProblem, require_s2_operator_token,
+    DOCX_CONVERSION_VERSION, OWNER_SCOPE, ImportProblem, active_candidate, require_s2_operator_token,
 )
 from app.services.question_import_s2 import FLASH_MODEL, estimate_cost, prepare_pdf
 from app.services.question_import_s3 import _answer_id, reconcile_source_answers
@@ -141,7 +141,8 @@ def list_review_issues(db: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]
         QuestionImportBatch.id == batch_id, QuestionImportBatch.owner_scope == OWNER_SCOPE))
     if batch is None:
         raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
-    items = list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch_id)))
+    items = [item for item in db.scalars(select(QuestionImportItem).where(
+        QuestionImportItem.batch_id == batch_id)) if active_candidate(item)]
     reviews = ((batch.checkpoint or {}).get("s3") or {}).get("issue_reviews") or {}
     result = []
     for issue in _issue_rows(batch, items):
@@ -347,7 +348,7 @@ def _apply_overlap_advice(db: Session, batch: QuestionImportBatch, issue: dict[s
         QuestionImportItem.batch_id == batch.id,
         QuestionImportItem.id.in_([uuid.UUID(value) for value in ids]),
     ).with_for_update()))
-    if len(items) != 2 or any(item.revision > 2 or item.payload.get("teacher_decision", "pending") != "pending"
+    if len(items) != 2 or any(not active_candidate(item) or item.revision > 2 or item.payload.get("teacher_decision", "pending") != "pending"
                               or any(answer.get("teacher_confirmed") for answer in item.payload.get("answers") or [])
                               for item in items):
         return False
@@ -391,7 +392,7 @@ def _apply_answer_advice(db: Session, batch: QuestionImportBatch, issue: dict[st
         QuestionImportItem.batch_id == batch.id,
         QuestionImportItem.id == uuid.UUID(advice["candidate_item_id"]),
     ).with_for_update())
-    if item is None or item.revision > 2 or item.payload.get("teacher_decision", "pending") != "pending":
+    if item is None or not active_candidate(item) or item.revision > 2 or item.payload.get("teacher_decision", "pending") != "pending":
         return False
     existing = item.payload.get("answers") or []
     if existing and (len(existing) != 1 or existing[0].get("text") != answer.get("text")):
@@ -466,7 +467,8 @@ def list_review_units(db: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]:
         QuestionImportBatch.id == batch_id, QuestionImportBatch.owner_scope == OWNER_SCOPE))
     if batch is None:
         raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
-    items = list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch_id)))
+    items = [item for item in db.scalars(select(QuestionImportItem).where(
+        QuestionImportItem.batch_id == batch_id)) if active_candidate(item)]
     units = ((batch.checkpoint or {}).get("s2") or {}).get("units") or []
     reviews = (((batch.checkpoint or {}).get("s3") or {}).get("issue_reviews") or {})
     return [{key: value for key, value in _group_plan(batch, items, index, reviews).items() if key != "issues"}
@@ -494,7 +496,8 @@ def review_issue(db: Session, batch_id: uuid.UUID, key: str, *, budget_cny: floa
     s2 = (batch.checkpoint or {}).get("s2") or {}
     if source["media_type"] != "application/pdf" and s2.get("conversion_version") != DOCX_CONVERSION_VERSION:
         raise ImportProblem("S3_CONFIG_CHANGED", "DOCX 转换版本已变化，请重新上传", 409)
-    items = list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch_id)))
+    items = [item for item in db.scalars(select(QuestionImportItem).where(
+        QuestionImportItem.batch_id == batch_id)) if active_candidate(item)]
     issue = next((row for row in _issue_rows(batch, items) if row["key"] == key), None)
     if issue is None:
         saved = (((batch.checkpoint or {}).get("s3") or {}).get("issue_reviews") or {}).get(key)
@@ -593,7 +596,8 @@ def review_unit(db: Session, batch_id: uuid.UUID, unit_index: int, *, budget_cny
     s2 = (batch.checkpoint or {}).get("s2") or {}
     if source["media_type"] != "application/pdf" and s2.get("conversion_version") != DOCX_CONVERSION_VERSION:
         raise ImportProblem("S3_CONFIG_CHANGED", "DOCX 转换版本已变化，请重新上传", 409)
-    items = list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch_id)))
+    items = [item for item in db.scalars(select(QuestionImportItem).where(
+        QuestionImportItem.batch_id == batch_id)) if active_candidate(item)]
     checkpoint = dict(batch.checkpoint or {})
     s3 = dict(checkpoint.get("s3") or {})
     reviews = dict(s3.get("issue_reviews") or {})

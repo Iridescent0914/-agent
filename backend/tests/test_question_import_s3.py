@@ -291,6 +291,27 @@ def test_combined_answers_link_only_unique_unedited_question(db, tmp_path, monke
     assert reconcile_source_answers(db, batch.id) == result
     assert items[2].revision == 2
 
+    # Later label or image edits also increment the candidate revision. Recomputing
+    # the source matches must keep the answer and report it as linked.
+    items[2].revision = 4
+    items[2].payload = {**items[2].payload, "revision": 4}
+    db.flush()
+    rematched = reconcile_source_answers(db, batch.id, force=True)
+    assert rematched["linked_answer_count"] == 1
+    assert rematched["linked_question_count"] == 1
+    assert items[2].revision == 4
+    assert items[2].payload["answers"] == linked["answers"]
+
+    # A changed answer is still protected from being overwritten by rematching.
+    edited_answers = [{**items[2].payload["answers"][0], "text": "教师修改的答案"}]
+    items[2].payload = {**items[2].payload, "answers": edited_answers}
+    items[2].revision = 5
+    db.flush()
+    protected = reconcile_source_answers(db, batch.id, force=True)
+    assert protected["linked_answer_count"] == 0
+    assert any(row["reason"] == "candidate_already_edited" for row in protected["unassigned_answers"])
+    assert items[2].payload["answers"] == edited_answers
+
 
 def test_unique_number_with_conflicting_excerpt_stays_unassigned(db, tmp_path, monkeypatch):
     monkeypatch.setattr(get_settings(), "question_import_dir", tmp_path / "imports")

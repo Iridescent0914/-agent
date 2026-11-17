@@ -63,6 +63,7 @@ def _batch_with_candidate(db):
                          files=[("questions", "figures.pdf", _pdf())])
     batch.status = "review_pending"
     batch.stage = "s2_completed"
+    batch.checkpoint = {"s3": {"global_dedupe": {"status": "completed"}}}
     payload = fake_candidate(batch.id)
     payload["source"].update({"file_id": batch.files[0]["file_id"], "page_start": 1, "page_end": 1})
     payload["extraction"] = {"diagram_clues": ["数轴"]}
@@ -109,6 +110,7 @@ def test_teacher_can_match_unassigned_image_from_later_answer_page(db, private_d
                          files=[("questions", "combined.pdf", _pdf(pages=2, image_page=2))])
     batch.status = "review_pending"
     batch.stage = "s2_completed"
+    batch.checkpoint = {"s3": {"global_dedupe": {"status": "completed"}}}
     payload = fake_candidate(batch.id)
     payload["source"].update({"file_id": batch.files[0]["file_id"], "page_start": 1, "page_end": 1})
     candidate = add_candidate(db, batch, payload)
