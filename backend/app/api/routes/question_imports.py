@@ -22,6 +22,7 @@ from app.services.question_import_s3_images import (
     extract_images, image_bytes, list_images, set_candidate_image, upload_candidate_image,
 )
 from app.services.question_import_s3_separate import start_separate_answers
+from app.services.question_import_s3_labels import _allowed_kps, retry_item_labels, start_labels
 from app.services.question_import_s3_review import (
     list_review_issues, list_review_units, review_issue, review_unit,
 )
@@ -68,6 +69,10 @@ class S2StartRequest(BaseModel):
 
 class S3ReviewRequest(BaseModel):
     budget_cny: float = Field(gt=0)
+
+
+class S3LabelRetryRequest(S3ReviewRequest):
+    expected_revision: int = Field(ge=1)
 
 
 class ImageLinkRequest(BaseModel):
@@ -117,6 +122,14 @@ def s2_config():
             "max_output_tokens": settings.question_import_s2_max_output_tokens,
             "pages_per_unit": settings.question_import_s2_pages_per_unit,
             "overlap_pages": settings.question_import_s2_overlap_pages}
+
+
+@router.get("/label-catalog")
+def label_catalog(db: Session = Depends(get_db)):
+    return [{"code": code, "name": point["name"], "grade": point["grade"],
+             "chapter_code": point["chapter_code"], "chapter_name": point["chapter_name"],
+             "section": point["section"], "core_literacies": point["core_competencies"]}
+            for code, point in _allowed_kps(db).items()]
 
 
 @router.get("/{batch_id}", response_model=BatchOut)
@@ -201,6 +214,22 @@ def start_separate_answer_extraction(batch_id: UUID, request: S3ReviewRequest,
                                      operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
     return start_separate_answers(db, batch_id, budget_cny=request.budget_cny,
                                   operator_token=operator_token)
+
+
+@router.post("/{batch_id}/s3/start-labels", response_model=BatchOut)
+def start_label_suggestions(batch_id: UUID, request: S3ReviewRequest,
+                            db: Session = Depends(get_db),
+                            operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
+    return start_labels(db, batch_id, budget_cny=request.budget_cny,
+                        operator_token=operator_token)
+
+
+@router.post("/{batch_id}/s3/items/{item_id}/retry-labels", response_model=BatchOut)
+def retry_label_suggestion(batch_id: UUID, item_id: UUID, request: S3LabelRetryRequest,
+                           db: Session = Depends(get_db),
+                           operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
+    return retry_item_labels(db, batch_id, item_id, expected_revision=request.expected_revision,
+                             budget_cny=request.budget_cny, operator_token=operator_token)
 
 
 @router.post("/{batch_id}/s3/dedupe-batch")

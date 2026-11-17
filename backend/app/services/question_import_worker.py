@@ -125,7 +125,10 @@ def process_one() -> bool:
         if process_global_dedupe_one():
             return True
         from app.services.question_import_s3_separate import process_separate_answers_one
-        return process_separate_answers_one()
+        if process_separate_answers_one():
+            return True
+        from app.services.question_import_s3_labels import process_labels_one
+        return process_labels_one()
     batch_id, token = claimed
     try:
         with SessionLocal() as db:

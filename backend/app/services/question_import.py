@@ -380,6 +380,16 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         raise ImportProblem("INVALID_CANDIDATE", "所选答案版本不存在")
     item.revision += 1
     payload["revision"] = item.revision
+    if payload.get("label_suggestion"):
+        suggestion = dict(payload["label_suggestion"])
+        suggestion["revision"] = item.revision
+        if "tags" in changes:
+            suggestion["teacher_overrides"] = sorted(set(suggestion.get("teacher_overrides") or []) |
+                                                     set(changes["tags"]))
+        if "content" in changes:
+            suggestion["stale"] = True
+            payload["label_status"] = "needs_confirmation"
+        payload["label_suggestion"] = suggestion
     item.payload = payload
     return item
 

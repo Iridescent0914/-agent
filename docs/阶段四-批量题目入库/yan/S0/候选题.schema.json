@@ -52,6 +52,17 @@
     "answer_match_status": {"enum": ["not_applicable", "matched", "uncertain", "unmatched", "conflict"]},
     "precheck_status": {"enum": ["not_run", "matched", "suspect", "uncertain", "failed"]},
     "label_status": {"enum": ["matched", "needs_confirmation", "out_of_scope", "invalid"]},
+    "label_suggestion": {"type": "object", "description": "S3 模型建议及来源版本；不代表教师确认", "additionalProperties": false,
+      "required": ["item_id", "question_type", "difficulty", "main_kp_code", "alternative_kp_codes", "uncertainty", "model", "version", "revision", "fingerprint", "catalog_snapshot_sha256", "stale"],
+      "properties": {
+        "item_id": {"type": "string"}, "question_type": {"enum": ["choice", "fill_blank", "calculation", "solution", "true_false", "unknown"]},
+        "difficulty": {"type": ["integer", "null"], "minimum": 1, "maximum": 5}, "main_kp_code": {"type": ["string", "null"]},
+        "alternative_kp_codes": {"type": "array", "maxItems": 2, "items": {"type": "string"}},
+        "uncertainty": {"type": ["string", "null"]}, "model": {"type": "string"},
+        "version": {"type": "string"}, "revision": {"type": "integer"}, "fingerprint": {"type": "string"},
+        "catalog_snapshot_sha256": {"type": "string"}, "stale": {"type": "boolean"},
+        "teacher_overrides": {"type": "array", "uniqueItems": true, "items": {"enum": ["question_type", "difficulty", "main_kp_code", "is_required"]}}
+      }},
     "teacher_decision": {"enum": ["pending", "approved", "rejected", "skipped_duplicate"]},
     "commit_intent": {"enum": ["library_only", "direct_pool"]},
     "duplicate_status": {"enum": ["none", "exact_in_batch", "exact_in_catalog", "suspected", "resolved_variant"]},

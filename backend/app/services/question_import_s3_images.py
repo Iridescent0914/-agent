@@ -334,6 +334,10 @@ def set_candidate_image(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
     payload["warnings"] = warnings
     item.revision += 1
     payload["revision"] = item.revision
+    if payload.get("label_suggestion"):
+        payload["label_suggestion"] = {**payload["label_suggestion"], "stale": True,
+                                       "revision": item.revision}
+        payload["label_status"] = "needs_confirmation"
     item.payload = payload
     if not linked and was_linked and asset.get("kind") == "upload":
         checkpoint = dict(batch.checkpoint or {})
@@ -404,6 +408,10 @@ def upload_candidate_image(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
                                      if warning not in {UNEXTRACTED_WARNING, REVIEW_WARNING}]
     item.revision += 1
     candidate_payload["revision"] = item.revision
+    if candidate_payload.get("label_suggestion"):
+        candidate_payload["label_suggestion"] = {**candidate_payload["label_suggestion"],
+                                                 "stale": True, "revision": item.revision}
+        candidate_payload["label_status"] = "needs_confirmation"
     item.payload = candidate_payload
     db.flush()
     return item
