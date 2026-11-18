@@ -16,7 +16,7 @@ from app.services.question_import import (
     create_teacher_candidate, delete_cancelled_batch, delete_teacher_candidate, get_batch, retry_batch, update_candidate,
 )
 from app.services.question_import_s2_worker import skip_incomplete_s2_page, start_s2
-from app.services.question_import_s3 import reconcile_source_answers, restore_nonquestion_fragment
+from app.services.question_import_s3 import reconcile_source_answers
 from app.services.question_import_s3_global import dedupe_batch
 from app.services.question_import_s3_images import (
     extract_images, image_bytes, list_images, set_candidate_image, upload_candidate_image,
@@ -266,12 +266,6 @@ def rerun_label_suggestions(batch_id: UUID, request: S3ReviewRequest,
 def run_batch_dedup(batch_id: UUID, request: S3ReviewRequest, db: Session = Depends(get_db),
                     operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
     return dedupe_batch(db, batch_id, budget_cny=request.budget_cny, operator_token=operator_token)
-
-
-@router.post("/{batch_id}/s3/nonquestions/{unit_index}/{fragment_index}/restore")
-def restore_nonquestion(batch_id: UUID, unit_index: int, fragment_index: int,
-                        db: Session = Depends(get_db)):
-    return restore_nonquestion_fragment(db, batch_id, unit_index, fragment_index)
 
 
 @router.get("/{batch_id}/s3/review-issues")

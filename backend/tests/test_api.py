@@ -22,7 +22,7 @@ def test_health_and_readiness() -> None:
     assert client.get("/api/v1/health").json() == {"status": "ok"}
     response = client.get("/api/v1/ready")
     assert response.status_code == 200
-    assert response.json()['migration'] == '0032'
+    assert response.json()['migration'] == '0033'
 
 
 def test_question_list_filters_and_detail_assets() -> None:

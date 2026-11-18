@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from io import BytesIO
 from types import SimpleNamespace
 
@@ -14,13 +13,12 @@ from app.core.config import Settings, get_settings
 from app.core.database import engine
 from app.services.question_import import ImportProblem, add_candidate, create_batch
 from app.services.question_import_s2 import (
-    COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION,
-    SECTIONED_COMBINED_PROMPT_VERSION, INCLUSIVE_COMBINED_PROMPT_VERSION,
+    INCLUSIVE_COMBINED_PROMPT_VERSION, CONTINUATION_COMBINED_PROMPT_VERSION,
     QwenPdfProvider, candidate_from_question,
     parse_model_output, plan_units,
 )
 from app.services.question_import_s2_worker import start_s2
-from app.services.question_import_s3 import reconcile_source_answers, restore_nonquestion_fragment
+from app.services.question_import_s3 import reconcile_source_answers
 import app.services.question_import_s3 as s3_service
 import app.services.question_import_s2 as s2_service
 import app.services.question_import_s2_worker as s2_worker
@@ -79,11 +77,6 @@ def _question(number: str) -> dict:
             "options": [], "subquestions": [], "math_fragments": [],
             "diagram_clues": [], "page_start": 1, "page_end": 1,
             "uncertain_fragments": []}
-
-
-def _classified_question(number: str, *, classification: str = "independent_question") -> dict:
-    return {**_question(number), "source_classification": classification,
-            "classification_evidence": "题号连续，后接待作答题干"}
 
 
 def _answer(number: str | None, text: str) -> dict:
@@ -187,11 +180,7 @@ def test_combined_pdf_one_pass_returns_separate_source_answers():
         captured.update(json.loads(request.content))
         return httpx.Response(200, json={
             "id": "combined-1", "choices": [{"finish_reason": "stop", "message": {
-                "content": json.dumps({"complete": True, "questions": [_classified_question("3")],
-                                       "nonquestion_fragments": [{"original_number": "3", "excerpt": "题目 3",
-                                                                  "full_text": "题目 3 的完整重述", "page": 1, "page_end": 1,
-                                                                  "source_classification": "answer_restatement",
-                                                                  "classification_evidence": "后接【答案】7"}],
+                "content": json.dumps({"complete": True, "questions": [_question("3")],
                                        "source_answers": [{"original_number": "3",
                                                            "subquestion_number": None,
                                                            "answer_text": "7", "page_start": 1,
@@ -208,55 +197,31 @@ def test_combined_pdf_one_pass_returns_separate_source_answers():
         _pdf(), page_count=1, include_answers=True)
     assert output.questions[0].question_text == "题目 3"
     assert output.source_answers[0].answer_text == "7"
-    assert output.nonquestion_fragments[0].source_classification == "answer_restatement"
-    assert meta["prompt_version"] == COMBINED_PROMPT_VERSION
+    assert meta["prompt_version"] == CONTINUATION_COMBINED_PROMPT_VERSION
     assert len([part for part in captured["messages"][0]["content"] if part["type"] == "file"]) == 1
     assert "source_answers" in captured["response_format"]["json_schema"]["schema"]["required"]
-    question_schema = captured["response_format"]["json_schema"]["schema"]["$defs"]["ClassifiedModelQuestion"]
-    assert {"source_classification", "classification_evidence"} <= set(question_schema["required"])
-    assert "nonquestion_fragments" in captured["response_format"]["json_schema"]["schema"]["required"]
+    assert "ModelQuestion" in captured["response_format"]["json_schema"]["schema"]["$defs"]
+    assert "nonquestion_fragments" not in captured["response_format"]["json_schema"]["schema"]["properties"]
     assert "不要把解题步骤" in captured["messages"][0]["content"][1]["text"]
-    assert "不要根据固定标题名称或整页位置" in captured["messages"][0]["content"][1]["text"]
-    assert "complete 仅表示" in captured["messages"][0]["content"][1]["text"]
-    with pytest.raises(ImportProblem) as missing_classification:
-        parse_model_output({"complete": True, "questions": [_question("3")],
-                            "source_answers": [], "nonquestion_fragments": []},
-                           plan_units(1, pages_per_unit=1, overlap=0)[0], include_answers=True)
-    assert missing_classification.value.code == "INVALID_MODEL_OUTPUT"
     with pytest.raises(ImportProblem) as error:
         parse_model_output({"complete": True, "questions": [], "source_answers": [
             {"original_number": "3", "subquestion_number": None,
              "answer_text": "7", "page_start": 2, "page_end": 2,
-            "uncertain_fragments": []}], "nonquestion_fragments": [], "unresolved_fragments": []},
+            "uncertain_fragments": []}], "unresolved_fragments": []},
             plan_units(1, pages_per_unit=1, overlap=0)[0], include_answers=True)
     assert error.value.code == "INVALID_MODEL_PAGE"
 
-    v5 = {"complete": True, "questions": [], "source_answers": [],
-          "unresolved_fragments": [], "nonquestion_fragments": [{
-              "original_number": None, "excerpt": "活动说明", "full_text": "活动说明：观察图形后讨论",
-              "page": 1, "page_end": 1, "source_classification": "other_nonquestion",
-              "classification_evidence": "没有独立作答要求",
-          }]}
-    assert parse_model_output(v5, plan_units(1, pages_per_unit=1, overlap=0)[0],
-                              include_answers=True).nonquestion_fragments[0].full_text.startswith("活动说明")
-    del v5["nonquestion_fragments"][0]["full_text"]
-    with pytest.raises(ImportProblem) as missing_full_text:
-        parse_model_output(v5, plan_units(1, pages_per_unit=1, overlap=0)[0], include_answers=True)
-    assert missing_full_text.value.code == "INVALID_MODEL_OUTPUT"
 
-
-def test_focused_combined_output_keeps_only_questions_and_answers():
+def test_combined_output_keeps_only_questions_and_answers():
     unit = plan_units(1, pages_per_unit=1, overlap=0)[0]
-    focused = {"complete": True, "questions": [_question("3")],
-               "source_answers": [{"original_number": "3", "answer_text": "7",
-                                   "page_start": 1, "page_end": 1}], "unresolved_fragments": []}
-    output = parse_model_output(focused, unit, include_answers=True,
-                                combined_prompt_version=FOCUSED_COMBINED_PROMPT_VERSION)
+    combined = {"complete": True, "questions": [_question("3")],
+                "source_answers": [{"original_number": "3", "answer_text": "7",
+                                    "page_start": 1, "page_end": 1}], "unresolved_fragments": []}
+    output = parse_model_output(combined, unit, include_answers=True)
     assert len(output.questions) == 1
     assert output.source_answers[0].answer_text == "7"
     with pytest.raises(ImportProblem) as extra_content:
-        parse_model_output({**focused, "nonquestion_fragments": []}, unit, include_answers=True,
-                           combined_prompt_version=FOCUSED_COMBINED_PROMPT_VERSION)
+        parse_model_output({**combined, "nonquestion_fragments": []}, unit, include_answers=True)
     assert extra_content.value.code == "INVALID_MODEL_OUTPUT"
 
 
@@ -270,7 +235,7 @@ def test_combined_answers_link_only_unique_unedited_question(db, tmp_path, monke
     batch = create_batch(db, source_mode="combined", files=[("questions", "combined.pdf", _pdf())])
     batch.stage = "awaiting_s2"
     start_s2(db, batch.id, budget_cny=2, operator_token="operator-test")
-    assert batch.checkpoint["s2"]["prompt_version"] == INCLUSIVE_COMBINED_PROMPT_VERSION
+    assert batch.checkpoint["s2"]["prompt_version"] == CONTINUATION_COMBINED_PROMPT_VERSION
     source_id = batch.files[0]["file_id"]
     unit = plan_units(1, pages_per_unit=1, overlap=0)[0]
     for number in ("3", "3", "4", "5"):
@@ -334,7 +299,7 @@ def test_unique_number_with_conflicting_excerpt_stays_unassigned(db, tmp_path, m
     item = add_candidate(db, batch, candidate_from_question(source_id, question, unit))
     batch.status = "review_pending"
     batch.stage = "s2_completed"
-    batch.checkpoint = {"s2": {"prompt_version": COMBINED_PROMPT_VERSION,
+    batch.checkpoint = {"s2": {"prompt_version": INCLUSIVE_COMBINED_PROMPT_VERSION,
         "units": [{"source_answers": [{**_answer("3", "7"),
             "source_file_id": source_id, "question_excerpt": "求有理数九加九的运算结果"}]}]}}
     db.flush()
@@ -371,7 +336,7 @@ def test_question_number_only_excerpt_does_not_block_answer_match(db, tmp_path, 
     item = add_candidate(db, batch, candidate_from_question(source_id, question, unit))
     batch.status = "review_pending"
     batch.stage = "s2_completed"
-    batch.checkpoint = {"s2": {"prompt_version": SECTIONED_COMBINED_PROMPT_VERSION,
+    batch.checkpoint = {"s2": {"prompt_version": INCLUSIVE_COMBINED_PROMPT_VERSION,
         "conversion_version": None,
         "units": [{"source_answers": [{**_answer("21", "A"),
             "source_file_id": source_id, "question_excerpt": "第21题"}]}]}}
@@ -381,53 +346,6 @@ def test_question_number_only_excerpt_does_not_block_answer_match(db, tmp_path, 
     assert result["linked_answer_count"] == 1
     assert result["unassigned_answers"] == []
     assert item.payload["answers"][0]["text"] == "A"
-
-
-def test_v5_nonquestion_can_be_restored_without_model_call(db, tmp_path, monkeypatch):
-    monkeypatch.setattr(get_settings(), "question_import_dir", tmp_path / "imports")
-    batch = create_batch(db, source_mode="combined", files=[("questions", "combined.pdf", _pdf())])
-    batch.status = "review_pending"
-    batch.stage = "s2_completed"
-    batch.checkpoint = {"s2": {"prompt_version": COMBINED_PROMPT_VERSION,
-        "units": [{"ignored_nonquestion_sections": [{
-            "original_number": "12", "page_start": 1, "page_end": 1,
-            "source_file_id": batch.files[0]["file_id"],
-            "excerpt": "计算 1+2", "full_text": "计算 1+2 并说明理由",
-            "section": "other_nonquestion", "classification_evidence": "模型认为是示例",
-        }]}]}}
-    db.flush()
-    first = restore_nonquestion_fragment(db, batch.id, 0, 0)
-    second = restore_nonquestion_fragment(db, batch.id, 0, 0)
-    assert second == {"item_id": first["item_id"], "already_restored": True}
-    from app.models import QuestionImportItem
-    from sqlalchemy import select
-    items = list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch.id)))
-    assert len(items) == 1
-    assert items[0].payload["content"]["question_text"] == "计算 1+2 并说明理由"
-    assert items[0].payload["teacher_decision"] == "pending"
-
-
-def test_v5_nonquestion_can_be_restored_after_source_expiry(db, tmp_path, monkeypatch):
-    monkeypatch.setattr(get_settings(), "question_import_dir", tmp_path / "imports")
-    batch = create_batch(db, source_mode="combined", files=[("questions", "combined.pdf", _pdf())])
-    batch.status = "failed"
-    batch.stage = "expired"
-    batch.files_purged_at = datetime.now(timezone.utc)
-    batch.checkpoint = {"s2": {"prompt_version": COMBINED_PROMPT_VERSION,
-        "units": [{"status": "completed", "ignored_nonquestion_sections": [{
-            "original_number": "12", "page_start": 1, "page_end": 1,
-            "source_file_id": batch.files[0]["file_id"],
-            "full_text": "计算 1+2 并说明理由",
-            "classification_evidence": "模型认为是示例",
-        }]}]}}
-    db.flush()
-    result = restore_nonquestion_fragment(db, batch.id, 0, 0)
-    from app.models import QuestionImportItem
-    from sqlalchemy import select
-    item = db.scalar(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch.id))
-    assert str(item.id) == result["item_id"]
-    assert item.payload["content"]["question_text"] == "计算 1+2 并说明理由"
-    assert "原文件已过期；须重新取得原页后再确认" in item.payload["warnings"]
 
 
 def test_combined_worker_keeps_answers_from_same_paid_unit(db, tmp_path, monkeypatch):
@@ -440,8 +358,6 @@ def test_combined_worker_keeps_answers_from_same_paid_unit(db, tmp_path, monkeyp
     batch = create_batch(db, source_mode="combined", files=[("questions", "combined.pdf", _pdf(2))])
     batch.stage = "awaiting_s2"
     start_s2(db, batch.id, budget_cny=2, operator_token="operator-test")
-    batch.checkpoint = {**batch.checkpoint, "s2": {**batch.checkpoint["s2"],
-                                                    "prompt_version": COMBINED_PROMPT_VERSION}}
     db.commit()
     connection = db.get_bind()
 
@@ -452,22 +368,17 @@ def test_combined_worker_keeps_answers_from_same_paid_unit(db, tmp_path, monkeyp
     monkeypatch.setattr(s2_worker, "SessionLocal", session_factory)
     monkeypatch.setattr(s2_worker, "prepare_pdf", lambda *_: (tmp_path / "unused.pdf", 2, []))
     monkeypatch.setattr(s2_worker, "pdf_unit_bytes", lambda *_: _pdf(2))
-    monkeypatch.setattr(s2_worker, "pdf_page_roles", lambda *_: pytest.fail("v4 不应按标题划分页角色"))
+    monkeypatch.setattr(s2_worker, "pdf_page_roles", lambda *_: ["question", "answer"])
 
     class MockProvider:
         def extract(self, data, *, page_count, core_page_count, capture_response=None,
                     include_answers=False, page_roles=None, **kwargs):
             assert include_answers is True
             assert page_count == core_page_count == 2
-            assert page_roles is None
-            uncertain_question = {**_classified_question("4", classification="uncertain"),
-                                  "page_start": 2, "page_end": 2}
+            assert page_roles == ["question", "answer"]
+            later_question = {**_question("4"), "page_start": 2, "page_end": 2}
             output = parse_model_output({"complete": True,
-                                         "questions": [_classified_question("3"), uncertain_question],
-                                         "nonquestion_fragments": [{"original_number": "3", "excerpt": "题目 3",
-                                                                    "full_text": "题目 3 的完整重述", "page": 2, "page_end": 2,
-                                                                    "source_classification": "answer_restatement",
-                                                                    "classification_evidence": "重述后紧跟答案 7"}],
+                                         "questions": [_question("3"), later_question],
                                          "source_answers": [{"original_number": "3",
                                                              "subquestion_number": None,
                                                              "answer_text": "7", "page_start": 2,
@@ -486,9 +397,13 @@ def test_combined_worker_keeps_answers_from_same_paid_unit(db, tmp_path, monkeyp
     assert batch.stage == "s2_completed", batch.error_message
     unit = batch.checkpoint["s2"]["units"][0]
     assert unit["candidate_count"] == 2
-    assert "ignored_nonquestion_sections" not in unit
     assert unit["source_answers"][0]["text"] == "7"
     assert unit["source_answers"][0]["source_file_id"] == batch.files[0]["file_id"]
+    from app.models import QuestionImportItem
+    from sqlalchemy import select
+    candidates = list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch.id)))
+    assert all(item.payload["extraction"]["prompt_version"] == CONTINUATION_COMBINED_PROMPT_VERSION
+               for item in candidates)
 
 
 @pytest.mark.parametrize("opening_role", ["answer", "reference"])
@@ -525,7 +440,7 @@ def test_inclusive_worker_keeps_complete_questions_when_file_starts_with_answers
                                     "page_start": 2, "page_end": 2}],
                 "unresolved_fragments": []},
                 plan_units(2, pages_per_unit=2, overlap=0)[0], include_answers=True,
-                combined_prompt_version=INCLUSIVE_COMBINED_PROMPT_VERSION)
+                combined_prompt_version=CONTINUATION_COMBINED_PROMPT_VERSION)
             return output, {"usage": {"prompt_tokens": 100, "completion_tokens": 50},
                             "elapsed_seconds": 1.0, "response_id": "sectioned-worker-1"}, 1.0
 
@@ -534,10 +449,9 @@ def test_inclusive_worker_keeps_complete_questions_when_file_starts_with_answers
     db.refresh(batch)
     unit = batch.checkpoint["s2"]["units"][0]
     assert batch.stage == "s2_completed", batch.error_message
-    assert batch.checkpoint["s2"]["prompt_version"] == INCLUSIVE_COMBINED_PROMPT_VERSION
+    assert batch.checkpoint["s2"]["prompt_version"] == CONTINUATION_COMBINED_PROMPT_VERSION
     assert unit["candidate_count"] == 2
     assert unit["source_answers"][0]["text"] == "A"
-    assert "ignored_nonquestion_sections" not in unit
 
 
 def test_combined_worker_reads_reference_looking_pages_with_model(db, tmp_path, monkeypatch):
@@ -550,8 +464,6 @@ def test_combined_worker_reads_reference_looking_pages_with_model(db, tmp_path, 
     batch = create_batch(db, source_mode="combined", files=[("questions", "reference.pdf", _pdf(2))])
     batch.stage = "awaiting_s2"
     start_s2(db, batch.id, budget_cny=2, operator_token="operator-test")
-    batch.checkpoint = {**batch.checkpoint, "s2": {**batch.checkpoint["s2"],
-                                                    "prompt_version": COMBINED_PROMPT_VERSION}}
     db.commit()
     connection = db.get_bind()
 
@@ -562,12 +474,13 @@ def test_combined_worker_reads_reference_looking_pages_with_model(db, tmp_path, 
     monkeypatch.setattr(s2_worker, "SessionLocal", session_factory)
     monkeypatch.setattr(s2_worker, "prepare_pdf", lambda *_: (tmp_path / "unused.pdf", 2, []))
     monkeypatch.setattr(s2_worker, "pdf_unit_bytes", lambda *_: _pdf(2))
-    monkeypatch.setattr(s2_worker, "pdf_page_roles", lambda *_: pytest.fail("v4 不能按标题跳过模型"))
+    monkeypatch.setattr(s2_worker, "pdf_page_roles", lambda *_: ["reference", "reference"])
 
     class MockProvider:
-        def extract(self, *_args, **_kwargs):
-            output = parse_model_output({"complete": True, "questions": [_classified_question("9")],
-                                         "source_answers": [], "nonquestion_fragments": [],
+        def extract(self, *_args, **kwargs):
+            assert kwargs["page_roles"] == ["reference", "reference"]
+            output = parse_model_output({"complete": True, "questions": [_question("9")],
+                                         "source_answers": [],
                                          "unresolved_fragments": []},
                                         plan_units(2, pages_per_unit=2, overlap=0)[0], include_answers=True)
             return output, {"usage": {"prompt_tokens": 100, "completion_tokens": 50},
@@ -578,7 +491,6 @@ def test_combined_worker_reads_reference_looking_pages_with_model(db, tmp_path, 
     db.refresh(batch)
     assert batch.stage == "s2_completed", batch.error_message
     assert batch.checkpoint["s2"]["calls"] == 1
-    assert batch.checkpoint["s2"]["units"][0].get("skipped_reference") is False
     assert batch.checkpoint["s2"]["units"][0]["candidate_count"] == 1
     assert not batch.checkpoint["s2"]["units"][0]["unresolved_fragments"]
 
@@ -622,14 +534,13 @@ def test_reconcile_repairs_answer_restatements_and_reference_cards(db, tmp_path,
     batch.status = "review_pending"
     batch.stage = "s2_completed"
     batch.checkpoint = {"s2": {**batch.checkpoint["s2"],
-                               "prompt_version": "question-import-combined-v1",
+                               "prompt_version": INCLUSIVE_COMBINED_PROMPT_VERSION,
                                "units": [{"source_answers": [_answer("1", "3")]}]},
                         "s3": {"source_answer_reconciliation": {
                             "schema_version": "s3-source-answer-reconciliation-v1"}}}
     db.flush()
 
     result = reconcile_source_answers(db, batch.id)
-    assert result["removed_nonquestion_candidate_count"] == 0
     assert result["linked_answer_count"] == 0
     assert result["unassigned_answers"][0]["reason"] == "repeated_question_number"
     from app.models import QuestionImportItem

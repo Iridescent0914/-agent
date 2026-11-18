@@ -27,11 +27,9 @@ logger = logging.getLogger(__name__)
 
 
 def _batch_review_spent(s3: dict[str, Any]) -> float:
-    """Include historical original-page calls when enforcing an existing batch budget."""
-    historical_spent = sum(float(review.get("estimated_cny") or review.get("reserved_cny") or 0)
-                           for review in (s3.get("issue_reviews") or {}).values())
+    """Return the amount spent on whole-batch deduplication."""
     global_review = s3.get("global_dedupe") or {}
-    return historical_spent + float(
+    return float(
         global_review.get("estimated_cny") or global_review.get("reserved_cny") or 0)
 
 

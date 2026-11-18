@@ -31,21 +31,9 @@ from app.core.config import Settings, get_settings
 from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, _path_for
 
 PROMPT_VERSION = "question-import-s2-v3"
-LEGACY_PROMPT_VERSION = "question-import-s2-v2"
-COMBINED_PROMPT_VERSION = "question-import-combined-v5"
-FOCUSED_COMBINED_PROMPT_VERSION = "question-import-combined-v6"
-SECTIONED_COMBINED_PROMPT_VERSION = "question-import-combined-v7"
 INCLUSIVE_COMBINED_PROMPT_VERSION = "question-import-combined-v8"
-CLASSIFIED_COMBINED_PROMPT_VERSION = "question-import-combined-v4"
-HEADING_COMBINED_PROMPT_VERSION = "question-import-combined-v3"
-PREVIOUS_COMBINED_PROMPT_VERSION = "question-import-combined-v2"
-LEGACY_COMBINED_PROMPT_VERSION = "question-import-combined-v1"
-COMBINED_PROMPT_VERSIONS = {
-    INCLUSIVE_COMBINED_PROMPT_VERSION, SECTIONED_COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION,
-    COMBINED_PROMPT_VERSION, CLASSIFIED_COMBINED_PROMPT_VERSION,
-    HEADING_COMBINED_PROMPT_VERSION,
-    PREVIOUS_COMBINED_PROMPT_VERSION, LEGACY_COMBINED_PROMPT_VERSION,
-}
+CONTINUATION_COMBINED_PROMPT_VERSION = "question-import-combined-v9"
+COMBINED_PROMPT_VERSIONS = {INCLUSIVE_COMBINED_PROMPT_VERSION, CONTINUATION_COMBINED_PROMPT_VERSION}
 FLASH_MODEL = "qwen3.8-flash"
 
 
@@ -141,46 +129,10 @@ class CombinedModelOutput(ModelOutput):
     source_answers: list[ModelSourceAnswer]
 
 
-class ClassifiedModelQuestion(ModelQuestion):
-    source_classification: Literal["independent_question", "uncertain"]
-    classification_evidence: str = Field(min_length=1)
-
-
-class ModelNonquestionFragment(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
-    original_number: str | None = None
-    excerpt: str = Field(min_length=1)
-    page: int = Field(ge=1)
-    source_classification: Literal["answer_restatement", "reference_material"]
-    classification_evidence: str = Field(min_length=1)
-
-
-class ClassifiedCombinedModelOutput(CombinedModelOutput):
-    questions: list[ClassifiedModelQuestion]
-    nonquestion_fragments: list[ModelNonquestionFragment]
-
-
-class AuditableModelNonquestionFragment(ModelNonquestionFragment):
-    source_classification: Literal[
-        "answer_restatement", "reference_material", "directory",
-        "worked_example", "activity_instruction", "answer_sheet", "other_nonquestion",
-    ]
-    full_text: str = Field(min_length=1)
-    page_end: int = Field(ge=1)
-
-
-class AuditableCombinedModelOutput(ClassifiedCombinedModelOutput):
-    questions: list[ClassifiedModelQuestion]
-    nonquestion_fragments: list[AuditableModelNonquestionFragment]
-
-
 def combined_output_model(version: str):
-    if version in {FOCUSED_COMBINED_PROMPT_VERSION, SECTIONED_COMBINED_PROMPT_VERSION,
-                   INCLUSIVE_COMBINED_PROMPT_VERSION}:
-        return CombinedModelOutput
-    if version == COMBINED_PROMPT_VERSION:
-        return AuditableCombinedModelOutput
-    return ClassifiedCombinedModelOutput if version == CLASSIFIED_COMBINED_PROMPT_VERSION else CombinedModelOutput
+    if version not in COMBINED_PROMPT_VERSIONS:
+        raise ImportProblem("S2_CONFIG_CHANGED", "提示词版本已变化，请新建批次")
+    return CombinedModelOutput
 
 
 def pdf_page_roles(pdf: Path | bytes) -> list[str]:
@@ -373,7 +325,7 @@ def pdf_unit_bytes(pdf: Path, unit: PageUnit) -> bytes:
 
 
 def parse_model_output(value: object, unit: PageUnit, *, include_answers: bool = False,
-                       combined_prompt_version: str = COMBINED_PROMPT_VERSION) -> ModelOutput | CombinedModelOutput:
+                       combined_prompt_version: str = CONTINUATION_COMBINED_PROMPT_VERSION) -> ModelOutput | CombinedModelOutput:
     if isinstance(value, list):
         detail = "空数组 []" if not value else "数组"
         raise ImportProblem("INVALID_MODEL_OUTPUT", f"模型返回{detail}，需要包含 complete、questions 的 JSON 对象")
@@ -404,17 +356,11 @@ def parse_model_output(value: object, unit: PageUnit, *, include_answers: bool =
     if include_answers and any(answer.page_start > answer.page_end or answer.page_end > unit.page_count
                                for answer in output.source_answers):
         raise ImportProblem("INVALID_MODEL_PAGE", "资料答案页码超出处理页段")
-    if isinstance(output, (ClassifiedCombinedModelOutput, AuditableCombinedModelOutput)) and any(
-        fragment.page > unit.page_count or (
-            isinstance(fragment, AuditableModelNonquestionFragment)
-            and (fragment.page_end < fragment.page or fragment.page_end > unit.page_count)
-        ) for fragment in output.nonquestion_fragments
-    ):
-        raise ImportProblem("INVALID_MODEL_PAGE", "非独立题片段页码超出处理页段")
     return output
 
 
-def candidate_from_question(file_id: str, question: ModelQuestion, unit: PageUnit) -> dict:
+def candidate_from_question(file_id: str, question: ModelQuestion, unit: PageUnit,
+                            *, prompt_version: str = PROMPT_VERSION) -> dict:
     page_start = unit.first_page + question.page_start - 1
     page_end = unit.first_page + question.page_end - 1
     text = question.question_text.strip()
@@ -426,8 +372,6 @@ def candidate_from_question(file_id: str, question: ModelQuestion, unit: PageUni
         warnings.append("题图尚未裁剪；请对照原页复核")
     if question.uncertain_fragments:
         warnings.append("模型报告不确定片段；请人工复核")
-    if isinstance(question, ClassifiedModelQuestion) and question.source_classification == "uncertain":
-        warnings.append("模型无法确定这是否为独立题目；请对照原页核对")
     return {
         "schema_version": "import-candidate-v1",
         "source": {"file_id": file_id, "original_number": question.original_number,
@@ -445,13 +389,10 @@ def candidate_from_question(file_id: str, question: ModelQuestion, unit: PageUni
         "label_status": "needs_confirmation", "teacher_decision": "pending",
         "commit_intent": "library_only", "duplicate_status": "none",
         "field_confidence": {}, "field_evidence": {}, "warnings": warnings,
-        "extraction": {"prompt_version": PROMPT_VERSION, "subquestions": subquestions,
+        "extraction": {"prompt_version": prompt_version, "subquestions": subquestions,
                        "math_fragments": question.math_fragments,
                        "diagram_clues": question.diagram_clues,
-                       "uncertain_fragments": question.uncertain_fragments,
-                       **({"source_classification": question.source_classification,
-                           "classification_evidence": question.classification_evidence}
-                          if isinstance(question, ClassifiedModelQuestion) else {})},
+                           "uncertain_fragments": question.uncertain_fragments},
     }
 
 
@@ -594,7 +535,7 @@ class QwenPdfProvider:
     def extract(self, pdf_data: bytes, *, page_count: int, core_page_count: int | None = None,
                 capture_response: Callable[[dict, float], None] | None = None,
                 include_answers: bool = False,
-                combined_prompt_version: str = COMBINED_PROMPT_VERSION,
+                combined_prompt_version: str = CONTINUATION_COMBINED_PROMPT_VERSION,
                  page_roles: list[str] | None = None,
                  embedded_images: list[dict] | None = None,
                  page_previews: list[bytes] | None = None) -> tuple[ModelOutput | CombinedModelOutput, dict, float]:
@@ -624,7 +565,8 @@ class QwenPdfProvider:
             "这只用于提示场景可能选错，不改变上传者选择，也不把答案混入题干。"
         )
         if include_answers:
-            if combined_prompt_version == INCLUSIVE_COMBINED_PROMPT_VERSION:
+            if combined_prompt_version in {INCLUSIVE_COMBINED_PROMPT_VERSION,
+                                           CONTINUATION_COMBINED_PROMPT_VERSION}:
                 roles = page_roles if page_roles is not None else pdf_page_roles(pdf_data)
                 if len(roles) != page_count:
                     raise ImportProblem("INVALID_S2_CONFIG", "PDF 章节页数与处理页段不一致")
@@ -643,103 +585,29 @@ class QwenPdfProvider:
                     "无法完整辨认的题目或答案放入 unresolved_fragments。"
                     "题图需和相应 questions 对应；缺少自动提取的题图时给出裁剪坐标。"
                 )
-            elif combined_prompt_version in {FOCUSED_COMBINED_PROMPT_VERSION, SECTIONED_COMBINED_PROMPT_VERSION}:
-                prompt += (
-                    "本文件同时含题目与答案。只返回主体页内真正开始的独立题目和原文明确给出的答案。"
-                    "重叠页只用于补全主体页已开始的题目或答案；不要把重叠页新开始的题单独输出。"
-                    "目录、示范解法、活动说明、答题卡、知识讲解和答案区重述题干都不要返回，"
-                    "也不要为这些内容建立记录。不要仅凭标题或整页位置判断，一页可以题答混排。"
-                    "前一页段已开始的题在本页剩余的选项或文字只是上下文，不能作为新题，"
-                    "也不要放入 unresolved_fragments。"
-                    "unresolved_fragments 仅用于主体页内开始、但确实无法完整辨认的独立题或标准答案；"
-                    "不能确定某段是否为独立题时，若能完整转录则放入 questions 供后续处理。"
-                    "同一题的填空结果和【答案】同时出现时只记录一条标准答案；冲突则标记未确定。"
-                    "complete 仅表示主体页开始的题目是否完整提取，答案解析续文不使其为 false。"
-                )
-                if combined_prompt_version == SECTIONED_COMBINED_PROMPT_VERSION:
-                    roles = page_roles if page_roles is not None else pdf_page_roles(pdf_data)
-                    if len(roles) != page_count:
-                        raise ImportProblem("INVALID_S2_CONFIG", "PDF 章节页数与处理页段不一致")
-                    role_labels = {"question": "题目区", "answer": "参考答案区",
-                                   "reference": "参考资料区", "mixed": "页内混排"}
-                    role_text = "、".join(f"第{i}页={role_labels[role]}" for i, role in enumerate(roles, 1))
+                if combined_prompt_version == CONTINUATION_COMBINED_PROMPT_VERSION:
                     prompt += (
-                        f"可搜索文字中的显式章节标题对应页面：{role_text}。"
-                        "如果原文件明确从‘参考答案’、‘答案与解析’等标题进入答案区，"
-                        "该标题之后直到新的明确题目章节，questions 必须为空，"
-                        "即使答案解析逐字重述原题，也只提取 source_answers。"
-                        "混排页按标题前后分别提取；不能把标题前的真实题丢掉。"
-                        "对于扫描页上可见但文字层未识别的同类标题，也遵守相同边界。"
-                    )
-            elif combined_prompt_version == COMBINED_PROMPT_VERSION:
-                prompt += (
-                    "本文件同时含题目与答案。不要根据固定标题名称或整页位置判断内容性质；"
-                    "结合页内布局、前后题号连续性、解题措辞、答案标签、题干是否重述和相邻页上下文，"
-                    "逐个判断所有看起来像题目的段落。"
-                    "questions 只放独立练习题，以及无法确定是否为独立题的段落；"
-                    "每题必须给出 source_classification（independent_question 或 uncertain）"
-                    "和 classification_evidence（可核对的原文或上下文依据）。"
-                    "不能确认时必须选 uncertain，保留完整题目供教师核对，不能自行丢弃。"
-                    "明确不是独立题目的内容放入 nonquestion_fragments，包括答案区题干重述、知识讲解、目录、"
-                    "示范解法、活动说明、答题卡及其他非题目；不能归入前述类别时使用 other_nonquestion。"
-                    "每项必须保留 full_text（足以恢复为候选题的完整原文，不得只留摘录）、excerpt、"
-                    "原页范围 page/page_end、original_number、source_classification 和 classification_evidence。"
-                    "不要仅因页码、预设标题或排版猜测而排除。"
-                    "即使没有标题或标题写法陌生，也按实际内容判断；一页内可同时有独立题、答案与讲解。"
-                    "source_answers 提取原文明确给出的答案；同一题的填空结果和【答案】同时出现时只记录一条，"
-                    "两处冲突放入 unresolved_fragments。答案区重述题干不算新题。"
-                    "complete 仅表示主体页起始的独立或待确认题目是否完整；答案解析续文不使其为 false。"
-                )
-            elif combined_prompt_version == CLASSIFIED_COMBINED_PROMPT_VERSION:
-                prompt += (
-                    "本文件同时含题目与答案。不要根据固定标题名称或整页位置判断内容性质；"
-                    "结合页内布局、前后题号连续性、解题措辞、答案标签、题干是否重述和相邻页上下文，"
-                    "逐个判断所有看起来像题目的段落。"
-                    "questions 只放独立练习题，以及无法确定是否为独立题的段落；"
-                    "每题必须给出 source_classification（independent_question 或 uncertain）"
-                    "和 classification_evidence（可核对的原文或上下文依据）。"
-                    "不能确认时必须选 uncertain，保留完整题目供教师核对，不能自行丢弃。"
-                    "明确只是答案解析中重述的题干，或知识讲解中的编号例子，放入 nonquestion_fragments；"
-                    "每项包含 original_number、excerpt（简短原文，不复制整段题干）、page、"
-                    "source_classification（answer_restatement 或 reference_material）、"
-                    "classification_evidence；不要仅因页码、预设标题或排版猜测而排除。"
-                    "即使没有标题或标题写法陌生，也按实际内容判断；一页内可同时有独立题、答案与讲解。"
-                    "source_answers 提取原文明确给出的答案；同一题的填空结果和【答案】同时出现时只记录一条，"
-                    "两处冲突放入 unresolved_fragments。答案区重述题干不算新题。"
-                    "complete 仅表示主体页起始的独立或待确认题目是否完整；答案解析续文不使其为 false。"
-                )
-            elif combined_prompt_version in {HEADING_COMBINED_PROMPT_VERSION, PREVIOUS_COMBINED_PROMPT_VERSION}:
-                roles = page_roles if page_roles is not None else pdf_page_roles(pdf_data)
-                if len(roles) != page_count:
-                    raise ImportProblem("INVALID_S2_CONFIG", "PDF 章节页数与处理页段不一致")
-                role_labels = {"question": "独立题目", "answer": "参考答案与解析",
-                               "reference": "考点参考资料", "mixed": "题目/答案/资料混排"}
-                if any(role not in role_labels for role in roles):
-                    raise ImportProblem("INVALID_S2_CONFIG", "PDF 章节类型无效")
-                role_text = "、".join(f"第{i}页={role_labels[role]}" for i, role in enumerate(roles, 1))
-                prompt += (
-                    f"本 PDF 的显式章节标题对应页面类型：{role_text}。"
-                    "questions 只包含独立练习题；参考答案/试题解析区域重述的题干不是新题，"
-                    "考点卡片/知识点讲解中的编号条目也不是题。"
-                    "混排页须按页内标题前后的实际区域分别判断：题目区提取独立题目，答案解析区提取资料答案，"
-                    "参考资料区不提取题目或答案；不得把整张混排页都当成答案页。"
-                    "同一题在答案区的填空处已有答案，且另有【答案】标签时，只记录一条资料答案，"
-                    "以明确的【答案】为准；两处冲突则保留不确定片段，不自行裁决。"
-                    "答案可以是仅列结果、题干内填写结果、题干重述后另列【答案】，也可能后两种并存。"
-                    "source_answers 每项另含 question_excerpt（重述题干的简短原文；没有则为 null）"
-                    "和 answer_form（answer_only、inline、labeled、inline_and_labeled 之一）。"
-                    "题号沿用当前答案块开头的原题号，即使答案标签在下一页；不能确认时填 null。"
-                    "complete 仅表示主体页起始的独立练习题是否完整，答案解析的跨页续文或考点讲解"
-                    "不使 complete 变为 false。"
+                        "逐页先定位每道独立题目的题干起点，再判断其后的小题、选项、图注及题干续文归属。"
+                        "主体页的任意位置都可能承接上一页段尚未结束的题；编号可能采用圆圈数字、"
+                        "括号数字、普通数字、字母、罗马数字或其他形式，也可能没有编号。"
+                        "若根据题干、问法、排版和编号层级可判断某段只是前一题的续文，"
+                        "而该题的独立题干起点不在本 PDF 内，则这段续文不作为新题；"
+                        "不要因本 PDF 缺少它的前序小题、选项或题干而放入 unresolved_fragments，"
+                        "也不要仅因此将 complete 设为 false。不要自行补写缺失的前文。"
+                        "不得仅凭编号的形式、大小或是否从页首开始判断为续文；"
+                        "若主体页内确有完整的独立新题起点，即使编号重复或接续前页编号，也须提取。"
+                        "独立题的原题号按原文填入 original_number；属于同一题的小题编号保留在 subquestions，"
+                        "不要把小题编号改写成独立题号，也不要重排题号。"
+                        "继续检查同页其余内容；只有主体页真正开始的新题本身无法完整转录时才报告不完整。"
+                        "若不确定某段是否为独立新题，但它能完整转录，应放入 questions 供后续核对。"
+                        "答案章节中完整重述、能独立使用且在主体页开始的题仍按题目提取；"
+                        "不得仅因它与前面页段的题目相似而丢弃。"
                 )
             prompt += (
                 "本文件同时含题目与答案。一次阅读中另行提取原文明确给出的标准答案，放入 source_answers 数组；"
                 "只提取答案起始于主体页的内容，重叠页只用于补全跨页答案。"
-                + ("每项只含 original_number、subquestion_number、answer_text、page_start、page_end、"
-                   "uncertain_fragments。" if combined_prompt_version == LEGACY_COMBINED_PROMPT_VERSION else
-                   "每项包含 original_number、subquestion_number、answer_text、page_start、page_end、"
-                   "uncertain_fragments、question_excerpt、answer_form。")
-                + "题号或小题号无法辨认时填 null，不按位置猜配。"
+                "每项包含 original_number、subquestion_number、answer_text、page_start、page_end、"
+                "uncertain_fragments、question_excerpt、answer_form。题号或小题号无法辨认时填 null，不按位置猜配。"
                 "不要把解题步骤、解析、模型自行计算的结果当成资料答案；看不清的内容放入"
                 "unresolved_fragments。题目和答案分别输出，不要决定两者的对应关系。"
             )
@@ -758,10 +626,8 @@ class QwenPdfProvider:
                 "figure_status 为 no_figure、complete、uncertain：没有题图时填 no_figure 且 figures=[]；"
                 "只有所有需要的图都列出时填 complete；"
                 "看不清、无法可靠定位或归属时填 uncertain，不要猜坐标或题目归属。"
-                + ("不要把普通行内公式、装饰图或仅用于解析步骤的插图当作独立题图；"
-                   "答案章节中的完整题目若需要题图，也须按相同标准对应或定位。"
-                   if combined_prompt_version == INCLUSIVE_COMBINED_PROMPT_VERSION else
-                   "不要把普通行内公式、装饰图或答案区插图当作独立题图。")
+                + "不要把普通行内公式、装饰图或仅用于解析步骤的插图当作独立题图；"
+                "答案章节中的完整题目若需要题图，也须按相同标准对应或定位。"
                 + json.dumps({"embedded_images": embedded_images}, ensure_ascii=False)
             )
         output_model = combined_output_model(combined_prompt_version) if include_answers else ModelOutput
@@ -825,7 +691,7 @@ def discard_model_regions(body: dict) -> dict:
 
 def decode_qwen_response(body: dict, *, page_count: int, elapsed: float, model: str,
                          include_answers: bool = False,
-                         combined_prompt_version: str = COMBINED_PROMPT_VERSION) -> tuple[ModelOutput | CombinedModelOutput, dict]:
+                         combined_prompt_version: str = CONTINUATION_COMBINED_PROMPT_VERSION) -> tuple[ModelOutput | CombinedModelOutput, dict]:
     """Validate a response, including one captured before a worker crash."""
     try:
         choice = discard_model_regions(body)["choices"][0]

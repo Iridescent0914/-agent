@@ -53,7 +53,7 @@ def test_global_model_removes_distant_answer_restatement_then_links_answer(db, t
         "content": {"question_text": stem, "options": []}, "teacher_decision": "pending", "answers": []})
     batch.status = "review_pending"
     batch.stage = "s2_completed"
-    batch.checkpoint = {"s2": {"prompt_version": "question-import-combined-v5", "units": [
+    batch.checkpoint = {"s2": {"prompt_version": "question-import-combined-v8", "units": [
         {"index": 0, "source_answers": []},
         {"index": 1, "source_answers": [{"source_file_id": source_id, "original_number": "1",
             "subquestion_number": None, "text": "2", "page_start": 8, "page_end": 8,

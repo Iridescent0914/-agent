@@ -44,7 +44,7 @@ type Candidate = {
   payload: {
     source: { original_number: string | null; page_start: number | null; page_end: number | null }
     content: { question_text: string; options: Array<{ key: string; text: string }>; asset_ids?: string[] }
-    extraction?: { math_fragments?: string[]; diagram_clues?: string[]; figure_status?: 'no_figure' | 'complete' | 'uncertain'; uncertain_fragments?: string[]; source_classification?: string; classification_evidence?: string }
+    extraction?: { math_fragments?: string[]; diagram_clues?: string[]; figure_status?: 'no_figure' | 'complete' | 'uncertain'; uncertain_fragments?: string[] }
     answers?: Array<{ answer_id: string; answer_source: string; text: string | null; teacher_confirmed: boolean; evidence?: Array<{ file_id: string; page: number; quote: string }> }>
     selected_answer_id?: string | null
     answer_match_status?: string
@@ -835,9 +835,6 @@ export function QuestionImportPage() {
         { title: '序号', dataIndex: 'ordinal', width: 70 },
         { title: '原题号', render: (_, item: Candidate) => item.payload.source.original_number || '未识别', width: 90 },
         { title: '原页', render: (_, item: Candidate) => `${item.payload.source.page_start ?? '?'}–${item.payload.source.page_end ?? '?'}`, width: 90 },
-        ...(candidates.some((item) => item.payload.extraction?.classification_evidence)
-          ? [{ title: '模型分类依据', render: (_: unknown, item: Candidate) => item.payload.extraction?.classification_evidence || '未记录', width: 180 }]
-          : []),
         { title: '题目、题图与答案', render: (_, item: Candidate) => renderCandidateContent(item) },
       ]} />
     </Modal>

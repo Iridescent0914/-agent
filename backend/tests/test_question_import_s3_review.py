@@ -56,8 +56,7 @@ def test_issue_list_keeps_all_three_problem_types_without_modifying_batch(db, tm
         "core_first_page": 1, "core_last_page": 2,
         "overlap_suspects": [{"other_item_id": str(first.id), "candidate_item_id": str(second.id)}],
         "unresolved_fragments": [{"page": 2, "text": "看不清的公式", "reason": "无法确认归属"}],
-    }]}, "s3": {"issue_reviews": {"answer:0": {"status": "completed", "advice": {"verdict": "match_candidate"}}},
-               "source_answer_reconciliation": {"unassigned_answers": [{
+    }]}, "s3": {"source_answer_reconciliation": {"unassigned_answers": [{
         "source_file_id": source_id, "original_number": "1",
         "page_start": 2, "page_end": 2, "text": "3",
         "reason": "repeated_question_number",

@@ -20,7 +20,8 @@ from app.core.database import engine
 from app.models import QuestionImportItem
 from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, _path_for, create_batch, retry_batch
 from app.services.question_import_s2 import (
-    FOCUSED_COMBINED_PROMPT_VERSION, QwenPdfProvider, candidate_from_question, candidate_key, estimate_cost,
+    CONTINUATION_COMBINED_PROMPT_VERSION, INCLUSIVE_COMBINED_PROMPT_VERSION,
+    QwenPdfProvider, candidate_from_question, candidate_key, estimate_cost,
     overlap_candidate_is_duplicate, resolved_overlap_option,
     decode_qwen_response, parse_model_output, plan_units, prepare_pdf,
 )
@@ -283,45 +284,17 @@ def test_failed_alias_response_can_be_reused_without_another_model_call(tmp_path
     assert meta["response_id"] == "already-paid"
 
 
-def test_legacy_redundant_tail_is_removed_only_before_it_starts(tmp_path, monkeypatch):
-    monkeypatch.setattr(s2_worker, "_result_path", lambda _batch, _file, index: tmp_path / f"{index}.json")
-    units = [
-        {"index": 0, "last_page": 3, "core_last_page": 2, "status": "completed"},
-        {"index": 1, "last_page": 5, "core_last_page": 4, "status": "completed"},
-        {"index": 2, "last_page": 5, "core_last_page": 5, "status": "pending"},
-    ]
-    checkpoint = {"units": units.copy(), "failed_unit": {"index": 2}}
-    assert not s2_worker._trim_redundant_pending_tail(checkpoint, uuid4(), str(uuid4()))
-    checkpoint.pop("failed_unit")
-    (tmp_path / "2.json").write_text("{}", encoding="utf-8")
-    assert not s2_worker._trim_redundant_pending_tail(checkpoint, uuid4(), str(uuid4()))
-    (tmp_path / "2.json").unlink()
-    assert s2_worker._trim_redundant_pending_tail(checkpoint, uuid4(), str(uuid4()))
-    assert [unit["index"] for unit in checkpoint["units"]] == [0, 1]
-
-
-def test_pending_final_overlap_becomes_core_page():
-    checkpoint = {"units": [{"index": 6, "first_page": 25, "last_page": 29,
-                             "core_first_page": 25, "core_last_page": 28, "status": "pending"}]}
-    assert s2_worker._cover_final_page(checkpoint, 29)
-    assert checkpoint["units"][-1]["core_last_page"] == 29
-    assert not s2_worker._cover_final_page(checkpoint, 29)
-
-
-def test_only_failed_overlap_batch_upgrades_to_core_page_prompt():
-    checkpoint = {
-        "prompt_version": s2_worker.LEGACY_PROMPT_VERSION,
-        "units": [{"index": 2, "first_page": 9, "core_last_page": 12, "last_page": 13}],
-        "failed_unit": {"index": 2, "code": "INCOMPLETE_MODEL_OUTPUT"},
-    }
-    assert s2_worker._upgrade_incomplete_overlap_prompt(checkpoint)
-    assert checkpoint["prompt_version"] == s2_worker.PROMPT_VERSION
+def test_only_incomplete_v8_combined_retry_upgrades_boundary_prompt():
+    checkpoint = {"prompt_version": INCLUSIVE_COMBINED_PROMPT_VERSION,
+                  "failed_unit": {"index": 2, "code": "INCOMPLETE_MODEL_OUTPUT"}}
+    assert s2_worker._upgrade_incomplete_continuation_prompt(checkpoint)
+    assert checkpoint["prompt_version"] == CONTINUATION_COMBINED_PROMPT_VERSION
     assert checkpoint["prompt_upgrade"]["at_unit_index"] == 2
-    assert not s2_worker._upgrade_incomplete_overlap_prompt(checkpoint)
-
-    no_overlap = {**checkpoint, "prompt_version": s2_worker.LEGACY_PROMPT_VERSION,
-                  "units": [{"index": 2, "first_page": 9, "core_last_page": 13, "last_page": 13}]}
-    assert not s2_worker._upgrade_incomplete_overlap_prompt(no_overlap)
+    assert not s2_worker._upgrade_incomplete_continuation_prompt(checkpoint)
+    for code in ("MODEL_API_ERROR", "MODEL_OUTPUT_TRUNCATED"):
+        other = {"prompt_version": INCLUSIVE_COMBINED_PROMPT_VERSION,
+                 "failed_unit": {"index": 2, "code": code}}
+        assert not s2_worker._upgrade_incomplete_continuation_prompt(other)
 
 
 def test_incomplete_retry_splits_core_with_one_context_page_then_requires_review(tmp_path, monkeypatch):
@@ -336,7 +309,6 @@ def test_incomplete_retry_splits_core_with_one_context_page_then_requires_review
     assert s2_worker._adapt_incomplete_unit(checkpoint, uuid4(), str(uuid4()))
     assert [(u["index"], u["first_page"], u["core_last_page"], u["last_page"])
             for u in checkpoint["units"]] == [(0, 1, 2, 3), (1, 3, 4, 5), (2, 5, 8, 8)]
-    assert not s2_worker._trim_redundant_pending_tail(checkpoint, uuid4(), str(uuid4()))
     assert not s2_worker._adapt_incomplete_unit(checkpoint, uuid4(), str(uuid4()))
 
     checkpoint["units"][0]["core_last_page"] = 1
@@ -384,12 +356,11 @@ def test_teacher_can_skip_only_failed_single_core_page_and_keep_review_issue(
     assert units[1]["skipped_by_teacher"] is True
     assert units[1]["skip_error_message"] == "第 2–3 页：模型报告页段提取不完整"
     assert "failed_unit" not in result.checkpoint["s2"]
-    assert not s2_worker._trim_redundant_pending_tail(result.checkpoint["s2"], batch.id, batch.files[0]["file_id"])
     assert len(units) == 3
     issues = list_review_issues(db, batch.id)
     assert len(issues) == 1 and issues[0]["page_numbers"] == [2]
     assert issues[0]["kind"] == "skipped_page"
-    assert "人工跳过" in issues[0]["fragment_text"]
+    assert "已由教师跳过" in issues[0]["fragment_text"]
 
 
 def test_qwen_private_file_payload_and_cost():
@@ -456,7 +427,7 @@ def test_qwen_one_page_call_returns_question_answer_and_figure_location():
                                     embedded_images=[{"asset_id": "known-image", "page": 1,
                                                       "bbox": [10, 10, 100, 100]}],
                                     page_previews=[b"\x89PNG\r\n\x1a\n"],
-                                    combined_prompt_version=FOCUSED_COMBINED_PROMPT_VERSION)
+                                    combined_prompt_version=CONTINUATION_COMBINED_PROMPT_VERSION)
     assert output.questions[0].figures[0].bbox == [450, 450, 850, 720]
     assert output.source_answers[0].answer_text == "3"
     content = captured["messages"][0]["content"]
@@ -529,6 +500,37 @@ def test_qwen_prompt_limits_extraction_to_core_pages():
     assert "前 2 页是主体页，最后 1 页是重叠页" in prompt
     assert "不要输出重叠页中新起的题" in prompt
     assert "尚未结束而把 complete 设为 false" in prompt
+
+
+def test_combined_boundary_prompt_distinguishes_continuation_from_new_question():
+    captured = []
+
+    def respond(request: httpx.Request):
+        captured.append(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {
+            "content": json.dumps({"complete": True, "questions": [],
+                                   "source_answers": [], "unresolved_fragments": []})}}]})
+
+    settings = Settings(question_import_s2_api_key="test-only",
+                        question_import_s2_base_url="https://example.invalid/compatible-mode/v1")
+    provider = QwenPdfProvider(settings=settings, transport=httpx.MockTransport(respond))
+    for version in (INCLUSIVE_COMBINED_PROMPT_VERSION, CONTINUATION_COMBINED_PROMPT_VERSION):
+        provider.extract(_pdf(), page_count=2, core_page_count=1, include_answers=True,
+                         page_roles=["question", "question"], combined_prompt_version=version)
+    old_prompt, new_prompt = [body["messages"][0]["content"][-1]["text"] for body in captured]
+    assert "逐页先定位每道独立题目的题干起点" not in old_prompt
+    assert "逐页先定位每道独立题目的题干起点" in new_prompt
+    assert "圆圈数字、括号数字、普通数字、字母、罗马数字或其他形式" in new_prompt
+    assert "也可能没有编号" in new_prompt
+    assert "不得仅凭编号的形式、大小或是否从页首开始判断为续文" in new_prompt
+    assert "不要因本 PDF 缺少它的前序小题、选项或题干而放入 unresolved_fragments" in new_prompt
+    assert "也不要仅因此将 complete 设为 false" in new_prompt
+    assert "即使编号重复或接续前页编号，也须提取" in new_prompt
+    assert "独立题的原题号按原文填入 original_number" in new_prompt
+    assert "属于同一题的小题编号保留在 subquestions" in new_prompt
+    assert "不要把小题编号改写成独立题号，也不要重排题号" in new_prompt
+    assert "只有主体页真正开始的新题本身无法完整转录时才报告不完整" in new_prompt
+    assert "完整重述、能独立使用" in new_prompt
 
 
 def test_only_flash_model_can_be_called():
@@ -847,10 +849,10 @@ def test_incomplete_retry_replans_failed_unit_without_restarting_batch(db, tmp_p
     assert batch.stage == "s2_queued"
     assert [(u["index"], u["core_last_page"], u["last_page"], u["status"])
             for u in batch.checkpoint["s2"]["units"]] == [
-                (0, 2, 4, "completed"), (1, 4, 4, "pending")]
+                (0, 2, 3, "completed"), (1, 4, 4, "pending")]
     assert s2_worker.process_s2_one()
     db.refresh(batch)
     assert batch.stage == "s2_completed"
     assert batch.checkpoint["s2"]["calls"] == 3
-    assert calls == [(4, 4), (4, 2), (2, 2)]
+    assert calls == [(4, 4), (3, 2), (2, 2)]
 
