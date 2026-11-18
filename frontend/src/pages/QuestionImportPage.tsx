@@ -827,7 +827,6 @@ export function QuestionImportPage() {
           <Typography.Paragraph>页段 {unit.index + 1}：主体为原文件第 {unit.core_first_page}–{unit.core_last_page} 页{unit.last_page > unit.core_last_page ? `，第 ${unit.core_last_page + 1}–${unit.last_page} 页仅作跨页上下文` : ''}；{unit.skipped_by_teacher ? '已人工跳过，需核对本页是否漏题' : unit.status === 'completed' ? `S2 当时提取 ${unit.candidate_count || 0} 题（下方展示当前候选）` : '待处理'}</Typography.Paragraph>
           {unit.skipped_by_teacher && unit.skip_error_message && <Typography.Paragraph type="warning">跳过前的模型报错：{unit.skip_error_message}</Typography.Paragraph>}
           {selectedBatch?.source_mode !== 'combined' && unit.source_answer_signals?.map((signal, index) => <Typography.Paragraph key={`answer-signal-${index}`} type="warning">第 {signal.page} 页可能含资料答案，请核对上传场景：{signal.evidence}</Typography.Paragraph>)}
-          {!!unit.overlap_suspects?.length && <details><summary>S2 当时检出的疑似跨页重复 {unit.overlap_suspects.length} 对</summary>{unit.overlap_suspects.map((pair, index) => <Typography.Paragraph key={index}>候选 {pair.candidate_item_id} 与 {pair.other_item_id}；当前结果以整批模型判重为准。</Typography.Paragraph>)}</details>}
         </div>)}
       </details>}
       {!!reviewIssues.length && <details key={`${selectedBatch?.id}:review-issues`} className="question-import-issues">
