@@ -34,7 +34,6 @@ type ReviewIssue = {
   candidate_item_ids: string[]
   candidate_total: number
   recall_method: string | null
-  review: null | { status: string; stale?: boolean; page_numbers: number[]; estimated_cny?: number; error_message?: string; advice?: { verdict: string; candidate_item_id: string | null; source_page: number; evidence_quote: string; reason: string } }
 }
 
 type Candidate = {
@@ -95,11 +94,6 @@ type ImageInventory = { version: string | null; page_count: number | null; embed
 
 const modeLabels: Record<string, string> = {
   questions_only: '只有题目', combined: '题目与答案同文件', separate: '题目与答案分文件',
-}
-
-const reviewVerdictLabels: Record<string, string> = {
-  same_question: '可能是同一题', different_questions: '可能是不同题',
-  match_candidate: '可能归属所列候选', no_match: '未找到可信归属', false_positive: '疑似提取误读，原页无此片段', uncertain: '仍无法确定，需人工核对',
 }
 
 function stageLabel(batch: Batch): string {
@@ -734,67 +728,48 @@ export function QuestionImportPage() {
                <RichQuestionText text={answer.text} assets={[]} />
              </div>)}
            </details>}
-      {!!reviewIssues.length && <details key={`${selectedBatch?.id}:review-issues`}>
+      {!!reviewIssues.length && <details key={`${selectedBatch?.id}:review-issues`} className="question-import-issues">
         <summary>待教师核对的问题（{reviewIssues.length} 条）</summary>
-        <Typography.Paragraph type="secondary">按答案归属、未确定片段和疑似重复题分类。请根据来源页码、原文件和候选题人工核对；此处不会发送原页给模型，也不会自动处理这些问题。</Typography.Paragraph>
-        {reviewCategories.map((category) => {
-          const categoryIssues = reviewIssues.filter((issue) => issue.kind === category.kind)
-          if (!categoryIssues.length) return null
-          return <details key={category.kind} open={category.kind === 'answer'}>
-            <summary>{category.title}（{categoryIssues.length} 条）</summary>
-            {categoryIssues.map((issue) => {
-          const advice = issue.review?.status === 'completed' ? issue.review.advice : undefined
-          const matchedCandidate = candidates.find((item) => item.id === advice?.candidate_item_id)
-          const candidateSummaries = issue.candidate_item_ids.map((id) => {
-            const item = candidates.find((candidate) => candidate.id === id)
-            return item ? `候选第 ${item.ordinal} 题（原题号 ${item.payload.source.original_number || '未识别'}，原页 ${item.payload.source.page_start ?? '未知'}）` : `候选 ID ${id}`
-          })
-          const candidateLabel = matchedCandidate
-            ? `候选第 ${matchedCandidate.ordinal} 题（原题号 ${matchedCandidate.payload.source.original_number || '未识别'}，原页 ${matchedCandidate.payload.source.page_start ?? '未知'}）`
-            : advice?.candidate_item_id ? `候选 ID ${advice.candidate_item_id}` : null
-          const verdictLabel = issue.kind === 'fragment' && advice?.verdict === 'match_candidate'
-            ? '片段存在，可能归属所列候选题'
-            : issue.kind === 'fragment' && advice?.verdict === 'no_match'
-              ? '片段存在，但未找到可信归属'
-              : advice ? reviewVerdictLabels[advice.verdict] || advice.verdict : ''
-          return <Card key={issue.key} size="small" style={{ marginTop: 12 }}
-            title={`${selectedBatch?.source_mode === 'separate' ? '题目文件' : '原文件'}${issue.summary}`}
-            extra={<Tag color="orange">待教师核对</Tag>}>
-            {issue.kind === 'fragment' && <>
-              <Typography.Paragraph><Typography.Text strong>待核对片段：</Typography.Text></Typography.Paragraph>
-              <RichQuestionText text={issue.fragment_text || '内容未记录'} assets={[]} />
-              <Typography.Paragraph type="secondary">首次提取报告：{issue.fragment_reason || '原因未记录'}</Typography.Paragraph>
-            </>}
-            {issue.kind === 'answer' && <>
-              <Typography.Paragraph><Typography.Text strong>待认领答案：</Typography.Text>原题号 {issue.answer_number || '缺失'}</Typography.Paragraph>
-              <RichQuestionText text={issue.answer_text || '内容未记录'} assets={[]} />
-            </>}
-            {!!candidateSummaries.length && <Typography.Paragraph>相关候选题：{candidateSummaries.join('；')}</Typography.Paragraph>}
-            <Typography.Paragraph type="secondary">
-              相关来源页：{issue.page_numbers.join('、') || '未知'}{issue.kind === 'fragment' && '（含邻近题目上下文）'}。{issue.kind === 'fragment'
-                ? `邻近候选题 ${issue.candidate_item_ids.length} 道，仅供判断归属，不表示这些题有错误。`
-                : `候选 ${issue.candidate_item_ids.length} 条。`}
-              {issue.candidate_total > issue.candidate_item_ids.length && `共 ${issue.candidate_total} 条候选，此处仅列部分。`}
-            </Typography.Paragraph>
-            {advice && <Alert showIcon type={advice.verdict === 'false_positive' ? 'info' : issue.kind === 'fragment' || advice.verdict === 'uncertain' ? 'warning' : 'success'}
-              message={`历史模型建议：${verdictLabel}`}
-              description={<Space direction="vertical" size={4}>
-                {candidateLabel && <Typography.Text>模型指向：{candidateLabel}</Typography.Text>}
-                <Typography.Text>原页依据：第 {advice.source_page} 页“{advice.evidence_quote}”</Typography.Text>
-                <Typography.Text>判断理由：{advice.reason}</Typography.Text>
-                {issue.kind === 'fragment' && <Typography.Text strong>
-                  {advice.verdict === 'false_positive'
-                    ? '模型认为该片段是提取误读，请对照原页确认；题目未自动修改。'
-                    : '请根据模型复核结果，人工对照原页处理；题目不会自动修改。'}
-                </Typography.Text>}
-              </Space>} />}
-            {issue.review?.stale && <Typography.Paragraph type="warning">候选内容已变化，此建议已过时，请以当前原页和候选为准。</Typography.Paragraph>}
-            {issue.review?.status === 'failed' && <Alert type="warning" showIcon message={`复核失败：${issue.review.error_message}；可能已产生费用。`} />}
-            {issue.review?.status === 'running' && <Typography.Paragraph type="secondary">旧复核任务未记录完成结果，请人工核对。</Typography.Paragraph>}
-          </Card>
+        <div className="question-import-issues-content">
+          <Typography.Paragraph type="secondary">请根据来源页码、原文件和候选题人工核对。</Typography.Paragraph>
+          <div className="question-import-issue-types">
+            {reviewCategories.map((category) => {
+              const categoryIssues = reviewIssues.filter((issue) => issue.kind === category.kind)
+              return <details key={category.kind} className="question-import-issue-group">
+                <summary>{category.title}（{categoryIssues.length} 条）</summary>
+                <div className="question-import-issue-list">
+                  {categoryIssues.length === 0 && <Typography.Text type="secondary">暂无此类问题</Typography.Text>}
+                  {categoryIssues.map((issue) => {
+                    const candidateSummaries = issue.candidate_item_ids.map((id) => {
+                      const item = candidates.find((candidate) => candidate.id === id)
+                      return item ? `候选第 ${item.ordinal} 题（原题号 ${item.payload.source.original_number || '未识别'}，原页 ${item.payload.source.page_start ?? '未知'}）` : `候选 ID ${id}`
+                    })
+                    return <Card key={issue.key} size="small" className="question-import-issue-card"
+                      title={`${selectedBatch?.source_mode === 'separate' ? '题目文件' : '原文件'}${issue.summary}`}
+                      extra={<Tag color="orange">待教师核对</Tag>}>
+                      {issue.kind === 'fragment' && <>
+                        <Typography.Paragraph><Typography.Text strong>待核对片段：</Typography.Text></Typography.Paragraph>
+                        <RichQuestionText text={issue.fragment_text || '内容未记录'} assets={[]} />
+                        <Typography.Paragraph type="secondary">首次提取报告：{issue.fragment_reason || '原因未记录'}</Typography.Paragraph>
+                      </>}
+                      {issue.kind === 'answer' && <>
+                        <Typography.Paragraph><Typography.Text strong>待认领答案：</Typography.Text>原题号 {issue.answer_number || '缺失'}</Typography.Paragraph>
+                        <RichQuestionText text={issue.answer_text || '内容未记录'} assets={[]} />
+                      </>}
+                      {!!candidateSummaries.length && <Typography.Paragraph>相关候选题：{candidateSummaries.join('；')}</Typography.Paragraph>}
+                      <Typography.Paragraph type="secondary">
+                        相关来源页：{issue.page_numbers.join('、') || '未知'}{issue.kind === 'fragment' && '（含邻近题目上下文）'}。{issue.kind === 'fragment'
+                          ? `邻近候选题 ${issue.candidate_item_ids.length} 道，仅供判断归属，不表示这些题有错误。`
+                          : `候选 ${issue.candidate_item_ids.length} 条。`}
+                        {issue.candidate_total > issue.candidate_item_ids.length && `共 ${issue.candidate_total} 条候选，此处仅列部分。`}
+                      </Typography.Paragraph>
+                    </Card>
+                  })}
+                </div>
+              </details>
             })}
-          </details>
-        })}
+          </div>
+        </div>
       </details>}
       {!!duplicateCandidates.length && <Typography.Paragraph><Button size="small" onClick={() => setShowDuplicateCandidates((value) => !value)}>{showDuplicateCandidates ? '收起' : '显示'}疑似重复候选 {duplicateCandidates.length} 条</Button><Typography.Text type="secondary"> 原始记录仍保留；确认不是重复题时可展开核对。</Typography.Text></Typography.Paragraph>}
       <Table rowKey="id" dataSource={visibleCandidates} size="small" pagination={{ pageSize: 10 }} columns={[

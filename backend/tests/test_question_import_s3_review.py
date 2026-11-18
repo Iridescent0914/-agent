@@ -14,7 +14,7 @@ from app.core.database import engine
 from app.api.routes.question_imports import router
 from app.services.question_import import add_candidate, create_batch
 from app.services.question_import_s3_review import (
-    _issue_fingerprint, _issue_rows, _pages_for_issue, _saved_review, list_review_issues,
+    _issue_rows, _pages_for_issue, list_review_issues,
 )
 
 
@@ -56,7 +56,8 @@ def test_issue_list_keeps_all_three_problem_types_without_modifying_batch(db, tm
         "core_first_page": 1, "core_last_page": 2,
         "overlap_suspects": [{"other_item_id": str(first.id), "candidate_item_id": str(second.id)}],
         "unresolved_fragments": [{"page": 2, "text": "看不清的公式", "reason": "无法确认归属"}],
-    }]}, "s3": {"source_answer_reconciliation": {"unassigned_answers": [{
+    }]}, "s3": {"issue_reviews": {"answer:0": {"status": "completed", "advice": {"verdict": "match_candidate"}}},
+               "source_answer_reconciliation": {"unassigned_answers": [{
         "source_file_id": source_id, "original_number": "1",
         "page_start": 2, "page_end": 2, "text": "3",
         "reason": "repeated_question_number",
@@ -72,11 +73,12 @@ def test_issue_list_keeps_all_three_problem_types_without_modifying_batch(db, tm
     assert next(issue for issue in issues if issue["kind"] == "fragment")["fragment_text"] == "看不清的公式"
     assert next(issue for issue in issues if issue["kind"] == "overlap")["candidate_item_ids"] == [
         str(first.id), str(second.id)]
+    assert all("review" not in issue for issue in issues)
     assert batch.checkpoint == checkpoint_before
     assert (first.revision, second.revision) == revisions_before
 
 
-def test_answer_issue_identity_and_legacy_results_remain_readable():
+def test_answer_issue_identity_remains_stable_after_reconciliation():
     answers = [{"source_file_id": "source", "original_number": str(index),
                 "page_start": index, "page_end": index, "text": str(index + 1),
                 "reason": "question_not_found"} for index in (1, 2)]
@@ -88,13 +90,6 @@ def test_answer_issue_identity_and_legacy_results_remain_readable():
     after = _issue_rows(batch, [])
     assert after[0]["key"] == before[1]["key"]
     assert after[0]["key"] != before[0]["key"]
-
-    old_key = "answer:1"
-    old_review = {"status": "completed", "issue_fingerprint": _issue_fingerprint({
-        **after[0], "key": old_key})}
-    saved, stale = _saved_review(after[0], {old_key: old_review})
-    assert saved is old_review and not stale
-
 
 def test_issue_page_list_is_not_limited_by_old_model_request_budget():
     issue = {"kind": "answer", "content": {"page_start": 1, "page_end": 5},

@@ -35,6 +35,16 @@ a { color: inherit; }
 .question-rich-text { white-space: pre-wrap; font-size: 16px; line-height: 2; color: #111827; }
 .question-import-candidate .question-rich-text { margin-bottom: 0; }
 .question-import-answer .question-rich-text { margin: 0 0 8px; font-size: 14px; line-height: 1.6; }
+.question-import-issues { margin: 16px 0; border: 1px solid #b9c8dc; border-radius: 8px; background: #f4f7fb; }
+.question-import-issues > summary { cursor: pointer; padding: 12px 16px; font-weight: 600; }
+.question-import-issues-content { padding: 12px 16px 16px; border-top: 1px solid #dbe3ef; }
+.question-import-issue-types { margin-left: 8px; padding-left: 20px; border-left: 2px solid #b9c8dc; }
+.question-import-issue-group { position: relative; margin: 10px 0; border: 1px solid #dbe3ef; border-radius: 6px; background: #fff; }
+.question-import-issue-group::before { position: absolute; top: 18px; left: -20px; width: 18px; border-top: 2px solid #b9c8dc; content: ''; }
+.question-import-issue-group > summary { cursor: pointer; padding: 10px 12px; font-weight: 600; }
+.question-import-issue-group[open] > summary { border-bottom: 1px solid #e7ecf4; }
+.question-import-issue-list { padding: 0 12px 12px; }
+.question-import-issue-card { margin-top: 12px; }
 .question-markdown-table-wrap { max-width: 100%; overflow-x: auto; margin: 8px 0; }
 .question-markdown-table { border-collapse: collapse; min-width: max-content; max-width: 100%; font-size: 16px; color: #111827; }
 .question-markdown-table th, .question-markdown-table td { border: 1px solid #cbd5e1; padding: 4px 12px; text-align: center; white-space: nowrap; }

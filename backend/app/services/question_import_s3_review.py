@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import json
-import re
 import uuid
 from typing import Any
 
@@ -82,24 +79,6 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
     return rows
 
 
-def _issue_fingerprint(issue: dict[str, Any]) -> str:
-    return hashlib.sha256(json.dumps(issue, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
-
-
-def _saved_review(issue: dict[str, Any], reviews: dict[str, dict[str, Any]]) -> tuple[dict[str, Any] | None, bool]:
-    saved = reviews.get(issue["key"])
-    if saved is not None:
-        return saved, saved.get("issue_fingerprint") != _issue_fingerprint(issue)
-    # Old answer keys used a shrinking list index. Only reuse a legacy result
-    # when its complete original issue fingerprint still matches this answer.
-    if issue["kind"] == "answer":
-        for key, review in reviews.items():
-            if re.fullmatch(r"answer:\d+", key) and review.get("issue_fingerprint") == _issue_fingerprint({
-                **issue, "key": key}):
-                return review, False
-    return None, False
-
-
 def _pages_for_issue(issue: dict[str, Any]) -> list[int]:
     content = issue["content"]
     if issue["kind"] == "overlap":
@@ -125,13 +104,9 @@ def list_review_issues(db: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]
         raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
     items = [item for item in db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch_id)) if active_candidate(item)]
-    reviews = ((batch.checkpoint or {}).get("s3") or {}).get("issue_reviews") or {}
     result = []
     for issue in _issue_rows(batch, items):
         pages = _pages_for_issue(issue)
-        review, stale = _saved_review(issue, reviews)
-        if review is not None:
-            review = {**review, "stale": stale}
         result.append({"key": issue["key"], "kind": issue["kind"], "unit_index": issue["unit_index"],
                        "summary": issue["summary"],
                        "fragment_text": issue["content"].get("text") if issue["kind"] == "fragment" else None,
@@ -141,6 +116,5 @@ def list_review_issues(db: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]
                        "source_answer": issue["content"] if issue["kind"] == "answer" else None,
                        "page_numbers": pages, "candidate_item_ids": [c["item_id"] for c in issue["candidates"]],
                        "candidate_total": issue.get("candidate_total", len(issue["candidates"])),
-                       "recall_method": issue.get("recall_method"),
-                       "review": review})
+                       "recall_method": issue.get("recall_method")})
     return result
