@@ -15,7 +15,7 @@ from app.services.question_import import (
     OWNER_SCOPE, ImportProblem, active_candidate, cancel_batch, create_batch,
     create_teacher_candidate, delete_cancelled_batch, delete_teacher_candidate, get_batch, retry_batch, update_candidate,
 )
-from app.services.question_import_s2_worker import start_s2
+from app.services.question_import_s2_worker import skip_incomplete_s2_page, start_s2
 from app.services.question_import_s3 import reconcile_source_answers, restore_nonquestion_fragment
 from app.services.question_import_s3_global import dedupe_batch
 from app.services.question_import_s3_images import (
@@ -75,6 +75,10 @@ class CandidateDelete(BaseModel):
 
 class S2StartRequest(BaseModel):
     budget_cny: float = Field(gt=0)
+
+
+class S2SkipPageRequest(BaseModel):
+    page: int = Field(ge=1)
 
 
 class S3ReviewRequest(BaseModel):
@@ -164,6 +168,12 @@ def retry(batch_id: UUID, db: Session = Depends(get_db),
 def start_extraction(batch_id: UUID, request: S2StartRequest, db: Session = Depends(get_db),
                      operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
     return start_s2(db, batch_id, budget_cny=request.budget_cny, operator_token=operator_token)
+
+
+@router.post("/{batch_id}/s2/skip-page", response_model=BatchOut)
+def skip_s2_page(batch_id: UUID, request: S2SkipPageRequest, db: Session = Depends(get_db),
+                 operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
+    return skip_incomplete_s2_page(db, batch_id, page=request.page, operator_token=operator_token)
 
 
 @router.get("/{batch_id}/items", response_model=list[CandidateOut])

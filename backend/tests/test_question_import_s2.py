@@ -24,7 +24,8 @@ from app.services.question_import_s2 import (
     overlap_candidate_is_duplicate, resolved_overlap_option,
     decode_qwen_response, parse_model_output, plan_units, prepare_pdf,
 )
-from app.services.question_import_s2_worker import claim_s2, start_s2
+from app.services.question_import_s2_worker import claim_s2, skip_incomplete_s2_page, start_s2
+from app.services.question_import_s3_review import list_review_issues
 from app.services.question_import_s3_images import list_images
 import app.services.question_import_s2_worker as s2_worker
 
@@ -345,6 +346,50 @@ def test_incomplete_retry_splits_core_with_one_context_page_then_requires_review
         s2_worker._adapt_incomplete_unit(checkpoint, uuid4(), str(uuid4()))
     assert error.value.code == "S2_REVIEW_REQUIRED"
     assert checkpoint["units"][0]["last_page"] == 4
+
+
+@pytest.mark.parametrize("batch_error_code", ["INCOMPLETE_MODEL_OUTPUT", "S2_REVIEW_REQUIRED"])
+def test_teacher_can_skip_only_failed_single_core_page_and_keep_review_issue(
+        db, tmp_path, monkeypatch, batch_error_code):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "question_import_dir", tmp_path / "imports")
+    monkeypatch.setattr(settings, "question_import_s2_enabled", True)
+    monkeypatch.setattr(settings, "question_import_s2_api_key", "test-only")
+    monkeypatch.setattr(settings, "question_import_s2_operator_token", "operator-test")
+    monkeypatch.setattr(settings, "question_import_s2_base_url", "https://example.invalid/compatible-mode/v1")
+    batch = create_batch(db, source_mode="questions_only", files=[("questions", "one.pdf", _pdf())])
+    batch.status, batch.stage = "failed", "s2_failed"
+    batch.error_code = batch_error_code
+    batch.error_message = "第 2–3 页：模型报告页段提取不完整"
+    batch.checkpoint = {"s2": {"source_file_id": batch.files[0]["file_id"], "page_count": 3,
+        "units": [
+            {"index": 0, "first_page": 1, "last_page": 2,
+             "core_first_page": 1, "core_last_page": 1, "status": "completed"},
+            {"index": 1, "first_page": 2, "last_page": 3,
+             "core_first_page": 2, "core_last_page": 2, "status": "pending"},
+            {"index": 2, "first_page": 3, "last_page": 3,
+             "core_first_page": 3, "core_last_page": 3, "status": "pending"}],
+        "failed_unit": {"index": 1, "code": "INCOMPLETE_MODEL_OUTPUT"}}}
+    db.flush()
+    with pytest.raises(ImportProblem) as wrong_page:
+        skip_incomplete_s2_page(db, batch.id, page=3, operator_token="operator-test")
+    assert wrong_page.value.code == "S2_SKIP_NOT_ALLOWED"
+    with pytest.raises(ImportProblem) as missing_token:
+        skip_incomplete_s2_page(db, batch.id, page=2)
+    assert missing_token.value.code == "S2_OPERATOR_REQUIRED"
+    result = skip_incomplete_s2_page(db, batch.id, page=2, operator_token="operator-test")
+    assert (result.status, result.stage, result.error_code) == ("uploaded", "s2_queued", None)
+    units = result.checkpoint["s2"]["units"]
+    assert [unit["status"] for unit in units] == ["completed", "completed", "pending"]
+    assert units[1]["skipped_by_teacher"] is True
+    assert units[1]["skip_error_message"] == "第 2–3 页：模型报告页段提取不完整"
+    assert "failed_unit" not in result.checkpoint["s2"]
+    assert not s2_worker._trim_redundant_pending_tail(result.checkpoint["s2"], batch.id, batch.files[0]["file_id"])
+    assert len(units) == 3
+    issues = list_review_issues(db, batch.id)
+    assert len(issues) == 1 and issues[0]["page_numbers"] == [2]
+    assert issues[0]["kind"] == "skipped_page"
+    assert "人工跳过" in issues[0]["fragment_text"]
 
 
 def test_qwen_private_file_payload_and_cost():

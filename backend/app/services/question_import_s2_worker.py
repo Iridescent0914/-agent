@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.models import QuestionImportBatch, QuestionImportItem
-from app.services.question_import import DOCX_CONVERSION_VERSION, OWNER_SCOPE, ImportProblem, _path_for, add_candidate, get_batch, require_s2_operator_token
+from app.services.question_import import DOCX_CONVERSION_VERSION, OWNER_SCOPE, ImportProblem, _path_for, add_candidate, get_batch, require_s2_operator_token, retry_batch
 from app.services.question_import_s2 import (
     FLASH_MODEL, LEGACY_PROMPT_VERSION, PROMPT_VERSION, ModelOutput, PageUnit, QwenPdfProvider,
     COMBINED_PROMPT_VERSION, FOCUSED_COMBINED_PROMPT_VERSION, SECTIONED_COMBINED_PROMPT_VERSION,
@@ -243,6 +243,50 @@ def _adapt_incomplete_unit(s2: dict, batch_id: uuid.UUID, file_id: str) -> bool:
                                                      "action": action})
     failed["recovery_applied"] = True
     return True
+
+
+def skip_incomplete_s2_page(db: Session, batch_id: uuid.UUID, *, page: int,
+                            operator_token: str | None = None) -> QuestionImportBatch:
+    """Record a reviewed one-page S2 gap and continue with later pending units."""
+    batch = db.scalar(select(QuestionImportBatch).where(
+        QuestionImportBatch.id == batch_id, QuestionImportBatch.owner_scope == OWNER_SCOPE,
+    ).with_for_update())
+    if batch is None:
+        raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
+    if (batch.status != "failed" or batch.stage != "s2_failed"
+            or batch.error_code not in {"INCOMPLETE_MODEL_OUTPUT", "S2_REVIEW_REQUIRED"}):
+        raise ImportProblem("S2_SKIP_NOT_ALLOWED", "当前批次没有可跳过的单页识别失败", 409)
+    checkpoint = dict(batch.checkpoint or {})
+    s2 = dict(checkpoint.get("s2") or {})
+    failed = s2.get("failed_unit") or {}
+    units = list(s2.get("units") or [])
+    index = failed.get("index")
+    if (failed.get("code") != "INCOMPLETE_MODEL_OUTPUT"
+            or not isinstance(index, int) or not 0 <= index < len(units)
+            or units[index].get("index") != index):
+        raise ImportProblem("S2_SKIP_NOT_ALLOWED", "失败页段记录不符合跳过条件", 409)
+    unit = units[index]
+    if (unit.get("status") != "pending" or unit.get("core_first_page") != page
+            or unit.get("core_last_page") != page
+            or any(row.get("status") != "completed" for row in units[:index])
+            or any(row.get("status") != "pending" for row in units[index + 1:])):
+        raise ImportProblem("S2_SKIP_NOT_ALLOWED", "仅能跳过当前失败的单页主体，请刷新后重试", 409)
+
+    skip_error_message = batch.error_message
+    # The queued worker will process remaining units; the skipped page stays visible for review.
+    batch = retry_batch(db, batch_id, operator_token=operator_token)
+    units[index] = {**unit, "status": "completed", "candidate_count": 0,
+                    "skipped_by_teacher": True, "skipped_at": datetime.now(timezone.utc).isoformat(),
+                    "skip_error_message": skip_error_message,
+                    "unresolved_fragments": [],
+                    "source_answers": []}
+    s2["units"] = units
+    s2.setdefault("recovery_history", []).append({"failed_index": index, "first_page": page,
+                                                   "core_last_page": page, "action": "teacher_skip"})
+    s2.pop("failed_unit", None)
+    checkpoint["s2"] = s2
+    batch.checkpoint = checkpoint
+    return batch
 
 
 def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
