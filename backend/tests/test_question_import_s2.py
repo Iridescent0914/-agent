@@ -323,7 +323,7 @@ def test_only_failed_overlap_batch_upgrades_to_core_page_prompt():
     assert not s2_worker._upgrade_incomplete_overlap_prompt(no_overlap)
 
 
-def test_incomplete_retry_splits_core_then_extends_single_page(tmp_path, monkeypatch):
+def test_incomplete_retry_splits_core_with_one_context_page_then_requires_review(tmp_path, monkeypatch):
     monkeypatch.setattr(s2_worker, "_result_path", lambda _batch, _file, index: tmp_path / f"{index}.json")
     checkpoint = {"page_count": 8, "prompt_version": s2_worker.PROMPT_VERSION,
                   "units": [
@@ -334,20 +334,17 @@ def test_incomplete_retry_splits_core_then_extends_single_page(tmp_path, monkeyp
                   ], "failed_unit": {"index": 0, "code": "INCOMPLETE_MODEL_OUTPUT"}}
     assert s2_worker._adapt_incomplete_unit(checkpoint, uuid4(), str(uuid4()))
     assert [(u["index"], u["first_page"], u["core_last_page"], u["last_page"])
-            for u in checkpoint["units"]] == [(0, 1, 2, 4), (1, 3, 4, 6), (2, 5, 8, 8)]
+            for u in checkpoint["units"]] == [(0, 1, 2, 3), (1, 3, 4, 5), (2, 5, 8, 8)]
     assert not s2_worker._trim_redundant_pending_tail(checkpoint, uuid4(), str(uuid4()))
     assert not s2_worker._adapt_incomplete_unit(checkpoint, uuid4(), str(uuid4()))
 
     checkpoint["units"][0]["core_last_page"] = 1
     checkpoint["units"][0]["last_page"] = 4
     checkpoint["failed_unit"] = {"index": 0, "code": "INCOMPLETE_MODEL_OUTPUT"}
-    assert s2_worker._adapt_incomplete_unit(checkpoint, uuid4(), str(uuid4()))
-    assert checkpoint["units"][0]["last_page"] == 6
-    checkpoint["units"][0]["last_page"] = 8
-    checkpoint["failed_unit"] = {"index": 0, "code": "INCOMPLETE_MODEL_OUTPUT"}
     with pytest.raises(ImportProblem) as error:
         s2_worker._adapt_incomplete_unit(checkpoint, uuid4(), str(uuid4()))
     assert error.value.code == "S2_REVIEW_REQUIRED"
+    assert checkpoint["units"][0]["last_page"] == 4
 
 
 def test_qwen_private_file_payload_and_cost():

@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.models import QuestionImportBatch, QuestionImportItem
 from app.services.question_import import (
     OWNER_SCOPE, ImportProblem, active_candidate, cancel_batch, create_batch,
-    create_teacher_candidate, delete_teacher_candidate, get_batch, retry_batch, update_candidate,
+    create_teacher_candidate, delete_cancelled_batch, delete_teacher_candidate, get_batch, retry_batch, update_candidate,
 )
 from app.services.question_import_s2_worker import start_s2
 from app.services.question_import_s3 import reconcile_source_answers, restore_nonquestion_fragment
@@ -146,6 +146,12 @@ def read_batch(batch_id: UUID, db: Session = Depends(get_db)):
 @router.post("/{batch_id}/cancel", response_model=BatchOut)
 def cancel(batch_id: UUID, db: Session = Depends(get_db)):
     return cancel_batch(db, batch_id)
+
+
+@router.delete("/{batch_id}")
+def delete_batch(batch_id: UUID, db: Session = Depends(get_db)):
+    delete_cancelled_batch(db, batch_id)
+    return {"deleted": True}
 
 
 @router.post("/{batch_id}/retry", response_model=BatchOut)

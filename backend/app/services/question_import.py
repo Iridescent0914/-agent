@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import secrets
+import shutil
 import unicodedata
 import uuid
 import zipfile
@@ -19,7 +20,7 @@ from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models import KnowledgePoint, QuestionImportBatch, QuestionImportItem
+from app.models import KnowledgePoint, Question, QuestionImportBatch, QuestionImportItem
 from app.services.knowledge_catalog import CATALOG_PATH, formal_kp, formal_literacy_dimensions
 
 
@@ -249,6 +250,36 @@ def cancel_batch(db: Session, batch_id: uuid.UUID) -> QuestionImportBatch:
     batch.worker_token = None
     batch.lease_until = None
     return batch
+
+
+def delete_cancelled_batch(db: Session, batch_id: uuid.UUID) -> None:
+    batch = db.scalar(select(QuestionImportBatch).where(
+        QuestionImportBatch.id == batch_id, QuestionImportBatch.owner_scope == OWNER_SCOPE,
+    ).with_for_update())
+    if batch is None:
+        raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
+    if batch.status != "cancelled":
+        raise ImportProblem("COMMIT_CONFLICT", "只能永久删除已取消的导入任务", 409)
+    formal_question = db.scalar(select(Question.id).where(
+        or_(Question.import_batch_id == batch.id,
+            Question.import_item_id.in_(select(QuestionImportItem.id).where(
+                QuestionImportItem.batch_id == batch.id))),
+    ).limit(1))
+    if formal_question is not None:
+        raise ImportProblem("COMMIT_CONFLICT", "该批次已有正式题库题目引用，不能删除", 409)
+
+    root = get_settings().question_import_dir.resolve()
+    folder = root / str(batch.id)
+    if folder.is_symlink() or folder.resolve().parent != root:
+        raise ImportProblem("IMPORT_FILE_PATH_INVALID", "批次文件目录异常，无法安全删除", 409)
+
+    db.delete(batch)
+    db.flush()  # The item FK cascades; reject DB conflicts before removing files.
+    if folder.exists():
+        try:
+            shutil.rmtree(folder)
+        except OSError as exc:
+            raise ImportProblem("IMPORT_FILE_DELETE_FAILED", "批次文件删除失败，请重试", 500) from exc
 
 
 def retry_batch(db: Session, batch_id: uuid.UUID, *, operator_token: str | None = None) -> QuestionImportBatch:

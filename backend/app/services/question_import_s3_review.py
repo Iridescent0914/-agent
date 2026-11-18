@@ -44,7 +44,9 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
                              "summary": f"第 {page} 页未确定片段", "content": fragment,
                              "candidates": [_candidate_context(item) for item in nearby[:MAX_LIST_CANDIDATES]]})
     reconciliation = (checkpoint.get("s3") or {}).get("source_answer_reconciliation") or {}
-    if batch.source_mode == "combined":
+    if batch.source_mode in {"combined", "separate"}:
+        answer_units = ((checkpoint.get("s2") or {}) if batch.source_mode == "combined"
+                        else ((checkpoint.get("s3") or {}).get("separate_answers") or {})).get("units") or []
         for answer in reconciliation.get("unassigned_answers") or []:
             if linked_source_answer_item(answer, items) is not None:
                 continue
@@ -68,7 +70,7 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
                 pool = []
                 recall_method = "none"
             answer_page = answer.get("page_start")
-            answer_unit = next((i for i, unit in enumerate((checkpoint.get("s2") or {}).get("units") or [])
+            answer_unit = next((i for i, unit in enumerate(answer_units)
                                 if isinstance(answer_page, int)
                                 and unit.get("core_first_page", unit.get("first_page", 0)) <= answer_page
                                 <= unit.get("core_last_page", unit.get("last_page", 0))), None)

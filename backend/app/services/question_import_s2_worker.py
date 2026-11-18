@@ -207,7 +207,7 @@ def _upgrade_incomplete_overlap_prompt(s2: dict) -> bool:
 
 
 def _adapt_incomplete_unit(s2: dict, batch_id: uuid.UUID, file_id: str) -> bool:
-    """On an explicit retry, reduce the failed core or extend its context."""
+    """On an explicit retry, reduce the failed core and keep one context page."""
     failed = s2.get("failed_unit") or {}
     if failed.get("code") not in {"INCOMPLETE_MODEL_OUTPUT", "MODEL_OUTPUT_TRUNCATED"} or failed.get("recovery_applied"):
         return False
@@ -224,23 +224,19 @@ def _adapt_incomplete_unit(s2: dict, batch_id: uuid.UUID, file_id: str) -> bool:
     core_count = unit["core_last_page"] - unit["core_first_page"] + 1
     if core_count > 1:
         midpoint = unit["core_first_page"] + (core_count - 1) // 2
-        context = max(2, unit["last_page"] - unit["core_last_page"])
         first = {**unit, "core_last_page": midpoint,
-                 "last_page": min(page_count, midpoint + context)}
+                 "last_page": min(page_count, midpoint + 1)}
         second = {**unit, "index": index + 1,
                   "first_page": midpoint + 1, "core_first_page": midpoint + 1,
-                  "last_page": min(page_count, unit["core_last_page"] + context)}
+                  "last_page": min(page_count, unit["core_last_page"] + 1)}
         units[index:index + 1] = [first, second]
         for position in range(index + 2, len(units)):
             units[position]["index"] = position
         action = "split_core"
     elif failed["code"] == "MODEL_OUTPUT_TRUNCATED":
         raise ImportProblem("S2_REVIEW_REQUIRED", f"第 {unit['first_page']} 页题答输出过长；请拆分原文件或联系管理员调整回答上限")
-    elif unit["last_page"] < page_count:
-        unit["last_page"] = min(page_count, unit["last_page"] + 2)
-        action = "extend_context"
     else:
-        raise ImportProblem("S2_REVIEW_REQUIRED", f"第 {unit['first_page']} 页起始的题已检查后续全部页面，模型仍无法完整提取；请检查原页并重新上传清晰文件，或联系管理员核对")
+        raise ImportProblem("S2_REVIEW_REQUIRED", f"第 {unit['first_page']} 页起始的题在单页主体下仍无法完整提取；请检查原页并重新上传清晰文件，或联系管理员核对")
     s2.setdefault("recovery_history", []).append({"failed_index": index,
                                                      "first_page": unit["first_page"],
                                                      "core_last_page": unit["core_last_page"],

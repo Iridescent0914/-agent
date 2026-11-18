@@ -29,7 +29,7 @@ type ReviewIssue = {
   fragment_reason?: string | null
   answer_text?: string | null
   answer_number?: string | null
-  source_answer?: { source_file_id?: string; original_number: string | null; text: string; page_start: number; reason: string; candidate_item_ids?: string[] } | null
+  source_answer?: { source_file_id?: string; original_number: string | null; text: string; page_start: number; page_end?: number; reason: string; candidate_item_ids?: string[] } | null
   page_numbers: number[]
   candidate_item_ids: string[]
   candidate_total: number
@@ -255,6 +255,35 @@ export function QuestionImportPage() {
     } finally { setLoading(false) }
   }
 
+  function confirmCancel(batch: Batch) {
+    Modal.confirm({
+      title: '确认取消导入任务？',
+      content: '取消后任务将停止处理，当前没有恢复操作；如需继续导入，须重新上传文件。已暂存的题目、答案和文件不会立即删除。',
+      okText: '确认取消任务', okType: 'danger', cancelText: '继续保留任务',
+      onOk: () => act(batch.id, 'cancel'),
+    })
+  }
+
+  function confirmDeleteBatch(batch: Batch) {
+    Modal.confirm({
+      title: '永久删除已取消的导入任务？',
+      content: '将删除该批次的源文件、模型响应与题图文件，以及暂存的题目、答案、标签和处理记录。删除后无法恢复。',
+      okText: '永久删除', okType: 'danger', cancelText: '保留任务',
+      onOk: async () => {
+        setLoading(true)
+        try {
+          await apiDelete(`/question-imports/${batch.id}`)
+          if (selectedBatchId === batch.id) closeCandidateModal()
+          await reload()
+          message.success('已删除导入任务及关联数据')
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : '删除任务失败')
+          throw error
+        } finally { setLoading(false) }
+      },
+    })
+  }
+
   function confirmRetry(batch: Batch) {
     if (batch.error_code !== 'INCOMPLETE_MODEL_OUTPUT') {
       void act(batch.id, 'retry')
@@ -262,7 +291,7 @@ export function QuestionImportPage() {
     }
     Modal.confirm({
       title: '自动调整失败页段并重试？',
-      content: '系统会缩小失败页段或增加后续页作为上下文，已完成的页段不会重跑。新的模型调用可能产生费用，仍受本批预算阈值约束。',
+      content: '系统会缩小失败页段的主体页，每段最多带 1 页后续上下文；主体页已缩至 1 页时将提示人工核对，不再增加上下文页。已完成的页段不会重跑。新的模型调用可能产生费用，仍受本批预算阈值约束。',
       okText: '确认重试', cancelText: '取消',
       onOk: () => act(batch.id, 'retry'),
     })
@@ -517,9 +546,9 @@ export function QuestionImportPage() {
   const sourceAnswers = (selectedBatch?.source_mode === 'separate'
     ? separateAnswers?.units?.flatMap((unit) => unit.source_answers || [])
     : s2?.units?.flatMap((unit) => unit.source_answers || [])) || []
-  const pendingAnswers = selectedBatch?.source_mode === 'combined' && reconciliation
+  const pendingAnswers = reconciliation
     ? reviewIssues.filter((issue) => issue.kind === 'answer' && issue.source_answer).map((issue) => issue.source_answer!)
-    : reconciliation?.unassigned_answers || sourceAnswers
+    : sourceAnswers
   const linkedSourceQuestionCount = candidates.filter((item) => item.payload.answers?.some((answer) => answer.answer_source === 'source_extracted')).length
   const reviewCategories = [
     { kind: 'answer', title: '答案归属待核对' },
@@ -622,7 +651,7 @@ export function QuestionImportPage() {
         <div><Typography.Text type="secondary">当前派生标签：年级：{selectedKp?.grade || tags.grade || '待定'}；章：{selectedKp?.chapter_name || (tags.main_kp_code ? '名称待加载' : '待定')}；节：{selectedKp?.section || tags.section || '待定'}；核心素养：{(selectedKp?.core_literacies || tags.core_literacies || []).join('、') || '待定'}；必做：{tags.is_required ? '是' : '否（默认）'}；状态：{item.payload.label_status === 'out_of_scope' ? '超出当前知识点范围或无法判断' : '待核对'}</Typography.Text></div>
       </Card>}
       {answerMatchingComplete && !item.payload.answers?.some((answer) => !!answer.text?.trim()) && <Typography.Text type="warning">无答案</Typography.Text>}
-      {pendingAnswers.filter((answer) => answer.candidate_item_ids?.length === 1 && answer.candidate_item_ids[0] === item.id).map((answer, index) => <div key={`pending-${index}`} className="question-import-answer"><Typography.Text type="warning">第 {answer.page_start} 页资料答案（归属待确认）：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}
+      {pendingAnswers.filter((answer) => answer.candidate_item_ids?.length === 1 && answer.candidate_item_ids[0] === item.id).map((answer, index) => <div key={`pending-${index}`} className="question-import-answer"><Typography.Text type="warning">{selectedBatch?.source_mode === 'separate' ? '答案文件' : '原文件'}第 {answer.page_start} 页资料答案（归属待确认）：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}
       {item.payload.warnings?.filter((warning) => !['资料答案已关联，须对照原页由教师确认', '题图尚未裁剪；请对照原页复核', '题图已自动关联，须核对原页和图片完整性', '题图已关联，须对照原页核对图片内容和完整性'].includes(warning) && (warning !== '模型报告不确定片段；请人工复核' || !item.payload.extraction?.uncertain_fragments?.length)).map((warning, index) => <Typography.Text type="warning" key={`warning-${index}`}>{warning}</Typography.Text>)}
     </Space>
   }
@@ -659,7 +688,8 @@ export function QuestionImportPage() {
              {batch.stage === 's2_completed' && batch.checkpoint?.s3?.labels?.status === 'completed' && <Button disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmLabels(batch, true)}>全部重新打标签</Button>}
              {batch.checkpoint?.s3?.labels?.cost_unknown && <Typography.Text type="warning">标签调用费用未知，请先核对账单后处理</Typography.Text>}
              {batch.status === 'failed' && batch.error_code !== 'S2_REVIEW_REQUIRED' && !batch.files_purged_at && <Button disabled={loading} onClick={() => confirmRetry(batch)}>{batch.error_code === 'INCOMPLETE_MODEL_OUTPUT' ? '自动调整页段并重试' : '重试'}</Button>}
-             {!['cancelled', 'completed', 'completed_with_unassigned'].includes(batch.status) && <Button disabled={loading} onClick={() => void act(batch.id, 'cancel')}>取消</Button>}
+             {!['cancelled', 'completed', 'completed_with_unassigned'].includes(batch.status) && <Button disabled={loading} onClick={() => confirmCancel(batch)}>取消</Button>}
+             {batch.status === 'cancelled' && <Button danger disabled={loading} onClick={() => confirmDeleteBatch(batch)}>永久删除</Button>}
            </Space> },
         ]} />
     </Card>
@@ -720,14 +750,6 @@ export function QuestionImportPage() {
         </div>)}
       </details>}
       {separateAnswers?.units?.flatMap((unit) => unit.unresolved_fragments || []).map((fragment, index) => <Typography.Paragraph key={`answer-unresolved-${index}`} type="warning">答案文件第 {fragment.page} 页待核对：{fragment.text}（{fragment.reason}）</Typography.Paragraph>)}
-      {reconciliation && pendingAnswers.length > 0 &&
-           <details key={`${selectedBatch?.id}:reconciliation`}>
-             <summary>待核对归属的答案（{pendingAnswers.length} 条）</summary>
-             {pendingAnswers.map((answer, index) => <div key={index} className="question-import-answer">
-               <Typography.Text type="warning">第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}（{'reason' in answer ? String(answer.reason) : '尚未关联'}）：</Typography.Text>
-               <RichQuestionText text={answer.text} assets={[]} />
-             </div>)}
-           </details>}
       {!!reviewIssues.length && <details key={`${selectedBatch?.id}:review-issues`} className="question-import-issues">
         <summary>待教师核对的问题（{reviewIssues.length} 条）</summary>
         <div className="question-import-issues-content">
@@ -742,10 +764,10 @@ export function QuestionImportPage() {
                   {categoryIssues.map((issue) => {
                     const candidateSummaries = issue.candidate_item_ids.map((id) => {
                       const item = candidates.find((candidate) => candidate.id === id)
-                      return item ? `候选第 ${item.ordinal} 题（原题号 ${item.payload.source.original_number || '未识别'}，原页 ${item.payload.source.page_start ?? '未知'}）` : `候选 ID ${id}`
+                      return item ? `候选第 ${item.ordinal} 题（原题号 ${item.payload.source.original_number || '未识别'}，${selectedBatch?.source_mode === 'separate' ? '题目文件' : '原文件'}第 ${item.payload.source.page_start ?? '未知'} 页）` : `候选 ID ${id}`
                     })
                     return <Card key={issue.key} size="small" className="question-import-issue-card"
-                      title={`${selectedBatch?.source_mode === 'separate' ? '题目文件' : '原文件'}${issue.summary}`}
+                      title={`${selectedBatch?.source_mode === 'separate' ? issue.kind === 'answer' ? '答案文件' : '题目文件' : '原文件'}${issue.summary}`}
                       extra={<Tag color="orange">待教师核对</Tag>}>
                       {issue.kind === 'fragment' && <>
                         <Typography.Paragraph><Typography.Text strong>待核对片段：</Typography.Text></Typography.Paragraph>
@@ -758,7 +780,9 @@ export function QuestionImportPage() {
                       </>}
                       {!!candidateSummaries.length && <Typography.Paragraph>相关候选题：{candidateSummaries.join('；')}</Typography.Paragraph>}
                       <Typography.Paragraph type="secondary">
-                        相关来源页：{issue.page_numbers.join('、') || '未知'}{issue.kind === 'fragment' && '（含邻近题目上下文）'}。{issue.kind === 'fragment'
+                        {selectedBatch?.source_mode === 'separate' && issue.kind === 'answer'
+                          ? `答案文件来源页：${issue.source_answer?.page_start ?? '未知'}${issue.source_answer?.page_end && issue.source_answer.page_end !== issue.source_answer.page_start ? `–${issue.source_answer.page_end}` : ''}；相关候选题的题目文件页码见上方。`
+                          : `相关来源页：${issue.page_numbers.join('、') || '未知'}${issue.kind === 'fragment' ? '（含邻近题目上下文）' : ''}。`}{issue.kind === 'fragment'
                           ? `邻近候选题 ${issue.candidate_item_ids.length} 道，仅供判断归属，不表示这些题有错误。`
                           : `候选 ${issue.candidate_item_ids.length} 条。`}
                         {issue.candidate_total > issue.candidate_item_ids.length && `共 ${issue.candidate_total} 条候选，此处仅列部分。`}
