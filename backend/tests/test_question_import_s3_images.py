@@ -73,6 +73,10 @@ def _batch_with_candidate(db):
 
 def test_embedded_image_is_private_and_can_be_linked(db, private_dir):
     batch, candidate = _batch_with_candidate(db)
+    candidate.payload = {**candidate.payload,
+                         "label_status": "matched",
+                         "label_suggestion": {"stale": False, "revision": candidate.revision}}
+    original_tags = candidate.payload["tags"]
     first = extract_images(db, batch.id)
     assert first["page_count"] == 1
     assert len(first["assets"]) == 1
@@ -91,6 +95,9 @@ def test_embedded_image_is_private_and_can_be_linked(db, private_dir):
                                  expected_revision=1, linked=True)
     assert linked.payload["content"]["asset_ids"] == [embedded["asset_id"]]
     assert linked.revision == 2
+    assert linked.payload["tags"] == original_tags
+    assert linked.payload["label_status"] == "matched"
+    assert linked.payload["label_suggestion"]["stale"] is False
     with pytest.raises(ImportProblem) as stale:
         set_candidate_image(db, batch.id, candidate.id, UUID(embedded["asset_id"]),
                             expected_revision=1, linked=False)
@@ -206,6 +213,9 @@ def test_s2_does_not_attach_a_scanned_page_as_one_question_figure(db, private_di
 
 def test_image_endpoints_upload_and_delete_per_candidate(db, private_dir):
     batch, candidate = _batch_with_candidate(db)
+    candidate.payload = {**candidate.payload, "label_status": "matched",
+                         "label_suggestion": {"stale": False, "revision": candidate.revision}}
+    original_tags = candidate.payload["tags"]
     app.dependency_overrides[get_db] = lambda: db
     try:
         client = TestClient(app)
@@ -228,6 +238,9 @@ def test_image_endpoints_upload_and_delete_per_candidate(db, private_dir):
         uploaded = client.post(upload_url, data={"expected_revision": "2"},
                                files={"file": ("diagram.png", uploaded_png.getvalue(), "image/png")})
         assert uploaded.status_code == 200, uploaded.text
+        assert uploaded.json()["payload"]["tags"] == original_tags
+        assert uploaded.json()["payload"]["label_status"] == "matched"
+        assert uploaded.json()["payload"]["label_suggestion"]["stale"] is False
         uploaded_id = uploaded.json()["payload"]["content"]["asset_ids"][1]
         assert client.post(upload_url, data={"expected_revision": "2"},
                            files={"file": ("diagram.png", uploaded_png.getvalue(), "image/png")}).status_code == 409

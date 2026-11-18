@@ -41,9 +41,12 @@ def _editable_after_dedupe(batch: QuestionImportBatch) -> None:
         raise ImportProblem("COMMIT_CONFLICT", "请在整批去重完成后修改候选题", 409)
     if batch.source_mode == "separate" and (s3.get("separate_answers") or {}).get("status") != "completed":
         raise ImportProblem("COMMIT_CONFLICT", "请在答案文件识别完成后修改候选题", 409)
+    matching = (s3.get("answer_model_matching") or {}).get("status")
+    if matching in {"queued", "processing"}:
+        raise ImportProblem("COMMIT_CONFLICT", "答案模型配对期间不可修改题目、答案或标签，请等待任务完成", 409)
     labels = (s3.get("labels") or {}).get("status")
     if labels in {"queued", "processing"}:
-        raise ImportProblem("COMMIT_CONFLICT", "标签建议生成期间不可修改题目，请等待任务完成", 409)
+        raise ImportProblem("COMMIT_CONFLICT", "标签建议生成期间不可修改题目、答案或标签，请等待任务完成", 409)
 
 
 def require_s2_operator_token(provided: str | None) -> None:
@@ -493,7 +496,7 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         or any(not isinstance(value, str) for value in changes["warnings"])
     ):
         raise ImportProblem("INVALID_CANDIDATE", "提示信息结构无效")
-    if set(changes) & {"content", "answers", "selected_answer_id", "teacher_answer_text"}:
+    if set(changes) & {"content", "tags", "answers", "selected_answer_id", "teacher_answer_text"}:
         _editable_after_dedupe(batch)
     if "tags" in changes:
         submitted = changes["tags"]
@@ -566,9 +569,6 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         if "tags" in changes:
             suggestion["teacher_overrides"] = sorted(set(suggestion.get("teacher_overrides") or []) |
                                                      set(changes["tags"]))
-        if "content" in changes:
-            suggestion["stale"] = True
-            payload["label_status"] = "needs_confirmation"
         payload["label_suggestion"] = suggestion
     item.payload = payload
     return item

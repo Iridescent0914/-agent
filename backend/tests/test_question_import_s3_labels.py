@@ -211,14 +211,22 @@ def test_label_stage_waits_for_dedupe_then_preserves_candidate_identity(db, tmp_
     update_candidate(db, batch.id, first.id, expected_revision=first.revision,
                      changes={"tags": {"question_type": "true_false", "difficulty": 5,
                                        "main_kp_code": None, "is_required": True}})
+    labels_before_content_edit = dict(first.payload["tags"])
+    label_status_before_content_edit = first.payload["label_status"]
     content = dict(first.payload["content"])
     content["question_text"] = "计算一加二"
     update_candidate(db, batch.id, first.id, expected_revision=first.revision,
                      changes={"content": content})
-    assert first.payload["label_suggestion"]["stale"] is True
+    assert first.payload["tags"] == labels_before_content_edit
+    assert first.payload["label_status"] == label_status_before_content_edit
+    assert first.payload["label_suggestion"]["stale"] is False
     with pytest.raises(ImportProblem) as already_complete:
         start_labels(db, batch.id, budget_cny=1, operator_token="operator-test")
     assert already_complete.value.code == "COMMIT_CONFLICT"
+    update_candidate(db, batch.id, first.id, expected_revision=first.revision,
+                     changes={"teacher_decision": "approved"})
+    update_candidate(db, batch.id, second.id, expected_revision=second.revision,
+                     changes={"teacher_decision": "rejected"})
     start_labels(db, batch.id, budget_cny=1, operator_token="operator-test", rerun=True)
     assert len(batch.checkpoint["s3"]["label_group_audit"]) == 1
     assert batch.checkpoint["s3"]["labels"]["overwrite_manual_tags"] is True
@@ -232,9 +240,9 @@ def test_label_stage_waits_for_dedupe_then_preserves_candidate_identity(db, tmp_
             return ([{**_suggestion(str(first.id)), "main_kp_code": kp_code,
                       "alternative_kp_codes": [], "difficulty": 2,
                       "question_type": "solution"},
-                     {**_suggestion(str(second.id)), "main_kp_code": kp_code,
+                     {**_suggestion(str(second.id)), "main_kp_code": None,
                       "alternative_kp_codes": [], "difficulty": 3,
-                      "question_type": "solution"}],
+                      "question_type": "solution", "uncertainty": "题干信息不足"}],
                     {"usage": {"prompt_tokens": 50, "completion_tokens": 20},
                      "estimated_cny": 0.005, "response_id": "labels-2"})
 
@@ -249,8 +257,14 @@ def test_label_stage_waits_for_dedupe_then_preserves_candidate_identity(db, tmp_
     assert first.payload["tags"]["main_kp_code"] == kp_code
     assert first.payload["tags"]["question_type"] == "solution"
     assert first.payload["tags"]["is_required"] is True  # The model does not suggest this field.
+    assert first.payload["teacher_decision"] == "pending"
     assert first.payload["label_suggestion"]["teacher_overrides"] == []
     assert second.payload["tags"]["difficulty"] == 3
+    assert second.payload["tags"]["main_kp_code"] is None
+    assert second.payload["tags"]["chapter_code"] is None
+    assert second.payload["tags"]["core_literacies"] == []
+    assert second.payload["label_status"] == "out_of_scope"
+    assert second.payload["teacher_decision"] == "rejected"
     assert batch.checkpoint["s3"]["labels"]["calls"] == 2
 
     start_labels(db, batch.id, budget_cny=1, operator_token="operator-test", rerun=True)
@@ -300,6 +314,34 @@ def test_label_stage_waits_for_dedupe_then_preserves_candidate_identity(db, tmp_
     assert finished["status"] == "completed" and finished["calls"] == 3, finished["groups"]
     assert {item_id for group in finished["groups"] for item_id in group.get("skipped_item_ids", [])} == {
         str(first.id), str(second.id)}
+
+
+@pytest.mark.parametrize("task,status", [
+    ("answer_model_matching", "queued"), ("answer_model_matching", "processing"),
+    ("labels", "queued"), ("labels", "processing"),
+])
+def test_candidate_and_manual_labels_wait_for_active_tasks(db, tmp_path, monkeypatch, task, status):
+    monkeypatch.setattr(get_settings(), "question_import_dir", tmp_path / "imports")
+    batch = create_batch(db, source_mode="questions_only", files=[("questions", "questions.pdf", _pdf())])
+    item = add_candidate(db, batch, {"content": {"question_text": "计算一加一", "options": [], "asset_ids": []},
+                                     "tags": {"question_type": "unknown", "difficulty": None,
+                                              "main_kp_code": None}, "teacher_decision": "pending"})
+    batch.status = "review_pending"
+    batch.stage = "s2_completed"
+    batch.checkpoint = {"s3": {"global_dedupe": {"status": "completed"}, task: {"status": status}}}
+
+    for changes in ({"tags": {"question_type": "calculation"}},
+                    {"content": {**item.payload["content"], "question_text": "计算二加二"}}):
+        with pytest.raises(ImportProblem) as blocked:
+            update_candidate(db, batch.id, item.id, expected_revision=item.revision, changes=changes)
+        assert blocked.value.code == "COMMIT_CONFLICT"
+    assert item.payload["tags"]["question_type"] == "unknown"
+    assert item.payload["content"]["question_text"] == "计算一加一"
+
+    batch.checkpoint = {"s3": {"global_dedupe": {"status": "completed"}, task: {"status": "completed"}}}
+    update_candidate(db, batch.id, item.id, expected_revision=item.revision,
+                     changes={"tags": {"question_type": "calculation"}})
+    assert item.payload["tags"]["question_type"] == "calculation"
 
 
 def test_separate_labels_require_completed_answer_association(db, tmp_path, monkeypatch):

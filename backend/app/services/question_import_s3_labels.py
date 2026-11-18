@@ -306,7 +306,7 @@ def _apply_suggestions(db: Session, batch: QuestionImportBatch, group: dict,
         if item is None or item.revision != entry["revision"] or _fingerprint(item) != entry["fingerprint"]:
             skipped.append(entry["item_id"])
             continue
-        if (item.payload.get("teacher_decision") or "pending") != "pending":
+        if not overwrite_manual_tags and (item.payload.get("teacher_decision") or "pending") != "pending":
             skipped.append(entry["item_id"])
             continue
         payload = dict(item.payload)
@@ -332,6 +332,8 @@ def _apply_suggestions(db: Session, batch: QuestionImportBatch, group: dict,
                              "section": None, "core_literacies": []})
         payload["tags"] = tags
         payload["label_status"] = "needs_confirmation" if tags.get("main_kp_code") else "out_of_scope"
+        if overwrite_manual_tags and payload.get("teacher_decision") == "approved":
+            payload["teacher_decision"] = "pending"
         payload["label_suggestion"] = {**result, "model": get_settings().question_import_s2_model,
                                         "version": LABEL_VERSION, "revision": item.revision + 1,
                                         "fingerprint": entry["fingerprint"],
@@ -402,7 +404,8 @@ def process_labels_one() -> bool:
                         if (item := current_items.get(entry["item_id"])) is not None
                         and item.revision == entry["revision"]
                         and _fingerprint(item) == entry["fingerprint"]
-                        and (item.payload.get("teacher_decision") or "pending") == "pending"]
+                        and (state.get("overwrite_manual_tags") or
+                             (item.payload.get("teacher_decision") or "pending") == "pending")]
         skipped_ids = [entry["item_id"] for entry in group["items"] if entry not in active_items]
         if not active_items:
             group.update({"status": "completed", "applied_count": 0, "skipped_item_ids": skipped_ids})

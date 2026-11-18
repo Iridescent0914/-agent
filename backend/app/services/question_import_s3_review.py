@@ -70,6 +70,7 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
     model_decisions = {row["answer_id"]: row for group in model_state.get("groups") or []
                        for row in group.get("decisions") or []}
     model_suggestions = {row["answer_id"]: row for row in model_state.get("suggestions") or []}
+    model_skipped = {row["answer_id"]: row for row in model_state.get("skipped") or []}
     if batch.source_mode in {"combined", "separate"}:
         answer_units = ((checkpoint.get("s2") or {}) if batch.source_mode == "combined"
                         else ((checkpoint.get("s3") or {}).get("separate_answers") or {})).get("units") or []
@@ -108,12 +109,33 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
             rows.append({"key": answer_key, "kind": "answer", "unit_index": answer_unit,
                          "summary": f"第 {answer.get('page_start')} 页待认领答案（{answer.get('reason')}）",
                          "content": answer, "candidate_total": len(pool), "recall_method": recall_method,
-                         "model_reason": (model_decisions.get(source_answer_identity(answer)) or {}).get("reason"),
+                         "model_reason": (suggestion.get("reason")
+                                          or (model_decisions.get(source_answer_identity(answer)) or {}).get("reason")
+                                          or ("单条答案或候选题文字超过模型输入上限，请人工核对"
+                                              if model_skipped.get(source_answer_identity(answer), {}).get("reason")
+                                              == "single_record_too_large" else None)),
                          "model_suggestion": suggestion.get("suggested_item_id"),
                          "candidates": [_candidate_context(item) for item in pool[:MAX_LIST_CANDIDATES]]})
         answer_by_id = {source_answer_identity(answer): answer for unit in answer_units
                         for answer in unit.get("source_answers") or []}
-        for warning in model_state.get("review_warnings") or []:
+        model_warnings = list(model_state.get("review_warnings") or [])
+        warned_ids = {row.get("answer_id") for row in model_warnings}
+        if model_state.get("status") in {"failed", "pending_budget"}:
+            reason = ("模型调用失败，现有关联尚未完成核查，请人工核对或重试"
+                      if model_state["status"] == "failed" else
+                      "模型配对预算不足，现有关联尚未完成核查，请人工核对或增加预算")
+            for group in model_state.get("groups") or []:
+                if group.get("status") == "completed":
+                    continue
+                for pending in (group.get("context") or {}).get("answers") or []:
+                    answer_id = pending.get("answer_id")
+                    if pending.get("current_item_id") and answer_id not in warned_ids:
+                        model_warnings.append({"answer_id": answer_id,
+                                               "current_item_id": pending["current_item_id"],
+                                               "suggested_item_id": None, "reason": reason,
+                                               "evidence_quote": ""})
+                        warned_ids.add(answer_id)
+        for warning in model_warnings:
             answer = answer_by_id.get(warning.get("answer_id"))
             if not answer:
                 continue

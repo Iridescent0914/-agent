@@ -8,6 +8,7 @@ import re
 import unicodedata
 import uuid
 from collections import defaultdict
+from pathlib import Path
 from typing import Any
 
 from pypdf import PdfReader
@@ -67,13 +68,23 @@ def _substantive_excerpt(value: object) -> bool:
     return re.fullmatch(r"(?:第)?(?:\d+|[一二三四五六七八九十百零两]+)(?:小?题)?", excerpt) is None
 
 
+def _source_pdf_path(batch: QuestionImportBatch, role: str) -> Path | None:
+    """Use the PDF already read by S2/S3, including a cached DOCX conversion."""
+    source = next((file for file in batch.files if file["role"] == role), None)
+    if not source:
+        return None
+    path = _path_for(batch.id, uuid.UUID(source["file_id"]))
+    if source["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        path = path.with_name(path.name + f".{DOCX_CONVERSION_VERSION}.converted.pdf")
+    elif source["media_type"] != "application/pdf":
+        return None
+    return path if path.is_file() else None
+
+
 def _source_sections(batch: QuestionImportBatch, role: str) -> dict[int, str]:
     """Read explicit exercise identifiers from PDF page headers, carrying them over continuation pages."""
-    source = next((file for file in batch.files if file["role"] == role), None)
-    if not source or source["media_type"] != "application/pdf":
-        return {}
-    path = _path_for(batch.id, uuid.UUID(source["file_id"]))
-    if not path.is_file():
+    path = _source_pdf_path(batch, role)
+    if path is None:
         return {}
     sections: dict[int, str] = {}
     current: str | None = None

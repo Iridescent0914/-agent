@@ -24,7 +24,7 @@ from app.models import QuestionImportBatch, QuestionImportItem
 from app.services.question_import import OWNER_SCOPE, ImportProblem, _path_for, active_candidate, require_s2_operator_token
 from app.services.question_import_s2 import FLASH_MODEL
 from app.services.question_import_s3 import (
-    _number_key, _replaceable_source_answer, _source_sections, _text_key,
+    _number_key, _replaceable_source_answer, _source_pdf_path, _source_sections, _text_key,
     linked_source_answer_item, reconcile_source_answers, source_answer_identity,
 )
 
@@ -98,6 +98,7 @@ class QwenAnswerMatchProvider:
             "你负责将数学资料中已转录的来源答案与候选题对应。只根据给出的文字和位置判断，"
             "不要假定同题号一定相同；题号可能在不同讲次重复。page 在不同文件中分别计数，"
             "不能直接按页码相等配对。page_heading 是程序从页首摘出的短文字，可能不是标题。"
+            "section 是从页面识别的讲次线索；同页混排时可能不适用于每条题目或答案，不能仅凭它配对。"
             "必须为每个 answer_id 返回恰好一项判断。candidate_item_id 只能从 questions 选择，"
             "证据不足时返回 null。尤其短答案、缺题号、缺题干摘录时，不可仅凭猜测或题目顺序强配。"
             "若当前已有 current_item_id，请核查该关联；不确定时返回 null。"
@@ -146,11 +147,8 @@ def _answers(batch: QuestionImportBatch) -> list[dict[str, Any]]:
 
 def _page_headings(batch: QuestionImportBatch, role: str) -> dict[int, str]:
     """Read only short page-leading text locally; no pages are sent to the model."""
-    source = next((row for row in batch.files if row["role"] == role), None)
-    if not source or source["media_type"] != "application/pdf":
-        return {}
-    path = _path_for(batch.id, uuid.UUID(source["file_id"]))
-    if not path.is_file():
+    path = _source_pdf_path(batch, role)
+    if path is None:
         return {}
     try:
         return {page_number: next((line.strip()[:120] for line in (page.extract_text() or "").splitlines()
@@ -187,7 +185,36 @@ def _has_unique_rule_anchor(answer: dict[str, Any], linked: QuestionImportItem,
                 or (len(section_matches) == 1 and section_matches[0].id == linked.id))
 
 
-def _groups(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+def _context_fits(answers: list[dict[str, Any]], questions: list[dict[str, Any]]) -> bool:
+    return (bool(questions) and len(answers) <= MAX_GROUP_ANSWERS
+            and len(questions) <= MAX_GROUP_CANDIDATES
+            and len(json.dumps({"answers": answers, "questions": questions}, ensure_ascii=False)) <= MAX_GROUP_CHARS)
+
+
+def _question_shards(answer: dict[str, Any], questions: list[dict[str, Any]]) -> list[list[dict[str, Any]]] | None:
+    """Repeat the current association as an anchor while covering every other candidate."""
+    current = answer.get("current_item_id")
+    anchors = [row for row in questions if row["item_id"] == current]
+    remaining = [row for row in questions if row["item_id"] != current]
+    if not remaining:
+        return [anchors] if _context_fits([answer], anchors) else None
+    shards: list[list[dict[str, Any]]] = []
+    shard = list(anchors)
+    for question in remaining:
+        proposed = [*shard, question]
+        if not _context_fits([answer], proposed):
+            if len(shard) == len(anchors) or not _context_fits([answer], [*anchors, question]):
+                return None
+            shards.append(shard)
+            shard = [*anchors, question]
+        else:
+            shard = proposed
+    shards.append(shard)
+    return shards
+
+
+def _groups(batch: QuestionImportBatch, items: list[QuestionImportItem],
+            *, only_answer_ids: set[str] | None = None) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     reconciliation = ((batch.checkpoint or {}).get("s3") or {}).get("source_answer_reconciliation") or {}
     unresolved = {source_answer_identity(row): row.get("reason")
                   for row in reconciliation.get("unassigned_answers") or []}
@@ -196,20 +223,23 @@ def _groups(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> tupl
         number = _number_key((item.payload.get("source") or {}).get("original_number"))
         if number:
             by_number[number].append(item)
-    question_sections = _source_sections(batch, "questions") if batch.source_mode == "separate" else {}
-    answer_sections = _source_sections(batch, "answers") if batch.source_mode == "separate" else {}
+    question_sections = _source_sections(batch, "questions")
+    answer_sections = _source_sections(batch, "answers") if batch.source_mode == "separate" else question_sections
     question_headings = _page_headings(batch, "questions")
     answer_headings = _page_headings(batch, "answers") if batch.source_mode == "separate" else question_headings
     selected: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for answer in _answers(batch):
         answer_id = source_answer_identity(answer)
+        if only_answer_ids is not None and answer_id not in only_answer_ids:
+            continue
         number = _number_key(answer.get("original_number"))
         linked = linked_source_answer_item(answer, items)
         if linked is not None and not _replaceable_source_answer(linked):
             continue
         high_risk = bool(linked and number and len(by_number[number]) > 1
                          and not _has_unique_rule_anchor(answer, linked, items, by_number[number],
-                                                         question_sections, answer_sections))
+                                                         question_sections if batch.source_mode == "separate" else {},
+                                                         answer_sections if batch.source_mode == "separate" else {}))
         if answer_id not in unresolved and not high_risk:
             continue
         if unresolved.get(answer_id) == "candidate_already_edited":
@@ -234,8 +264,12 @@ def _groups(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> tupl
         for answer in answers:
             excerpt = _text_key(answer.get("question_excerpt"))
             if len(excerpt) >= 8:
-                pool = list(dict.fromkeys([*pool, *(item for item in items
-                    if excerpt in _text_key((item.payload.get("content") or {}).get("question_text")))]))
+                present = {str(item.id) for item in pool}
+                pool = [*pool, *(item for item in items if str(item.id) not in present
+                    and excerpt in _text_key((item.payload.get("content") or {}).get("question_text")))]
+            current = answer.get("current_item_id")
+            if current and all(str(item.id) != current for item in pool):
+                pool = [*pool, *(item for item in items if str(item.id) == current)]
         questions = [{"item_id": str(item.id), "revision": item.revision,
                       "number": (item.payload.get("source") or {}).get("original_number"),
                       "page": (item.payload.get("source") or {}).get("page_start"),
@@ -244,15 +278,31 @@ def _groups(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> tupl
                       "stem": str((item.payload.get("content") or {}).get("question_text") or "")[:600],
                       "options": (item.payload.get("content") or {}).get("options", [])[:8]}
                      for item in pool]
-        for start in range(0, len(answers), MAX_GROUP_ANSWERS):
-            part = answers[start:start + MAX_GROUP_ANSWERS]
-            context = {"answers": part, "questions": questions}
-            if (not questions or len(questions) > MAX_GROUP_CANDIDATES
-                    or len(json.dumps(context, ensure_ascii=False)) > MAX_GROUP_CHARS):
-                skipped.extend({"answer_id": row["answer_id"], "reason": "candidate_set_too_large"}
-                               for row in part)
+        pending_answers: list[dict[str, Any]] = []
+
+        def flush_answers() -> None:
+            if pending_answers:
+                groups.append({"index": len(groups), "status": "pending",
+                               "context": {"answers": list(pending_answers), "questions": questions}})
+                pending_answers.clear()
+
+        for answer in answers:
+            if _context_fits([answer], questions):
+                if pending_answers and not _context_fits([*pending_answers, answer], questions):
+                    flush_answers()
+                pending_answers.append(answer)
                 continue
-            groups.append({"index": len(groups), "status": "pending", "context": context})
+            flush_answers()
+            shards = _question_shards(answer, questions)
+            if not shards:
+                skipped.append({"answer_id": answer["answer_id"], "reason": "single_record_too_large",
+                                "current_item_id": answer.get("current_item_id")})
+                continue
+            bundle_id = answer["answer_id"]
+            for shard in shards:
+                groups.append({"index": len(groups), "status": "pending", "bundle_id": bundle_id,
+                               "context": {"answers": [answer], "questions": shard}})
+        flush_answers()
     return groups, skipped
 
 
@@ -295,7 +345,14 @@ def _new_state(batch: QuestionImportBatch, items: list[QuestionImportItem], budg
             "budget_cny": budget_cny, "estimated_cny": 0.0, "calls": 0,
             "model": get_settings().question_import_s2_model, "price_snapshot": _price_snapshot(),
             "groups": groups, "skipped": skipped, "assignments": {},
-            "suggestions": [], "review_warnings": []}
+            "suggestions": [], "review_warnings": _skipped_warnings(skipped)}
+
+
+def _skipped_warnings(skipped: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [{"answer_id": row["answer_id"], "current_item_id": row["current_item_id"],
+             "suggested_item_id": None, "kind": "uncertain", "evidence_quote": "",
+             "reason": "单条答案或候选题文字超过模型输入上限，请人工核对"}
+            for row in skipped if row.get("current_item_id")]
 
 
 def start_answer_matching(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
@@ -316,14 +373,36 @@ def start_answer_matching(db: Session, batch_id: uuid.UUID, *, budget_cny: float
         raise ImportProblem("S3_MATCH_UNAVAILABLE", "请先完成去重、答案识别及程序关联", 409)
     checkpoint = dict(batch.checkpoint or {})
     s3 = dict(checkpoint.get("s3") or {})
+    if (s3.get("labels") or {}).get("status") in {"queued", "processing"}:
+        raise ImportProblem("COMMIT_CONFLICT", "标签建议任务运行期间不能重新规划答案配对", 409)
     state = dict(s3.get("answer_model_matching") or {})
-    if state.get("status") in {"queued", "processing", "completed"}:
+    replan_oversized = (state.get("status") == "completed" and any(
+        row.get("reason") == "candidate_set_too_large" for row in state.get("skipped") or []))
+    if state.get("status") in {"queued", "processing"} or (state.get("status") == "completed" and not replan_oversized):
         raise ImportProblem("COMMIT_CONFLICT", "模型辅助配对已排队、进行中或完成", 409)
     if state.get("cost_unknown"):
         raise ImportProblem("S3_MATCH_COST_UNKNOWN", "上次调用费用未知，请先核对账单", 409)
     if budget_cny <= float(state.get("estimated_cny") or 0):
         raise ImportProblem("INVALID_S3_BUDGET", "新预算须高于已记录费用")
-    if not state:
+    if replan_oversized:
+        items = [item for item in db.scalars(select(QuestionImportItem).where(
+            QuestionImportItem.batch_id == batch.id).order_by(QuestionImportItem.ordinal)) if active_candidate(item)]
+        answer_ids = {row["answer_id"] for row in state["skipped"]
+                      if row.get("reason") == "candidate_set_too_large"}
+        new_groups, new_skipped = _groups(batch, items, only_answer_ids=answer_ids)
+        next_index = max((row["index"] for row in state.get("groups") or []), default=-1) + 1
+        for group in new_groups:
+            group["index"] = next_index
+            next_index += 1
+        state["groups"] = [*(state.get("groups") or []), *new_groups]
+        state["skipped"] = [row for row in state["skipped"]
+                            if row.get("reason") != "candidate_set_too_large"] + new_skipped
+        state["review_warnings"] = [*(state.get("review_warnings") or []), *_skipped_warnings(new_skipped)]
+        state["status"] = "queued" if new_groups else "completed"
+        state["budget_cny"] = budget_cny
+        state.pop("error_code", None)
+        state.pop("error_message", None)
+    elif not state:
         items = [item for item in db.scalars(select(QuestionImportItem).where(
             QuestionImportItem.batch_id == batch.id).order_by(QuestionImportItem.ordinal)) if active_candidate(item)]
         state = _new_state(batch, items, budget_cny)
@@ -455,6 +534,56 @@ def _apply_decisions(batch: QuestionImportBatch, state: dict[str, Any], group: d
     state["review_warnings"] = warnings
 
 
+def _apply_completed_shards(batch: QuestionImportBatch, state: dict[str, Any], bundle_id: str,
+                            items: list[QuestionImportItem]) -> None:
+    shards = [row for row in state["groups"] if row.get("bundle_id") == bundle_id]
+    if not shards or any(row["status"] != "completed" for row in shards):
+        return
+    answer = shards[0]["context"]["answers"][0]
+    questions = {question["item_id"]: question for shard in shards
+                 for question in shard["context"]["questions"]}
+    combined = {"context": {"answers": [answer], "questions": list(questions.values())}}
+    decisions = [shard["decisions"][0] for shard in shards]
+    proposals = {row["candidate_item_id"] for row in decisions if row["candidate_item_id"]}
+
+    def supported(row: dict[str, Any]) -> bool:
+        question = questions.get(row["candidate_item_id"])
+        quote = _text_key(row.get("evidence_quote"))
+        source = " ".join(str(value or "") for value in (
+            question.get("stem") if question else None,
+            question.get("page_heading") if question else None,
+            answer.get("question_excerpt"), answer.get("page_heading")))
+        return bool(question and len(quote) >= 4 and quote in _text_key(source))
+
+    if len(proposals) > 1:
+        if answer.get("current_item_id"):
+            alternatives = [row for row in decisions
+                            if row["candidate_item_id"] not in {None, answer["current_item_id"]}]
+            choice = next((row for row in alternatives if supported(row)), alternatives[0])
+            _apply_decisions(batch, state, combined, [{**choice,
+                "reason": "不同候选题分片给出不同建议，请人工核对；" + choice["reason"]}], items)
+        else:
+            choice = next((row for row in decisions if supported(row)), decisions[0])
+            state["suggestions"] = [*(state.get("suggestions") or []), {
+                "answer_id": bundle_id, "suggested_item_id": choice["candidate_item_id"],
+                "reason": "不同候选题分片给出冲突建议，请人工核对"}]
+        return
+    if not proposals:
+        choice = decisions[0]
+    else:
+        choice = next((row for row in decisions if row["candidate_item_id"] in proposals
+                       and supported(row)),
+                      next(row for row in decisions if row["candidate_item_id"] in proposals))
+    if (answer.get("current_item_id") and choice["candidate_item_id"] == answer["current_item_id"]
+            and any(row["candidate_item_id"] is None for row in decisions)):
+        state["review_warnings"] = [*(state.get("review_warnings") or []), {
+            "answer_id": bundle_id, "current_item_id": answer["current_item_id"],
+            "suggested_item_id": None, "kind": "uncertain", "evidence_quote": "",
+            "reason": "部分候选题分片无法确定现有关联，请人工核对"}]
+        return
+    _apply_decisions(batch, state, combined, [choice], items)
+
+
 def process_answer_matching_one() -> bool:
     with SessionLocal() as db:
         claimed = _claim(db)
@@ -559,9 +688,12 @@ def _finish_group(batch_id: uuid.UUID, token: str, index: int,
             items = [item for item in db.scalars(select(QuestionImportItem).where(
                 QuestionImportItem.batch_id == batch.id).order_by(QuestionImportItem.ordinal).with_for_update())
                      if active_candidate(item)]
-            _apply_decisions(batch, state, group, decisions, items)
             group["status"] = "completed"
             group["decisions"] = decisions
+            if group.get("bundle_id"):
+                _apply_completed_shards(batch, state, group["bundle_id"], items)
+            else:
+                _apply_decisions(batch, state, group, decisions, items)
         elif error_status == "failed":
             group["status"] = "failed"
         state["status"] = error_status or (
