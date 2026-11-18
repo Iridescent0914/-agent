@@ -14,7 +14,7 @@ from app.core.config import Settings, get_settings
 from app.core.database import engine
 from app.services.question_import import ImportProblem, add_candidate, create_batch
 from app.services.question_import_s2 import (
-    INCLUSIVE_COMBINED_PROMPT_VERSION, CONTINUATION_COMBINED_PROMPT_VERSION,
+    COMBINED_PROMPT_VERSION,
     QwenPdfProvider, candidate_from_question,
     parse_model_output, plan_units,
 )
@@ -146,7 +146,6 @@ def test_inclusive_combined_prompt_extracts_questions_and_answers_after_heading(
                         question_import_s2_base_url="https://example.invalid/compatible-mode/v1")
     output, _, _ = QwenPdfProvider(settings=settings, transport=httpx.MockTransport(respond)).extract(
         _pdf(2), page_count=2, include_answers=True,
-        combined_prompt_version=INCLUSIVE_COMBINED_PROMPT_VERSION,
         page_roles=["question", "answer"])
     assert not output.questions
     assert output.source_answers[0].answer_text == "2"
@@ -219,7 +218,7 @@ def test_combined_pdf_one_pass_returns_separate_source_answers():
         _pdf(), page_count=1, include_answers=True)
     assert output.questions[0].question_text == "题目 3"
     assert output.source_answers[0].answer_text == "7"
-    assert meta["prompt_version"] == CONTINUATION_COMBINED_PROMPT_VERSION
+    assert meta["prompt_version"] == COMBINED_PROMPT_VERSION
     assert len([part for part in captured["messages"][0]["content"] if part["type"] == "file"]) == 1
     assert "source_answers" in captured["response_format"]["json_schema"]["schema"]["required"]
     assert "ModelQuestion" in captured["response_format"]["json_schema"]["schema"]["$defs"]
@@ -257,7 +256,7 @@ def test_combined_answers_link_only_unique_unedited_question(db, tmp_path, monke
     batch = create_batch(db, source_mode="combined", files=[("questions", "combined.pdf", _pdf())])
     batch.stage = "awaiting_s2"
     start_s2(db, batch.id, budget_cny=2, operator_token="operator-test")
-    assert batch.checkpoint["s2"]["prompt_version"] == CONTINUATION_COMBINED_PROMPT_VERSION
+    assert batch.checkpoint["s2"]["prompt_version"] == COMBINED_PROMPT_VERSION
     source_id = batch.files[0]["file_id"]
     unit = plan_units(1, pages_per_unit=1, overlap=0)[0]
     for number in ("3", "3", "4", "5"):
@@ -321,7 +320,7 @@ def test_unique_number_with_conflicting_excerpt_stays_unassigned(db, tmp_path, m
     item = add_candidate(db, batch, candidate_from_question(source_id, question, unit))
     batch.status = "review_pending"
     batch.stage = "s2_completed"
-    batch.checkpoint = {"s2": {"prompt_version": INCLUSIVE_COMBINED_PROMPT_VERSION,
+    batch.checkpoint = {"s2": {"prompt_version": COMBINED_PROMPT_VERSION,
         "units": [{"source_answers": [{**_answer("3", "7"),
             "source_file_id": source_id, "question_excerpt": "求有理数九加九的运算结果"}]}]}}
     db.flush()
@@ -358,7 +357,7 @@ def test_question_number_only_excerpt_does_not_block_answer_match(db, tmp_path, 
     item = add_candidate(db, batch, candidate_from_question(source_id, question, unit))
     batch.status = "review_pending"
     batch.stage = "s2_completed"
-    batch.checkpoint = {"s2": {"prompt_version": INCLUSIVE_COMBINED_PROMPT_VERSION,
+    batch.checkpoint = {"s2": {"prompt_version": COMBINED_PROMPT_VERSION,
         "conversion_version": None,
         "units": [{"source_answers": [{**_answer("21", "A"),
             "source_file_id": source_id, "question_excerpt": "第21题"}]}]}}
@@ -424,7 +423,7 @@ def test_combined_worker_keeps_answers_from_same_paid_unit(db, tmp_path, monkeyp
     from app.models import QuestionImportItem
     from sqlalchemy import select
     candidates = list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch.id)))
-    assert all(item.payload["extraction"]["prompt_version"] == CONTINUATION_COMBINED_PROMPT_VERSION
+    assert all(item.payload["extraction"]["prompt_version"] == COMBINED_PROMPT_VERSION
                for item in candidates)
 
 
@@ -461,8 +460,7 @@ def test_inclusive_worker_keeps_complete_questions_when_file_starts_with_answers
                 "source_answers": [{"original_number": "1", "answer_text": "A",
                                     "page_start": 2, "page_end": 2}],
                 "unresolved_fragments": []},
-                plan_units(2, pages_per_unit=2, overlap=0)[0], include_answers=True,
-                combined_prompt_version=CONTINUATION_COMBINED_PROMPT_VERSION)
+                plan_units(2, pages_per_unit=2, overlap=0)[0], include_answers=True)
             return output, {"usage": {"prompt_tokens": 100, "completion_tokens": 50},
                             "elapsed_seconds": 1.0, "response_id": "sectioned-worker-1"}, 1.0
 
@@ -471,7 +469,7 @@ def test_inclusive_worker_keeps_complete_questions_when_file_starts_with_answers
     db.refresh(batch)
     unit = batch.checkpoint["s2"]["units"][0]
     assert batch.stage == "s2_completed", batch.error_message
-    assert batch.checkpoint["s2"]["prompt_version"] == CONTINUATION_COMBINED_PROMPT_VERSION
+    assert batch.checkpoint["s2"]["prompt_version"] == COMBINED_PROMPT_VERSION
     assert unit["candidate_count"] == 2
     assert unit["source_answers"][0]["text"] == "A"
 
@@ -556,7 +554,7 @@ def test_reconcile_repairs_answer_restatements_and_reference_cards(db, tmp_path,
     batch.status = "review_pending"
     batch.stage = "s2_completed"
     batch.checkpoint = {"s2": {**batch.checkpoint["s2"],
-                               "prompt_version": INCLUSIVE_COMBINED_PROMPT_VERSION,
+                               "prompt_version": COMBINED_PROMPT_VERSION,
                                "units": [{"source_answers": [_answer("1", "3")]}]},
                         "s3": {"source_answer_reconciliation": {
                             "schema_version": "s3-source-answer-reconciliation-v1"}}}

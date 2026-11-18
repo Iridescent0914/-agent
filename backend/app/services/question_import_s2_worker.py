@@ -21,9 +21,7 @@ from app.models import QuestionImportBatch, QuestionImportItem
 from app.services.question_import import DOCX_CONVERSION_VERSION, OWNER_SCOPE, ImportProblem, _path_for, add_candidate, get_batch, require_s2_operator_token, retry_batch
 from app.services.question_import_s2 import (
     FLASH_MODEL, PROMPT_VERSION, ModelOutput, PageUnit, QwenPdfProvider,
-    INCLUSIVE_COMBINED_PROMPT_VERSION, CONTINUATION_COMBINED_PROMPT_VERSION,
-    COMBINED_PROMPT_VERSIONS,
-    CombinedModelOutput, combined_output_model,
+    COMBINED_PROMPT_VERSION, CombinedModelOutput,
     candidate_from_question, candidate_key,
     decode_qwen_response, estimate_cost, overlap_candidate_is_duplicate,
     pdf_page_roles, pdf_unit_bytes, plan_units, prepare_pdf,
@@ -72,7 +70,7 @@ def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_to
     s2["model"] = settings.question_import_s2_model
     # Keep the batch's recorded contract when resuming paid work.
     s2["prompt_version"] = s2.get("prompt_version") or (
-        CONTINUATION_COMBINED_PROMPT_VERSION if batch.source_mode == "combined" else PROMPT_VERSION
+        COMBINED_PROMPT_VERSION if batch.source_mode == "combined" else PROMPT_VERSION
     )
     if question_file["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
         s2["conversion_version"] = DOCX_CONVERSION_VERSION
@@ -156,20 +154,6 @@ def _checkpoint_update(db: Session, batch_id: uuid.UUID, token: uuid.UUID, s2: d
 
 def _result_path(batch_id: uuid.UUID, file_id: str, unit_index: int):
     return _path_for(batch_id, uuid.UUID(file_id)).with_name(file_id.replace("-", "") + f".unit{unit_index}.json")
-
-
-def _upgrade_incomplete_continuation_prompt(s2: dict) -> bool:
-    """Use the clarified boundary rule when retrying an incomplete v8 unit."""
-    if s2.get("prompt_version") != INCLUSIVE_COMBINED_PROMPT_VERSION:
-        return False
-    failed = s2.get("failed_unit") or {}
-    if failed.get("code") != "INCOMPLETE_MODEL_OUTPUT" or not isinstance(failed.get("index"), int):
-        return False
-    s2["prompt_version"] = CONTINUATION_COMBINED_PROMPT_VERSION
-    s2["prompt_upgrade"] = {"from": INCLUSIVE_COMBINED_PROMPT_VERSION,
-                            "at_unit_index": failed["index"],
-                            "reason": "incomplete_prior_page_continuation"}
-    return True
 
 
 def _adapt_incomplete_unit(s2: dict, batch_id: uuid.UUID, file_id: str) -> bool:
@@ -258,20 +242,18 @@ def skip_incomplete_s2_page(db: Session, batch_id: uuid.UUID, *, page: int,
 def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
                   *, retry_invalid: bool = False,
                   include_answers: bool = False,
-                  combined_prompt_version: str = CONTINUATION_COMBINED_PROMPT_VERSION,
-                   document_page_roles: list[str] | None = None,
-                   embedded_images: list[dict] | None = None) -> tuple[ModelOutput | CombinedModelOutput, dict]:
+                  document_page_roles: list[str] | None = None,
+                  embedded_images: list[dict] | None = None) -> tuple[ModelOutput | CombinedModelOutput, dict]:
     artifact = _result_path(batch_id, file_id, unit.index)
     if artifact.is_file():
         data = json.loads(artifact.read_text(encoding="utf-8"))
         if "output" in data:
-            output_model = combined_output_model(combined_prompt_version) if include_answers else ModelOutput
+            output_model = CombinedModelOutput if include_answers else ModelOutput
             return output_model.model_validate(data["output"]), data["meta"]
         try:
             return decode_qwen_response(data["raw_response"], page_count=unit.page_count,
                                         elapsed=data["elapsed_seconds"], model=get_settings().question_import_s2_model,
-                                        include_answers=include_answers,
-                                        combined_prompt_version=combined_prompt_version)
+                                        include_answers=include_answers)
         except ImportProblem:
             if not retry_invalid:
                 raise
@@ -296,7 +278,6 @@ def _extract_unit(batch_id: uuid.UUID, file_id: str, pdf, unit: PageUnit,
               "capture_response": capture_response}
     if include_answers:
         kwargs["include_answers"] = True
-        kwargs["combined_prompt_version"] = combined_prompt_version
         if document_page_roles:
             kwargs["page_roles"] = document_page_roles[unit.first_page - 1:unit.last_page]
     pdf_data = pdf_unit_bytes(pdf, unit)
@@ -326,11 +307,9 @@ def process_s2_one() -> bool:
                 and s2.get("units") and s2.get("conversion_version") != DOCX_CONVERSION_VERSION):
             raise ImportProblem("S2_CONFIG_CHANGED", "DOCX 转换器已修复公式处理，请重新上传以完整重跑 S2")
         pdf, pages, warnings = prepare_pdf(batch_id, source)
-        embedded_inventory = None
-        if s2.get("figure_version") == FIGURE_VERSION:
-            with SessionLocal() as db:
-                embedded_inventory = extract_images(db, batch_id, s2_worker_token=token)
-                db.commit()
+        with SessionLocal() as db:
+            embedded_inventory = extract_images(db, batch_id, s2_worker_token=token)
+            db.commit()
         document_page_roles = pdf_page_roles(pdf) if batch.source_mode == "combined" else []
         if not s2.get("units"):
             units = plan_units(pages, pages_per_unit=get_settings().question_import_s2_pages_per_unit,
@@ -353,15 +332,11 @@ def process_s2_one() -> bool:
                       "output_million_cny": get_settings().question_import_s2_output_million_price_cny}
             if s2.get("price_snapshot") != prices:
                 raise ImportProblem("S2_CONFIG_CHANGED", "计费单价配置已变化，请新建批次")
-            upgraded = _upgrade_incomplete_continuation_prompt(s2)
-            valid_version = (
-                COMBINED_PROMPT_VERSIONS
-                if batch.source_mode == "combined" else {PROMPT_VERSION}
-            )
-            if s2.get("prompt_version") not in valid_version:
+            expected_version = COMBINED_PROMPT_VERSION if batch.source_mode == "combined" else PROMPT_VERSION
+            if s2.get("prompt_version") != expected_version:
                 raise ImportProblem("S2_CONFIG_CHANGED", "提示词版本已变化，请新建批次")
             adapted = _adapt_incomplete_unit(s2, batch_id, source["file_id"])
-            if upgraded or adapted:
+            if adapted:
                 with SessionLocal() as db:
                     if not _checkpoint_update(db, batch_id, token, s2):
                         return True
@@ -370,7 +345,7 @@ def process_s2_one() -> bool:
             state = s2["units"][unit.index]
             if state["status"] == "completed":
                 continue
-            include_answers = s2.get("prompt_version") in COMBINED_PROMPT_VERSIONS
+            include_answers = batch.source_mode == "combined"
             if s2.get("cost_unknown") or float(s2.get("estimated_cny") or 0) >= float(s2["budget_cny"]):
                 _pause(batch_id, token, s2, "BUDGET_REACHED", "预算已达到或部分用量缺失，请核对账单后调整预算")
                 return True
@@ -378,12 +353,11 @@ def process_s2_one() -> bool:
                 _pause(batch_id, token, s2, "CALL_LIMIT_REACHED", "S2 单批调用次数达到上限")
                 return True
             failed_unit = s2.get("failed_unit") or {}
-            unit_images = ([{"asset_id": asset["asset_id"],
-                             "page": asset["page"] - unit.first_page + 1,
-                             "bbox": [round(value * 999) for value in asset["bbox"]]}
-                            for asset in embedded_inventory["assets"]
-                            if asset["kind"] == "embedded" and unit.first_page <= asset["page"] <= unit.last_page]
-                           if embedded_inventory is not None else None)
+            unit_images = [{"asset_id": asset["asset_id"],
+                            "page": asset["page"] - unit.first_page + 1,
+                            "bbox": [round(value * 999) for value in asset["bbox"]]}
+                           for asset in embedded_inventory["assets"]
+                           if asset["kind"] == "embedded" and unit.first_page <= asset["page"] <= unit.last_page]
             output, meta = _extract_unit(batch_id, source["file_id"], pdf, unit,
                                          retry_invalid=failed_unit.get("index") == unit.index
                                          and failed_unit.get("code") in {
@@ -391,7 +365,6 @@ def process_s2_one() -> bool:
                                              "INCOMPLETE_MODEL_OUTPUT",
                                              "MODEL_OUTPUT_TRUNCATED",
                                          }, include_answers=include_answers,
-                                         combined_prompt_version=s2.get("prompt_version", CONTINUATION_COMBINED_PROMPT_VERSION),
                                          document_page_roles=document_page_roles,
                                          embedded_images=unit_images)
             cost = estimate_cost(meta.get("usage") or {})

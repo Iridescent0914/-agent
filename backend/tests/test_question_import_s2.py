@@ -20,7 +20,7 @@ from app.core.database import engine
 from app.models import QuestionImportItem
 from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, _path_for, create_batch, retry_batch
 from app.services.question_import_s2 import (
-    CONTINUATION_COMBINED_PROMPT_VERSION, INCLUSIVE_COMBINED_PROMPT_VERSION,
+    COMBINED_PROMPT_VERSION,
     QwenPdfProvider, candidate_from_question, candidate_key, estimate_cost,
     overlap_candidate_is_duplicate, resolved_overlap_option,
     decode_qwen_response, parse_model_output, plan_units, prepare_pdf,
@@ -284,19 +284,6 @@ def test_failed_alias_response_can_be_reused_without_another_model_call(tmp_path
     assert meta["response_id"] == "already-paid"
 
 
-def test_only_incomplete_v8_combined_retry_upgrades_boundary_prompt():
-    checkpoint = {"prompt_version": INCLUSIVE_COMBINED_PROMPT_VERSION,
-                  "failed_unit": {"index": 2, "code": "INCOMPLETE_MODEL_OUTPUT"}}
-    assert s2_worker._upgrade_incomplete_continuation_prompt(checkpoint)
-    assert checkpoint["prompt_version"] == CONTINUATION_COMBINED_PROMPT_VERSION
-    assert checkpoint["prompt_upgrade"]["at_unit_index"] == 2
-    assert not s2_worker._upgrade_incomplete_continuation_prompt(checkpoint)
-    for code in ("MODEL_API_ERROR", "MODEL_OUTPUT_TRUNCATED"):
-        other = {"prompt_version": INCLUSIVE_COMBINED_PROMPT_VERSION,
-                 "failed_unit": {"index": 2, "code": code}}
-        assert not s2_worker._upgrade_incomplete_continuation_prompt(other)
-
-
 def test_incomplete_retry_splits_core_with_one_context_page_then_requires_review(tmp_path, monkeypatch):
     monkeypatch.setattr(s2_worker, "_result_path", lambda _batch, _file, index: tmp_path / f"{index}.json")
     checkpoint = {"page_count": 8, "prompt_version": s2_worker.PROMPT_VERSION,
@@ -426,8 +413,7 @@ def test_qwen_one_page_call_returns_question_answer_and_figure_location():
     output, _, _ = provider.extract(_pdf(), page_count=1, include_answers=True,
                                     embedded_images=[{"asset_id": "known-image", "page": 1,
                                                       "bbox": [10, 10, 100, 100]}],
-                                    page_previews=[b"\x89PNG\r\n\x1a\n"],
-                                    combined_prompt_version=CONTINUATION_COMBINED_PROMPT_VERSION)
+                                    page_previews=[b"\x89PNG\r\n\x1a\n"])
     assert output.questions[0].figures[0].bbox == [450, 450, 850, 720]
     assert output.source_answers[0].answer_text == "3"
     content = captured["messages"][0]["content"]
@@ -514,11 +500,10 @@ def test_combined_boundary_prompt_distinguishes_continuation_from_new_question()
     settings = Settings(question_import_s2_api_key="test-only",
                         question_import_s2_base_url="https://example.invalid/compatible-mode/v1")
     provider = QwenPdfProvider(settings=settings, transport=httpx.MockTransport(respond))
-    for version in (INCLUSIVE_COMBINED_PROMPT_VERSION, CONTINUATION_COMBINED_PROMPT_VERSION):
-        provider.extract(_pdf(), page_count=2, core_page_count=1, include_answers=True,
-                         page_roles=["question", "question"], combined_prompt_version=version)
-    old_prompt, new_prompt = [body["messages"][0]["content"][-1]["text"] for body in captured]
-    assert "逐页先定位每道独立题目的题干起点" not in old_prompt
+    _, meta, _ = provider.extract(_pdf(), page_count=2, core_page_count=1, include_answers=True,
+                                  page_roles=["question", "question"])
+    assert meta["prompt_version"] == COMBINED_PROMPT_VERSION
+    new_prompt = captured[0]["messages"][0]["content"][-1]["text"]
     assert "逐页先定位每道独立题目的题干起点" in new_prompt
     assert "圆圈数字、括号数字、普通数字、字母、罗马数字或其他形式" in new_prompt
     assert "也可能没有编号" in new_prompt

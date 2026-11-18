@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.models import QuestionImportBatch, QuestionImportItem
 from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, OWNER_SCOPE, _path_for, active_candidate
-from app.services.question_import_s2 import COMBINED_PROMPT_VERSIONS
+from app.services.question_import_s2 import COMBINED_PROMPT_VERSION
 
 
 def _number_key(value: object) -> str | None:
@@ -216,7 +216,7 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
     s2 = (batch.checkpoint or {}).get("s2") or {}
     existing_s3 = (batch.checkpoint or {}).get("s3") or {}
     if batch.source_mode == "combined":
-        if s2.get("prompt_version") not in COMBINED_PROMPT_VERSIONS:
+        if s2.get("prompt_version") != COMBINED_PROMPT_VERSION:
             raise ImportProblem("S3_SOURCE_ANSWERS_MISSING", "本批次未提取资料答案，请重新上传并识别", 409)
         source_units = s2
         source_version = s2.get("prompt_version")

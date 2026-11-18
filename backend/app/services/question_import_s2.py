@@ -31,9 +31,7 @@ from app.core.config import Settings, get_settings
 from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, _path_for
 
 PROMPT_VERSION = "question-import-s2-v3"
-INCLUSIVE_COMBINED_PROMPT_VERSION = "question-import-combined-v8"
-CONTINUATION_COMBINED_PROMPT_VERSION = "question-import-combined-v9"
-COMBINED_PROMPT_VERSIONS = {INCLUSIVE_COMBINED_PROMPT_VERSION, CONTINUATION_COMBINED_PROMPT_VERSION}
+COMBINED_PROMPT_VERSION = "question-import-combined-v9"
 FLASH_MODEL = "qwen3.8-flash"
 
 
@@ -127,12 +125,6 @@ class ModelSourceAnswer(BaseModel):
 
 class CombinedModelOutput(ModelOutput):
     source_answers: list[ModelSourceAnswer]
-
-
-def combined_output_model(version: str):
-    if version not in COMBINED_PROMPT_VERSIONS:
-        raise ImportProblem("S2_CONFIG_CHANGED", "提示词版本已变化，请新建批次")
-    return CombinedModelOutput
 
 
 def pdf_page_roles(pdf: Path | bytes) -> list[str]:
@@ -324,13 +316,12 @@ def pdf_unit_bytes(pdf: Path, unit: PageUnit) -> bytes:
     return output.getvalue()
 
 
-def parse_model_output(value: object, unit: PageUnit, *, include_answers: bool = False,
-                       combined_prompt_version: str = CONTINUATION_COMBINED_PROMPT_VERSION) -> ModelOutput | CombinedModelOutput:
+def parse_model_output(value: object, unit: PageUnit, *, include_answers: bool = False) -> ModelOutput | CombinedModelOutput:
     if isinstance(value, list):
         detail = "空数组 []" if not value else "数组"
         raise ImportProblem("INVALID_MODEL_OUTPUT", f"模型返回{detail}，需要包含 complete、questions 的 JSON 对象")
     try:
-        output = (combined_output_model(combined_prompt_version) if include_answers else ModelOutput).model_validate(value)
+        output = (CombinedModelOutput if include_answers else ModelOutput).model_validate(value)
     except ValidationError as exc:
         location = []
         for part in exc.errors()[0]["loc"]:
@@ -535,10 +526,9 @@ class QwenPdfProvider:
     def extract(self, pdf_data: bytes, *, page_count: int, core_page_count: int | None = None,
                 capture_response: Callable[[dict, float], None] | None = None,
                 include_answers: bool = False,
-                combined_prompt_version: str = CONTINUATION_COMBINED_PROMPT_VERSION,
-                 page_roles: list[str] | None = None,
-                 embedded_images: list[dict] | None = None,
-                 page_previews: list[bytes] | None = None) -> tuple[ModelOutput | CombinedModelOutput, dict, float]:
+                page_roles: list[str] | None = None,
+                embedded_images: list[dict] | None = None,
+                page_previews: list[bytes] | None = None) -> tuple[ModelOutput | CombinedModelOutput, dict, float]:
         core_page_count = page_count if core_page_count is None else core_page_count
         if not 1 <= core_page_count <= page_count:
             raise ImportProblem("INVALID_S2_CONFIG", "PDF 主体页数无效")
@@ -565,15 +555,13 @@ class QwenPdfProvider:
             "这只用于提示场景可能选错，不改变上传者选择，也不把答案混入题干。"
         )
         if include_answers:
-            if combined_prompt_version in {INCLUSIVE_COMBINED_PROMPT_VERSION,
-                                           CONTINUATION_COMBINED_PROMPT_VERSION}:
-                roles = page_roles if page_roles is not None else pdf_page_roles(pdf_data)
-                if len(roles) != page_count:
-                    raise ImportProblem("INVALID_S2_CONFIG", "PDF 章节页数与处理页段不一致")
-                role_labels = {"question": "题目章节", "answer": "答案章节",
-                               "reference": "参考资料章节", "mixed": "页内混排"}
-                role_text = "、".join(f"第{i}页={role_labels[role]}" for i, role in enumerate(roles, 1))
-                prompt += (
+            roles = page_roles if page_roles is not None else pdf_page_roles(pdf_data)
+            if len(roles) != page_count:
+                raise ImportProblem("INVALID_S2_CONFIG", "PDF 章节页数与处理页段不一致")
+            role_labels = {"question": "题目章节", "answer": "答案章节",
+                           "reference": "参考资料章节", "mixed": "页内混排"}
+            role_text = "、".join(f"第{i}页={role_labels[role]}" for i, role in enumerate(roles, 1))
+            prompt += (
                     f"可搜索文字中的章节标题提示：{role_text}。标题只提示答案或资料的来源，不能决定是否提取题目。"
                     "逐页识别能够完整转录、可独立使用的题目；即使文件开头就是‘参考答案与试题解析’，"
                     "其中完整重述的题目也放入 questions。题目区和答案区都按同一标准处理，"
@@ -584,9 +572,8 @@ class QwenPdfProvider:
                     "不要把仅在重叠页新开始的题单独输出。"
                     "无法完整辨认的题目或答案放入 unresolved_fragments。"
                     "题图需和相应 questions 对应；缺少自动提取的题图时给出裁剪坐标。"
-                )
-                if combined_prompt_version == CONTINUATION_COMBINED_PROMPT_VERSION:
-                    prompt += (
+            )
+            prompt += (
                         "逐页先定位每道独立题目的题干起点，再判断其后的小题、选项、图注及题干续文归属。"
                         "主体页的任意位置都可能承接上一页段尚未结束的题；编号可能采用圆圈数字、"
                         "括号数字、普通数字、字母、罗马数字或其他形式，也可能没有编号。"
@@ -602,7 +589,7 @@ class QwenPdfProvider:
                         "若不确定某段是否为独立新题，但它能完整转录，应放入 questions 供后续核对。"
                         "答案章节中完整重述、能独立使用且在主体页开始的题仍按题目提取；"
                         "不得仅因它与前面页段的题目相似而丢弃。"
-                )
+            )
             prompt += (
                 "本文件同时含题目与答案。一次阅读中另行提取原文明确给出的标准答案，放入 source_answers 数组；"
                 "只提取答案起始于主体页的内容，重叠页只用于补全跨页答案。"
@@ -630,7 +617,7 @@ class QwenPdfProvider:
                 "答案章节中的完整题目若需要题图，也须按相同标准对应或定位。"
                 + json.dumps({"embedded_images": embedded_images}, ensure_ascii=False)
             )
-        output_model = combined_output_model(combined_prompt_version) if include_answers else ModelOutput
+        output_model = CombinedModelOutput if include_answers else ModelOutput
         content = [{"type": "file", "file": {"file_data": "data:application/pdf;base64," + base64.b64encode(pdf_data).decode("ascii"),
                                              "filename": "question-pages.pdf"}}]
         if page_previews is not None:
@@ -663,8 +650,7 @@ class QwenPdfProvider:
             capture_response(body, elapsed)
         output, meta = decode_qwen_response(body, page_count=page_count, elapsed=elapsed,
                                             model=self.settings.question_import_s2_model,
-                                            include_answers=include_answers,
-                                            combined_prompt_version=combined_prompt_version)
+                                            include_answers=include_answers)
         return output, meta, elapsed
 
 
@@ -690,8 +676,7 @@ def discard_model_regions(body: dict) -> dict:
 
 
 def decode_qwen_response(body: dict, *, page_count: int, elapsed: float, model: str,
-                         include_answers: bool = False,
-                         combined_prompt_version: str = CONTINUATION_COMBINED_PROMPT_VERSION) -> tuple[ModelOutput | CombinedModelOutput, dict]:
+                         include_answers: bool = False) -> tuple[ModelOutput | CombinedModelOutput, dict]:
     """Validate a response, including one captured before a worker crash."""
     try:
         choice = discard_model_regions(body)["choices"][0]
@@ -702,11 +687,10 @@ def decode_qwen_response(body: dict, *, page_count: int, elapsed: float, model: 
     if finish_reason != "stop":
         raise ImportProblem("MODEL_OUTPUT_TRUNCATED", "模型输出截断或未正常结束")
     unit = PageUnit(0, 1, page_count, 1, page_count)
-    output = parse_model_output(raw, unit, include_answers=include_answers,
-                                combined_prompt_version=combined_prompt_version)
+    output = parse_model_output(raw, unit, include_answers=include_answers)
     usage = body.get("usage") or {}
     return output, {"usage": usage, "elapsed_seconds": round(elapsed, 3),
                     "model": model,
-                    "prompt_version": combined_prompt_version if include_answers else PROMPT_VERSION,
+                    "prompt_version": COMBINED_PROMPT_VERSION if include_answers else PROMPT_VERSION,
                     "response_id": body.get("id")}
 

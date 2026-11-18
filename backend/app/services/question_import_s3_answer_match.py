@@ -213,8 +213,7 @@ def _question_shards(answer: dict[str, Any], questions: list[dict[str, Any]]) ->
     return shards
 
 
-def _groups(batch: QuestionImportBatch, items: list[QuestionImportItem],
-            *, only_answer_ids: set[str] | None = None) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+def _groups(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     reconciliation = ((batch.checkpoint or {}).get("s3") or {}).get("source_answer_reconciliation") or {}
     unresolved = {source_answer_identity(row): row.get("reason")
                   for row in reconciliation.get("unassigned_answers") or []}
@@ -230,8 +229,6 @@ def _groups(batch: QuestionImportBatch, items: list[QuestionImportItem],
     selected: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for answer in _answers(batch):
         answer_id = source_answer_identity(answer)
-        if only_answer_ids is not None and answer_id not in only_answer_ids:
-            continue
         number = _number_key(answer.get("original_number"))
         linked = linked_source_answer_item(answer, items)
         if linked is not None and not _replaceable_source_answer(linked):
@@ -376,33 +373,13 @@ def start_answer_matching(db: Session, batch_id: uuid.UUID, *, budget_cny: float
     if (s3.get("labels") or {}).get("status") in {"queued", "processing"}:
         raise ImportProblem("COMMIT_CONFLICT", "标签建议任务运行期间不能重新规划答案配对", 409)
     state = dict(s3.get("answer_model_matching") or {})
-    replan_oversized = (state.get("status") == "completed" and any(
-        row.get("reason") == "candidate_set_too_large" for row in state.get("skipped") or []))
-    if state.get("status") in {"queued", "processing"} or (state.get("status") == "completed" and not replan_oversized):
+    if state.get("status") in {"queued", "processing", "completed"}:
         raise ImportProblem("COMMIT_CONFLICT", "模型辅助配对已排队、进行中或完成", 409)
     if state.get("cost_unknown"):
         raise ImportProblem("S3_MATCH_COST_UNKNOWN", "上次调用费用未知，请先核对账单", 409)
     if budget_cny <= float(state.get("estimated_cny") or 0):
         raise ImportProblem("INVALID_S3_BUDGET", "新预算须高于已记录费用")
-    if replan_oversized:
-        items = [item for item in db.scalars(select(QuestionImportItem).where(
-            QuestionImportItem.batch_id == batch.id).order_by(QuestionImportItem.ordinal)) if active_candidate(item)]
-        answer_ids = {row["answer_id"] for row in state["skipped"]
-                      if row.get("reason") == "candidate_set_too_large"}
-        new_groups, new_skipped = _groups(batch, items, only_answer_ids=answer_ids)
-        next_index = max((row["index"] for row in state.get("groups") or []), default=-1) + 1
-        for group in new_groups:
-            group["index"] = next_index
-            next_index += 1
-        state["groups"] = [*(state.get("groups") or []), *new_groups]
-        state["skipped"] = [row for row in state["skipped"]
-                            if row.get("reason") != "candidate_set_too_large"] + new_skipped
-        state["review_warnings"] = [*(state.get("review_warnings") or []), *_skipped_warnings(new_skipped)]
-        state["status"] = "queued" if new_groups else "completed"
-        state["budget_cny"] = budget_cny
-        state.pop("error_code", None)
-        state.pop("error_message", None)
-    elif not state:
+    if not state:
         items = [item for item in db.scalars(select(QuestionImportItem).where(
             QuestionImportItem.batch_id == batch.id).order_by(QuestionImportItem.ordinal)) if active_candidate(item)]
         state = _new_state(batch, items, budget_cny)

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
 from app.core.database import engine
 from app.services.question_import import DOCX_CONVERSION_VERSION, ImportProblem, _path_for, add_candidate, create_batch
-from app.services.question_import_s2 import INCLUSIVE_COMBINED_PROMPT_VERSION, candidate_from_question, parse_model_output, plan_units
+from app.services.question_import_s2 import COMBINED_PROMPT_VERSION, candidate_from_question, parse_model_output, plan_units
 from app.services.question_import_s3 import reconcile_source_answers, source_answer_identity
 from app.services.question_import_s3_review import list_review_issues
 import app.services.question_import_s3 as s3
@@ -60,7 +60,7 @@ def _batch(db, tmp_path, monkeypatch, *, automatic=True, repeated=False, budget=
               "question_excerpt": excerpt, "uncertain_fragments": []}
     batch.status = "review_pending"
     batch.stage = "s2_completed"
-    batch.checkpoint = {"s2": {"prompt_version": INCLUSIVE_COMBINED_PROMPT_VERSION,
+    batch.checkpoint = {"s2": {"prompt_version": COMBINED_PROMPT_VERSION,
                                 "auto_answer_matching": automatic, "budget_cny": budget,
                                 "estimated_cny": 0.1, "units": [{"source_answers": [answer]}]},
                         "s3": {"global_dedupe": {"status": "completed", "estimated_cny": 0.1}}}
@@ -486,39 +486,6 @@ def test_candidate_shards_show_high_risk_disagreement_without_moving_answer(db, 
                  if row["kind"] == "answer_match_disagreement")
     assert issue["current_item_id"] == str(items[1].id)
     assert issue["model_suggestion"] == str(other.id)
-
-
-def test_old_oversized_checkpoint_can_be_replanned_without_repaying_completed_groups(
-        db, tmp_path, monkeypatch):
-    batch, items, answer = _batch(db, tmp_path, monkeypatch)
-    other = add_candidate(db, batch, {"content": {"question_text": "求丙与丁两个有理数的积",
-                                                  "options": [], "asset_ids": []},
-                                      "source": {"original_number": "1", "page_start": 1}})
-    answer_id = source_answer_identity(answer)
-    checkpoint = dict(batch.checkpoint)
-    s3_state = dict(checkpoint["s3"])
-    s3_state["answer_model_matching"] = {
-        "version": matcher.VERSION, "status": "completed", "budget_cny": 1,
-        "estimated_cny": 0.01, "calls": 1,
-        "groups": [{"index": 0, "status": "completed", "context": {"answers": [], "questions": []}}],
-        "skipped": [{"answer_id": answer_id, "reason": "candidate_set_too_large"}],
-        "assignments": {}, "suggestions": [], "review_warnings": []}
-    batch.checkpoint = {**checkpoint, "s3": s3_state}
-    db.commit()
-    settings = get_settings()
-    monkeypatch.setattr(settings, "question_import_s2_enabled", True)
-    monkeypatch.setattr(settings, "question_import_s2_api_key", "test-only")
-    monkeypatch.setattr(settings, "question_import_s2_base_url", "https://example.invalid/compatible-mode/v1")
-    monkeypatch.setattr(settings, "question_import_s2_operator_token", "operator-test")
-    monkeypatch.setattr(matcher, "MAX_GROUP_CANDIDATES", 1)
-    matcher.start_answer_matching(db, batch.id, budget_cny=2, operator_token="operator-test")
-    state = batch.checkpoint["s3"]["answer_model_matching"]
-    assert state["calls"] == 1 and state["estimated_cny"] == 0.01
-    assert [row["index"] for row in state["groups"]] == [0, 1, 2]
-    assert [row["status"] for row in state["groups"]] == ["completed", "pending", "pending"]
-    assert state["skipped"] == []
-    assert {row["item_id"] for group in state["groups"][1:]
-            for row in group["context"]["questions"]} == {str(items[0].id), str(other.id)}
 
 
 def test_model_choice_does_not_overwrite_another_source_answer(db, tmp_path, monkeypatch):
