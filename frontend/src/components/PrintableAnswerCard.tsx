@@ -11,7 +11,7 @@ const kindNames: Record<string, string> = {
   calculation: '计算题', solution: '解答题',
 }
 const fieldNames = {
-  choice: '选项', fill_blank: '答案', true_false: '判断结果', manual: '作答区',
+  choice: '', fill_blank: '', true_false: '判断结果', manual: '作答区',
 }
 
 export function PrintableAnswerCard({ data }: { data: PrintView }) {
@@ -62,7 +62,9 @@ export function PrintableAnswerCard({ data }: { data: PrintView }) {
                         data-item-id={blank.item_id}
                         aria-label={`第${slot.order_no}题第${subquestion.subquestion_no}小题第${blank.blank_no}空`}
                       >
-                        <span className="answer-blank-label">{subquestion.blanks.length > 1 ? `第${blank.blank_no}空 · ` : ''}{fieldNames[blank.kind]}</span>
+                        {(subquestion.blanks.length > 1 || fieldNames[blank.kind]) && <span className="answer-blank-label">
+                          {[subquestion.blanks.length > 1 ? `第${blank.blank_no}空` : '', fieldNames[blank.kind]].filter(Boolean).join(' · ')}
+                        </span>}
                         <span className="answer-writing-space" />
                       </div>)}
                     </div>
