@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from io import BytesIO
 from types import SimpleNamespace
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -24,6 +25,27 @@ import app.services.question_import_s2 as s2_service
 import app.services.question_import_s2_worker as s2_worker
 import app.services.question_import_s3_global as s3_global
 import app.services.question_import_worker as import_worker
+
+
+def test_source_sections_recognize_extension_lecture_headings(tmp_path, monkeypatch):
+    source = tmp_path / "questions.pdf"
+    source.write_bytes(b"test")
+    pages = [
+        "L7 拓展篇第一讲—绝对值\n1．计算",
+        "2．继续第一讲",
+        "L7 拓展篇第二讲—有理数运算\n1．计算",
+        "习题 L7-1\n1．计算",
+    ]
+    monkeypatch.setattr(s3_service, "_path_for", lambda *_: source)
+    monkeypatch.setattr(s3_service, "PdfReader", lambda *_: SimpleNamespace(pages=[
+        SimpleNamespace(extract_text=lambda text=text: text) for text in pages]))
+    batch = SimpleNamespace(id=uuid4(), files=[{"role": "questions", "media_type": "application/pdf",
+                                                "file_id": str(uuid4())}])
+
+    assert s3_service._source_sections(batch, "questions") == {
+        1: "l7-extension-lecture-一", 2: "l7-extension-lecture-一",
+        3: "l7-extension-lecture-二", 4: "l7-1",
+    }
 
 
 def test_overlap_duplicate_answers_are_not_pending_claims():

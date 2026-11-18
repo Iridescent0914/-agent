@@ -82,20 +82,33 @@ def test_separate_file_unassigned_answers_appear_in_issue_count(db, tmp_path, mo
     batch = create_batch(db, source_mode="separate", files=[
         ("questions", "questions.pdf", _pdf()), ("answers", "answers.pdf", _pdf())])
     answer_file_id = next(file["file_id"] for file in batch.files if file["role"] == "answers")
+    question_file_id = next(file["file_id"] for file in batch.files if file["role"] == "questions")
+    add_candidate(db, batch, {
+        "source": {"file_id": question_file_id, "page_start": 1, "page_end": 1,
+                   "original_number": "1"},
+        "content": {"question_text": "题目文件第 1 页的题", "options": []},
+    })
     answers = [{"source_file_id": answer_file_id, "original_number": str(number),
                 "page_start": 1, "page_end": 1, "text": str(number),
                 "reason": "question_not_found"} for number in range(1, 9)]
     batch.checkpoint = {"s2": {"units": [{"unresolved_fragments": [
         {"page": 2, "text": "待核对公式", "reason": "识别不确定"}]}]},
-        "s3": {"separate_answers": {"units": [{"core_first_page": 1, "core_last_page": 1}]},
+        "s3": {"separate_answers": {"units": [{"core_first_page": 1, "core_last_page": 1,
+                                                "unresolved_fragments": [{"page": 1, "text": "仅有解析",
+                                                                          "reason": "无法确认标准答案"}]}]},
                "source_answer_reconciliation": {"unassigned_answers": answers}}}
     db.flush()
 
     issues = list_review_issues(db, batch.id)
 
-    assert len(issues) == 9
+    assert len(issues) == 10
     assert len([issue for issue in issues if issue["kind"] == "answer"]) == 8
     assert len([issue for issue in issues if issue["kind"] == "fragment"]) == 1
+    answer_fragment = next(issue for issue in issues if issue["kind"] == "answer_fragment")
+    assert answer_fragment["fragment_text"] == "仅有解析"
+    assert answer_fragment["fragment_reason"] == "无法确认标准答案"
+    assert answer_fragment["page_numbers"] == [1]
+    assert answer_fragment["candidate_item_ids"] == []
     assert all(issue["source_answer"]["source_file_id"] == answer_file_id
                and issue["unit_index"] == 0 for issue in issues if issue["kind"] == "answer")
 

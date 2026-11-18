@@ -586,6 +586,7 @@ export function QuestionImportPage() {
     { kind: 'answer', title: '答案归属待核对' },
     { kind: 'skipped_page', title: '人工跳过页' },
     { kind: 'fragment', title: '提取时未确定的片段' },
+    ...(selectedBatch?.source_mode === 'separate' ? [{ kind: 'answer_fragment', title: '答案文件未确定片段' }] : []),
     { kind: 'overlap', title: '疑似重复题' },
   ]
   const dedupeStatus = selectedBatch?.checkpoint?.s3?.global_dedupe?.status
@@ -784,7 +785,6 @@ export function QuestionImportPage() {
           {!!unit.overlap_suspects?.length && <details><summary>S2 当时检出的疑似跨页重复 {unit.overlap_suspects.length} 对</summary>{unit.overlap_suspects.map((pair, index) => <Typography.Paragraph key={index}>候选 {pair.candidate_item_id} 与 {pair.other_item_id}；当前结果以整批模型判重为准。</Typography.Paragraph>)}</details>}
         </div>)}
       </details>}
-      {separateAnswers?.units?.flatMap((unit) => unit.unresolved_fragments || []).map((fragment, index) => <Typography.Paragraph key={`answer-unresolved-${index}`} type="warning">答案文件第 {fragment.page} 页待核对：{fragment.text}（{fragment.reason}）</Typography.Paragraph>)}
       {!!reviewIssues.length && <details key={`${selectedBatch?.id}:review-issues`} className="question-import-issues">
         <summary>待教师核对的问题（{reviewIssues.length} 条）</summary>
         <div className="question-import-issues-content">
@@ -802,9 +802,9 @@ export function QuestionImportPage() {
                       return item ? `候选第 ${item.ordinal} 题（原题号 ${item.payload.source.original_number || '未识别'}，${selectedBatch?.source_mode === 'separate' ? '题目文件' : '原文件'}第 ${item.payload.source.page_start ?? '未知'} 页）` : `候选 ID ${id}`
                     })
                     return <Card key={issue.key} size="small" className="question-import-issue-card"
-                      title={`${selectedBatch?.source_mode === 'separate' ? issue.kind === 'answer' ? '答案文件' : '题目文件' : '原文件'}${issue.summary}`}
+                      title={`${selectedBatch?.source_mode === 'separate' ? ['answer', 'answer_fragment'].includes(issue.kind) ? '答案文件' : '题目文件' : '原文件'}${issue.summary}`}
                       extra={<Tag color="orange">待教师核对</Tag>}>
-                      {['fragment', 'skipped_page'].includes(issue.kind) && <>
+                      {['fragment', 'answer_fragment', 'skipped_page'].includes(issue.kind) && <>
                         <Typography.Paragraph><Typography.Text strong>{issue.kind === 'skipped_page' ? '跳过记录：' : '待核对片段：'}</Typography.Text></Typography.Paragraph>
                         <RichQuestionText text={issue.fragment_text || '内容未记录'} assets={[]} />
                         <Typography.Paragraph type="secondary">问题说明：{issue.fragment_reason || '原因未记录'}</Typography.Paragraph>
@@ -819,6 +819,8 @@ export function QuestionImportPage() {
                           ? `答案文件来源页：${issue.source_answer?.page_start ?? '未知'}${issue.source_answer?.page_end && issue.source_answer.page_end !== issue.source_answer.page_start ? `–${issue.source_answer.page_end}` : ''}；相关候选题的题目文件页码见上方。`
                           : `相关来源页：${issue.page_numbers.join('、') || '未知'}${['fragment', 'skipped_page'].includes(issue.kind) ? '（含邻近题目上下文）' : ''}。`}{['fragment', 'skipped_page'].includes(issue.kind)
                           ? `邻近候选题 ${issue.candidate_item_ids.length} 道，仅供判断归属，不表示这些题有错误。`
+                          : issue.kind === 'answer_fragment'
+                          ? '答案文件与题目文件页码彼此独立，请对照答案原页和题目内容核对。'
                           : `候选 ${issue.candidate_item_ids.length} 条。`}
                         {issue.candidate_total > issue.candidate_item_ids.length && `共 ${issue.candidate_total} 条候选，此处仅列部分。`}
                       </Typography.Paragraph>

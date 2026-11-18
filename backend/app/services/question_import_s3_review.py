@@ -55,6 +55,16 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
                 rows.append({"key": f"fragment:{unit_index}:{index}", "kind": "fragment", "unit_index": unit_index,
                              "summary": f"第 {page} 页未确定片段", "content": fragment,
                              "candidates": [_candidate_context(item) for item in nearby[:MAX_LIST_CANDIDATES]]})
+    if batch.source_mode == "separate":
+        answer_units = ((checkpoint.get("s3") or {}).get("separate_answers") or {}).get("units") or []
+        for unit_index, unit in enumerate(answer_units):
+            for index, fragment in enumerate(unit.get("unresolved_fragments") or []):
+                page = fragment.get("page")
+                if isinstance(page, int) and page > 0:
+                    rows.append({"key": f"answer_fragment:{unit_index}:{index}",
+                                 "kind": "answer_fragment", "unit_index": unit_index,
+                                 "summary": f"第 {page} 页未确定片段", "content": fragment,
+                                 "candidates": []})
     reconciliation = (checkpoint.get("s3") or {}).get("source_answer_reconciliation") or {}
     if batch.source_mode in {"combined", "separate"}:
         answer_units = ((checkpoint.get("s2") or {}) if batch.source_mode == "combined"
@@ -123,8 +133,8 @@ def list_review_issues(db: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]
         pages = _pages_for_issue(issue)
         result.append({"key": issue["key"], "kind": issue["kind"], "unit_index": issue["unit_index"],
                        "summary": issue["summary"],
-                       "fragment_text": issue["content"].get("text") if issue["kind"] in {"fragment", "skipped_page"} else None,
-                       "fragment_reason": issue["content"].get("reason") if issue["kind"] in {"fragment", "skipped_page"} else None,
+                       "fragment_text": issue["content"].get("text") if issue["kind"] in {"fragment", "answer_fragment", "skipped_page"} else None,
+                       "fragment_reason": issue["content"].get("reason") if issue["kind"] in {"fragment", "answer_fragment", "skipped_page"} else None,
                        "answer_text": issue["content"].get("text") if issue["kind"] == "answer" else None,
                        "answer_number": issue["content"].get("original_number") if issue["kind"] == "answer" else None,
                        "source_answer": issue["content"] if issue["kind"] == "answer" else None,

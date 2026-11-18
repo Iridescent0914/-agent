@@ -83,6 +83,13 @@ def _source_sections(batch: QuestionImportBatch, role: str) -> dict[int, str]:
             keys = {match.lower() for match in re.findall(
                 r"(?:^|\n)\s*习题\s*([A-Za-z]\d+(?:[-.]\d+)+)", header,
             )}
+            keys.update(
+                f"l{series}-extension-lecture-{lecture}"
+                for series, lecture in re.findall(
+                    r"(?:^|\n)\s*L\s*(\d+)\s*拓展篇\s*第\s*([一二三四五六七八九十百零两\d]+)\s*讲",
+                    header, flags=re.IGNORECASE,
+                )
+            )
             if len(keys) > 1:
                 current = None
             elif keys:
