@@ -11,7 +11,7 @@ type Batch = {
   files: Array<{ file_id: string; original_name: string; size_bytes: number; page_count: number | null; role: string }>
   checkpoint: {
     s2?: { calls?: number; page_count?: number; prompt_version?: string; auto_global_dedupe?: boolean; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; source_answers?: Array<{ source_file_id?: string; original_number: string | null; subquestion_number?: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
-    s3?: { global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number; auto_answer_reviewed_count?: number; auto_answer_assigned_count?: number }; separate_answers?: { status: string; calls?: number; error_message?: string; units?: Array<{ index: number; first_page: number; core_last_page: number; status: string; source_answers?: Array<{ source_file_id?: string; original_number: string | null; subquestion_number?: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }; labels?: { status: string; calls?: number; estimated_cny?: number; cost_unknown?: boolean; error_code?: string; error_message?: string; skipped_item_ids?: string[]; groups?: Array<{ index: number; status: string; applied_count?: number; skipped_item_ids?: string[] }> }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; manual_candidate_changes_pending?: boolean; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ source_file_id?: string; original_number: string | null; text: string; page_start: number; subquestion_number?: string | null; reason: string; candidate_item_ids?: string[] }> } }
+    s3?: { global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number }; separate_answers?: { status: string; calls?: number; error_message?: string; units?: Array<{ index: number; first_page: number; core_last_page: number; status: string; source_answers?: Array<{ source_file_id?: string; original_number: string | null; subquestion_number?: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }; labels?: { status: string; calls?: number; estimated_cny?: number; cost_unknown?: boolean; error_code?: string; error_message?: string; skipped_item_ids?: string[]; groups?: Array<{ index: number; status: string; applied_count?: number; skipped_item_ids?: string[] }> }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; manual_candidate_changes_pending?: boolean; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ source_file_id?: string; original_number: string | null; text: string; page_start: number; subquestion_number?: string | null; reason: string; candidate_item_ids?: string[] }> } }
   }
   error_code: string | null
   error_message: string | null
@@ -35,15 +35,6 @@ type ReviewIssue = {
   candidate_total: number
   recall_method: string | null
   review: null | { status: string; stale?: boolean; page_numbers: number[]; estimated_cny?: number; error_message?: string; advice?: { verdict: string; candidate_item_id: string | null; source_page: number; evidence_quote: string; reason: string } }
-}
-
-type ReviewUnit = {
-  unit_index: number
-  issue_keys: string[]
-  page_numbers: number[]
-  candidate_count: number
-  skipped_count: number
-  available: boolean
 }
 
 type Candidate = {
@@ -165,7 +156,6 @@ export function QuestionImportPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [showDuplicateCandidates, setShowDuplicateCandidates] = useState(false)
   const [reviewIssues, setReviewIssues] = useState<ReviewIssue[]>([])
-  const [reviewUnits, setReviewUnits] = useState<ReviewUnit[]>([])
   const [reviewingKey, setReviewingKey] = useState<string | null>(null)
   const [images, setImages] = useState<ImageInventory | null>(null)
   const [imageBusy, setImageBusy] = useState(false)
@@ -304,10 +294,9 @@ export function QuestionImportPage() {
 
   async function viewCandidates(id: string) {
     try {
-      const [items, issues, units, initialImages, currentCatalog] = await Promise.all([
+      const [items, issues, initialImages, currentCatalog] = await Promise.all([
         apiGet<Candidate[]>(`/question-imports/${id}/items`),
         apiGet<ReviewIssue[]>(`/question-imports/${id}/s3/review-issues`),
-        apiGet<ReviewUnit[]>(`/question-imports/${id}/s3/review-units`),
         apiGet<ImageInventory>(`/question-imports/${id}/s3/images`),
         apiGet<LabelCatalogPoint[]>('/question-imports/label-catalog').catch(() => labelCatalog),
       ])
@@ -322,7 +311,6 @@ export function QuestionImportPage() {
       setUnmatchedImageTargets({})
       setShowDuplicateCandidates(false)
       setReviewIssues(issues)
-      setReviewUnits(units)
       setSelectedBatchId(id)
     } catch (error) { message.error(error instanceof Error ? error.message : '候选题加载失败') }
   }
@@ -362,64 +350,11 @@ export function QuestionImportPage() {
     } finally { setImageBusy(false) }
   }
 
-  function confirmIssueReview(batch: Batch, issue: ReviewIssue) {
-    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
-    Modal.confirm({
-      title: '确认发送问题原页给百炼复核？',
-      content: `问题：${issue.summary}。将${batch.source_mode === 'separate' ? '题目文件' : '原文件'}第 ${issue.page_numbers.join('、')} 页及相关候选题文字发送给百炼 ${s2Config?.model || ''}${issue.kind === 'fragment' ? '，先核对片段是否真实存在，再判断归属' : ''}。本批 S3 复核预算阈值为 ¥${budget}，单次调用仍可能略超阈值；未确定片段只记录模型建议。`,
-      okText: '发送并复核', cancelText: '取消',
-      onOk: async () => {
-        setReviewingKey(issue.key)
-        try {
-          const result = await apiPost<ReviewIssue['review']>(`/question-imports/${batch.id}/s3/review-issues/${issue.key}`,
-            { budget_cny: budget }, undefined, { 'X-Import-S2-Token': operatorToken })
-          if (result?.status === 'completed') {
-            message[result.advice?.verdict === 'uncertain' ? 'warning' : 'success'](
-              result.advice?.verdict === 'uncertain'
-                ? '模型仍无法确定，复核建议已保存，需人工核对'
-                : result.advice?.verdict === 'false_positive'
-                  ? '模型认为原片段是提取误读，建议对照原页确认'
-                : issue.kind === 'fragment'
-                  ? '片段复核建议已保存，仍需人工核对'
-                  : '模型复核已保存，确定的重复题或答案归属已处理')
-          } else {
-            message.warning(result?.error_message || '复核尚未完成')
-          }
-          await reload(batch.id)
-          await viewCandidates(batch.id)
-        } catch (error) { message.error(error instanceof Error ? error.message : '复核失败') }
-        finally { setReviewingKey(null) }
-      },
-    })
-  }
-
-  function confirmUnitReview(batch: Batch, unit: ReviewUnit) {
-    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
-    Modal.confirm({
-      title: `确认一次复核第 ${unit.unit_index + 1} 页段的多个问题？`,
-      content: `将${batch.source_mode === 'separate' ? '题目文件' : '原文件'}第 ${unit.page_numbers.join('、')} 页和相关候选文字一次发送给百炼 ${s2Config?.model || ''}，同时复核 ${unit.issue_keys.length} 个问题${unit.skipped_count ? `；另有 ${unit.skipped_count} 个问题需单独处理` : ''}。本批 S3 预算阈值为 ¥${budget}；单次调用可能略超阈值。模型确认同题或答案归属后会自动处理。`,
-      okText: '发送页段复核', cancelText: '取消',
-      onOk: async () => {
-        const key = `unit:${unit.unit_index}`
-        setReviewingKey(key)
-        try {
-          const result = await apiPost<{ status: string; reviewed_count: number; error_message?: string }>(
-            `/question-imports/${batch.id}/s3/review-units/${unit.unit_index}`,
-            { budget_cny: budget }, undefined, { 'X-Import-S2-Token': operatorToken })
-          message[result.status === 'completed' ? 'success' : 'warning'](result.status === 'completed' ? `已保存 ${result.reviewed_count} 条模型建议` : result.error_message || '没有可复核的问题')
-          await reload(batch.id)
-          await viewCandidates(batch.id)
-        } catch (error) { message.error(error instanceof Error ? error.message : '页段复核失败') }
-        finally { setReviewingKey(null) }
-      },
-    })
-  }
-
   function confirmBatchDedup(batch: Batch) {
     if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
     Modal.confirm({
       title: '让模型整批去重题目？',
-      content: `将整批候选题文字、题号和来源页码${batch.source_mode === 'combined' ? '，以及来源答案摘录作为判重上下文' : ''}发送给百炼 ${s2Config?.model || ''}，跨页段判断重复题。${batch.source_mode === 'combined' ? '去重后由程序按规则关联同文件答案；待认领答案只在单独点击原页复核时再次调用模型。' : ''}预算阈值 ¥${budget}；模型可能产生费用。`,
+      content: `将整批候选题文字、题号和来源页码${batch.source_mode === 'combined' ? '，以及来源答案摘录作为判重上下文' : ''}发送给百炼 ${s2Config?.model || ''}，跨页段判断重复题。${batch.source_mode === 'combined' ? '去重后由程序按规则关联同文件答案；未能关联的答案留给教师核对。' : ''}预算阈值 ¥${budget}；模型可能产生费用。`,
       okText: '整理整批', cancelText: '取消',
       onOk: async () => {
         setReviewingKey(`batch:${batch.id}`)
@@ -592,7 +527,6 @@ export function QuestionImportPage() {
     ? reviewIssues.filter((issue) => issue.kind === 'answer' && issue.source_answer).map((issue) => issue.source_answer!)
     : reconciliation?.unassigned_answers || sourceAnswers
   const linkedSourceQuestionCount = candidates.filter((item) => item.payload.answers?.some((answer) => answer.answer_source === 'source_extracted')).length
-  const reviewedIssueCount = reviewIssues.filter((issue) => !!issue.review).length
   const reviewCategories = [
     { kind: 'answer', title: '答案归属待核对' },
     { kind: 'fragment', title: '提取时未确定的片段' },
@@ -801,25 +735,20 @@ export function QuestionImportPage() {
              </div>)}
            </details>}
       {!!reviewIssues.length && <details key={`${selectedBatch?.id}:review-issues`}>
-        <summary>按问题复核原页（待复核 {reviewIssues.length - reviewedIssueCount}，已有结果 {reviewedIssueCount}）</summary>
-        <Typography.Paragraph type="secondary">按答案归属、未确定片段和疑似重复题分类。下面的页段行只列可合并发送的问题；单个问题在所属分类中处理。模型确认重复题或答案归属后可能自动处理；未确定片段只保存建议。</Typography.Paragraph>
-        {reviewUnits.filter((unit) => unit.issue_keys.length > 1).map((unit) => <Typography.Paragraph key={`unit-${unit.unit_index}`}>
-          可合并复核 · 第 {unit.unit_index + 1} 页段：待复核 {unit.issue_keys.length} 个问题，涉及 {unit.candidate_count} 道候选题，原页 {unit.page_numbers.join('、')}。
-          {selectedBatch && <Button size="small" type="primary" loading={reviewingKey === `unit:${unit.unit_index}`} disabled={!unit.available || !s2Config?.ready || selectedBatch.status !== 'review_pending' || !!selectedBatch.files_purged_at} onClick={() => confirmUnitReview(selectedBatch, unit)}>一次复核本页段</Button>}
-          {!unit.available && <Typography.Text type="warning"> 本页段超过单次范围，请逐条复核。</Typography.Text>}
-        </Typography.Paragraph>)}
+        <summary>待教师核对的问题（{reviewIssues.length} 条）</summary>
+        <Typography.Paragraph type="secondary">按答案归属、未确定片段和疑似重复题分类。请根据来源页码、原文件和候选题人工核对；此处不会发送原页给模型，也不会自动处理这些问题。</Typography.Paragraph>
         {reviewCategories.map((category) => {
           const categoryIssues = reviewIssues.filter((issue) => issue.kind === category.kind)
           if (!categoryIssues.length) return null
           return <details key={category.kind} open={category.kind === 'answer'}>
-            <summary>{category.title}（待复核 {categoryIssues.filter((issue) => !issue.review).length}，已有结果 {categoryIssues.filter((issue) => !!issue.review).length}）</summary>
+            <summary>{category.title}（{categoryIssues.length} 条）</summary>
             {categoryIssues.map((issue) => {
           const advice = issue.review?.status === 'completed' ? issue.review.advice : undefined
           const matchedCandidate = candidates.find((item) => item.id === advice?.candidate_item_id)
-          const candidateSummaries = issue.kind === 'overlap' ? issue.candidate_item_ids.map((id) => {
+          const candidateSummaries = issue.candidate_item_ids.map((id) => {
             const item = candidates.find((candidate) => candidate.id === id)
             return item ? `候选第 ${item.ordinal} 题（原题号 ${item.payload.source.original_number || '未识别'}，原页 ${item.payload.source.page_start ?? '未知'}）` : `候选 ID ${id}`
-          }) : []
+          })
           const candidateLabel = matchedCandidate
             ? `候选第 ${matchedCandidate.ordinal} 题（原题号 ${matchedCandidate.payload.source.original_number || '未识别'}，原页 ${matchedCandidate.payload.source.page_start ?? '未知'}）`
             : advice?.candidate_item_id ? `候选 ID ${advice.candidate_item_id}` : null
@@ -828,19 +757,9 @@ export function QuestionImportPage() {
             : issue.kind === 'fragment' && advice?.verdict === 'no_match'
               ? '片段存在，但未找到可信归属'
               : advice ? reviewVerdictLabels[advice.verdict] || advice.verdict : ''
-          const reviewStatus = !issue.review ? '待复核'
-            : issue.review.status === 'failed' ? '复核失败'
-              : issue.review.status === 'running' ? '复核中'
-                : issue.review.stale ? '建议已过时'
-                  : advice?.verdict === 'uncertain' ? '需人工核对'
-                    : issue.kind === 'fragment' ? '待人工对照原页'
-                      : issue.kind === 'answer' ? advice?.verdict === 'match_candidate' ? '待教师确认' : '待人工认领'
-                        : '模型结果已保存'
           return <Card key={issue.key} size="small" style={{ marginTop: 12 }}
             title={`${selectedBatch?.source_mode === 'separate' ? '题目文件' : '原文件'}${issue.summary}`}
-            extra={<Tag color={issue.review?.status === 'failed' ? 'red' : issue.review?.status === 'running' ? 'blue' : reviewStatus === '模型结果已保存' ? 'green' : 'orange'}>
-              {reviewStatus}
-            </Tag>}>
+            extra={<Tag color="orange">待教师核对</Tag>}>
             {issue.kind === 'fragment' && <>
               <Typography.Paragraph><Typography.Text strong>待核对片段：</Typography.Text></Typography.Paragraph>
               <RichQuestionText text={issue.fragment_text || '内容未记录'} assets={[]} />
@@ -850,15 +769,15 @@ export function QuestionImportPage() {
               <Typography.Paragraph><Typography.Text strong>待认领答案：</Typography.Text>原题号 {issue.answer_number || '缺失'}</Typography.Paragraph>
               <RichQuestionText text={issue.answer_text || '内容未记录'} assets={[]} />
             </>}
-            {!!candidateSummaries.length && <Typography.Paragraph>待比较题目：{candidateSummaries.join('；')}</Typography.Paragraph>}
+            {!!candidateSummaries.length && <Typography.Paragraph>相关候选题：{candidateSummaries.join('；')}</Typography.Paragraph>}
             <Typography.Paragraph type="secondary">
-              复核涉及原页：{issue.page_numbers.join('、') || '不可复核'}{issue.kind === 'fragment' && '（含邻近题目上下文）'}。{issue.kind === 'fragment'
+              相关来源页：{issue.page_numbers.join('、') || '未知'}{issue.kind === 'fragment' && '（含邻近题目上下文）'}。{issue.kind === 'fragment'
                 ? `邻近候选题 ${issue.candidate_item_ids.length} 道，仅供判断归属，不表示这些题有错误。`
                 : `候选 ${issue.candidate_item_ids.length} 条。`}
-              {issue.candidate_total > issue.candidate_item_ids.length && `共 ${issue.candidate_total} 条候选，仅列部分供模型参考。`}
+              {issue.candidate_total > issue.candidate_item_ids.length && `共 ${issue.candidate_total} 条候选，此处仅列部分。`}
             </Typography.Paragraph>
             {advice && <Alert showIcon type={advice.verdict === 'false_positive' ? 'info' : issue.kind === 'fragment' || advice.verdict === 'uncertain' ? 'warning' : 'success'}
-              message={`模型复核结果：${verdictLabel}`}
+              message={`历史模型建议：${verdictLabel}`}
               description={<Space direction="vertical" size={4}>
                 {candidateLabel && <Typography.Text>模型指向：{candidateLabel}</Typography.Text>}
                 <Typography.Text>原页依据：第 {advice.source_page} 页“{advice.evidence_quote}”</Typography.Text>
@@ -871,8 +790,7 @@ export function QuestionImportPage() {
               </Space>} />}
             {issue.review?.stale && <Typography.Paragraph type="warning">候选内容已变化，此建议已过时，请以当前原页和候选为准。</Typography.Paragraph>}
             {issue.review?.status === 'failed' && <Alert type="warning" showIcon message={`复核失败：${issue.review.error_message}；可能已产生费用。`} />}
-            {issue.review?.status === 'running' && <Typography.Paragraph type="secondary">复核进行中，请稍后刷新。</Typography.Paragraph>}
-            {!issue.review && selectedBatch && <Button size="small" loading={reviewingKey === issue.key} disabled={!issue.page_numbers.length || !s2Config?.ready || selectedBatch.status !== 'review_pending' || !!selectedBatch.files_purged_at || (issue.kind === 'answer' && (!issue.candidate_item_ids.length || (issue.recall_method === 'number' && issue.candidate_total > issue.candidate_item_ids.length)))} onClick={() => confirmIssueReview(selectedBatch, issue)}>发送原页复核</Button>}
+            {issue.review?.status === 'running' && <Typography.Paragraph type="secondary">旧复核任务未记录完成结果，请人工核对。</Typography.Paragraph>}
           </Card>
             })}
           </details>

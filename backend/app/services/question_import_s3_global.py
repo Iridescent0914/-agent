@@ -1,6 +1,7 @@
 """Whole-batch model deduplication before source-answer reconciliation."""
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import time
@@ -16,16 +17,78 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.models import QuestionImportBatch, QuestionImportItem
-from app.services.question_import import OWNER_SCOPE, ImportProblem, require_s2_operator_token
+from app.services.question_import import OWNER_SCOPE, ImportProblem, active_candidate, require_s2_operator_token
 from app.services.question_import_s2 import FLASH_MODEL, estimate_cost
 from app.services.question_import_s3 import reconcile_source_answers
-from app.services.question_import_s3_review import (
-    _apply_overlap_advice, _batch_review_spent,
-)
 
 GLOBAL_DEDUPE_VERSION = "s3-global-dedupe-v2"
 GLOBAL_DEDUPE_MAX_OUTPUT_TOKENS = 8192
 logger = logging.getLogger(__name__)
+
+
+def _batch_review_spent(s3: dict[str, Any]) -> float:
+    """Include historical original-page calls when enforcing an existing batch budget."""
+    historical_spent = sum(float(review.get("estimated_cny") or review.get("reserved_cny") or 0)
+                           for review in (s3.get("issue_reviews") or {}).values())
+    global_review = s3.get("global_dedupe") or {}
+    return historical_spent + float(
+        global_review.get("estimated_cny") or global_review.get("reserved_cny") or 0)
+
+
+def _apply_overlap_advice(db: Session, batch: QuestionImportBatch, issue: dict[str, Any],
+                          advice: dict[str, Any], *, keep_item_id: str | None = None) -> bool:
+    """Remove a confirmed duplicate and retain its full record in the batch audit."""
+    if issue["kind"] != "overlap" or advice.get("verdict") != "same_question":
+        return False
+    checkpoint = dict(batch.checkpoint or {})
+    s3 = dict(checkpoint.get("s3") or {})
+    removed = dict(s3.get("model_removed_duplicates") or {})
+    if issue["key"] in removed:
+        return False
+
+    def active_id(item_id: str) -> str:
+        for _ in range(len(removed) + 1):
+            prior = next((row for row in removed.values() if row["removed_item_id"] == item_id), None)
+            if prior is None:
+                break
+            item_id = prior["kept_item_id"]
+        return item_id
+
+    ids = [active_id(issue["content"][field]) for field in ("other_item_id", "candidate_item_id")]
+    if ids[0] == ids[1]:
+        return False
+    items = list(db.scalars(select(QuestionImportItem).where(
+        QuestionImportItem.batch_id == batch.id,
+        QuestionImportItem.id.in_([uuid.UUID(value) for value in ids]),
+    ).with_for_update()))
+    if len(items) != 2 or any(not active_candidate(item) or item.revision > 2 or item.payload.get("teacher_decision", "pending") != "pending"
+                              or any(answer.get("teacher_confirmed") for answer in item.payload.get("answers") or [])
+                              for item in items):
+        return False
+
+    def rank(item: QuestionImportItem) -> tuple[int, int, int]:
+        payload = item.payload
+        content = payload.get("content") or {}
+        size = len(content.get("question_text") or "") + sum(len(option.get("text") or "")
+                                                              for option in content.get("options") or [])
+        return (-int((payload.get("source") or {}).get("page_start") or item.ordinal),
+                size, -item.ordinal)
+
+    keeper, duplicate = sorted(items, key=rank, reverse=True)
+    if keep_item_id is not None:
+        keeper = next((item for item in items if str(item.id) == keep_item_id), keeper)
+        duplicate = next(item for item in items if item.id != keeper.id)
+    removed[issue["key"]] = {"removed_item_id": str(duplicate.id), "kept_item_id": str(keeper.id),
+                             "removed_ordinal": duplicate.ordinal,
+                             "removed_payload": copy.deepcopy(duplicate.payload),
+                             "source_page": advice["source_page"],
+                             "evidence_quote": advice["evidence_quote"], "reason": advice["reason"]}
+    s3["model_removed_duplicates"] = removed
+    checkpoint["s3"] = s3
+    batch.checkpoint = checkpoint
+    db.delete(duplicate)
+    db.flush()
+    return True
 
 
 class DuplicateDecision(BaseModel):

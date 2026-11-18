@@ -23,9 +23,7 @@ from app.services.question_import_s3_images import (
 )
 from app.services.question_import_s3_separate import start_separate_answers
 from app.services.question_import_s3_labels import _allowed_kps, start_labels
-from app.services.question_import_s3_review import (
-    list_review_issues, list_review_units, review_issue, review_unit,
-)
+from app.services.question_import_s3_review import list_review_issues
 
 
 router = APIRouter(prefix="/question-imports", tags=["question-imports"])
@@ -263,27 +261,6 @@ def restore_nonquestion(batch_id: UUID, unit_index: int, fragment_index: int,
 @router.get("/{batch_id}/s3/review-issues")
 def read_review_issues(batch_id: UUID, db: Session = Depends(get_db)):
     return list_review_issues(db, batch_id)
-
-
-@router.get("/{batch_id}/s3/review-units")
-def read_review_units(batch_id: UUID, db: Session = Depends(get_db)):
-    return list_review_units(db, batch_id)
-
-
-@router.post("/{batch_id}/s3/review-units/{unit_index}")
-def run_unit_review(batch_id: UUID, unit_index: int, request: S3ReviewRequest,
-                    db: Session = Depends(get_db),
-                    operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
-    return review_unit(db, batch_id, unit_index, budget_cny=request.budget_cny,
-                       operator_token=operator_token)
-
-
-@router.post("/{batch_id}/s3/review-issues/{key}")
-def run_issue_review(batch_id: UUID, key: str, request: S3ReviewRequest,
-                     db: Session = Depends(get_db),
-                     operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
-    return review_issue(db, batch_id, key, budget_cny=request.budget_cny,
-                        operator_token=operator_token)
 
 
 @router.patch("/{batch_id}/items/{item_id}", response_model=CandidateOut)
