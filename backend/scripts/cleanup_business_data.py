@@ -18,6 +18,11 @@ PRESERVED_TABLES: tuple[str, ...] = (
 )
 
 BUSINESS_TABLES: tuple[str, ...] = (
+    "model_quality_feedback_revisions",
+    "model_quality_feedback",
+    "assessment_calls",
+    "assessment_tasks",
+    "assessment_inputs",
     "recognition_items",
     "recognition_runs",
     "attempt_revisions",

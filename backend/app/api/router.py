@@ -1,9 +1,11 @@
 from fastapi import APIRouter
+from app.api.routes import assessment
 
 from app.api.routes import analytics, assignments, classes, health, papers, profile, question_imports, questions, recognition, students, submissions
 
 
 api_router = APIRouter()
+api_router.include_router(assessment.router)
 api_router.include_router(health.router)
 api_router.include_router(questions.router)
 api_router.include_router(question_imports.router)

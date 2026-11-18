@@ -4,6 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, model_validator
 
 
 class Settings(BaseSettings):
@@ -35,6 +36,18 @@ class Settings(BaseSettings):
     vision_api_key: str = ""
     vision_timeout_seconds: float = 45.0
     vision_max_tokens: int = 2048
+    stage6_enabled: bool = False
+    stage6_worker_interval_seconds: int = Field(default=5, ge=1, le=300)
+    stage6_timeout_seconds: int = Field(default=10, ge=1, le=120)
+    stage6_lease_seconds: int = Field(default=30, ge=2, le=600)
+    stage6_max_attempts: int = Field(default=3, ge=1, le=5)
+
+    @model_validator(mode="after")
+    def stage6_valid_lease(self):
+        if self.stage6_lease_seconds <= self.stage6_timeout_seconds:
+            raise ValueError("STAGE6_LEASE_SECONDS 必须大于 STAGE6_TIMEOUT_SECONDS")
+        return self
+
     question_import_dir: Path = Path(__file__).resolve().parents[3] / "data" / "uploads" / "question_imports"
     question_import_max_file_bytes: int = 30 * 1024 * 1024
     question_import_max_batch_bytes: int = 60 * 1024 * 1024

@@ -19,6 +19,8 @@ from app.services.maintenance import (
 )
 from app.services.question_import import ImportProblem
 from app.services.question_import_worker import process_one as process_question_import
+from app.services.assessment import AssessmentProblem
+from app.services.assessment_worker import process_one as process_assessment
 
 
 settings = get_settings()
@@ -57,17 +59,31 @@ async def _question_import_loop(stop: asyncio.Event) -> None:
             await asyncio.wait_for(stop.wait(), timeout=max(settings.question_import_worker_interval_seconds, 5))
 
 
+async def _assessment_loop(stop: asyncio.Event) -> None:
+    while not stop.is_set():
+        try:
+            while not stop.is_set() and await asyncio.to_thread(process_assessment):
+                pass
+        except Exception as exc:
+            # SQL/provider exception text may include private answer snapshots.
+            logger.error("stage6 assessment worker failed (%s)", type(exc).__name__)
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(stop.wait(), timeout=settings.stage6_worker_interval_seconds)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     stop = asyncio.Event()
     task = asyncio.create_task(_maintenance_loop(stop))
     import_task = asyncio.create_task(_question_import_loop(stop))
+    assessment_task = asyncio.create_task(_assessment_loop(stop))
     try:
         yield
     finally:
         stop.set()
         await task
         await import_task
+        await assessment_task
 
 
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
@@ -104,6 +120,14 @@ async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse
 async def import_problem_handler(_: Request, exc: ImportProblem) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content={
         "code": exc.code, "message": str(exc), "details": None,
+    })
+
+
+@app.exception_handler(AssessmentProblem)
+async def assessment_problem_handler(_: Request, exc: AssessmentProblem) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content={
+        "code": exc.code, "message": str(exc), "task_id": str(exc.task_id) if exc.task_id else None,
+        "unit_key": None, "retryable": exc.retryable,
     })
 
 

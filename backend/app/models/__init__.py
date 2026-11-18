@@ -1,3 +1,7 @@
+from app.models.assessment import (
+    AssessmentCall, AssessmentInput, AssessmentTask, ModelQualityFeedback,
+    ModelQualityFeedbackRevision,
+)
 from app.models.entities import (
     Assignment,
     Attempt,
@@ -19,6 +23,8 @@ from app.models.entities import (
 )
 
 __all__ = [
+    "AssessmentCall", "AssessmentInput", "AssessmentTask", "ModelQualityFeedback",
+    "ModelQualityFeedbackRevision",
     "Assignment",
     "Attempt",
     "AttemptRevision",

@@ -11,6 +11,8 @@ def test_cleanup_allowlists_are_disjoint_and_preserve_catalog() -> None:
         "paper_instance_items", "submissions", "attempts", "attempt_revisions",
         "student_masteries", "student_literacy_scores", "student_knowledge_statuses",
         "recognition_runs", "recognition_items",
+        "assessment_inputs", "assessment_tasks", "assessment_calls",
+        "model_quality_feedback", "model_quality_feedback_revisions",
     } == set(BUSINESS_TABLES)
 
 
