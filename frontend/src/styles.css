@@ -423,3 +423,6 @@ a { color: inherit; }
   .print-footer { break-before: avoid; }
   @page { size: A4; margin: 14mm; }
 }
+.equivalence-entry { margin-top: 16px; }
+.equivalence-panel { width: 100%; min-width: 0; overflow-wrap: anywhere; }
+.equivalence-panel > .ant-space-item { min-width: 0; max-width: 100%; }

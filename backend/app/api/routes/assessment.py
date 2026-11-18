@@ -1,4 +1,4 @@
-"""Development-only S1 endpoints; reviewer is an audit label, not authentication."""
+"""Internal suggestion endpoints; reviewer is an audit label, not authentication."""
 from typing import Literal
 from uuid import UUID
 
@@ -20,6 +20,17 @@ def internal_only():
 
 
 router = APIRouter(prefix="/internal/stage6", tags=["stage6-internal"], dependencies=[Depends(internal_only)])
+
+
+@router.get("/status")
+def status():
+    return {"enabled": get_settings().stage6_enabled, "provider": "fake",
+            "policy_version": service.POLICY_VERSION, "real_provider_available": False}
+
+
+@router.post("/equivalence-preview")
+def preview(request: CreateAssessmentTask, db: Session = Depends(get_db)):
+    return service.create_task(db, request, preview_only=True)
 
 
 @router.post("/equivalence-tasks")

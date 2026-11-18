@@ -14,6 +14,7 @@ from app.models import (
     ModelQualityFeedbackRevision, PaperInstance, PaperInstanceItem, Question,
     RecognitionItem, RecognitionRun,
     Student,
+    Submission,
 )
 from app.schemas.assessment import (
     CreateAssessmentTask, EquivalenceGold, EquivalenceRequest, QualityFeedbackIn,
@@ -22,6 +23,7 @@ from app.schemas.assessment import (
 from app.services.assessment_protocol import FAKE_MODEL, POLICY_VERSION, PROMPT_VERSION, canonical_json, input_hash
 from app.services.print_view import answer_subquestions, print_source_module
 from app.services.submission_workflow import _grading_reference, _initial_grading_reference
+from app.services.equivalence_candidates import classify_unit
 
 
 class AssessmentProblem(Exception):
@@ -82,7 +84,7 @@ def _text(value):
     return result
 
 
-def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, reason=None):
+def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, reason=None, preview_only=False):
     enabled()
     paper, item = _paper_item(db, request.paper_instance_item_id)
     question = db.get(Question, item.question_id)
@@ -102,11 +104,11 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
         if request.student_answer is not None:
             raise AssessmentProblem("INVALID_ANSWER", "已提交作答必须从服务端读取答案", 422)
         reference, rule, source = _grading_reference(item, attempt)
-        student_answer = _text(_leaf(attempt.student_answer, request.item_id))
+        student_answer = _leaf(attempt.student_answer, request.item_id)
     else:
         if request.expected_attempt_revision is not None:
             raise AssessmentProblem("REVISION_CONFLICT", "尚无对应的正式作答")
-        student_answer = _text(request.student_answer)
+        student_answer = request.student_answer
         if current_input and current_input.snapshot.get("attempt_id") is None:
             # Preserve the reference frozen for this draft until explicit rebind in S2.
             frozen = current_input.snapshot
@@ -122,6 +124,26 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
     if request.item_id not in coordinates:
         raise AssessmentProblem("SLOT_SET_MISMATCH", "作答单元不属于该试卷题项", 422)
     reference_text = _text(_leaf(reference, request.item_id))
+    submission = db.get(Submission, attempt.submission_id) if attempt else None
+    image_input = submission is not None and submission.source == "image"
+    confirmed = not image_input or bool((attempt.grading_details or {}).get("recognition_reviewed"))
+    candidate = classify_unit(
+        question_type=question_type, reference=reference, rule=rule, item_id=request.item_id,
+        student_answer=student_answer, input_confirmed=confirmed,
+        teacher_confirmed=attempt is not None and attempt.grade_status == "teacher_confirmed",
+    )
+    if preview_only:
+        return {
+            **candidate, "paper_instance_item_id": item.id, "item_id": request.item_id,
+            "reference_answer": reference_text, "student_answer": student_answer,
+            "reference_source": source,
+            "input_revision": current_input.revision_no if current_input else 0,
+            "attempt_revision_no": attempt.revision_no if attempt else None,
+            "subquestion_no": coordinates[request.item_id][0], "blank_no": coordinates[request.item_id][1],
+        }
+    if not candidate["eligible"]:
+        raise AssessmentProblem("NOT_ELIGIBLE", candidate["message"], 422)
+    student_answer = _text(student_answer)
     snapshot = {
         "hash_version": "stage6-input-hash-v1",
         "paper_instance_id": str(paper.id), "version_no": paper.version_no,
@@ -135,6 +157,7 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
         "reference_source": source, "reference_answer": reference, "reference_rule": rule,
         "reference_sha256": input_hash({"answer": reference, "rule": rule, "source": source}),
         "published_structure": coordinates,
+        "candidate_routing": candidate,
     }
     # JSON roundtrip normalizes tuple coordinates before comparison with JSONB.
     snapshot = json.loads(canonical_json(snapshot))
@@ -188,6 +211,8 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
 def binding_error(db, task):
     """Recheck durable ownership and current input, never today's newest question key."""
     frozen = task.snapshot
+    if task.policy_version != POLICY_VERSION or not frozen.get("candidate_routing", {}).get("eligible"):
+        return "INPUT_STALE"
     paper, item = _paper_item(db, UUID(frozen["paper_instance_item_id"]), active=False)
     student = db.get(Student, paper.student_id)
     if (paper.status != "published" or paper.invalidated_at is not None
@@ -210,6 +235,10 @@ def binding_error(db, task):
             if _text(_leaf(attempt.student_answer, frozen["item_id"])) != frozen["student_answer"]:
                 return "INPUT_STALE"
         except AssessmentProblem:
+            return "INPUT_STALE"
+        submission = db.get(Submission, attempt.submission_id)
+        if (attempt.grade_status == "teacher_confirmed"
+                or (submission.source == "image" and not (attempt.grading_details or {}).get("recognition_reviewed"))):
             return "INPUT_STALE"
     try:
         if json.loads(canonical_json(_units(item.answer_snapshot, item.question_snapshot.get("question_type")))) != frozen["published_structure"]:
@@ -257,6 +286,7 @@ def task_view(db, task):
         "action_history": task.action_history,
         "created_at": task.created_at, "completed_at": task.completed_at,
         "adoption_status": "not_adopted", "synthetic": task.provider == "fake",
+        "candidate_routing": task.snapshot.get("candidate_routing"),
         "calls": [{"id": c.id, "call_no": c.call_no, "status": c.status,
                    "raw_response": c.raw_response, "parsed_response": c.parsed_response,
                    "error_code": c.error_code, "usage": c.usage, "late_response": c.late_response,

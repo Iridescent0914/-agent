@@ -6,6 +6,7 @@ import { apiGet, apiPatch, apiPost, apiUrl } from '../api/client'
 import { AnswerView } from '../components/AnswerView'
 import { initialDraft, ManualAnswerEditor } from '../components/ManualAnswerEditor'
 import { RichQuestionText } from '../components/RichQuestionText'
+import { EquivalenceReview } from '../components/EquivalenceReview'
 import type { AnswerDraft, AttemptResult, AttemptRevision, SubmissionDetail, SubmissionPaperItem } from '../types/submission'
 import { answerMatchTypeLabel } from '../utils/gradingLabels'
 
@@ -47,6 +48,13 @@ export function PaperGradingPage() {
   const [correction, setCorrection] = useState<CorrectionState | null>(null)
   const [correctionSaving, setCorrectionSaving] = useState(false)
   const [regrading, setRegrading] = useState(false)
+  const [equivalenceEnabled, setEquivalenceEnabled] = useState(false)
+  useEffect(() => {
+    const controller = new AbortController()
+    apiGet<{ enabled: boolean }>('/internal/stage6/status', controller.signal)
+      .then((value) => setEquivalenceEnabled(value.enabled)).catch(() => { /* Optional internal feature. */ })
+    return () => controller.abort()
+  }, [])
   const keyRef = useRef(`manual-${paperInstanceId}-${crypto.randomUUID()}`)
   const load = () => {
     if (!paperInstanceId) return
@@ -260,6 +268,7 @@ export function PaperGradingPage() {
             <Button icon={<HistoryOutlined />} onClick={() => showHistory(item.attempt!)}>修订历史</Button>
           </Space>
         </Space>}
+        {equivalenceEnabled && <EquivalenceReview item={item} draft={drafts[item.id]} active={data.is_active} />}
       </Card>)}
     </>}
     <Drawer title="判分修订历史" width={720} open={revisions !== null} onClose={() => setRevisions(null)}>

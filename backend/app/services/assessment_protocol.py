@@ -8,7 +8,7 @@ from typing import Protocol
 from app.schemas.assessment import EquivalenceRequest, EquivalenceResponse, VisionRequest, VisionResponse
 
 PROMPT_VERSION = "stage6-equivalence-s1-fake-v1"
-POLICY_VERSION = "stage6-suggestions-only-v1"
+POLICY_VERSION = "stage6-equivalence-candidates-v1"
 FAKE_MODEL = "fake-stage6-v1"
 
 
