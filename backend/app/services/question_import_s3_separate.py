@@ -209,6 +209,7 @@ def start_separate_answers(db: Session, batch_id: uuid.UUID, *, budget_cny: floa
     _adapt_incomplete_answer_unit(state, batch_id, source["file_id"])
     state.update({"status": "queued", "version": SEPARATE_ANSWER_VERSION,
                   "budget_cny": budget_cny, "source_file_id": source["file_id"],
+                  "auto_answer_matching": True,
                   "source_sha256": source["sha256"], "model": settings.question_import_s2_model,
                   "price_snapshot": {"pdf_page_cny": settings.question_import_s2_pdf_page_price_cny,
                                      "input_million_cny": settings.question_import_s2_input_million_price_cny,

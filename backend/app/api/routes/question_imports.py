@@ -18,6 +18,7 @@ from app.services.question_import import (
 from app.services.question_import_s2_worker import skip_incomplete_s2_page, start_s2
 from app.services.question_import_s3 import reconcile_source_answers
 from app.services.question_import_s3_global import dedupe_batch
+from app.services.question_import_s3_answer_match import start_answer_matching
 from app.services.question_import_s3_images import (
     extract_images, image_bytes, list_images, set_candidate_image, upload_candidate_image,
 )
@@ -244,6 +245,14 @@ def start_separate_answer_extraction(batch_id: UUID, request: S3ReviewRequest,
                                      operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
     return start_separate_answers(db, batch_id, budget_cny=request.budget_cny,
                                   operator_token=operator_token)
+
+
+@router.post("/{batch_id}/s3/start-answer-matching", response_model=BatchOut)
+def start_model_answer_matching(batch_id: UUID, request: S3ReviewRequest,
+                                db: Session = Depends(get_db),
+                                operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
+    return start_answer_matching(db, batch_id, budget_cny=request.budget_cny,
+                                 operator_token=operator_token)
 
 
 @router.post("/{batch_id}/s3/start-labels", response_model=BatchOut)

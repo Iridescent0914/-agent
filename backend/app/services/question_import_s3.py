@@ -104,7 +104,8 @@ def _source_sections(batch: QuestionImportBatch, role: str) -> dict[int, str]:
 def _replaceable_source_answer(item: QuestionImportItem) -> bool:
     payload = item.payload
     answers = payload.get("answers") or []
-    return (item.revision <= 2 and payload.get("teacher_decision") == "pending"
+    return ((item.revision <= 2 or payload.get("answer_match_auto_revision") == item.revision)
+            and payload.get("teacher_decision") == "pending"
             and not payload.get("selected_answer_id")
             and all(answer.get("answer_source") == "source_extracted"
                     and not answer.get("teacher_confirmed") for answer in answers))
@@ -234,19 +235,43 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
             by_number[key].append(item)
     question_sections = _source_sections(batch, "questions") if batch.source_mode == "separate" else {}
     answer_sections = _source_sections(batch, "answers") if question_sections else {}
+    model_assignments = (existing_s3.get("answer_model_matching") or {}).get("assignments") or {}
+    item_by_id = {str(item.id): item for item in items}
 
     matched: dict[uuid.UUID, list[dict[str, Any]]] = defaultdict(list)
     already_linked_item_ids: set[uuid.UUID] = set()
     linked_count = 0
     unassigned: list[dict[str, Any]] = []
     answer_count = 0
+    duplicate_answer_count = 0
+    seen_source_answers: set[tuple[Any, ...]] = set()
     for unit in source_units.get("units") or []:
         for answer in unit.get("source_answers") or []:
             answer_count += 1
+            # Only collapse repeated transcriptions at the same source position.
+            # Identical short answers in different exercises are independent.
+            source_signature = (
+                answer.get("source_file_id"), answer.get("page_start"), answer.get("page_end"),
+                _number_key(answer.get("original_number")),
+                _number_key(answer.get("subquestion_number")),
+                _text_key(answer.get("question_excerpt")), _text_key(answer.get("text")),
+                answer.get("answer_form"),
+            )
+            if source_signature in seen_source_answers:
+                duplicate_answer_count += 1
+                continue
+            seen_source_answers.add(source_signature)
             linked_item = linked_source_answer_item(answer, items)
             if linked_item is not None:
-                already_linked_item_ids.add(linked_item.id)
-                linked_count += 1
+                if model_assignments and _replaceable_source_answer(linked_item):
+                    matched[linked_item.id].append(answer)
+                else:
+                    already_linked_item_ids.add(linked_item.id)
+                    linked_count += 1
+                continue
+            assignment = item_by_id.get(model_assignments.get(source_answer_identity(answer)))
+            if assignment is not None:
+                matched[assignment.id].append(answer)
                 continue
             key = _number_key(answer.get("original_number"))
             targets = by_number.get(key, []) if key else []
@@ -286,7 +311,6 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
             else:
                 matched[targets[0].id].append(answer)
 
-    duplicate_answer_count = 0
     # Identical transcriptions of one numbered answer are one answer; conflicting
     # values for the same position remain unassigned for teacher review.
     for item_id, answers in list(matched.items()):
@@ -324,6 +348,8 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
         version = {"answer_id": _answer_id(ordered), "answer_source": "source_extracted",
                    "text": "\n".join(text_parts), "evidence": evidence,
                    "teacher_confirmed": False}
+        if any(source_answer_identity(answer) in model_assignments for answer in ordered):
+            version["match_method"] = "model_assisted"
         if len(ordered) == 1:
             version["source_identity"] = source_answer_identity(ordered[0])
         if _already_linked_source_answer(item, version):
@@ -345,6 +371,7 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
         if item.payload.get("answers") != [version] or item.payload.get("answer_match_status") != payload["answer_match_status"]:
             item.revision += 1
             payload["revision"] = item.revision
+            payload["answer_match_auto_revision"] = item.revision
             item.payload = payload
         linked_count += len(ordered)
 

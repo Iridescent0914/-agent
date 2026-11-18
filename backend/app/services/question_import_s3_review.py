@@ -66,6 +66,10 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
                                  "summary": f"第 {page} 页未确定片段", "content": fragment,
                                  "candidates": []})
     reconciliation = (checkpoint.get("s3") or {}).get("source_answer_reconciliation") or {}
+    model_state = (checkpoint.get("s3") or {}).get("answer_model_matching") or {}
+    model_decisions = {row["answer_id"]: row for group in model_state.get("groups") or []
+                       for row in group.get("decisions") or []}
+    model_suggestions = {row["answer_id"]: row for row in model_state.get("suggestions") or []}
     if batch.source_mode in {"combined", "separate"}:
         answer_units = ((checkpoint.get("s2") or {}) if batch.source_mode == "combined"
                         else ((checkpoint.get("s3") or {}).get("separate_answers") or {})).get("units") or []
@@ -73,6 +77,7 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
             if linked_source_answer_item(answer, items) is not None:
                 continue
             answer_key = "answer:" + source_answer_identity(answer)
+            suggestion = model_suggestions.get(source_answer_identity(answer)) or {}
             number = str(answer.get("original_number") or "").strip()
             exact = [item for item in items if str((item.payload.get("source") or {}).get("original_number") or "").strip() == number] if number else []
             excerpt = str(answer.get("question_excerpt") or "").strip()
@@ -91,6 +96,10 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
             else:
                 pool = []
                 recall_method = "none"
+            suggested_item = by_id.get(suggestion.get("suggested_item_id"))
+            if suggested_item is not None:
+                pool = [suggested_item, *(item for item in pool if item.id != suggested_item.id)]
+                recall_method = "model_suggestion"
             answer_page = answer.get("page_start")
             answer_unit = next((i for i, unit in enumerate(answer_units)
                                 if isinstance(answer_page, int)
@@ -99,7 +108,29 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
             rows.append({"key": answer_key, "kind": "answer", "unit_index": answer_unit,
                          "summary": f"第 {answer.get('page_start')} 页待认领答案（{answer.get('reason')}）",
                          "content": answer, "candidate_total": len(pool), "recall_method": recall_method,
+                         "model_reason": (model_decisions.get(source_answer_identity(answer)) or {}).get("reason"),
+                         "model_suggestion": suggestion.get("suggested_item_id"),
                          "candidates": [_candidate_context(item) for item in pool[:MAX_LIST_CANDIDATES]]})
+        answer_by_id = {source_answer_identity(answer): answer for unit in answer_units
+                        for answer in unit.get("source_answers") or []}
+        for warning in model_state.get("review_warnings") or []:
+            answer = answer_by_id.get(warning.get("answer_id"))
+            if not answer:
+                continue
+            ids = [warning.get("current_item_id"), warning.get("suggested_item_id")]
+            disagreement = bool(warning.get("suggested_item_id")
+                                and warning.get("suggested_item_id") != warning.get("current_item_id"))
+            rows.append({"key": "answer_match_warning:" + warning["answer_id"],
+                         "kind": "answer_match_disagreement" if disagreement else "answer_match_warning",
+                         "unit_index": None,
+                         "summary": (f"第 {answer.get('page_start')} 页模型建议更换关联题"
+                                     if disagreement else f"第 {answer.get('page_start')} 页已关联答案待核对"),
+                         "content": answer, "model_reason": warning.get("reason"),
+                         "model_suggestion": warning.get("suggested_item_id"),
+                         "current_item_id": warning.get("current_item_id"),
+                         "evidence_quote": warning.get("evidence_quote"),
+                         "candidates": [_candidate_context(by_id[item_id]) for item_id in ids
+                                        if item_id in by_id]})
     return rows
 
 
@@ -107,7 +138,7 @@ def _pages_for_issue(issue: dict[str, Any]) -> list[int]:
     content = issue["content"]
     if issue["kind"] == "overlap":
         page_ranges = [(candidate["page_start"], candidate["page_end"]) for candidate in issue["candidates"]]
-    elif issue["kind"] == "answer":
+    elif issue["kind"] in {"answer", "answer_match_warning", "answer_match_disagreement"}:
         page_ranges = [(content.get("page_start"), content.get("page_end"))]
     else:
         page_ranges = [(content.get("page"), content.get("page"))]
@@ -135,9 +166,13 @@ def list_review_issues(db: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]
                        "summary": issue["summary"],
                        "fragment_text": issue["content"].get("text") if issue["kind"] in {"fragment", "answer_fragment", "skipped_page"} else None,
                        "fragment_reason": issue["content"].get("reason") if issue["kind"] in {"fragment", "answer_fragment", "skipped_page"} else None,
-                       "answer_text": issue["content"].get("text") if issue["kind"] == "answer" else None,
-                       "answer_number": issue["content"].get("original_number") if issue["kind"] == "answer" else None,
-                       "source_answer": issue["content"] if issue["kind"] == "answer" else None,
+                       "answer_text": issue["content"].get("text") if issue["kind"] in {"answer", "answer_match_warning", "answer_match_disagreement"} else None,
+                       "answer_number": issue["content"].get("original_number") if issue["kind"] in {"answer", "answer_match_warning", "answer_match_disagreement"} else None,
+                       "source_answer": issue["content"] if issue["kind"] in {"answer", "answer_match_warning", "answer_match_disagreement"} else None,
+                       "model_reason": issue.get("model_reason"),
+                       "model_suggestion": issue.get("model_suggestion"),
+                       "current_item_id": issue.get("current_item_id"),
+                       "evidence_quote": issue.get("evidence_quote"),
                        "page_numbers": pages, "candidate_item_ids": [c["item_id"] for c in issue["candidates"]],
                        "candidate_total": issue.get("candidate_total", len(issue["candidates"])),
                        "recall_method": issue.get("recall_method")})

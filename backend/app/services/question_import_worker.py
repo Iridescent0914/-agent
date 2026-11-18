@@ -127,6 +127,9 @@ def process_one() -> bool:
         from app.services.question_import_s3_separate import process_separate_answers_one
         if process_separate_answers_one():
             return True
+        from app.services.question_import_s3_answer_match import process_answer_matching_one
+        if process_answer_matching_one():
+            return True
         from app.services.question_import_s3_labels import process_labels_one
         return process_labels_one()
     batch_id, token = claimed

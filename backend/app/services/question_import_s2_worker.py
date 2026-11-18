@@ -66,6 +66,7 @@ def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_to
         raise ImportProblem("INVALID_S2_BUDGET", "新预算必须高于已估算费用")
     s2["budget_cny"] = budget_cny
     s2["auto_global_dedupe"] = True
+    s2["auto_answer_matching"] = True
     if s2.get("model") and s2["model"] != settings.question_import_s2_model:
         raise ImportProblem("S2_CONFIG_CHANGED", "模型配置已变化，请新建批次", 409)
     s2["model"] = settings.question_import_s2_model

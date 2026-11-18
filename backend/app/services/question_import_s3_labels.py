@@ -229,6 +229,12 @@ def start_labels(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
         raise ImportProblem("S3_ANSWERS_PENDING", "请先完成答案文件识别和关联", 409)
     if batch.source_mode in {"combined", "separate"} and not s3.get("source_answer_reconciliation"):
         raise ImportProblem("S3_ANSWERS_PENDING", "请先完成来源答案关联", 409)
+    if batch.source_mode in {"combined", "separate"}:
+        matching = s3.get("answer_model_matching") or {}
+        authorized = ((batch.checkpoint or {}).get("s2") or {}).get("auto_answer_matching") if batch.source_mode == "combined" else (
+            (s3.get("separate_answers") or {}).get("auto_answer_matching"))
+        if (authorized or matching) and matching.get("status") != "completed":
+            raise ImportProblem("S3_MATCH_PENDING", "请先完成模型辅助配对或处理预算与失败状态", 409)
     if batch.catalog_snapshot_sha256 != hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest():
         raise ImportProblem("CATALOG_CHANGED", "正式标签目录已变化，请重新上传批次", 409)
     if batch.files_purged_at or batch.expires_at <= datetime.now(timezone.utc):
