@@ -802,10 +802,10 @@ def test_incomplete_retry_replans_failed_unit_without_restarting_batch(db, tmp_p
     assert batch.stage == "s2_queued"
     assert [(u["index"], u["core_last_page"], u["last_page"], u["status"])
             for u in batch.checkpoint["s2"]["units"]] == [
-                (0, 2, 4, "completed"), (1, 4, 4, "pending")]
+                (0, 2, 3, "completed"), (1, 4, 4, "pending")]
     assert s2_worker.process_s2_one()
     db.refresh(batch)
     assert batch.stage == "s2_completed"
     assert batch.checkpoint["s2"]["calls"] == 3
-    assert calls == [(4, 4), (4, 2), (2, 2)]
+    assert calls == [(4, 4), (3, 2), (2, 2)]
 
