@@ -10,8 +10,8 @@ type Batch = {
   stage: string
   files: Array<{ file_id: string; original_name: string; size_bytes: number; page_count: number | null; role: string }>
   checkpoint: {
-    s2?: { calls?: number; page_count?: number; prompt_version?: string; auto_global_dedupe?: boolean; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
-    s3?: { global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number }; separate_answers?: { status: string; calls?: number; error_message?: string; units?: Array<{ index: number; first_page: number; core_last_page: number; status: string; source_answers?: Array<{ original_number: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }; labels?: { status: string; calls?: number; estimated_cny?: number; cost_unknown?: boolean; error_code?: string; error_message?: string; skipped_item_ids?: string[]; groups?: Array<{ index: number; status: string; applied_count?: number; skipped_item_ids?: string[] }> }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; manual_candidate_changes_pending?: boolean; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ original_number: string | null; text: string; page_start: number; reason: string; candidate_item_ids?: string[] }> } }
+    s2?: { calls?: number; page_count?: number; prompt_version?: string; auto_global_dedupe?: boolean; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; source_answers?: Array<{ source_file_id?: string; original_number: string | null; subquestion_number?: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
+    s3?: { global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number; auto_answer_reviewed_count?: number; auto_answer_assigned_count?: number }; separate_answers?: { status: string; calls?: number; error_message?: string; units?: Array<{ index: number; first_page: number; core_last_page: number; status: string; source_answers?: Array<{ source_file_id?: string; original_number: string | null; subquestion_number?: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }; labels?: { status: string; calls?: number; estimated_cny?: number; cost_unknown?: boolean; error_code?: string; error_message?: string; skipped_item_ids?: string[]; groups?: Array<{ index: number; status: string; applied_count?: number; skipped_item_ids?: string[] }> }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; manual_candidate_changes_pending?: boolean; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ source_file_id?: string; original_number: string | null; text: string; page_start: number; subquestion_number?: string | null; reason: string; candidate_item_ids?: string[] }> } }
   }
   error_code: string | null
   error_message: string | null
@@ -29,6 +29,7 @@ type ReviewIssue = {
   fragment_reason?: string | null
   answer_text?: string | null
   answer_number?: string | null
+  source_answer?: { source_file_id?: string; original_number: string | null; text: string; page_start: number; reason: string; candidate_item_ids?: string[] } | null
   page_numbers: number[]
   candidate_item_ids: string[]
   candidate_total: number
@@ -54,7 +55,7 @@ type Candidate = {
     source: { original_number: string | null; page_start: number | null; page_end: number | null }
     content: { question_text: string; options: Array<{ key: string; text: string }>; asset_ids?: string[] }
     extraction?: { math_fragments?: string[]; diagram_clues?: string[]; figure_status?: 'no_figure' | 'complete' | 'uncertain'; uncertain_fragments?: string[]; source_classification?: string; classification_evidence?: string }
-    answers?: Array<{ answer_id: string; answer_source: string; text: string | null; teacher_confirmed: boolean }>
+    answers?: Array<{ answer_id: string; answer_source: string; text: string | null; teacher_confirmed: boolean; evidence?: Array<{ file_id: string; page: number; quote: string }> }>
     selected_answer_id?: string | null
     answer_match_status?: string
     duplicate_status?: string
@@ -417,8 +418,8 @@ export function QuestionImportPage() {
   function confirmBatchDedup(batch: Batch) {
     if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
     Modal.confirm({
-      title: '让模型整理整批题目和答案？',
-      content: `将整批候选题文字、题号和来源页码发送给百炼 ${s2Config?.model || ''}，跨页段判断重复题，移除重复候选${batch.source_mode === 'combined' ? '后自动关联同文件资料答案' : ''}。预算阈值 ¥${budget}；模型可能产生费用。`,
+      title: '让模型整批去重题目？',
+      content: `将整批候选题文字、题号和来源页码${batch.source_mode === 'combined' ? '，以及来源答案摘录作为判重上下文' : ''}发送给百炼 ${s2Config?.model || ''}，跨页段判断重复题。${batch.source_mode === 'combined' ? '去重后由程序按规则关联同文件答案；待认领答案只在单独点击原页复核时再次调用模型。' : ''}预算阈值 ¥${budget}；模型可能产生费用。`,
       okText: '整理整批', cancelText: '取消',
       onOk: async () => {
         setReviewingKey(`batch:${batch.id}`)
@@ -587,7 +588,16 @@ export function QuestionImportPage() {
   const sourceAnswers = (selectedBatch?.source_mode === 'separate'
     ? separateAnswers?.units?.flatMap((unit) => unit.source_answers || [])
     : s2?.units?.flatMap((unit) => unit.source_answers || [])) || []
-  const pendingAnswers = reconciliation?.unassigned_answers || sourceAnswers
+  const pendingAnswers = selectedBatch?.source_mode === 'combined' && reconciliation
+    ? reviewIssues.filter((issue) => issue.kind === 'answer' && issue.source_answer).map((issue) => issue.source_answer!)
+    : reconciliation?.unassigned_answers || sourceAnswers
+  const linkedSourceQuestionCount = candidates.filter((item) => item.payload.answers?.some((answer) => answer.answer_source === 'source_extracted')).length
+  const reviewedIssueCount = reviewIssues.filter((issue) => !!issue.review).length
+  const reviewCategories = [
+    { kind: 'answer', title: '答案归属待核对' },
+    { kind: 'fragment', title: '提取时未确定的片段' },
+    { kind: 'overlap', title: '疑似重复题' },
+  ]
   const dedupeStatus = selectedBatch?.checkpoint?.s3?.global_dedupe?.status
   const labelTaskStatus = selectedBatch?.checkpoint?.s3?.labels?.status
   const canEditCandidates = selectedBatch?.status === 'review_pending' && selectedBatch.stage === 's2_completed'
@@ -760,8 +770,8 @@ export function QuestionImportPage() {
       {['combined', 'separate'].includes(selectedBatch?.source_mode || '') && <Typography.Paragraph>
         {reconciliation
           ? reconciliation.manual_candidate_changes_pending
-            ? `题目增删后，当前 ${candidates.filter((item) => item.payload.answers?.some((answer) => answer.answer_source === 'source_extracted')).length}/${candidates.length} 道题保留资料答案关联；原关联统计和待认领清单基于增删前，请人工核对。`
-            : `已为 ${reconciliation.linked_question_count}/${candidates.length} 道题关联答案。`
+            ? `题目增删后，当前 ${linkedSourceQuestionCount}/${candidates.length} 道题保留资料答案关联；请人工核对待认领答案。`
+            : `当前 ${linkedSourceQuestionCount}/${candidates.length} 道题带资料答案；请逐题核对。`
           : selectedBatch?.source_mode === 'separate'
             ? `答案文件识别状态：${separateAnswers?.status || '未开始'}。`
           : selectedBatch?.stage === 's2_completed' && selectedBatch?.checkpoint?.s2?.auto_global_dedupe
@@ -782,23 +792,28 @@ export function QuestionImportPage() {
         </div>)}
       </details>}
       {separateAnswers?.units?.flatMap((unit) => unit.unresolved_fragments || []).map((fragment, index) => <Typography.Paragraph key={`answer-unresolved-${index}`} type="warning">答案文件第 {fragment.page} 页待核对：{fragment.text}（{fragment.reason}）</Typography.Paragraph>)}
-      {reconciliation && reconciliation.unassigned_answers.length > 0 &&
+      {reconciliation && pendingAnswers.length > 0 &&
            <details key={`${selectedBatch?.id}:reconciliation`}>
-             <summary>待核对归属的答案（{reconciliation.unassigned_answers.length} 条）</summary>
-             {reconciliation.unassigned_answers.map((answer, index) => <div key={index} className="question-import-answer">
-               <Typography.Text type="warning">第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}（{answer.reason}）：</Typography.Text>
+             <summary>待核对归属的答案（{pendingAnswers.length} 条）</summary>
+             {pendingAnswers.map((answer, index) => <div key={index} className="question-import-answer">
+               <Typography.Text type="warning">第 {answer.page_start} 页，题号 {answer.original_number || '缺失'}（{'reason' in answer ? String(answer.reason) : '尚未关联'}）：</Typography.Text>
                <RichQuestionText text={answer.text} assets={[]} />
              </div>)}
            </details>}
       {!!reviewIssues.length && <details key={`${selectedBatch?.id}:review-issues`}>
-        <summary>按问题复核原页（{reviewIssues.length} 个问题）</summary>
-        <Typography.Paragraph type="secondary">同一页段有多个问题时，可一次发送相关原页。重复题和答案归属可能由系统自动处理；未确定片段只保存模型建议，题目不会自动修改。</Typography.Paragraph>
+        <summary>按问题复核原页（待复核 {reviewIssues.length - reviewedIssueCount}，已有结果 {reviewedIssueCount}）</summary>
+        <Typography.Paragraph type="secondary">按答案归属、未确定片段和疑似重复题分类。下面的页段行只列可合并发送的问题；单个问题在所属分类中处理。模型确认重复题或答案归属后可能自动处理；未确定片段只保存建议。</Typography.Paragraph>
         {reviewUnits.filter((unit) => unit.issue_keys.length > 1).map((unit) => <Typography.Paragraph key={`unit-${unit.unit_index}`}>
-          第 {unit.unit_index + 1} 页段：待复核 {unit.issue_keys.length} 个问题，原页 {unit.page_numbers.join('、')}，候选 {unit.candidate_count} 条。
+          可合并复核 · 第 {unit.unit_index + 1} 页段：待复核 {unit.issue_keys.length} 个问题，涉及 {unit.candidate_count} 道候选题，原页 {unit.page_numbers.join('、')}。
           {selectedBatch && <Button size="small" type="primary" loading={reviewingKey === `unit:${unit.unit_index}`} disabled={!unit.available || !s2Config?.ready || selectedBatch.status !== 'review_pending' || !!selectedBatch.files_purged_at} onClick={() => confirmUnitReview(selectedBatch, unit)}>一次复核本页段</Button>}
           {!unit.available && <Typography.Text type="warning"> 本页段超过单次范围，请逐条复核。</Typography.Text>}
         </Typography.Paragraph>)}
-        {reviewIssues.map((issue) => {
+        {reviewCategories.map((category) => {
+          const categoryIssues = reviewIssues.filter((issue) => issue.kind === category.kind)
+          if (!categoryIssues.length) return null
+          return <details key={category.kind} open={category.kind === 'answer'}>
+            <summary>{category.title}（待复核 {categoryIssues.filter((issue) => !issue.review).length}，已有结果 {categoryIssues.filter((issue) => !!issue.review).length}）</summary>
+            {categoryIssues.map((issue) => {
           const advice = issue.review?.status === 'completed' ? issue.review.advice : undefined
           const matchedCandidate = candidates.find((item) => item.id === advice?.candidate_item_id)
           const candidateSummaries = issue.kind === 'overlap' ? issue.candidate_item_ids.map((id) => {
@@ -859,6 +874,8 @@ export function QuestionImportPage() {
             {issue.review?.status === 'running' && <Typography.Paragraph type="secondary">复核进行中，请稍后刷新。</Typography.Paragraph>}
             {!issue.review && selectedBatch && <Button size="small" loading={reviewingKey === issue.key} disabled={!issue.page_numbers.length || !s2Config?.ready || selectedBatch.status !== 'review_pending' || !!selectedBatch.files_purged_at || (issue.kind === 'answer' && (!issue.candidate_item_ids.length || (issue.recall_method === 'number' && issue.candidate_total > issue.candidate_item_ids.length)))} onClick={() => confirmIssueReview(selectedBatch, issue)}>发送原页复核</Button>}
           </Card>
+            })}
+          </details>
         })}
       </details>}
       {!!duplicateCandidates.length && <Typography.Paragraph><Button size="small" onClick={() => setShowDuplicateCandidates((value) => !value)}>{showDuplicateCandidates ? '收起' : '显示'}疑似重复候选 {duplicateCandidates.length} 条</Button><Typography.Text type="secondary"> 原始记录仍保留；确认不是重复题时可展开核对。</Typography.Text></Typography.Paragraph>}

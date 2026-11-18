@@ -92,6 +92,17 @@ def _answer(number: str | None, text: str) -> dict:
             "page_start": 1, "page_end": 1, "uncertain_fragments": []}
 
 
+def test_same_page_same_text_different_number_is_not_an_existing_link():
+    first, second = _answer("1", "2"), _answer("2", "2")
+    item = SimpleNamespace(payload={"answers": [{
+        "answer_source": "source_extracted", "text": "2",
+        "answer_id": s3_service._answer_id([first]),
+        "source_identity": s3_service.source_answer_identity(first),
+    }]})
+    assert s3_service.linked_source_answer_item(first, [item]) is item
+    assert s3_service.linked_source_answer_item(second, [item]) is None
+
+
 def test_page_heading_after_question_marks_page_mixed(monkeypatch):
     page_texts = [
         "1．求值：1+1\n参考答案与试题解析\n【答案】2",
@@ -331,6 +342,22 @@ def test_unique_number_with_conflicting_excerpt_stays_unassigned(db, tmp_path, m
     assert result["linked_answer_count"] == 0
     assert result["unassigned_answers"][0]["reason"] == "question_excerpt_conflict"
     assert not item.payload["answers"]
+
+    # A later original-page review may link this exact answer despite the
+    # excerpt conflict. Reconciliation must not list it as unassigned again.
+    item.payload = {**item.payload, "answer_match_status": "model_matched", "answers": [{
+        "answer_id": s3_service._answer_id([result["unassigned_answers"][0]]),
+        "answer_source": "source_extracted",
+        "text": "7", "teacher_confirmed": False,
+        "evidence": [{"file_id": source_id, "page": 1, "quote": "7"}],
+    }]}
+    item.revision += 1
+    db.flush()
+    reviewed = reconcile_source_answers(db, batch.id, force=True)
+    assert reviewed["linked_answer_count"] == 1
+    assert reviewed["linked_question_count"] == 1
+    assert reviewed["unassigned_answers"] == []
+    assert item.payload["answer_match_status"] == "model_matched"
 
 
 def test_question_number_only_excerpt_does_not_block_answer_match(db, tmp_path, monkeypatch):

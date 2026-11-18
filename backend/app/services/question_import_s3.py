@@ -38,6 +38,14 @@ def _answer_id(answers: list[dict[str, Any]]) -> str:
     return "source-" + hashlib.sha256(content.encode("utf-8")).hexdigest()[:24]
 
 
+def source_answer_identity(answer: dict[str, Any]) -> str:
+    fields = ("source_file_id", "page_start", "page_end", "original_number",
+              "subquestion_number", "text")
+    content = json.dumps({field: answer.get(field) for field in fields},
+                         ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()[:24]
+
+
 def _text_key(value: object) -> str:
     if not isinstance(value, str):
         return ""
@@ -105,6 +113,20 @@ def _already_linked_source_answer(item: QuestionImportItem, version: dict[str, A
         and all(answer.get(field) == version[field] for field in ("answer_id", "text", "evidence"))
         for answer in (item.payload.get("answers") or [])
     )
+
+
+def linked_source_answer_item(answer: dict[str, Any], items: list[QuestionImportItem]) -> QuestionImportItem | None:
+    """Find an existing exact source link, including one made by original-page review."""
+    source_text = (f"{answer['subquestion_number']}：{answer['text']}"
+                   if answer.get("subquestion_number") else answer.get("text"))
+    for item in items:
+        for version in item.payload.get("answers") or []:
+            if version.get("answer_source") != "source_extracted" or version.get("text") != source_text:
+                continue
+            if (version.get("answer_id") == _answer_id([answer])
+                    or version.get("source_identity") == source_answer_identity(answer)):
+                return item
+    return None
 
 
 def _classify_overlap_duplicates(s2: dict[str, Any], result: dict[str, Any],
@@ -218,11 +240,18 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
     answer_sections = _source_sections(batch, "answers") if question_sections else {}
 
     matched: dict[uuid.UUID, list[dict[str, Any]]] = defaultdict(list)
+    already_linked_item_ids: set[uuid.UUID] = set()
+    linked_count = 0
     unassigned: list[dict[str, Any]] = []
     answer_count = 0
     for unit in source_units.get("units") or []:
         for answer in unit.get("source_answers") or []:
             answer_count += 1
+            linked_item = linked_source_answer_item(answer, items)
+            if linked_item is not None:
+                already_linked_item_ids.add(linked_item.id)
+                linked_count += 1
+                continue
             key = _number_key(answer.get("original_number"))
             targets = by_number.get(key, []) if key else []
             answer_section = answer_sections.get(answer.get("page_start"))
@@ -282,7 +311,6 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
         else:
             matched[item_id] = answers
 
-    linked_count = 0
     for item in items:
         answers = matched.get(item.id)
         if not answers:
@@ -300,6 +328,8 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
         version = {"answer_id": _answer_id(ordered), "answer_source": "source_extracted",
                    "text": "\n".join(text_parts), "evidence": evidence,
                    "teacher_confirmed": False}
+        if len(ordered) == 1:
+            version["source_identity"] = source_answer_identity(ordered[0])
         if _already_linked_source_answer(item, version):
             linked_count += len(ordered)
             continue
@@ -322,12 +352,20 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
             item.payload = payload
         linked_count += len(ordered)
 
+    remaining_unassigned = []
+    for answer in unassigned:
+        linked_item = linked_source_answer_item(answer, items)
+        if linked_item is None:
+            remaining_unassigned.append(answer)
+        else:
+            linked_count += 1
+            already_linked_item_ids.add(linked_item.id)
     result = {"schema_version": "s3-source-answer-reconciliation-v2",
               "source_answer_count": answer_count, "linked_answer_count": linked_count,
-              "linked_question_count": len(matched),
+              "linked_question_count": len(set(matched) | already_linked_item_ids),
               "removed_nonquestion_candidate_count": 0,
               "deduplicated_answer_count": duplicate_answer_count,
-              "unassigned_answers": unassigned,
+              "unassigned_answers": remaining_unassigned,
               "source_prompt_version": source_version}
     result = _classify_overlap_duplicates(source_units, result, items)
     checkpoint = dict(batch.checkpoint or {})

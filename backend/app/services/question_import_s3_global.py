@@ -20,7 +20,7 @@ from app.services.question_import import OWNER_SCOPE, ImportProblem, require_s2_
 from app.services.question_import_s2 import FLASH_MODEL, estimate_cost
 from app.services.question_import_s3 import reconcile_source_answers
 from app.services.question_import_s3_review import (
-    _apply_overlap_advice, _batch_review_spent, list_review_issues, review_issue,
+    _apply_overlap_advice, _batch_review_spent,
 )
 
 GLOBAL_DEDUPE_VERSION = "s3-global-dedupe-v2"
@@ -207,32 +207,6 @@ def dedupe_batch(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
     checkpoint["s3"] = s3
     batch.checkpoint = checkpoint
     db.commit()
-    if result["status"] == "completed" and batch.source_mode == "combined" and not automatic:
-        reviewed_answers = assigned_answers = 0
-        review_error = None
-        for issue in list_review_issues(db, batch_id):
-            if issue["kind"] != "answer" or not issue["page_numbers"] or not issue["candidate_item_ids"]:
-                continue
-            if issue["candidate_total"] > len(issue["candidate_item_ids"]):
-                continue
-            try:
-                answer_review = review_issue(db, batch_id, issue["key"], budget_cny=budget_cny,
-                                             operator_token=operator_token)
-            except ImportProblem as exc:
-                review_error = exc.code
-                break
-            reviewed_answers += 1
-            assigned_answers += answer_review.get("assigned_answer_count") or 0
-        result = {**result, "auto_answer_reviewed_count": reviewed_answers,
-                  "auto_answer_assigned_count": assigned_answers,
-                  "auto_answer_review_error_code": review_error}
-        batch = db.scalar(select(QuestionImportBatch).where(QuestionImportBatch.id == batch_id).with_for_update())
-        checkpoint = dict(batch.checkpoint or {})
-        s3 = dict(checkpoint.get("s3") or {})
-        s3["global_dedupe"] = result
-        checkpoint["s3"] = s3
-        batch.checkpoint = checkpoint
-        db.commit()
     return result
 
 

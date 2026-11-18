@@ -290,11 +290,12 @@ def test_unassigned_answer_is_grouped_by_source_page(db, tmp_path, monkeypatch):
                         }]}}}
     db.flush()
     issues = list_review_issues(db, batch.id)
-    assert issues[0]["key"] == "answer:0"
+    answer_key = issues[0]["key"]
+    assert answer_key.startswith("answer:") and answer_key != "answer:0"
     assert issues[0]["unit_index"] == 0
     assert issues[0]["answer_text"] == "2"
     assert issues[0]["answer_number"] == "1"
-    assert list_review_units(db, batch.id)[0]["issue_keys"] == ["answer:0"]
+    assert list_review_units(db, batch.id)[0]["issue_keys"] == [answer_key]
 
     class FakeProvider:
         def review(self, pdf_data, issue, pages):
@@ -304,12 +305,34 @@ def test_unassigned_answer_is_grouped_by_source_page(db, tmp_path, monkeypatch):
                         "estimated_cny": 0.01}
 
     monkeypatch.setattr(review_service, "QwenIssueReviewProvider", FakeProvider)
-    result = review_issue(db, batch.id, "answer:0", budget_cny=1, operator_token="operator-test")
+    result = review_issue(db, batch.id, answer_key, budget_cny=1, operator_token="operator-test")
     assert result["assigned_answer_count"] == 1
     item = db.scalar(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch.id))
     assert item.payload["answers"][0]["text"] == "2"
     assert batch.checkpoint["s3"]["source_answer_reconciliation"]["unassigned_answers"] == []
-    assert review_issue(db, batch.id, "answer:0", budget_cny=1, operator_token="operator-test") == result
+    assert review_issue(db, batch.id, answer_key, budget_cny=1, operator_token="operator-test") == result
+
+
+def test_answer_issue_key_survives_earlier_answer_assignment():
+    from types import SimpleNamespace
+
+    answers = [{"source_file_id": "source", "original_number": str(index),
+                "page_start": index, "page_end": index, "text": str(index + 1),
+                "reason": "question_not_found"} for index in (1, 2)]
+    batch = SimpleNamespace(source_mode="combined", checkpoint={
+        "s2": {"units": []}, "s3": {"source_answer_reconciliation": {
+            "unassigned_answers": answers}}})
+    before = review_service._issue_rows(batch, [])
+    batch.checkpoint["s3"]["source_answer_reconciliation"]["unassigned_answers"] = answers[1:]
+    after = review_service._issue_rows(batch, [])
+    assert after[0]["key"] == before[1]["key"]
+    assert after[0]["key"] != before[0]["key"]
+
+    legacy_key = "answer:1"
+    legacy_review = {"status": "completed", "issue_fingerprint": review_service._issue_fingerprint({
+        **after[0], "key": legacy_key})}
+    saved, stale = review_service._saved_review(after[0], {legacy_key: legacy_review})
+    assert saved is legacy_review and not stale
 
 
 def test_model_review_rejects_unlisted_candidate_and_page(monkeypatch):

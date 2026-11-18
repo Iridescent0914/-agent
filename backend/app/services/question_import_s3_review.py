@@ -5,6 +5,7 @@ import base64
 import copy
 import hashlib
 import json
+import re
 import time
 import uuid
 from datetime import datetime, timezone
@@ -23,7 +24,9 @@ from app.services.question_import import (
     DOCX_CONVERSION_VERSION, OWNER_SCOPE, ImportProblem, active_candidate, require_s2_operator_token,
 )
 from app.services.question_import_s2 import FLASH_MODEL, estimate_cost, prepare_pdf
-from app.services.question_import_s3 import _answer_id, reconcile_source_answers
+from app.services.question_import_s3 import (
+    _answer_id, linked_source_answer_item, reconcile_source_answers, source_answer_identity,
+)
 
 REVIEW_VERSION = "s3-issue-review-v2"
 MAX_REVIEW_PAGES = 4
@@ -83,7 +86,10 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
                              "candidates": [_candidate_context(item) for item in nearby[:MAX_REVIEW_CANDIDATES]]})
     reconciliation = (checkpoint.get("s3") or {}).get("source_answer_reconciliation") or {}
     if batch.source_mode == "combined":
-        for index, answer in enumerate(reconciliation.get("unassigned_answers") or []):
+        for answer in reconciliation.get("unassigned_answers") or []:
+            if linked_source_answer_item(answer, items) is not None:
+                continue
+            answer_key = "answer:" + source_answer_identity(answer)
             number = str(answer.get("original_number") or "").strip()
             exact = [item for item in items if str((item.payload.get("source") or {}).get("original_number") or "").strip() == number] if number else []
             excerpt = str(answer.get("question_excerpt") or "").strip()
@@ -107,11 +113,29 @@ def _issue_rows(batch: QuestionImportBatch, items: list[QuestionImportItem]) -> 
                                 if isinstance(answer_page, int)
                                 and unit.get("core_first_page", unit.get("first_page", 0)) <= answer_page
                                 <= unit.get("core_last_page", unit.get("last_page", 0))), None)
-            rows.append({"key": f"answer:{index}", "kind": "answer", "unit_index": answer_unit,
+            rows.append({"key": answer_key, "kind": "answer", "unit_index": answer_unit,
                          "summary": f"第 {answer.get('page_start')} 页待认领答案（{answer.get('reason')}）",
                          "content": answer, "candidate_total": len(pool), "recall_method": recall_method,
                          "candidates": [_candidate_context(item) for item in pool[:MAX_REVIEW_CANDIDATES]]})
     return rows
+
+
+def _issue_fingerprint(issue: dict[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(issue, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+
+
+def _saved_review(issue: dict[str, Any], reviews: dict[str, dict[str, Any]]) -> tuple[dict[str, Any] | None, bool]:
+    saved = reviews.get(issue["key"])
+    if saved is not None:
+        return saved, saved.get("issue_fingerprint") != _issue_fingerprint(issue)
+    # Old answer keys used a shrinking list index. Only reuse a legacy result
+    # when its complete original issue fingerprint still matches this answer.
+    if issue["kind"] == "answer":
+        for key, review in reviews.items():
+            if re.fullmatch(r"answer:\d+", key) and review.get("issue_fingerprint") == _issue_fingerprint({
+                **issue, "key": key}):
+                return review, False
+    return None, False
 
 
 def _pages_for_issue(issue: dict[str, Any]) -> list[int]:
@@ -150,16 +174,16 @@ def list_review_issues(db: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]
             pages = _pages_for_issue(issue)
         except ImportProblem:
             pages = []
-        review = reviews.get(issue["key"])
-        current_fingerprint = hashlib.sha256(json.dumps(issue, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+        review, stale = _saved_review(issue, reviews)
         if review is not None:
-            review = {**review, "stale": review.get("issue_fingerprint") != current_fingerprint}
+            review = {**review, "stale": stale}
         result.append({"key": issue["key"], "kind": issue["kind"], "unit_index": issue["unit_index"],
                        "summary": issue["summary"],
                        "fragment_text": issue["content"].get("text") if issue["kind"] == "fragment" else None,
                        "fragment_reason": issue["content"].get("reason") if issue["kind"] == "fragment" else None,
                        "answer_text": issue["content"].get("text") if issue["kind"] == "answer" else None,
                        "answer_number": issue["content"].get("original_number") if issue["kind"] == "answer" else None,
+                       "source_answer": issue["content"] if issue["kind"] == "answer" else None,
                        "page_numbers": pages, "candidate_item_ids": [c["item_id"] for c in issue["candidates"]],
                        "candidate_total": issue.get("candidate_total", len(issue["candidates"])),
                        "recall_method": issue.get("recall_method"),
@@ -406,7 +430,8 @@ def _apply_answer_advice(db: Session, batch: QuestionImportBatch, issue: dict[st
     version = {"answer_id": _answer_id([answer]), "answer_source": "source_extracted",
                "text": text, "evidence": [{"file_id": answer["source_file_id"],
                                            "page": answer["page_start"], "block_id": None,
-                                           "quote": answer["text"][:300]}], "teacher_confirmed": False}
+                                           "quote": answer["text"][:300]}], "teacher_confirmed": False,
+               "source_identity": source_answer_identity(answer)}
     payload = dict(item.payload)
     payload["answers"] = [version]
     payload["answer_match_status"] = "model_matched"
@@ -439,7 +464,7 @@ def _group_plan(batch: QuestionImportBatch, items: list[QuestionImportItem], uni
     if unit_index < 0 or unit_index >= len(units):
         raise ImportProblem("NOT_FOUND", "页段不存在", 404)
     pending = [issue for issue in _issue_rows(batch, items)
-               if issue["unit_index"] == unit_index and issue["key"] not in reviews]
+               if issue["unit_index"] == unit_index and _saved_review(issue, reviews)[0] is None]
     eligible = []
     pages: set[int] = set()
     for issue in pending:
@@ -514,9 +539,9 @@ def review_issue(db: Session, batch_id: uuid.UUID, key: str, *, budget_cny: floa
     checkpoint = dict(batch.checkpoint or {})
     s3 = dict(checkpoint.get("s3") or {})
     reviews = dict(s3.get("issue_reviews") or {})
-    if key in reviews:
-        current_fingerprint = hashlib.sha256(json.dumps(issue, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
-        return {**reviews[key], "stale": reviews[key].get("issue_fingerprint") != current_fingerprint}
+    saved, stale = _saved_review(issue, reviews)
+    if saved is not None:
+        return {**saved, "stale": stale}
     if _review_call_count(reviews) >= settings.question_import_s2_max_calls:
         raise ImportProblem("CALL_LIMIT_REACHED", "复核调用次数已达上限", 409)
     minimum_cost = (len(pages) * settings.question_import_s2_pdf_page_price_cny

@@ -81,11 +81,12 @@ def test_global_model_removes_distant_answer_restatement_then_links_answer(db, t
     result = dedupe_batch(db, batch.id, budget_cny=1, operator_token="operator-test")
     assert result["status"] == "completed"
     assert result["removed_duplicate_count"] == 1
-    assert result["auto_answer_assigned_count"] == 1
+    assert "auto_answer_assigned_count" not in result
     assert len(calls) == 1
     saved = list(db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch.id)))
     assert [item.id for item in saved] == [first.id]
-    assert saved[0].payload["answers"][0]["text"] == "2"
-    assert batch.checkpoint["s3"]["source_answer_reconciliation"]["linked_answer_count"] == 1
+    assert saved[0].payload["answers"] == []
+    assert batch.checkpoint["s3"]["source_answer_reconciliation"]["linked_answer_count"] == 0
+    assert len(batch.checkpoint["s3"]["source_answer_reconciliation"]["unassigned_answers"]) == 1
     assert dedupe_batch(db, batch.id, budget_cny=1, operator_token="operator-test") == result
     assert len(calls) == 1
