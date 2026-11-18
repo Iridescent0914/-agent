@@ -52,7 +52,7 @@ export function AttemptEvidenceDrawer({ studentId, attemptId, onClose }: {
       <RichQuestionText text={value.question_snapshot.question_text ?? '题目快照缺失'} assets={value.assets} />
       {value.options_snapshot != null && <QuestionOptions options={value.options_snapshot} assets={value.assets} />}
       <Divider className="compact-divider" />
-      <Typography.Text strong>学生答案</Typography.Text><AnswerView answer={value.student_answer} assets={value.assets} />
+      <Typography.Text strong>学生答案</Typography.Text><AnswerView answer={value.student_answer} referenceAnswer={value.answer_snapshot} assets={value.assets} />
       <Typography.Text strong>当时标准答案</Typography.Text><AnswerView answer={value.answer_snapshot} assets={value.assets} />
       <Typography.Text type="secondary">修订原因：{value.revision?.reason ?? '修订记录缺失'}</Typography.Text>
       <details className="evidence-details"><summary>判分规则与修订记录</summary><pre className="json-block">{JSON.stringify({ rules: value.answer_rule_snapshot, revision: value.revision }, null, 2)}</pre></details>

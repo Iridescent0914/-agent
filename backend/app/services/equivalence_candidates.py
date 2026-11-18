@@ -118,8 +118,12 @@ def classify_unit(*, question_type, reference, rule, item_id, student_answer,
     if details is None:
         return blocked("invalid_rule", "本空评分规则不可用，请人工核对")
     if details["is_correct"] is True:
+        if match_type == "numeric":
+            return blocked("rule_correct", "本空按数值规则计算结果相等；无需模型建议")
         return blocked("rule_correct", "规则已确认本空正确（含已登记的答案别名）")
     if details["is_correct"] is False:
+        if match_type == "exact":
+            return blocked("rule_incorrect", "本空按精确文本规则未匹配标答或已登记别名；尚未进行语义等价判断，可人工复核")
         return blocked("rule_incorrect", "规则已有明确结果，请按现有判分或人工复核处理")
     if question_type != "fill_blank" or match_type != "latex_exact":
         return blocked("outside_scope", "首批仅处理公式匹配规则尚未确定的填空答案")

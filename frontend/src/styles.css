@@ -146,6 +146,9 @@ a { color: inherit; }
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+
+.math-input-hint { margin-top: 6px; color: #666; font-size: 12px; }
+.math-input-warning { margin-top: 6px; color: #ad4e00; font-size: 13px; }
 .question-review-action {
   display: flex;
   align-items: center;

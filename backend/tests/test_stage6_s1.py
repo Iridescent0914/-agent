@@ -30,6 +30,7 @@ from app.services.assessment_worker import claim_one, finish, process_one
 @pytest.fixture
 def context(monkeypatch):
     monkeypatch.setattr(get_settings(), "stage6_enabled", True)
+    monkeypatch.setattr(get_settings(), "stage6_equivalence_provider", "fake")
     monkeypatch.setattr(get_settings(), "app_env", "test")
     with engine.connect() as connection:
         transaction = connection.begin()

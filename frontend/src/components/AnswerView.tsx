@@ -3,6 +3,7 @@ import { answerMatchTypeLabel } from '../utils/gradingLabels'
 import type { AssetInfo } from '../types'
 import { RichQuestionText } from './RichQuestionText'
 import { ReadOnlyMath } from './ReadOnlyMath'
+import { answerUnitCoordinates } from '../utils/answerUnits'
 
 function scalar(value: unknown): string {
   if (Array.isArray(value)) return value.map(scalar).join(' / ')
@@ -11,7 +12,7 @@ function scalar(value: unknown): string {
   return String(value)
 }
 
-export function AnswerView({ answer, assets = [] }: { answer: unknown; assets?: AssetInfo[] }) {
+export function AnswerView({ answer, assets = [], referenceAnswer }: { answer: unknown; assets?: AssetInfo[]; referenceAnswer?: unknown }) {
   function content(value: unknown) {
     const text = scalar(value)
     if (/\\(?:overline|frac|sqrt|cdot|times|pm)\b/.test(text) && !/\[ASSET:|\\\(|\\\[/.test(text)) {
@@ -35,10 +36,13 @@ export function AnswerView({ answer, assets = [] }: { answer: unknown; assets?: 
       accepted_answers?: string[]
       answer_match_type?: string
     }> }).items || []
+    const reference = referenceAnswer as { kind?: string; items?: typeof items } | undefined
+    const referenceById = new Map(reference?.kind === 'group' ? reference.items?.map(part => [part.item_id, part]) : [])
     return (
       <Descriptions bordered size="small" column={1}>
-        {items.map((item) => (
-          <Descriptions.Item key={item.item_id} label={`第 ${item.subquestion_no ?? 1} 小题 · 第 ${item.blank_no ?? 1} 空`}>
+        {items.map((item, index) => {
+          const coordinates = answerUnitCoordinates(item, index, referenceById.get(item.item_id))
+          return <Descriptions.Item key={item.item_id} label={`第 ${coordinates.subquestion_no} 小题 · 第 ${coordinates.blank_no} 空`}>
             {content(item.answer)}{' '}
             {item.answer_match_type && <Tag>{answerMatchTypeLabel(item.answer_match_type)}</Tag>}
             {item.accepted_answers && item.accepted_answers.filter((value) => value !== scalar(item.answer)).length > 0 && (
@@ -47,7 +51,7 @@ export function AnswerView({ answer, assets = [] }: { answer: unknown; assets?: 
               ))}</Typography.Text>
             )}
           </Descriptions.Item>
-        ))}
+        })}
       </Descriptions>
     )
   }

@@ -8,7 +8,7 @@ const reference = { kind: 'group', items: [
   { item_id: 'sub_2.blank_1', subquestion_no: 2, blank_no: 1, answer: '1', answer_match_type: 'numeric' },
 ] }
 
-async function installMock(page: Page, enabled = true) {
+async function installMock(page: Page, enabled = true, real = false) {
   const officialWrites: string[] = []
   const feedbackWrites: Record<string, unknown>[] = []
   let task: Record<string, any> | null = null
@@ -40,7 +40,9 @@ async function installMock(page: Page, enabled = true) {
           answered_at: '2026-11-18T00:00:00Z', reviewed_at: null, used_in_profile: true,
           exclusion_reason: null, recognition_status: null, ocr_confidence: null } }], mastery_update_stats: null,
     })
-    if (path === '/internal/stage6/status') return json({ enabled, provider: 'fake', real_provider_available: false })
+    if (path === '/internal/stage6/status') return json({ enabled, provider: real ? 'bailian' : 'fake', model: real ? 'qwen3.7-flash' : null,
+      real_provider_available: real, budget: real ? { calls: task ? 1 : 0, max_calls: 20, estimated_cost_cny: task ? 0.00018 : 0,
+        reserved_cost_cny: 0, max_budget_cny: 1, unknown_calls: 0 } : null })
     if (path === '/internal/stage6/equivalence-preview') {
       const body = route.request().postDataJSON()
       expect(body.student_answer).toBeNull()
@@ -56,14 +58,14 @@ async function installMock(page: Page, enabled = true) {
       expect(body.item_id).toBe('sub_1.blank_1')
       expect(body.expected_input_revision).toBe(0)
       task = { id: taskId, status: 'queued', input_revision: 1, attempt_count: 0, max_attempts: 3,
-        retryable: false, synthetic: true, provider: 'fake', model: 'fake-stage6-v1', error_code: null,
+        retryable: false, synthetic: !real, provider: real ? 'bailian' : 'fake', model: real ? 'qwen3.7-flash' : 'fake-stage6-v1', error_code: null,
         created_at: '2026-11-18T00:00:00Z', snapshot: { item_id: 'sub_1.blank_1', subquestion_no: 1, blank_no: 1 },
         request_payload: { reference_answer: 'x+x', student_answer: '2x' }, result: null }
       return json(task)
     }
     if (path === `/internal/stage6/equivalence-tasks/${taskId}`) {
       task = { ...task, status: 'succeeded', attempt_count: 1,
-        result: { verdict: 'uncertain', explanation: 'S1 fake仅验证调用链路，未执行数学等价判断。' } }
+        result: { verdict: real ? 'equivalent' : 'uncertain', explanation: real ? '两段表达式恒等。' : 'S1 fake仅验证调用链路，未执行数学等价判断。' } }
       return json(task)
     }
     if (path.includes('/quality-feedback/equivalence/')) {
@@ -122,4 +124,18 @@ test('feature off leaves the grading page without the internal suggestion entry'
   await page.goto(`/paper-instances/${paperId}/grading`)
   await expect(page.getByRole('heading', { name: 'S001 · 样例学生', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '答案等价建议', exact: true })).toHaveCount(0)
+})
+
+test('configured text model shows real mode and returns an unadopted suggestion', async ({ page }) => {
+  const observed = await installMock(page, true, true)
+  await page.goto(`/paper-instances/${paperId}/grading`)
+  await page.getByRole('button', { name: '答案等价建议', exact: true }).click()
+  const drawer = page.getByRole('dialog', { name: '第 3 题 · 答案等价建议' })
+  await expect(drawer.getByText('文本模型：qwen3.7-flash')).toBeVisible()
+  await drawer.getByRole('button', { name: '检查本空是否需要建议' }).click()
+  await expect(drawer.getByText('本空规则尚未确认，可请求等价建议')).toBeVisible()
+  await drawer.getByRole('button', { name: '生成等价建议（调用模型）' }).click()
+  await expect(drawer.getByText('建议：等价', { exact: true })).toBeVisible()
+  await expect(drawer.getByText('模拟结果', { exact: true })).toHaveCount(0)
+  expect(observed.officialWrites).toEqual([])
 })

@@ -20,10 +20,11 @@ from app.schemas.assessment import (
     CreateAssessmentTask, EquivalenceGold, EquivalenceRequest, QualityFeedbackIn,
     RecognitionGold,
 )
-from app.services.assessment_protocol import FAKE_MODEL, POLICY_VERSION, PROMPT_VERSION, canonical_json, input_hash
+from app.services.assessment_protocol import POLICY_VERSION, canonical_json, input_hash
 from app.services.print_view import answer_subquestions, print_source_module
 from app.services.submission_workflow import _grading_reference, _initial_grading_reference
 from app.services.equivalence_candidates import classify_unit
+from app.services.equivalence_bailian import configuration
 
 
 class AssessmentProblem(Exception):
@@ -39,7 +40,7 @@ def now():
 
 def enabled():
     if not get_settings().stage6_enabled or get_settings().app_env not in {"development", "test"}:
-        raise AssessmentProblem("MODEL_DISABLED", "S1内部fake功能尚未启用", 403)
+        raise AssessmentProblem("MODEL_DISABLED", "阶段六内部建议功能尚未启用", 403)
 
 
 def _paper_item(db, item_id, *, active=True):
@@ -143,6 +144,10 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
         }
     if not candidate["eligible"]:
         raise AssessmentProblem("NOT_ELIGIBLE", candidate["message"], 422)
+    try:
+        provider_config = configuration()
+    except ValueError as exc:
+        raise AssessmentProblem("CONFIG_INCOMPLETE", "请检查阶段六供应商、模型、北京地域接口地址和API Key配置", 422) from exc
     student_answer = _text(student_answer)
     snapshot = {
         "hash_version": "stage6-input-hash-v1",
@@ -183,7 +188,7 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
             old.lease_token, old.lease_until = None, None
     dedup = input_hash({
         "kind": "equivalence", "input_id": str(current_input.id), "revision": current_input.revision_no,
-        "snapshot": snapshot, "provider": "fake", "model": FAKE_MODEL, "prompt": PROMPT_VERSION,
+        "snapshot": snapshot, "configuration": provider_config,
         "policy": POLICY_VERSION, "protocol": "stage6-equivalence-request-v1",
         "rerun": str(uuid4()) if rerun_of else None,
     })
@@ -198,10 +203,12 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
     task = AssessmentTask(
         input_id=current_input.id, input_revision=current_input.revision_no,
         dedup_key=dedup, snapshot=deepcopy(snapshot), request_payload=payload,
-        provider="fake", model=FAKE_MODEL, prompt_version=PROMPT_VERSION, policy_version=POLICY_VERSION,
+        provider=provider_config["provider"], model=provider_config["model"],
+        prompt_version=provider_config["prompt_version"], policy_version=POLICY_VERSION,
         max_attempts=settings.stage6_max_attempts, timeout_seconds=settings.stage6_timeout_seconds,
         lease_seconds=settings.stage6_lease_seconds, rerun_of=rerun_of, rerun_reason=reason,
-        action_history=[{"action": "rerun" if rerun_of else "create", "reason": reason, "at": now().isoformat()}],
+        action_history=[{"action": "rerun" if rerun_of else "create", "reason": reason, "at": now().isoformat(),
+                         "provider_config": provider_config}],
     )
     db.add(task)
     db.flush()

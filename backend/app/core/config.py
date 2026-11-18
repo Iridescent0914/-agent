@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 
 
 class Settings(BaseSettings):
@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     stage6_timeout_seconds: int = Field(default=10, ge=1, le=120)
     stage6_lease_seconds: int = Field(default=30, ge=2, le=600)
     stage6_max_attempts: int = Field(default=3, ge=1, le=5)
+    stage6_equivalence_provider: str = "fake"
+    stage6_equivalence_api_key: SecretStr = SecretStr("")
+    stage6_equivalence_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    stage6_equivalence_model: str = "qwen3.7-flash"
+    stage6_equivalence_max_output_tokens: int = Field(default=512, ge=128, le=2048)
+    # Cumulative limits for this database, including failed and cancelled calls.
+    stage6_equivalence_max_calls: int = Field(default=20, ge=1, le=10000)
+    stage6_equivalence_max_budget_cny: float = Field(default=1, gt=0, le=1000, allow_inf_nan=False)
 
     @model_validator(mode="after")
     def stage6_valid_lease(self):

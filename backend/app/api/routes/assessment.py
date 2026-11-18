@@ -11,6 +11,8 @@ from app.core.database import get_db
 from app.models import AssessmentTask
 from app.schemas.assessment import CreateAssessmentTask, QualityFeedbackIn, TaskAction
 from app.services import assessment as service
+from app.services.equivalence_bailian import configuration
+from app.services.assessment_worker import budget_state
 
 
 def internal_only():
@@ -23,9 +25,18 @@ router = APIRouter(prefix="/internal/stage6", tags=["stage6-internal"], dependen
 
 
 @router.get("/status")
-def status():
-    return {"enabled": get_settings().stage6_enabled, "provider": "fake",
-            "policy_version": service.POLICY_VERSION, "real_provider_available": False}
+def status(db: Session = Depends(get_db)):
+    settings = get_settings()
+    config_error = None
+    try:
+        config = configuration()
+    except ValueError:
+        config, config_error = {}, "CONFIG_INCOMPLETE"
+    return {"enabled": settings.stage6_enabled, "provider": settings.stage6_equivalence_provider,
+            "model": config.get("model"), "config_error": config_error,
+            "policy_version": service.POLICY_VERSION,
+            "real_provider_available": config.get("provider") == "bailian" and config_error is None,
+            "budget": budget_state(db) if settings.stage6_equivalence_provider == "bailian" else None}
 
 
 @router.post("/equivalence-preview")
