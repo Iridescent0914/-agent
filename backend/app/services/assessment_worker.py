@@ -3,17 +3,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
+from decimal import Decimal
 import time
 from uuid import UUID, uuid4
 
 from pydantic import ValidationError
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, or_, select, text
 
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.models import AssessmentCall, AssessmentTask
 from app.services.assessment import _paper_item, binding_error, now
 from app.services.assessment_protocol import EquivalenceAdapter, FakeEquivalenceAdapter, parse_response
+from app.services.equivalence_bailian import BailianEquivalenceAdapter, ProviderResult, configuration, reservation
 
 
 @dataclass(frozen=True)
@@ -23,6 +25,35 @@ class Claim:
     token: UUID
     request: dict
     timeout_seconds: int
+    provider: str = "fake"
+    config: dict | None = None
+
+
+def budget_state(db, *, lock=False):
+    if lock:
+        # One DB-wide gate for all real equivalence calls, across workers and
+        # students. Reservations commit before HTTP; changing a Key doesn't reset it.
+        db.execute(text("SELECT pg_advisory_xact_lock(60062026)"))
+    db.flush()
+    rows = db.execute(select(AssessmentCall, AssessmentTask).join(
+        AssessmentTask, AssessmentCall.task_id == AssessmentTask.id,
+    ).where(AssessmentTask.provider == "bailian", AssessmentTask.kind == "equivalence")
+      .execution_options(populate_existing=True)).all()
+    cost, reserved, unknown = Decimal(0), Decimal(0), 0
+    for call, task in rows:
+        usage = call.usage
+        if usage.get("usage_status") == "known" and usage.get("cost_cny") is not None:
+            cost += Decimal(str(usage["cost_cny"]))
+        elif (usage.get("usage_status") == "reserved" and call.status == "running"
+              and task.status == "running" and task.lease_until and task.lease_until > now()):
+            reserved += Decimal(str(usage["reserved_cost_cny"]))
+        else:
+            unknown += 1
+    settings = get_settings()
+    return {"scope": "database_cumulative_equivalence", "calls": len(rows), "unknown_calls": unknown,
+            "estimated_cost_cny": float(cost), "reserved_cost_cny": float(reserved),
+            "max_calls": settings.stage6_equivalence_max_calls,
+            "max_budget_cny": settings.stage6_equivalence_max_budget_cny}
 
 
 def claim_one(session_factory=SessionLocal) -> Claim | None:
@@ -30,19 +61,50 @@ def claim_one(session_factory=SessionLocal) -> Claim | None:
         return None
     current = now()
     with session_factory.begin() as db:
-        task = db.scalar(select(AssessmentTask).where(or_(
+        eligible = or_(
             AssessmentTask.status == "queued",
             and_(AssessmentTask.status == "running", AssessmentTask.lease_until <= current),
-        )).order_by(AssessmentTask.created_at, AssessmentTask.id).with_for_update(skip_locked=True).limit(1))
+        )
+        candidate = db.scalar(select(AssessmentTask).where(eligible).order_by(AssessmentTask.created_at, AssessmentTask.id).limit(1))
+        if candidate is None:
+            return None
+        # Same paper -> task lock order as all other writers. Revalidate before
+        # paying for a call, not just when the response eventually returns.
+        _paper_item(db, UUID(candidate.snapshot["paper_instance_item_id"]), active=False)
+        task = db.scalar(select(AssessmentTask).where(AssessmentTask.id == candidate.id, eligible)
+                         .with_for_update(skip_locked=True).execution_options(populate_existing=True))
         if task is None:
             return None
         if task.status == "running":
             old = db.scalar(select(AssessmentCall).where(AssessmentCall.lease_token == task.lease_token))
             if old:
                 old.status, old.error_code, old.completed_at = "abandoned", "LEASE_EXPIRED", current
-        if task.attempt_count >= task.max_attempts or task.provider != "fake":
+        stale = binding_error(db, task) if task.provider != "fake" else None
+        error, reserve, config = stale, None, None
+        if not error and task.attempt_count >= task.max_attempts:
+            error = "BUDGET_EXHAUSTED"
+        if not error and task.provider != "fake":
+            try:
+                config = configuration()
+                frozen = task.action_history[0].get("provider_config")
+                if task.provider != "bailian" or config != frozen:
+                    error = "CONFIG_CHANGED"
+                else:
+                    reserve = reservation(task.request_payload, config)
+                    budget = budget_state(db, lock=True)
+                    if budget["unknown_calls"]:
+                        error = "MODEL_USAGE_UNKNOWN"
+                    elif (budget["calls"] >= budget["max_calls"]
+                          or sum(Decimal(str(x)) for x in (budget["estimated_cost_cny"], budget["reserved_cost_cny"], reserve["reserved_cost_cny"]))
+                          > Decimal(str(budget["max_budget_cny"]))):
+                        error = "BUDGET_EXHAUSTED"
+            except (ValueError, KeyError, IndexError):
+                error = "CONFIG_INCOMPLETE"
+        if error:
             task.status = "failed"
-            task.error_code = "BUDGET_EXHAUSTED" if task.provider == "fake" else "CONFIG_INCOMPLETE"
+            if stale:
+                task.status = "stale"
+            task.error_code = error
             task.lease_token, task.lease_until, task.completed_at = None, None, current
             return None
         task.status, task.error_code, task.completed_at = "running", None, None
@@ -52,14 +114,16 @@ def claim_one(session_factory=SessionLocal) -> Claim | None:
         call = AssessmentCall(
             task_id=task.id, call_no=task.attempt_count, lease_token=task.lease_token,
             status="running", started_at=current,
-            usage={"usage_status": "known", "cost_cny": 0, "input_tokens": 0, "output_tokens": 0, "synthetic": True},
+            usage=({"usage_status": "reserved", "cost_cny": None, "synthetic": False,
+                    "provider_config": config, **reserve} if reserve else
+                   {"usage_status": "known", "cost_cny": 0, "input_tokens": 0, "output_tokens": 0, "synthetic": True}),
         )
         db.add(call)
         db.flush()
-        return Claim(task.id, call.id, task.lease_token, task.request_payload, task.timeout_seconds)
+        return Claim(task.id, call.id, task.lease_token, task.request_payload, task.timeout_seconds, task.provider, config)
 
 
-def finish(claim: Claim, raw: str | None, parsed: dict | None, error: str | None, session_factory=SessionLocal):
+def finish(claim: Claim, raw: str | None, parsed: dict | None, error: str | None, session_factory=SessionLocal, *, usage=None):
     with session_factory.begin() as db:
         initial = db.get(AssessmentTask, claim.task_id)
         _paper_item(db, UUID(initial.snapshot["paper_instance_item_id"]), active=False)
@@ -67,6 +131,8 @@ def finish(claim: Claim, raw: str | None, parsed: dict | None, error: str | None
         call = db.get(AssessmentCall, claim.call_id)
         if call.status in {"succeeded", "failed", "late"}:
             return  # A repeated finish must not rewrite the first received output.
+        if usage is not None:
+            call.usage = {**call.usage, **usage}
         # Keep late output attached to its original call, never to the new lease.
         call.raw_response, call.parsed_response = raw, parsed
         call.completed_at = now()
@@ -89,20 +155,29 @@ def process_one(session_factory=SessionLocal, adapter: EquivalenceAdapter | None
     claim = claim_one(session_factory)
     if claim is None:
         return False
-    raw, parsed, error = None, None, None
+    raw, parsed, error, usage = None, None, None, None
     started = time.monotonic()
     try:
-        # No transaction/session spans this boundary. Real transports in S2 must
-        # also enforce the passed deadline at the HTTP client itself.
-        raw = (adapter or FakeEquivalenceAdapter()).invoke(claim.request, timeout_seconds=claim.timeout_seconds)
+        # Injected adapters are for offline tests. A real task must never silently
+        # fall back to fake on a configuration or transport error.
+        transport = adapter or (BailianEquivalenceAdapter(claim.config) if claim.provider == "bailian" else FakeEquivalenceAdapter())
+        output = transport.invoke(claim.request, timeout_seconds=claim.timeout_seconds)
+        if isinstance(output, ProviderResult):
+            raw, content, usage, error = output.raw, output.content, output.usage, output.error
+        else:
+            raw = content = output
+            if claim.provider != "fake":
+                usage, error = {"usage_status": "unknown", "cost_cny": None}, "MODEL_USAGE_UNKNOWN"
         if time.monotonic() - started > claim.timeout_seconds:
             error = "MODEL_TIMEOUT"
-        elif not isinstance(raw, str) or len(raw) > 64000:
+        elif error:
+            pass
+        elif not isinstance(content, str) or len(content) > 64000:
             error = "MODEL_SCHEMA_INVALID"
             raw = raw[:64000] if isinstance(raw, str) else repr(type(raw))
         else:
             try:
-                parsed = parse_response(raw, claim.request)
+                parsed = parse_response(content, claim.request)
             except (ValueError, TypeError, ValidationError):
                 error = "MODEL_SCHEMA_INVALID"
     except TimeoutError:
@@ -110,5 +185,7 @@ def process_one(session_factory=SessionLocal, adapter: EquivalenceAdapter | None
     except Exception:
         # Exception strings can contain provider credentials/input; don't log them.
         error = "MODEL_PROVIDER_FAILED"
-    finish(claim, raw, parsed, error, session_factory)
+    if claim.provider == "bailian" and usage is None:
+        usage = {"usage_status": "unknown", "cost_cny": None, "synthetic": False}
+    finish(claim, raw, parsed, error, session_factory, usage=usage)
     return True

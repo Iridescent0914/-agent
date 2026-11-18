@@ -2,6 +2,7 @@ import { Checkbox, Input, Radio, Segmented, Space, Typography } from 'antd'
 import { useState } from 'react'
 import type { AnswerDraft, SubmissionPaperItem } from '../types/submission'
 import { MathAnswerInput } from './MathAnswerInput'
+import { answerUnitCoordinates } from '../utils/answerUnits'
 
 interface GroupAnswerItem {
   item_id: string
@@ -106,12 +107,13 @@ export function ManualAnswerEditor({ item, value, onChange, disabled = false }: 
   return <Space direction="vertical" className="answer-editor" size="middle">
     <Checkbox checked={value.response_status === 'blank'} disabled={disabled} onChange={(event) => setBlank(event.target.checked)}>学生整题留空</Checkbox>
     {value.response_status !== 'blank' && group && groupValue && <Space direction="vertical" className="group-answer-editor">
-      {groupValue.items.map((part) => <Space key={part.item_id} align="start" className="group-answer-row">
+      {groupValue.items.map((part, index) => <Space key={part.item_id} data-item-id={part.item_id} align="start" className="group-answer-row">
         <Typography.Text strong>{(() => {
           const expected = expectedPartById.get(part.item_id)
-          const subquestion = `第 ${expected?.subquestion_no ?? 1} 小题`
+          const coordinates = answerUnitCoordinates(part, index, expected)
+          const subquestion = `第 ${coordinates.subquestion_no} 小题`
           return item.question_snapshot.question_type === 'fill_blank'
-            ? `${subquestion} · 第 ${expected?.blank_no ?? 1} 空`
+            ? `${subquestion} · 第 ${coordinates.blank_no} 空`
             : subquestion
         })()}</Typography.Text>
         <div className="manual-answer-field">

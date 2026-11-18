@@ -78,6 +78,19 @@ def test_aliases_are_checked_before_model_and_other_wrong_leaf_does_not_hide_can
     assert candidate["eligible"] and not wrong["eligible"]
 
 
+@pytest.mark.parametrize("student,expected", [("一样", "相等"), ("负数", "负")])
+def test_exact_text_mismatch_message_does_not_claim_semantic_inequality(student, expected):
+    result = route(student, expected, "exact")
+    assert result["reason_code"] == "rule_incorrect" and not result["eligible"]
+    assert "精确文本" in result["message"] and "尚未进行语义等价判断" in result["message"]
+
+
+def test_plus_sign_is_numeric_equality_without_model():
+    result = route("+30", "30", "numeric")
+    assert result["rule_result"]["is_correct"] is True and not result["eligible"]
+    assert "数值规则" in result["message"]
+
+
 def test_preview_is_read_only_and_create_cannot_bypass_candidate_gate(context):
     db, factory, paper, item, question = context
     before = protected_counts(db)

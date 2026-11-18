@@ -1,7 +1,17 @@
 export type EquivalenceVerdict = 'equivalent' | 'not_equivalent' | 'uncertain'
 export type AssessmentStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'stale'
 
+export interface Stage6Status {
+  enabled: boolean
+  provider: string
+  model?: string | null
+  real_provider_available: boolean
+  config_error?: string | null
+  budget?: { calls: number; max_calls: number; estimated_cost_cny: number; reserved_cost_cny: number; max_budget_cny: number; unknown_calls: number } | null
+}
+
 export interface EquivalencePreview {
+  match_type?: string
   eligible: boolean
   reason_code: string
   message: string

@@ -84,12 +84,19 @@ def test_numeric_equivalence_obeys_snapshot_rules():
 
 @pytest.mark.parametrize(
     "answer",
-    ["1/0", "__import__('os')", "2 ** 999", "x + 1", "(" * 30 + "1" + ")" * 30],
+    ["1/0", "__import__('os')", "2 ** 999", "x + 1", "(" * 30 + "1" + ")" * 30,
+     r"-\frac{1}{\placeholder{}}56", "-(1)/(())56"],
 )
 def test_numeric_failures_never_execute_and_need_review(answer):
     result = grade_answer(answer, "1", rule("numeric"), response_status="answered")
     assert result.grade_status == "needs_review"
     assert result.is_correct is None
+
+
+def test_math_keyboard_negative_fraction_is_not_a_negative_integer():
+    numeric = rule("numeric", allow_equivalent_fraction=True, allow_fraction_decimal_equivalence=True)
+    assert grade_answer("(-1)/(56)", "-1/56", numeric, response_status="answered").is_correct is True
+    assert grade_answer("-156", "-1/56", numeric, response_status="answered").is_correct is False
 
 
 def test_group_aligns_by_item_id_and_preserves_item_results():

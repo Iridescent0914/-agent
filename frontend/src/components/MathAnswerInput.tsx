@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { MathfieldElement } from 'mathlive'
 import 'mathlive/fonts.css'
+import { hasIncompleteMath } from '../utils/answerUnits'
 
 interface MathAnswerInputProps {
   value: string
@@ -36,6 +37,19 @@ const COMMON_MATH_TEMPLATES: MathTemplate[] = [
   { label: '°', ariaLabel: '插入度数符号', latex: '^{\\circ}' },
 ]
 
+function exportedValue(field: MathfieldElement, format: 'latex' | 'ascii-math') {
+  const latex = field.getValue('latex')
+  // ASCII serialization can discard empty template slots. Never turn an
+  // unfinished fraction into an apparently complete integer for grading.
+  return hasIncompleteMath(latex) ? latex : field.getValue(format)
+}
+
+function restoreValue(field: MathfieldElement, value: string, format: 'latex' | 'ascii-math', asciiToLatex: (text: string) => string) {
+  // setValue() always reads LaTeX even though its option type exposes format.
+  const latex = format === 'ascii-math' && !value.includes('\\') ? asciiToLatex(value) : value
+  field.setValue(latex, { silenceNotifications: true })
+}
+
 export function MathAnswerInput({
   value,
   onChange,
@@ -48,6 +62,10 @@ export function MathAnswerInput({
   const mathfieldRef = useRef<MathfieldElement | null>(null)
   const onChangeRef = useRef(onChange)
   const lastEmittedRef = useRef<string | null>(null)
+  const asciiToLatexRef = useRef<(text: string) => string>(text => text)
+  const latestRef = useRef({ value, disabled, outputFormat, ariaLabel })
+  latestRef.current = { value, disabled, outputFormat, ariaLabel }
+  const [incomplete, setIncomplete] = useState(hasIncompleteMath(value))
 
   useEffect(() => {
     onChangeRef.current = onChange
@@ -60,18 +78,21 @@ export function MathAnswerInput({
     let cancelled = false
     let mathfield: MathfieldElement | null = null
     let handleInput: (() => void) | null = null
-    void import('mathlive').then(({ MathfieldElement }) => {
+    void import('mathlive').then(({ MathfieldElement, convertAsciiMathToLatex }) => {
       if (cancelled) return
       window.mathVirtualKeyboard.layouts = ['numeric', 'symbols', 'alphabetic', 'greek']
+      asciiToLatexRef.current = convertAsciiMathToLatex
       mathfield = new MathfieldElement()
-      mathfield.value = value
+      restoreValue(mathfield, latestRef.current.value, latestRef.current.outputFormat, asciiToLatexRef.current)
       mathfield.mathVirtualKeyboardPolicy = 'auto'
       mathfield.smartFence = true
-      mathfield.readOnly = disabled
+      mathfield.readOnly = latestRef.current.disabled
       mathfield.placeholder = '\\text{输入数学公式}'
-      mathfield.setAttribute('aria-label', ariaLabel)
+      mathfield.setAttribute('aria-label', latestRef.current.ariaLabel)
       handleInput = () => {
-        const nextValue = mathfield?.getValue(outputFormat) || ''
+        if (!mathfield) return
+        const nextValue = exportedValue(mathfield, latestRef.current.outputFormat)
+        setIncomplete(hasIncompleteMath(mathfield.getValue('latex')))
         lastEmittedRef.current = nextValue
         onChangeRef.current(nextValue)
       }
@@ -91,13 +112,14 @@ export function MathAnswerInput({
   useEffect(() => {
     const mathfield = mathfieldRef.current
     if (value === lastEmittedRef.current) {
-      lastEmittedRef.current = null
       return
     }
-    if (mathfield && mathfield.value !== value) {
-      mathfield.value = value
+    lastEmittedRef.current = null
+    if (mathfield && exportedValue(mathfield, outputFormat) !== value) {
+      restoreValue(mathfield, value, outputFormat, asciiToLatexRef.current)
     }
-  }, [value])
+    setIncomplete(hasIncompleteMath(value))
+  }, [value, outputFormat])
 
   useEffect(() => {
     if (mathfieldRef.current) mathfieldRef.current.readOnly = disabled
@@ -143,6 +165,8 @@ export function MathAnswerInput({
         打开完整公式键盘
       </button>
       <div className="latex-source">{resolvedSourceLabel}：{value || '（尚未输入）'}</div>
+      <div className="math-input-hint">分数请先填写分子，再按 Tab 切换到分母；也可直接点击分母空位。</div>
+      {incomplete && <div role="alert" className="math-input-warning">公式尚未填写完整，请补充分子、分母或其他公式空位后再提交。</div>}
     </div>
   )
 }

@@ -1,9 +1,11 @@
 import { Alert, Button, Card, Drawer, Empty, Input, Modal, Select, Space, Tag, Typography } from 'antd'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { apiGet, apiPost, apiPut, queryString } from '../api/client'
-import type { AssessmentTask, EquivalencePreview, EquivalenceVerdict, QualityFeedback, QualityReview } from '../types/assessment'
+import type { AssessmentTask, EquivalencePreview, EquivalenceVerdict, QualityFeedback, QualityReview, Stage6Status } from '../types/assessment'
 import type { AnswerDraft, SubmissionPaperItem } from '../types/submission'
 import { AnswerView } from './AnswerView'
+import { answerUnitCoordinates } from '../utils/answerUnits'
+import { answerMatchTypeLabel } from '../utils/gradingLabels'
 
 const prefix = '/internal/stage6'
 const verdictLabels: Record<EquivalenceVerdict, string> = { equivalent: '等价', not_equivalent: '不等价', uncertain: '无法确定' }
@@ -15,11 +17,7 @@ interface AnswerUnit { item_id: string; subquestion_no?: number; blank_no?: numb
 function answerUnits(reference: unknown): AnswerUnit[] {
   const group = reference as { kind?: string; items?: AnswerUnit[] } | null
   if (group?.kind === 'group' && Array.isArray(group.items)) return group.items.map((part, index) => {
-    const canonical = /^sub_([1-9]\d*)\.blank_([1-9]\d*)$/.exec(part.item_id)
-    return { ...part,
-      subquestion_no: canonical ? Number(canonical[1]) : part.subquestion_no ?? (/^[1-9]\d*$/.test(part.item_id) ? Number(part.item_id) : index + 1),
-      blank_no: canonical ? Number(canonical[2]) : part.blank_no ?? 1,
-    }
+    return { ...part, ...answerUnitCoordinates(part, index) }
   }).sort((a, b) => a.subquestion_no - b.subquestion_no || a.blank_no - b.blank_no)
   return [{ item_id: 'answer', subquestion_no: 1, blank_no: 1 }]
 }
@@ -47,6 +45,7 @@ export function EquivalenceReview({ item, draft, active }: { item: SubmissionPap
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [serviceStatus, setServiceStatus] = useState<Stage6Status | null>(null)
   const [action, setAction] = useState<'retry' | 'rerun' | 'cancel' | null>(null)
   const [actionReason, setActionReason] = useState('')
   const generation = useRef(0)
@@ -72,6 +71,13 @@ export function EquivalenceReview({ item, draft, active }: { item: SubmissionPap
     setTasks(values)
     setTask(values.find((value) => value.id === preferredId) ?? values.find((value) => value.snapshot.item_id === unitId) ?? null)
   }
+  useEffect(() => {
+    if (!open) { setServiceStatus(null); return }
+    const controller = new AbortController()
+    apiGet<Stage6Status>(`${prefix}/status`, controller.signal).then(setServiceStatus)
+      .catch((value) => { if (!controller.signal.aborted) setError((value as Error).message) })
+    return () => controller.abort()
+  }, [open, task?.status])
   useEffect(() => {
     if (!open) return
     const controller = new AbortController()
@@ -161,7 +167,15 @@ export function EquivalenceReview({ item, draft, active }: { item: SubmissionPap
     <Button onClick={() => setOpen(true)}>答案等价建议</Button>
     <Drawer title={`第 ${item.order_no} 题 · 答案等价建议`} width="min(760px, 100vw)" open={open} onClose={() => setOpen(false)}>
       <Space direction="vertical" size="middle" className="equivalence-panel">
-        <Alert type="info" showIcon message="模拟模式：验证逐空建议和质量核对流程" description="当前未执行真实数学判断。正式判分仍使用批改页原有复核操作。" />
+        {serviceStatus && (serviceStatus.provider === 'fake'
+          ? <Alert type="info" showIcon message="模拟模式：验证逐空建议和质量核对流程" description="当前未执行真实数学判断。正式判分仍使用批改页原有复核操作。" />
+          : <Alert type={serviceStatus.real_provider_available ? 'info' : 'warning'} showIcon
+            message={serviceStatus.real_provider_available ? `文本模型：${serviceStatus.model}` : '文本模型配置尚未完成'}
+            description="只发送本空标答和学生答案。生成建议会调用模型；结果供人工核对，正式判分仍使用批改页原有复核操作。" />)}
+        {!!serviceStatus?.budget && <Typography.Text>
+          本库累计调用 {serviceStatus.budget.calls}/{serviceStatus.budget.max_calls} 次，估算费用 ¥{serviceStatus.budget.estimated_cost_cny.toFixed(4)}，预算 ¥{serviceStatus.budget.max_budget_cny}。
+          {serviceStatus.budget.unknown_calls > 0 && '存在用量未知的调用，已暂停后续真实调用，请先核对审计记录与供应商账单。'}
+        </Typography.Text>}
         {error && <Alert type="error" showIcon message={error} />}
         <Typography.Text>选择作答空位</Typography.Text>
         <Select aria-label="选择作答空位" value={unitId} disabled={busy} style={{ width: '100%' }} onChange={setUnitId}
@@ -169,10 +183,15 @@ export function EquivalenceReview({ item, draft, active }: { item: SubmissionPap
         {!active && <Alert type="warning" message="该试卷已失效，可查看历史建议和反馈" />}
         <Space wrap>
           <Button onClick={() => void inspect()} loading={busy} disabled={!active || (!item.attempt && draft?.response_status === 'unset')}>检查本空是否需要建议</Button>
-          <Button type="primary" onClick={() => void create()} loading={busy} disabled={!active || !preview?.eligible}>生成模拟建议</Button>
+          <Button type="primary" onClick={() => void create()} loading={busy}
+            disabled={!active || !preview?.eligible || !serviceStatus || !serviceStatus.enabled ||
+              (serviceStatus.provider !== 'fake' && (!serviceStatus.real_provider_available || !!serviceStatus.budget?.unknown_calls))}>
+            {serviceStatus?.provider === 'fake' ? '生成模拟建议' : '生成等价建议（调用模型）'}
+          </Button>
         </Space>
         {preview && <Card size="small" title="本空预检">
           <Alert type={preview.eligible ? 'info' : 'warning'} message={preview.message} />
+          {preview.match_type && <Typography.Paragraph type="secondary">本空判定方式：{answerMatchTypeLabel(preview.match_type)}</Typography.Paragraph>}
           <Typography.Paragraph>参考答案：<AnswerView answer={preview.reference_answer} /></Typography.Paragraph>
           <Typography.Paragraph>学生答案：<AnswerView answer={preview.student_answer} /></Typography.Paragraph>
         </Card>}

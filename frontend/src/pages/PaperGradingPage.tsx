@@ -1,6 +1,7 @@
 import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, HistoryOutlined, RollbackOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Descriptions, Drawer, Image, Input, Modal, Space, Statistic, Tag, Typography, message } from 'antd'
 import { useEffect, useRef, useState } from 'react'
+import { hasIncompleteMath } from '../utils/answerUnits'
 import { Link, useParams } from 'react-router-dom'
 import { apiGet, apiPatch, apiPost, apiUrl } from '../api/client'
 import { AnswerView } from '../components/AnswerView'
@@ -73,6 +74,8 @@ export function PaperGradingPage() {
     if (!data || !paperInstanceId) return
     const unset = data.items.filter((item) => drafts[item.id]?.response_status === 'unset')
     if (unset.length) { message.warning(`请为第 ${unset.map((item) => item.order_no).join('、')} 题录入答案或标记留空`); return }
+    const incomplete = data.items.filter(item => hasIncompleteMath(drafts[item.id]?.answer))
+    if (incomplete.length) { message.warning(`第 ${incomplete.map(item => item.order_no).join('、')} 题公式尚未填写完整，请补充分子、分母或其他公式空位`); return }
     setLoading(true); setError(null)
     try {
       const result = await apiPost<SubmissionDetail>(`/paper-instances/${paperInstanceId}/submissions/manual`, {
@@ -188,6 +191,7 @@ export function PaperGradingPage() {
     const reason = correction.reason.trim()
     if (reason.length < 2) { message.warning('请填写至少 2 个字的修正原因'); return }
     if (correction.draft.response_status === 'unset') { message.warning('请录入答案或标记整题留空'); return }
+    if (hasIncompleteMath(correction.draft.answer)) { message.warning('公式尚未填写完整，请补充分子、分母或其他公式空位'); return }
     setCorrectionSaving(true); setError(null)
     try {
       const isPendingImage = data?.source === 'image'
@@ -235,7 +239,7 @@ export function PaperGradingPage() {
         {!data.submission_id && <ManualAnswerEditor item={gradingEditorItem(item)} value={drafts[item.id] ?? initialDraft(gradingEditorItem(item))} onChange={(value) => setDrafts((current) => ({ ...current, [item.id]: value }))} />}
         {item.attempt && <Space direction="vertical" className="attempt-result" size="middle">
           <Descriptions bordered size="small" column={{ xs: 1, md: 2 }}>
-            <Descriptions.Item label="学生原始答案"><AnswerView answer={item.attempt.student_answer} assets={item.assets} /></Descriptions.Item>
+            <Descriptions.Item label="学生原始答案"><AnswerView answer={item.attempt.student_answer} referenceAnswer={item.grading_answer_snapshot} assets={item.assets} /></Descriptions.Item>
             <Descriptions.Item label="当前评分标准答案"><AnswerView answer={item.grading_answer_snapshot} assets={item.assets} /></Descriptions.Item>
             <Descriptions.Item label="归一化结果"><pre className="json-block compact-json">{JSON.stringify(item.attempt.normalized_answer, null, 2)}</pre></Descriptions.Item>
             <Descriptions.Item label="自动判定">{String(item.attempt.grading_details.reason_code ?? '—')} · {String(item.attempt.grading_details.auto_status ?? '—')}</Descriptions.Item>
