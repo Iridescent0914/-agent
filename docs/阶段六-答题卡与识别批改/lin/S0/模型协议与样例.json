@@ -1,0 +1,205 @@
+{
+  "schema_version": "stage6-contract-examples-v1",
+  "example_kind": "synthetic_contract_fixture",
+  "real_model_called": false,
+  "real_image_attached": false,
+  "counts_as_quality_evaluation": false,
+  "notes": "设计与未来自动化测试用例，不是运行时JSON Schema，不是已标注真实照片或模型质量报告。模型请求和响应之外的信息仅供服务端保存。",
+  "equivalence_examples": [
+    {
+      "case_id": "eq-identity",
+      "model_request": {
+        "schema_version": "stage6-equivalence-request-v1",
+        "request_id": "10000000-0000-4000-8000-000000000001",
+        "reference_answer": "(x+1)^2",
+        "student_answer": "x^2+2*x+1"
+      },
+      "model_response": {
+        "schema_version": "stage6-equivalence-response-v1",
+        "request_id": "10000000-0000-4000-8000-000000000001",
+        "verdict": "equivalent",
+        "reason_code": "equivalent_form",
+        "explanation": "两者是相同多项式的不同表示。"
+      }
+    },
+    {
+      "case_id": "eq-different",
+      "model_request": {
+        "schema_version": "stage6-equivalence-request-v1",
+        "request_id": "10000000-0000-4000-8000-000000000002",
+        "reference_answer": "x+1",
+        "student_answer": "x+2"
+      },
+      "model_response": {
+        "schema_version": "stage6-equivalence-response-v1",
+        "request_id": "10000000-0000-4000-8000-000000000002",
+        "verdict": "not_equivalent",
+        "reason_code": "different_value_or_expression",
+        "explanation": "两个表达式相差1。"
+      }
+    },
+    {
+      "case_id": "eq-context-missing",
+      "model_request": {
+        "schema_version": "stage6-equivalence-request-v1",
+        "request_id": "10000000-0000-4000-8000-000000000003",
+        "reference_answer": "sqrt(x^2)",
+        "student_answer": "x"
+      },
+      "model_response": {
+        "schema_version": "stage6-equivalence-response-v1",
+        "request_id": "10000000-0000-4000-8000-000000000003",
+        "verdict": "uncertain",
+        "reason_code": "context_required",
+        "explanation": "未给出变量条件，不能假定两者在本次作答中等价。"
+      }
+    }
+  ],
+  "rule_owned_examples": [
+    {
+      "case_id": "numeric-format-allowed",
+      "reference_answer": "1/2",
+      "student_answer": "0.5",
+      "allow_fraction_decimal_equivalence": true,
+      "expected_route": "rule_engine",
+      "expected_correct": true,
+      "call_equivalence_model": false
+    },
+    {
+      "case_id": "numeric-format-forbidden",
+      "reference_answer": "1/2",
+      "student_answer": "0.5",
+      "allow_fraction_decimal_equivalence": false,
+      "expected_route": "rule_engine",
+      "expected_correct": false,
+      "call_equivalence_model": false
+    }
+  ],
+  "server_only_capture_example": {
+    "print_artifact_id": "20000000-0000-4000-8000-000000000001",
+    "paper_instance_id": "20000000-0000-4000-8000-000000000002",
+    "instance_code": "RAT-DEMO-0001",
+    "version_no": 1,
+    "layout_version": "answer-card-v3",
+    "implementation_status": "planned_not_implemented",
+    "total_pages": 2,
+    "pages": [
+      { "page_no": 1, "page_token": "page-a", "slot_tokens": ["slot-a1", "slot-a2"] },
+      { "page_no": 2, "page_token": "page-b", "slot_tokens": ["slot-b1", "slot-b2", "slot-b3"] }
+    ],
+    "slot_registry": [
+      {
+        "slot_token": "slot-a1", "paper_instance_item_id": "30000000-0000-4000-8000-000000000001",
+        "item_id": "sub_1.blank_1", "order_no": 1, "source_module": "required"
+      },
+      {
+        "slot_token": "slot-a2", "paper_instance_item_id": "30000000-0000-4000-8000-000000000003",
+        "item_id": "sub_1.blank_1", "order_no": 3, "source_module": "personalized"
+      },
+      {
+        "slot_token": "slot-b1", "paper_instance_item_id": "30000000-0000-4000-8000-000000000002",
+        "item_id": "sub_1.blank_1", "order_no": 2, "source_module": "history"
+      },
+      {
+        "slot_token": "slot-b2", "paper_instance_item_id": "30000000-0000-4000-8000-000000000002",
+        "item_id": "sub_1.blank_2", "order_no": 2, "source_module": "history"
+      },
+      {
+        "slot_token": "slot-b3", "paper_instance_item_id": "30000000-0000-4000-8000-000000000004",
+        "item_id": "sub_1.blank_1", "order_no": 4, "source_module": "history"
+      }
+    ]
+  },
+  "vision_page_examples": [
+    {
+      "case_id": "page-a-readable",
+      "image_attachment": null,
+      "model_request": {
+        "schema_version": "stage6-vision-request-v1",
+        "request_id": "40000000-0000-4000-8000-000000000001",
+        "page_token": "page-a",
+        "slots": [
+          { "slot_token": "slot-a1", "order_no": 1, "subquestion_no": 1, "blank_no": 1, "answer_format": "math_or_text" },
+          { "slot_token": "slot-a2", "order_no": 3, "subquestion_no": 1, "blank_no": 1, "answer_format": "choice_letter", "allowed_option_labels": ["A", "B", "C", "D", "E"] }
+        ]
+      },
+      "model_response": {
+        "schema_version": "stage6-vision-response-v1",
+        "request_id": "40000000-0000-4000-8000-000000000001",
+        "page_token": "page-a",
+        "observed_identity": { "instance_code": "RAT-DEMO-0001", "version_no": 1, "page_no": 1, "total_pages": 2 },
+        "answers": [
+          { "slot_token": "slot-a1", "recognition_status": "readable", "answer": "-1/2", "confidence": 0.91 },
+          { "slot_token": "slot-a2", "recognition_status": "readable", "answer": "E", "confidence": null }
+        ]
+      }
+    },
+    {
+      "case_id": "page-b-mixed-status",
+      "image_attachment": null,
+      "model_request": {
+        "schema_version": "stage6-vision-request-v1",
+        "request_id": "40000000-0000-4000-8000-000000000002",
+        "page_token": "page-b",
+        "slots": [
+          { "slot_token": "slot-b1", "order_no": 2, "subquestion_no": 1, "blank_no": 1, "answer_format": "math_or_text" },
+          { "slot_token": "slot-b2", "order_no": 2, "subquestion_no": 1, "blank_no": 2, "answer_format": "math_or_text" },
+          { "slot_token": "slot-b3", "order_no": 4, "subquestion_no": 1, "blank_no": 1, "answer_format": "true_false_mark" }
+        ]
+      },
+      "model_response": {
+        "schema_version": "stage6-vision-response-v1",
+        "request_id": "40000000-0000-4000-8000-000000000002",
+        "page_token": "page-b",
+        "observed_identity": { "instance_code": "RAT-DEMO-0001", "version_no": 1, "page_no": 2, "total_pages": 2 },
+        "answers": [
+          { "slot_token": "slot-b1", "recognition_status": "blank", "answer": null, "confidence": 0.8 },
+          { "slot_token": "slot-b2", "recognition_status": "ambiguous", "answer": null, "confidence": 0.3 },
+          { "slot_token": "slot-b3", "recognition_status": "readable", "answer": "√", "confidence": 0.9 }
+        ]
+      }
+    }
+  ],
+  "feedback_examples": [
+    {
+      "case_id": "not-yet-reviewed",
+      "task_kind": "recognition",
+      "review_status": "unreviewed",
+      "is_error": null,
+      "error_type": null,
+      "gold_result": null,
+      "adoption_status": "not_adopted"
+    },
+    {
+      "case_id": "synthetic-transcription-error",
+      "task_kind": "recognition",
+      "review_status": "incorrect",
+      "is_error": true,
+      "error_type": "transcription_error",
+      "original_model_result": { "recognition_status": "readable", "answer": "-1/2" },
+      "gold_result": { "recognition_status": "readable", "answer": "-1/7" },
+      "adoption_status": "not_adopted"
+    },
+    {
+      "case_id": "gold-has-unresolved-reference-issue",
+      "task_kind": "equivalence",
+      "review_status": "uncertain",
+      "is_error": null,
+      "error_type": "reference_issue",
+      "gold_result": null,
+      "adoption_status": "not_adopted"
+    }
+  ],
+  "required_negative_cases": [
+    { "change": "等价请求增加question_text或学生姓名字段", "expected_code": "MODEL_SCHEMA_INVALID" },
+    { "change": "响应request_id不等于请求ID", "expected_code": "MODEL_SCHEMA_INVALID" },
+    { "change": "equivalent与context_required组合", "expected_code": "MODEL_SCHEMA_INVALID" },
+    { "change": "视觉响应readable但answer为null", "expected_code": "MODEL_SCHEMA_INVALID" },
+    { "change": "视觉响应blank但answer为非空文本", "expected_code": "MODEL_SCHEMA_INVALID" },
+    { "change": "视觉响应少一个、重复或新增slot_token", "expected_code": "SLOT_SET_MISMATCH" },
+    { "change": "图像读取到的短码或版本与产物不一致", "expected_code": "PAPER_IDENTITY_MISMATCH" },
+    { "change": "仅上传page-a却尝试合并整份答案", "expected_code": "PAGE_SET_INCOMPLETE" },
+    { "change": "page-b重拍未明确选择有效版本", "expected_code": "DUPLICATE_PAGE" },
+    { "change": "模型完成前学生答案已被教师修订", "expected_code": "INPUT_STALE" }
+  ]
+}
