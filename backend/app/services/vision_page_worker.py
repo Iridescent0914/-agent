@@ -1,6 +1,7 @@
 """Claim/finish transactions surround an adapter invocation without a DB session."""
 from dataclasses import dataclass
 from datetime import timedelta
+from decimal import Decimal
 import hashlib
 import time
 from uuid import UUID, uuid4
@@ -15,6 +16,8 @@ from app.services.vision_pages import _context, binding_error, configuration
 from app.services.vision_page_protocol import (
     FakePageVisionAdapter, MAX_RESPONSE_CHARS, identity_check, parse_page_response,
 )
+from app.services.vision_bailian import BailianPageVisionAdapter, VisionProviderResult, reservation
+from app.services.vision_budget import budget_state
 
 
 @dataclass(frozen=True)
@@ -26,6 +29,8 @@ class Claim:
     image: bytes
     image_sha256: str
     timeout_seconds: int
+    provider: str = "fake"
+    config: dict | None = None
 
 
 def _lock_context(db, task):
@@ -67,6 +72,20 @@ def claim_one(session_factory=SessionLocal):
             image = row.image_data
             if image is None or hashlib.sha256(image).hexdigest() != task.snapshot["image_sha256"]:
                 error = "IMAGE_INTEGRITY_ERROR"
+        config, reserve = None, None
+        if not error and task.provider == "bailian":
+            config = task.snapshot.get("provider_config")
+            try:
+                reserve = reservation(task.request_payload, config)
+                budget = budget_state(db, lock=True)
+                if budget["unknown_calls"]:
+                    error = "MODEL_USAGE_UNKNOWN"
+                elif (budget["calls"] >= budget["max_calls"] or
+                      sum(Decimal(str(v)) for v in (budget["estimated_cost_cny"], budget["reserved_cost_cny"], reserve["reserved_cost_cny"]))
+                      > Decimal(str(budget["max_budget_cny"]))):
+                    error = "VISION_BUDGET_EXHAUSTED"
+            except ValueError:
+                error = "VISION_INPUT_TOO_LARGE"
         if error:
             task.status = "stale" if error in {"INPUT_STALE", "PAGE_INPUT_CHANGED", "ARTIFACT_CHANGED", "CONFIG_CHANGED"} else "failed"
             task.error_code, task.completed_at = error, current
@@ -80,14 +99,16 @@ def claim_one(session_factory=SessionLocal):
         task.lease_until = current + timedelta(seconds=task.lease_seconds)
         call = VisionPageCall(task_id=task.id, call_no=task.attempt_count, lease_token=task.lease_token,
             status="running", started_at=current,
-            usage={"usage_status": "known", "synthetic": True, "cost_cny": 0,
-                   "input_tokens": 0, "output_tokens": 0})
+            usage=({"usage_status": "reserved", "synthetic": False, "cost_cny": None,
+                    "provider_config": config, **reserve} if reserve else
+                   {"usage_status": "known", "synthetic": True, "cost_cny": 0,
+                    "input_tokens": 0, "output_tokens": 0}))
         db.add(call); db.flush()
         return Claim(task.id, call.id, task.lease_token, task.request_payload, image,
-                     task.snapshot["image_sha256"], task.timeout_seconds)
+                     task.snapshot["image_sha256"], task.timeout_seconds, task.provider, config)
 
 
-def finish(claim, raw, parsed, error, session_factory=SessionLocal, *, truncated=False):
+def finish(claim, raw, parsed, error, session_factory=SessionLocal, *, truncated=False, usage=None):
     with session_factory.begin() as db:
         initial = db.get(VisionPageTask, claim.task_id)
         paper, artifact, collection = _lock_context(db, initial)
@@ -96,6 +117,8 @@ def finish(claim, raw, parsed, error, session_factory=SessionLocal, *, truncated
         call = db.get(VisionPageCall, claim.call_id)
         if call.status in {"succeeded", "failed", "late"}:
             return  # First received output is authoritative for this call.
+        if usage is not None:
+            call.usage = {**call.usage, **usage}
         call.raw_response, call.parsed_response = raw, parsed
         call.completed_at = now()
         if truncated:
@@ -118,7 +141,7 @@ def finish(claim, raw, parsed, error, session_factory=SessionLocal, *, truncated
             # Even a synthetic test adapter that returns readable values and all
             # correct IDs cannot authorize transcription confirmation or grading.
             task.status, task.error_code = "needs_review", None
-            task.result = {**parsed, "identity_check": checked, "synthetic": True,
+            task.result = {**parsed, "identity_check": checked, "synthetic": claim.provider == "fake",
                            "requires_transcription_confirmation": True, "can_submit": False}
 
 
@@ -126,29 +149,39 @@ def process_one(session_factory=SessionLocal, adapter=None):
     claim = claim_one(session_factory)
     if claim is None:
         return False
-    raw = parsed = error = None
+    raw = parsed = error = usage = None
     truncated = False
     started = time.monotonic()
     try:
-        # Injection is an offline test seam only. No HTTP adapter is installed.
-        raw = (adapter or FakePageVisionAdapter()).invoke(claim.request, image=claim.image,
+        transport = adapter or (BailianPageVisionAdapter(claim.config) if claim.provider == "bailian" else FakePageVisionAdapter())
+        output = transport.invoke(claim.request, image=claim.image,
             image_sha256=claim.image_sha256, timeout_seconds=claim.timeout_seconds)
-        if not isinstance(raw, str):
-            raw, error = None, "MODEL_SCHEMA_INVALID"
-        elif len(raw) > MAX_RESPONSE_CHARS:
-            raw, error, truncated = raw[:MAX_RESPONSE_CHARS], "MODEL_RESPONSE_TOO_LARGE", True
-        elif time.monotonic() - started > claim.timeout_seconds:
+        if isinstance(output, VisionProviderResult):
+            raw, content, usage, error = output.raw, output.content, output.usage, output.error
+        else:
+            raw = content = output
+            if claim.provider != "fake":
+                error = "MODEL_USAGE_UNKNOWN"
+        if time.monotonic() - started > claim.timeout_seconds:
             error = "MODEL_TIMEOUT"
+        elif error:
+            pass
+        elif not isinstance(content, str):
+            raw, error = None, "MODEL_SCHEMA_INVALID"
+        elif len(content) > MAX_RESPONSE_CHARS:
+            raw, error, truncated = raw[:MAX_RESPONSE_CHARS], "MODEL_RESPONSE_TOO_LARGE", True
         else:
             try:
-                parsed = parse_page_response(raw, claim.request)
+                parsed = parse_page_response(content, claim.request)
             except (ValueError, TypeError):
                 error = "MODEL_SCHEMA_INVALID"
     except TimeoutError:
         error = "MODEL_TIMEOUT"
     except Exception:
         # Provider errors may contain image content or secrets; do not store/log
-        # exception text. An eventual real adapter needs its own bounded HTTP.
+        # exception text.
         error = "MODEL_PROVIDER_FAILED"
-    finish(claim, raw, parsed, error, session_factory, truncated=truncated)
+    if claim.provider == "bailian" and usage is None:
+        usage = {"usage_status": "unknown", "synthetic": False, "cost_cny": None}
+    finish(claim, raw, parsed, error, session_factory, truncated=truncated, usage=usage)
     return True

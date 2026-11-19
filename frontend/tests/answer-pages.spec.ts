@@ -7,7 +7,7 @@ const artifactCode = 'A123456789ABCDEF'
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aHZkAAAAASUVORK5CYII=', 'base64')
 const prefix = `/api/v1/internal/stage6/paper-instances/${paperId}/answer-card-artifacts`
 
-async function mockWorkspace(page: Page, { failSecond = false, archived = false, noArtifacts = false, vision = false } = {}) {
+async function mockWorkspace(page: Page, { failSecond = false, archived = false, noArtifacts = false, vision = false, realVision = false, usageUnknown = false, visionMisconfigured = false, transcription = false } = {}) {
   const images: Array<{ id: string; available: boolean; image_url: string }> = []
   const history: Array<{ revision_no: number; page_no: number; action: string; before_image_id: string | null; after_image_id: string | null; reviewer: string; reason: string }> = []
   const selected: Record<number, string | null> = {}
@@ -16,19 +16,26 @@ async function mockWorkspace(page: Page, { failSecond = false, archived = false,
   const unexpected: string[] = []
   const visionTasks: PageVisionTask[] = []
   let visionPosts = 0
+  let draft: any = null
+  let submittedCount = 0
+  const transcriptionView = () => draft ? { ...draft, stale: !draft.submission_id && draft.collection_revision !== revision,
+    stale_message: '照片集合已改变，请重新合并并核对' } : { id: null, revision_no: 0, can_submit: false, units: [], history: [] }
   const visionView = () => {
     const rows = visionTasks.map(t => ({ ...t,
       is_current: selected[t.page_no] === t.image_id && !visionTasks.some(newer => newer.page_no === t.page_no && newer.generation > t.generation && newer.image_id === t.image_id),
       effective_status: selected[t.page_no] === t.image_id ? t.status : 'stale',
     }))
-    return { configuration: { provider: 'fake', synthetic: true, error_code: null, real_provider_available: false },
+    return { configuration: { provider: realVision ? 'bailian' : 'fake', model: realVision ? 'qwen3.8-flash' : 'fake-stage6-vision-page-v2', synthetic: !realVision,
+      error_code: visionMisconfigured ? 'VISION_CONFIG_INCOMPLETE' : null, real_provider_available: realVision && !visionMisconfigured },
+      budget: { scope: 'database_cumulative_page_vision', calls: visionPosts * 2, unknown_calls: usageUnknown ? 1 : 0,
+        estimated_cost_cny: visionPosts * .02, reserved_cost_cny: 0, max_calls: 30, max_budget_cny: 2 },
       collection_id: 'collection-test', collection_revision: revision,
       current_tasks: rows.filter(t => t.is_current).sort((a, b) => a.page_no - b.page_no), history: rows, can_submit: false }
   }
   const newVisionTask = (number: number, generation = 1) => {
     const task: PageVisionTask = { id: `vision-${visionTasks.length + 1}`, page_no: number,
       image_id: selected[number]!, generation, revision_no: 3, status: 'needs_review', effective_status: 'needs_review',
-      is_current: true, synthetic: true, provider: 'fake', model: 'fake-stage6-vision-page-v2',
+      is_current: true, synthetic: !realVision, provider: realVision ? 'bailian' : 'fake', model: realVision ? 'qwen3.8-flash' : 'fake-stage6-vision-page-v2',
       attempt_count: 1, max_attempts: 3, error_code: null, binding_error: null, received_unit_count: 1, can_submit: false,
       identity_check: { status: 'unconfirmed', unknown_fields: ['artifact_code'], mismatched_fields: [] } }
     visionTasks.unshift(task)
@@ -54,10 +61,44 @@ async function mockWorkspace(page: Page, { failSecond = false, archived = false,
       return route.fulfill({ json: exists ? view() : null })
     }
     if (/\/page-collection\/images\//.test(url)) return route.fulfill({ contentType: 'image/png', body: png })
+    if (url.endsWith('/page-collection/transcription') && request.method() === 'GET') return route.fulfill({ json: transcriptionView() })
+    if (url.endsWith('/transcription/merge') && transcription) {
+      const body = request.postDataJSON()
+      expect(body.expected_revision_no).toBe(draft?.revision_no ?? 0)
+      expect(body.expected_collection_revision).toBe(revision)
+      draft = { id: 'draft-test', revision_no: (draft?.revision_no ?? 0) + 1, collection_revision: revision,
+        input_sha256: 'a'.repeat(64), can_submit: false, confirmed_page_nos: [],
+        history: [{ revision_no: 1, action: 'merge', reviewer: 'lin', reason: '合并整卷' }],
+        pages: [1, 2].map(n => ({ page_no: n, synthetic: !realVision, image_url: `${prefix}/${artifactId}/page-collection/images/${selected[n]}`,
+          identity_check: { status: 'unconfirmed' } })),
+        units: [1, 2].map(n => ({ slot_key: `item:sub_${n}.blank_1`, order_no: 3, subquestion_no: n, blank_no: 1,
+          page_no: n, source_module: n === 1 ? 'required' : 'history', original_status: 'readable', original_answer: n === 1 ? '-156' : '30',
+          recognition_status: 'readable', answer: n === 1 ? '-156' : '30', confidence: .8 })) }
+      return route.fulfill({ json: transcriptionView() })
+    }
+    if (url.endsWith('/page-collection/transcription') && request.method() === 'PUT' && transcription) {
+      const body = request.postDataJSON()
+      expect(body.expected_revision_no).toBe(draft.revision_no)
+      expect(body.expected_input_sha256).toBe(draft.input_sha256)
+      draft.units = draft.units.map((u: any) => ({ ...u, ...body.units.find((v: any) => v.slot_key === u.slot_key) }))
+      draft.confirmed_page_nos = body.confirmed_page_nos
+      draft.revision_no++
+      draft.can_submit = realVision && body.confirmed_page_nos.length === 2
+      return route.fulfill({ json: transcriptionView() })
+    }
+    if (url.endsWith('/transcription/confirm') && transcription) {
+      const body = request.postDataJSON()
+      expect(body.expected_revision_no).toBe(draft.revision_no)
+      expect(body.transcription_confirmed).toBe(true)
+      expect(draft.units[0].original_answer).toBe('-156')
+      submittedCount++; draft.submission_id = 'submission-test'; draft.can_submit = false
+      return route.fulfill({ json: { submission_id: draft.submission_id } })
+    }
     if (url.endsWith('/page-collection/vision-tasks')) {
       if (request.method() === 'POST') {
         visionPosts++
-        if (!vision) return route.fulfill({ status: 500, json: { message: 'unexpected vision POST' } })
+        if (!vision && !realVision) return route.fulfill({ status: 500, json: { message: 'unexpected vision POST' } })
+        if (realVision) expect(request.postDataJSON().external_images_reviewed).toBe(true)
         for (const n of [1, 2]) {
           if (selected[n] && !visionTasks.some(t => t.page_no === n && t.image_id === selected[n])) newVisionTask(n)
         }
@@ -75,7 +116,7 @@ async function mockWorkspace(page: Page, { failSecond = false, archived = false,
       const task = visionTasks.find(t => t.id === visionDetail[1])!
       return route.fulfill({ json: { ...task, snapshot: { slots: [{ slot_token: 'slot', order_no: 3, subquestion_no: 1, blank_no: 1 }] },
         result: { answers: [{ slot_token: 'slot', recognition_status: 'illegible', answer: null, confidence: null }] },
-        calls: [{ id: 'call-test', call_no: 1, status: 'succeeded', raw_response: '{"synthetic":true}', usage: { cost_cny: 0 }, late_response: false }],
+        calls: [{ id: 'call-test', call_no: 1, status: 'succeeded', raw_response: '{"content":"offline mock"}', usage: { cost_cny: realVision ? .0102 : 0 }, late_response: false }],
         action_history: [{ action: 'create', reviewer: 'lin', reason: '逐页模拟', at: '2026-11-19' }] } })
     }
     const upload = url.match(/\/page-collection\/pages\/(\d+)\/images$/)
@@ -100,7 +141,7 @@ async function mockWorkspace(page: Page, { failSecond = false, archived = false,
     unexpected.push(`${request.method()} ${url}`)
     return route.fulfill({ status: 500, json: { message: 'unexpected API' } })
   })
-  return { unexpected, uploads: () => calls, visionPosts: () => visionPosts }
+  return { unexpected, uploads: () => calls, visionPosts: () => visionPosts, submittedCount: () => submittedCount }
 }
 
 async function openCollection(page: Page) {
@@ -123,7 +164,7 @@ test('collect photos, retake, restore history, remove attribution and persist ac
   const mock = await mockWorkspace(page)
   await openCollection(page)
   await queue(page, ['page-1.png', 'page-2.png'])
-  await expect(page.getByText('答题页照片已收齐，尚未识别', { exact: true })).toBeVisible()
+  await expect(page.getByText('答题页照片已收齐，请查看下方提取任务', { exact: true })).toBeVisible()
   expect(mock.uploads()).toBe(2)
   await page.screenshot({ path: testInfo.outputPath('answer-pages-collected.png'), fullPage: true })
   await queue(page, ['retake.png'])
@@ -150,7 +191,7 @@ test('partial upload failure retains successful page and retries only pending ph
   await page.getByRole('button', { name: '刷新照片集合', exact: true }).click()
   await expect(page.getByRole('button', { name: '上传所选照片（1 张）', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '上传所选照片（1 张）', exact: true }).click()
-  await expect(page.getByText('答题页照片已收齐，尚未识别', { exact: true })).toBeVisible()
+  await expect(page.getByText('答题页照片已收齐，请查看下方提取任务', { exact: true })).toBeVisible()
   expect(mock.uploads()).toBe(3)
   expect(mock.unexpected).toEqual([])
 })
@@ -211,4 +252,133 @@ test('retake preserves unchanged page task and moves old photo result to history
   await expect(page.getByText('照片已变化 · 结果失效', { exact: true })).toBeVisible()
   expect(mock.visionPosts()).toBe(2)
   expect(mock.unexpected).toEqual([])
+})
+
+test('real page extraction requires reviewed photos, shows costs and never enables grading', async ({ page }, testInfo) => {
+  const mock = await mockWorkspace(page, { realVision: true })
+  await openCollection(page)
+  await queue(page, ['page-1.png', 'page-2.png'])
+  const start = page.getByRole('button', { name: '运行真实提取', exact: true })
+  await expect(start).toBeDisabled()
+  const review = page.getByRole('checkbox', { name: '已核对当前照片中的姓名、学号等个人信息已遮挡，可发送至已配置的模型' })
+  await review.check()
+  await expect(start).toBeEnabled()
+  await start.click()
+  await expect(page.getByText('提取完成 · 待核对', { exact: true })).toHaveCount(2)
+  await expect(page.getByText(/累计调用 2 \/ 30 次/)).toBeVisible()
+  await page.getByRole('button', { name: '查看本页记录', exact: true }).first().click()
+  await expect(page.getByText('逐页任务仅保存提取结果，请在下方整卷答案核对中确认录入；已录入的成绩请到批改页查看', { exact: true })).toBeVisible()
+  await expect(page.getByText(/预估费用 0.0102 元/)).toBeVisible()
+  await page.getByRole('dialog', { name: '本页提取记录' }).getByRole('button', { name: '关闭', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: '本页提取记录' })).not.toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('real-vision-page-tasks.png'), fullPage: true })
+  await queue(page, ['retake.png'])
+  await expect(review).not.toBeChecked()
+  await expect(start).toBeDisabled()
+  await expect(page.getByRole('button', { name: /提交为待复核|确认并规则判分|正式采用/ })).toHaveCount(0)
+  expect(mock.visionPosts()).toBe(1)
+  expect(mock.unexpected).toEqual([])
+})
+
+test('unknown usage blocks new paid extraction and missing config never falls back to fake', async ({ page }) => {
+  let mock = await mockWorkspace(page, { realVision: true, usageUnknown: true })
+  await openCollection(page)
+  await queue(page, ['page-1.png', 'page-2.png'])
+  await page.getByRole('checkbox', { name: '已核对当前照片中的姓名、学号等个人信息已遮挡，可发送至已配置的模型' }).check()
+  await expect(page.getByText(/1 次用量待核对，已暂停后续真实调用/)).toBeVisible()
+  await expect(page.getByRole('button', { name: '运行真实提取', exact: true })).toBeDisabled()
+  expect(mock.visionPosts()).toBe(0)
+  expect(mock.unexpected).toEqual([])
+  await page.unroute('**/api/v1/**')
+  mock = await mockWorkspace(page, { realVision: true, visionMisconfigured: true })
+  await openCollection(page)
+  await expect(page.getByText('多页视觉配置不可用', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '运行真实提取', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '运行模拟提取', exact: true })).toHaveCount(0)
+  expect(mock.unexpected).toEqual([])
+})
+
+test('merge, correct, save and explicitly submit whole-paper answers', async ({ page }, testInfo) => {
+  const mock = await mockWorkspace(page, { realVision: true, transcription: true })
+  await openCollection(page)
+  await queue(page, ['page-1.png', 'page-2.png'])
+  await page.getByRole('button', { name: '合并最新整卷提取结果', exact: true }).click()
+  const editor = page.getByRole('textbox', { name: '第3题第1小题第1空答案', exact: true })
+  await expect(editor).toHaveValue('-156')
+  await editor.fill('-1/56')
+  await expect(page.getByRole('button', { name: '确认录入并判分', exact: true })).toBeDisabled()
+  for (const n of [1, 2]) await page.getByRole('checkbox', { name: `已对照照片核对答题页 ${n} 的编号和全部答案`, exact: true }).check()
+  await page.getByRole('button', { name: '保存核对清单', exact: true }).click()
+  await expect(page.getByRole('button', { name: '保存核对清单', exact: true })).toBeDisabled()
+  await page.getByRole('button', { name: '刷新核对清单（放弃未保存修改）', exact: true }).click()
+  await expect(editor).toHaveValue('-1/56')
+  await expect(page.getByText('模型原始抄读：已作答', { exact: true })).toHaveCount(2)
+  expect(mock.submittedCount()).toBe(0)
+  await page.getByRole('checkbox', { name: '确认已核对整卷，按保存的答案录入批改', exact: true }).check()
+  await page.getByRole('button', { name: '确认录入并判分', exact: true }).click()
+  await expect(page.getByRole('link', { name: '查看批改结果', exact: true })).toHaveAttribute('href', `/paper-instances/${paperId}/grading`)
+  expect(mock.submittedCount()).toBe(1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy()
+  await page.screenshot({ path: testInfo.outputPath('whole-paper-transcription.png'), fullPage: true })
+  expect(mock.unexpected).toEqual([])
+})
+
+test('retakes invalidate saved transcription and edits clear the page check', async ({ page }) => {
+  const mock = await mockWorkspace(page, { realVision: true, transcription: true })
+  await openCollection(page)
+  await queue(page, ['page-1.png', 'page-2.png'])
+  await page.getByRole('button', { name: '合并最新整卷提取结果', exact: true }).click()
+  const check = page.getByRole('checkbox', { name: '已对照照片核对答题页 1 的编号和全部答案', exact: true })
+  await check.check()
+  await page.getByRole('textbox', { name: '第3题第1小题第1空答案', exact: true }).fill('1/56')
+  await expect(check).not.toBeChecked()
+  await page.getByRole('button', { name: '保存核对清单', exact: true }).click()
+  await expect(page.getByRole('button', { name: '保存核对清单', exact: true })).toBeDisabled()
+  await queue(page, ['retake.png'])
+  await expect(page.getByText('核对清单已过期', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '确认录入并判分', exact: true })).toBeDisabled()
+  await expect(page.getByRole('textbox', { name: '第3题第1小题第1空答案', exact: true })).toBeDisabled()
+  expect(mock.submittedCount()).toBe(0)
+  expect(mock.unexpected).toEqual([])
+})
+
+test('merge explains missing reviewer and audit fields can be completed beside the button', async ({ page }) => {
+  const mock = await mockWorkspace(page, { realVision: true, transcription: true })
+  await openCollection(page)
+  await queue(page, ['page-1.png', 'page-2.png'])
+  // Reload starts a new local review session; it must not silently reuse a name.
+  await page.reload()
+  await page.getByRole('combobox', { name: '纸面产物编号' }).click()
+  await page.getByText(`${artifactCode} · r1 · 2 个答题页`, { exact: true }).click()
+  const merge = page.getByRole('button', { name: '合并最新整卷提取结果', exact: true })
+  await expect(merge).toBeDisabled()
+  await expect(page.getByText('请填写本次整卷核对人。', { exact: true })).toBeVisible()
+  await page.getByRole('textbox', { name: '整卷核对人', exact: true }).fill('lin')
+  await expect(page.getByRole('textbox', { name: '核对人', exact: true })).toHaveValue('lin')
+  await page.getByRole('textbox', { name: '整卷核对原因', exact: true }).fill(' ')
+  await expect(merge).toBeDisabled()
+  await expect(page.getByText('请填写至少2个字的整卷核对原因。', { exact: true })).toBeVisible()
+  await page.getByRole('textbox', { name: '整卷核对原因', exact: true }).fill('合并核对')
+  await expect(merge).toBeEnabled()
+  await merge.click()
+  await expect(page.getByRole('textbox', { name: '第3题第1小题第1空答案', exact: true })).toBeVisible()
+  expect(mock.visionPosts()).toBe(0)
+  expect(mock.submittedCount()).toBe(0)
+  expect(mock.unexpected).toEqual([])
+})
+
+test('disabled stage or failed status never exposes the retired recognition flow', async ({ page }) => {
+  let fail = true
+  const requests: string[] = []
+  await page.route('**/api/v1/**', route => {
+    requests.push(new URL(route.request().url()).pathname)
+    return route.fulfill({ status: fail ? 503 : 200, json: fail ? { message: '暂时不可用' } : { enabled: false } })
+  })
+  await page.goto(`/paper-instances/${paperId}/recognize`)
+  await expect(page.getByText('答题页功能加载失败', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /开始提取答案|上传图片|查看原单图识别记录/ })).toHaveCount(0)
+  fail = false
+  await page.getByRole('button', { name: /^重\s*试$/ }).click()
+  await expect(page.getByText('答题页识别尚未启用', { exact: true })).toBeVisible()
+  expect(requests.every(url => url.endsWith('/internal/stage6/status'))).toBe(true)
 })

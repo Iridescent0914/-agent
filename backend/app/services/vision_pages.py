@@ -14,16 +14,19 @@ from app.services import answer_pages
 from app.services.assessment import AssessmentProblem, enabled, now
 from app.services.assessment_protocol import input_hash
 from app.services.vision_page_protocol import FAKE_MODEL, POLICY_VERSION, PROMPT_VERSION
+from app.services.vision_bailian import configuration as provider_configuration
+from app.services.vision_budget import budget_state
 
 MAX_TASKS = 1000
 MAX_GENERATIONS = 10
 
 
 def configuration():
-    if get_settings().stage6_vision_provider != "fake":
-        raise AssessmentProblem("VISION_PROVIDER_UNAVAILABLE", "多页视觉当前仅支持离线模拟，真实供应商尚未接入", 422)
-    return {"provider": "fake", "model": FAKE_MODEL, "synthetic": True,
-            "prompt_version": PROMPT_VERSION, "policy_version": POLICY_VERSION}
+    try:
+        return provider_configuration()
+    except ValueError as exc:
+        code = str(exc)
+        raise AssessmentProblem(code, "新版视觉配置不可用；请检查独立的Key、北京地域Base URL与模型名称", 422) from None
 
 
 def _context(db, paper_id, artifact_id, *, lock=False):
@@ -68,8 +71,14 @@ def page_bindings(db, artifact, collection):
 
 
 def binding_error(db, task, paper, artifact, collection, bindings=None):
-    if (task.provider != "fake" or task.model != FAKE_MODEL or task.prompt_version != PROMPT_VERSION
-            or task.policy_version != POLICY_VERSION):
+    try:
+        config = configuration()
+    except AssessmentProblem:
+        return "CONFIG_CHANGED"
+    frozen = task.snapshot.get("provider_config")
+    if (task.provider != config["provider"] or task.model != config["model"]
+            or task.prompt_version != config["prompt_version"] or task.policy_version != config["policy_version"]
+            or (task.provider != "fake" and frozen != config)):
         return "CONFIG_CHANGED"
     if not _active(db, paper) or paper.version_no != task.snapshot["expected_identity"]["version_no"]:
         return "INPUT_STALE"
@@ -116,23 +125,35 @@ def _prepare(artifact, collection, binding, view):
 
 
 def _latest(db, collection_id, binding_hash):
-    return db.scalar(select(VisionPageTask).where(VisionPageTask.collection_id == collection_id,
-        VisionPageTask.binding_sha256 == binding_hash, VisionPageTask.provider == "fake",
-        VisionPageTask.prompt_version == PROMPT_VERSION, VisionPageTask.policy_version == POLICY_VERSION)
-        .order_by(VisionPageTask.generation.desc()).limit(1))
+    try:
+        config = configuration()
+    except AssessmentProblem:
+        return None
+    rows = db.scalars(select(VisionPageTask).where(VisionPageTask.collection_id == collection_id,
+        VisionPageTask.binding_sha256 == binding_hash, VisionPageTask.provider == config["provider"],
+        VisionPageTask.model == config["model"], VisionPageTask.prompt_version == config["prompt_version"],
+        VisionPageTask.policy_version == config["policy_version"])
+        .order_by(VisionPageTask.generation.desc(), VisionPageTask.created_at.desc())).all()
+    return next((t for t in rows if t.provider == "fake" or t.snapshot.get("provider_config") == config), None)
 
 
 def _new_task(db, collection, binding, snapshot, payload, reviewer, reason, *, predecessor=None):
     count = db.scalar(select(func.count()).select_from(VisionPageTask).where(VisionPageTask.collection_id == collection.id))
     generation = predecessor.generation + 1 if predecessor else 1
     if count >= MAX_TASKS or generation > MAX_GENERATIONS:
-        raise AssessmentProblem("VISION_TASK_LIMIT", "照片集合的模拟任务或重跑次数已达上限")
+        raise AssessmentProblem("VISION_TASK_LIMIT", "照片集合的提取任务或重跑次数已达上限")
     config = configuration()
+    if not config["synthetic"]:
+        snapshot = {**snapshot, "provider_config": config,
+                    "external_images_reviewed": snapshot.get("external_images_reviewed", False)
+                    or bool(predecessor and predecessor.snapshot.get("external_images_reviewed"))}
+        if not snapshot["external_images_reviewed"]:
+            raise AssessmentProblem("VISION_EXTERNAL_REVIEW_REQUIRED", "请先核对并遮挡照片中的姓名、学号等个人信息", 422)
     task = VisionPageTask(collection_id=collection.id, image_id=UUID(snapshot["image_id"]),
         page_no=snapshot["page_no"], binding_sha256=binding, generation=generation,
         dedup_key=input_hash({"binding": binding, "generation": generation, **config}),
         snapshot=snapshot, request_payload=payload, provider=config["provider"], model=config["model"],
-        prompt_version=PROMPT_VERSION, policy_version=POLICY_VERSION, status="queued", revision_no=1,
+        prompt_version=config["prompt_version"], policy_version=config["policy_version"], status="queued", revision_no=1,
         attempt_count=0, max_attempts=get_settings().stage6_max_attempts,
         timeout_seconds=get_settings().stage6_vision_timeout_seconds,
         lease_seconds=get_settings().stage6_vision_lease_seconds,
@@ -144,7 +165,10 @@ def _new_task(db, collection, binding, snapshot, payload, reviewer, reason, *, p
 
 
 def create_tasks(db, paper_id, artifact_id, request):
-    enabled(); configuration()
+    enabled()
+    config = configuration()
+    if not config["synthetic"] and not request.external_images_reviewed:
+        raise AssessmentProblem("VISION_EXTERNAL_REVIEW_REQUIRED", "请先核对并遮挡照片中的姓名、学号等个人信息", 422)
     paper, artifact, collection = _context(db, paper_id, artifact_id, lock=True)
     view = answer_pages.collection_view(db, paper_id, artifact_id)
     if (collection.revision_no != request.expected_collection_revision
@@ -159,6 +183,7 @@ def create_tasks(db, paper_id, artifact_id, request):
     for number, binding in bindings.items():
         if _latest(db, collection.id, binding["sha256"]) is None:
             snapshot, payload = plans[number]
+            snapshot["external_images_reviewed"] = request.external_images_reviewed
             _new_task(db, collection, binding["sha256"], snapshot, payload, request.reviewer, request.reason)
             created += 1
     return {**list_tasks(db, paper_id, artifact_id), "created_count": created}
@@ -169,7 +194,7 @@ def _task_summary(task, error, *, latest=True):
             "generation": task.generation, "revision_no": task.revision_no,
             "status": task.status, "effective_status": "stale" if error else task.status,
             "is_current": error is None and latest, "binding_error": error,
-            "synthetic": True, "provider": task.provider, "model": task.model,
+            "synthetic": task.provider == "fake", "provider": task.provider, "model": task.model,
             "attempt_count": task.attempt_count, "max_attempts": task.max_attempts,
             "error_code": task.error_code, "created_at": task.created_at, "completed_at": task.completed_at,
             "identity_check": task.result.get("identity_check") if task.result else None,
@@ -185,17 +210,20 @@ def list_tasks(db, paper_id, artifact_id):
                       .order_by(VisionPageTask.created_at.desc(), VisionPageTask.generation.desc(), VisionPageTask.id.desc())).all()
     latest = {}
     for task in rows:
-        if task.binding_sha256 not in latest or latest[task.binding_sha256].generation < task.generation:
-            latest[task.binding_sha256] = task
+        key = (task.binding_sha256, input_hash(task.snapshot.get("provider_config", {})), task.provider, task.model)
+        if key not in latest or latest[key].generation < task.generation:
+            latest[key] = task
     summaries = [_task_summary(t, binding_error(db, t, paper, artifact, collection, bindings),
-                               latest=latest[t.binding_sha256].id == t.id) for t in rows]
+                               latest=latest[(t.binding_sha256, input_hash(t.snapshot.get("provider_config", {})), t.provider, t.model)].id == t.id) for t in rows]
     current = sorted((s for s in summaries if s["is_current"]), key=lambda s: s["page_no"])
     config_error = None
     try:
         config = configuration()
     except AssessmentProblem as exc:
         config, config_error = {"provider": get_settings().stage6_vision_provider}, exc.code
-    return {"configuration": {**config, "error_code": config_error, "real_provider_available": False},
+    return {"configuration": {**config, "error_code": config_error,
+                              "real_provider_available": config_error is None and config["provider"] == "bailian"},
+            "budget": budget_state(db),
             "collection_id": str(collection.id), "collection_revision": collection.revision_no,
             "current_tasks": current, "history": summaries[:100], "can_submit": False,
             "requires_transcription_confirmation": True}

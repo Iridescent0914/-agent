@@ -194,7 +194,7 @@ export function PaperGradingPage() {
     if (hasIncompleteMath(correction.draft.answer)) { message.warning('公式尚未填写完整，请补充分子、分母或其他公式空位'); return }
     setCorrectionSaving(true); setError(null)
     try {
-      const isPendingImage = data?.source === 'image'
+      const isPendingImage = Boolean(data?.recognition_run_id)
         && correction.attempt.grade_status === 'needs_review'
         && !correction.attempt.grading_details.recognition_reviewed
       const result = isPendingImage && data?.submission_id
@@ -232,8 +232,16 @@ export function PaperGradingPage() {
       {!data.is_active && <Alert type="warning" showIcon message="历史失效版本" description={data.submission_id ? '已有提交仍可查看和复核，但不能创建新提交。' : '该版本不能创建新提交。'} />}
       {data.answer_key_update_count > 0 && <Alert type="warning" showIcon message="题库标准答案已重新发布" description="当前结果仍按原评分标准保留。请点击“重新评分”，确认后系统才会追加修订并更新画像。" />}
       {data.source === 'image' && data.recognition_image_url && <Card title="答题区原图"><div className="recognition-source-grid"><Image src={apiUrl(data.recognition_image_url)} /><Descriptions size="small" column={1}><Descriptions.Item label="来源">图片识别，教师确认前不进入画像</Descriptions.Item><Descriptions.Item label="模型">{data.recognition_provider} · {data.recognition_model}</Descriptions.Item><Descriptions.Item label="提示版本">{data.recognition_prompt_version}</Descriptions.Item></Descriptions></div></Card>}
-      {data.source === 'image' && !data.recognition_image_url && <Alert type="info" showIcon message="答题原图已清理" description="识别结果、教师修订和评分证据仍保留；原图已按保留策略删除。" />}
-      {data.submission_id && <Card><Space size="large" wrap><Statistic title="题目" value={data.summary.total_count} /><Statistic title="正确" value={data.summary.correct_count} valueStyle={{ color: '#389e0d' }} /><Statistic title="错误" value={data.summary.incorrect_count} valueStyle={{ color: '#cf1322' }} /><Statistic title="待复核" value={data.summary.needs_review_count} valueStyle={{ color: '#d46b08' }} />{data.source === 'image' && data.summary.needs_review_count > 0 && <Button type="primary" loading={loading} onClick={confirmAllRecognition}>批量确认清晰抄读项</Button>}<Button><Link to={`/students/${data.student_id}`}>查看最新画像</Link></Button></Space></Card>}
+      {data.answer_transcription && <Card title="答题页原图与核对来源"><Space direction="vertical" className="full-width">
+        <Typography.Text>多页识别结果已经教师核对后录入，核对修订 v{data.answer_transcription.revision_no}。</Typography.Text>
+        <Image.PreviewGroup><Space wrap>{data.answer_transcription.pages.map(p => <div key={p.page_no}>
+          <Typography.Paragraph>答题页 {p.page_no} · {p.provider} · {p.model}</Typography.Paragraph>
+          {p.image_url ? <Image width={200} src={apiUrl(p.image_url)} alt={`答题页 ${p.page_no} 提交原图`} /> : <Tag>原图已按保留策略清理</Tag>}
+        </div>)}</Space></Image.PreviewGroup>
+        <Button><Link to={`/paper-instances/${paperInstanceId}/recognize`}>查看整卷核对记录</Link></Button>
+      </Space></Card>}
+      {data.source === 'image' && !data.recognition_image_url && !data.answer_transcription && <Alert type="info" showIcon message="答题原图已清理" description="识别结果、教师修订和评分证据仍保留；原图已按保留策略删除。" />}
+      {data.submission_id && <Card><Space size="large" wrap><Statistic title="题目" value={data.summary.total_count} /><Statistic title="正确" value={data.summary.correct_count} valueStyle={{ color: '#389e0d' }} /><Statistic title="错误" value={data.summary.incorrect_count} valueStyle={{ color: '#cf1322' }} /><Statistic title="待复核" value={data.summary.needs_review_count} valueStyle={{ color: '#d46b08' }} />{data.recognition_run_id && data.summary.needs_review_count > 0 && <Button type="primary" loading={loading} onClick={confirmAllRecognition}>批量确认清晰抄读项</Button>}<Button><Link to={`/students/${data.student_id}`}>查看最新画像</Link></Button></Space></Card>}
       {data.items.map((item) => <Card key={item.id} title={`第 ${item.order_no} 题 · ${item.question_snapshot.original_qid ?? ''}`} extra={item.attempt && gradeTag(item.attempt)}>
         <Space wrap><Tag>{item.question_snapshot.question_type === 'choice' ? '选择题' : item.question_snapshot.question_type === 'true_false' ? '判断题' : '填空题'}</Tag><Tag>{item.knowledge_point_snapshot.name}</Tag><Tag>规则：{answerMatchTypeLabel(item.grading_answer_rule_snapshot.answer_match_type)}</Tag>{item.answer_key_update_available && <Tag color="orange">标准答案待更新</Tag>}</Space>
         <RichQuestionText text={item.question_snapshot.question_text ?? ''} assets={item.assets} />
@@ -252,7 +260,7 @@ export function PaperGradingPage() {
           </Descriptions>
           <Input.TextArea value={reasons[item.attempt.id] ?? ''} onChange={(event) => setReasons((current) => ({ ...current, [item.attempt!.id]: event.target.value }))} placeholder="复核或改判原因（至少 2 个字）" rows={2} />
           <Space wrap>
-            {item.attempt.grade_status === 'needs_review' && (data.source === 'image' && !item.attempt.grading_details.recognition_reviewed ? <>
+            {item.attempt.grade_status === 'needs_review' && (data.recognition_run_id && !item.attempt.grading_details.recognition_reviewed ? <>
               {['readable', 'blank'].includes(item.attempt.recognition_status ?? '') && <Button type="primary" icon={<CheckOutlined />} onClick={() => confirmRecognition(item.attempt!)}>确认抄读并规则判分</Button>}
               {!['readable', 'blank'].includes(item.attempt.recognition_status ?? '') && <Tag color="orange">请对照原图修正答案</Tag>}
             </> : <><Button type="primary" icon={<CheckOutlined />} onClick={() => review(item.attempt!, 'confirm', true)}>确认正确</Button><Button danger icon={<CloseOutlined />} onClick={() => review(item.attempt!, 'confirm', false)}>确认错误</Button></>)}
@@ -304,7 +312,7 @@ export function PaperGradingPage() {
           disabled={correctionSaving}
           onChange={(draft) => setCorrection((current) => current ? { ...current, draft } : current)}
         />
-        {!(data?.source === 'image' && correction.attempt.grade_status === 'needs_review' && !correction.attempt.grading_details.recognition_reviewed) && <RadioCorrect value={correction.isCorrect} onChange={(isCorrect) => setCorrection((current) => current ? { ...current, isCorrect } : current)} />}
+        {!(data?.recognition_run_id && correction.attempt.grade_status === 'needs_review' && !correction.attempt.grading_details.recognition_reviewed) && <RadioCorrect value={correction.isCorrect} onChange={(isCorrect) => setCorrection((current) => current ? { ...current, isCorrect } : current)} />}
         <Input.TextArea
           placeholder="修正原因（至少 2 个字）"
           value={correction.reason}

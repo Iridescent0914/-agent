@@ -76,6 +76,7 @@ class CreatePageVisionTasks(BaseModel):
     expected_input_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     reviewer: str = Field(min_length=1, max_length=100)
     reason: str = Field(min_length=2, max_length=500)
+    external_images_reviewed: bool = Field(default=False, strict=True)
 
 
 class PageVisionAction(BaseModel):

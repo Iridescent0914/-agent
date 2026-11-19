@@ -117,15 +117,16 @@ def test_incomplete_and_old_collection_revision_cannot_create(context):
     assert service.create_tasks(db, paper.id, artifact.id, request(after))["created_count"] == 1
 
 
-def test_only_fake_provider_is_accepted_no_legacy_or_equivalence_fallback(context, monkeypatch):
+def test_unconfigured_real_provider_never_uses_legacy_or_equivalence_fallback(context, monkeypatch):
     db, factory, paper, artifact, view = prepared(context)
     service.create_tasks(db, paper.id, artifact.id, request(view)); db.commit()
     monkeypatch.setattr(get_settings(), "stage6_vision_provider", "bailian")
     monkeypatch.setattr(get_settings(), "vision_provider", "openai_compatible")
-    with pytest.raises(AssessmentProblem, match="尚未接入"):
+    monkeypatch.setattr(get_settings(), "stage6_vision_base_url", "")
+    with pytest.raises(AssessmentProblem, match="配置不可用"):
         service.create_tasks(db, paper.id, artifact.id, request(view))
     assert worker.claim_one(factory) is None
-    assert tasks(db, paper, artifact)["configuration"]["error_code"] == "VISION_PROVIDER_UNAVAILABLE"
+    assert tasks(db, paper, artifact)["configuration"]["error_code"] == "VISION_CONFIG_INCOMPLETE"
     assert db.scalar(select(func.count()).select_from(VisionPageCall)) == 0
 
 

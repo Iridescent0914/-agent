@@ -5,6 +5,7 @@ import { apiGet, apiPost, apiPostForm, apiPut, apiUrl } from '../api/client'
 import type { AnswerCardArtifact } from '../types/recognition'
 import type { AnswerPageCollection } from '../types/answerPages'
 import { VisionPageTasksPanel } from './VisionPageTasksPanel'
+import { AnswerTranscriptionPanel } from './AnswerTranscriptionPanel'
 
 interface PaperIdentity {
   student_code: string
@@ -119,7 +120,7 @@ export function AnswerPageCollectionPanel({ paperId }: { paperId: string }) {
     <Button><Link to={`/paper-instances/${paperId}`}>返回试卷</Link></Button>
     <div><Typography.Title level={2}>答题页照片管理</Typography.Title>
       <Typography.Paragraph>上传学生版试卷后面的答题区域，每页拍一张，保留页眉、页脚编号和四角标记。题目页无需上传。</Typography.Paragraph></div>
-    <Alert type="info" showIcon message="当前只收集和管理照片，尚未接入多页视觉识别" description="照片收齐后仍需提取、核对答案，再统一批改。缺页不会当作留白或答错。" />
+    <Alert type="info" showIcon message="先核对并收齐答题页照片，再运行提取" description="照片与提取结果分别管理，请在下方逐页任务中查看处理结果。缺页不会当作留白或答错。" />
     {error && <Alert type="error" showIcon message="照片操作失败" description={error} action={artifactId && <Button disabled={busy} onClick={refresh}>刷新照片集合</Button>} />}
     {notice && <Alert type="info" showIcon message={notice} />}
     <Card title="1. 核对实际打印的试卷" loading={loading && !paper}>
@@ -137,7 +138,7 @@ export function AnswerPageCollectionPanel({ paperId }: { paperId: string }) {
     </Card>
     {collection && <>
       <Alert type={collection.missing_page_nos.length ? 'warning' : 'success'} showIcon
-        message={collection.missing_page_nos.length ? `待补拍：答题页 ${collection.missing_page_nos.join('、')}` : '答题页照片已收齐，尚未识别'}
+        message={collection.missing_page_nos.length ? `待补拍：答题页 ${collection.missing_page_nos.join('、')}` : '答题页照片已收齐，请查看下方提取任务'}
         description={`共 ${collection.total_pages} 个答题页；这里只使用答题区自己的页码，不使用整卷PDF页码。`} />
       {!collection.is_active && <Alert type="warning" message="此试卷版本已失效，照片历史仅供查看" />}
       <Card title="2. 上传或补拍照片">
@@ -172,7 +173,7 @@ export function AnswerPageCollectionPanel({ paperId }: { paperId: string }) {
             const image = collection.images.find(i => i.id === p.effective_image_id)
             const ids = new Set(collection.history.filter(h => h.page_no === p.page_no).flatMap(h => [h.before_image_id, h.after_image_id]))
             const history = collection.images.filter(i => ids.has(i.id))
-            return <Card key={p.page_no} size="small" title={`答题页 ${p.page_no}`} extra={<Tag color={p.status === 'uploaded' ? 'green' : 'orange'}>{p.status === 'uploaded' ? '已上传 · 未识别' : p.status === 'expired' ? '照片已过期，请补拍' : '缺页'}</Tag>}>
+            return <Card key={p.page_no} size="small" title={`答题页 ${p.page_no}`} extra={<Tag color={p.status === 'uploaded' ? 'green' : 'orange'}>{p.status === 'uploaded' ? '已上传' : p.status === 'expired' ? '照片已过期，请补拍' : '缺页'}</Tag>}>
               <Space direction="vertical" className="full-width">
                 {image?.image_url && <Image width={180} src={apiUrl(image.image_url)} alt={`答题页 ${p.page_no} 当前有效照片`} />}
                 {image?.retention_until && <Typography.Text type="secondary">照片保留至 {new Date(image.retention_until).toLocaleString()}</Typography.Text>}
@@ -188,6 +189,8 @@ export function AnswerPageCollectionPanel({ paperId }: { paperId: string }) {
         </Space>
       </Card>
       <VisionPageTasksPanel scope={scope} collection={collection} reviewer={reviewer} reason={reason} />
+      <AnswerTranscriptionPanel key={`${scope}:${collection.revision_no}`} scope={scope} collection={collection} paperId={paperId}
+        reviewer={reviewer} reason={reason} onReviewerChange={setReviewer} onReasonChange={setReason} />
       <Card title="操作记录"><Space direction="vertical">
         {collection.history.length === 0 && <Typography.Text type="secondary">尚未上传照片</Typography.Text>}
         {collection.history.map(h => <Typography.Text key={h.revision_no}>v{h.revision_no} · 答题页 {h.page_no} · {({ upload: '上传/补拍', select: '切换有效照片', remove: '移除归属', restore: '重新上传过期照片' } as Record<string, string>)[h.action] ?? h.action} · {h.reviewer} · {h.reason}</Typography.Text>)}

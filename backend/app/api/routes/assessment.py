@@ -21,6 +21,9 @@ from app.services.vision_preparation import build_inventory
 from app.services import answer_card_artifacts as artifacts
 from app.services import answer_pages
 from app.services import vision_pages
+from app.services import answer_transcription
+from app.schemas.answer_transcription import MergeTranscription, SaveTranscription, ConfirmTranscription
+from app.schemas.submissions import SubmissionDetailOut
 
 
 def internal_only():
@@ -102,6 +105,26 @@ def preview(request: CreateAssessmentTask, db: Session = Depends(get_db)):
 
 
 _PAGE_COLLECTION = "/paper-instances/{paper_id}/answer-card-artifacts/{artifact_id}/page-collection"
+
+
+@router.get(_PAGE_COLLECTION + "/transcription")
+def read_transcription(paper_id: UUID, artifact_id: UUID, db: Session = Depends(get_db)):
+    return answer_transcription.view(db, paper_id, artifact_id)
+
+
+@router.post(_PAGE_COLLECTION + "/transcription/merge")
+def merge_transcription(paper_id: UUID, artifact_id: UUID, request: MergeTranscription, db: Session = Depends(get_db)):
+    return answer_transcription.merge(db, paper_id, artifact_id, request)
+
+
+@router.put(_PAGE_COLLECTION + "/transcription")
+def save_transcription(paper_id: UUID, artifact_id: UUID, request: SaveTranscription, db: Session = Depends(get_db)):
+    return answer_transcription.save(db, paper_id, artifact_id, request)
+
+
+@router.post(_PAGE_COLLECTION + "/transcription/confirm", response_model=SubmissionDetailOut)
+def confirm_transcription(paper_id: UUID, artifact_id: UUID, request: ConfirmTranscription, db: Session = Depends(get_db)):
+    return answer_transcription.confirm(db, paper_id, artifact_id, request)
 
 
 @router.post(_PAGE_COLLECTION)

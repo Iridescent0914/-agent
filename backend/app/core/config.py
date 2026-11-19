@@ -41,11 +41,17 @@ class Settings(BaseSettings):
     stage6_timeout_seconds: int = Field(default=10, ge=1, le=120)
     stage6_lease_seconds: int = Field(default=30, ge=2, le=600)
     stage6_max_attempts: int = Field(default=3, ge=1, le=5)
-    # S3-D currently implements only fake. Other values fail closed; never use
-    # the legacy VISION_PROVIDER or the equivalence provider as a fallback.
+    # Independent from legacy VISION_* and text equivalence; never fall back.
     stage6_vision_provider: str = "fake"
     stage6_vision_timeout_seconds: int = Field(default=45, ge=1, le=120)
     stage6_vision_lease_seconds: int = Field(default=120, ge=2, le=600)
+    stage6_vision_api_key: SecretStr = SecretStr("")
+    stage6_vision_base_url: str = ""
+    stage6_vision_model: str = "qwen3.8-flash"
+    stage6_vision_max_output_tokens: int = Field(default=8192, ge=512, le=16384)
+    stage6_vision_max_pixels: int = Field(default=4194304, ge=262144, le=16777216)
+    stage6_vision_max_calls: int = Field(default=30, ge=1, le=10000)
+    stage6_vision_max_budget_cny: float = Field(default=2, gt=0, le=1000, allow_inf_nan=False)
     stage6_equivalence_provider: str = "fake"
     stage6_equivalence_api_key: SecretStr = SecretStr("")
     stage6_equivalence_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"

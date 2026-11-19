@@ -447,3 +447,10 @@ a { color: inherit; }
 .equivalence-entry { margin-top: 16px; }
 .equivalence-panel { width: 100%; min-width: 0; overflow-wrap: anywhere; }
 .equivalence-panel > .ant-space-item { min-width: 0; max-width: 100%; }
+.transcription-page-grid { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+.transcription-photo { position: sticky; top: 16px; min-width: 0; }
+.transcription-units, .transcription-units > .ant-space-item { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+@media (max-width: 800px) {
+  .transcription-page-grid { grid-template-columns: minmax(0, 1fr); }
+  .transcription-photo { position: static; }
+}
