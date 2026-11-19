@@ -1,0 +1,395 @@
+{
+  "schema_version": "question-catalog-reviews-v1",
+  "version": "shared-question-reviews-2026-11-20",
+  "description": "同步既有教师审核结果：E013确认入池；R002保存已确认答案表示；R070与E032改为解答题并保持非自动组卷。保留原题、参考及资源，不重新推断答案。E013原始资料冲突标记仍保留。",
+  "questions": {
+    "q.math.g6.expr.school.013": {
+      "source_sha256": "778c2c065e5d9173a82279279cd279809519beafbf688ab20c5ada2f17efbcc7",
+      "before": {
+        "correct_answer": {
+          "kind": "group",
+          "schema_version": "answer-units-v1",
+          "items": [
+            {
+              "item_id": "sub_1.blank_1",
+              "subquestion_id": "sub_1",
+              "subquestion_no": 1,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 1,
+              "answer": "A",
+              "answer_match_type": "choice",
+              "reference_answer_raw": "A，26。由-a+2b+8=0得-a+2b=-8，所以2a-4b=16，2a-4b+10=26"
+            },
+            {
+              "item_id": "sub_2.blank_1",
+              "subquestion_id": "sub_2",
+              "subquestion_no": 2,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 2,
+              "answer": "B",
+              "answer_match_type": "choice",
+              "reference_answer_raw": "B，-1。a、b互为相反数，所以a+b=0；c、d互为倒数，所以cd=1，原式=0-1=-1"
+            },
+            {
+              "item_id": "sub_3.blank_1",
+              "subquestion_id": "sub_3",
+              "subquestion_no": 3,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 3,
+              "answer": "B",
+              "answer_match_type": "choice",
+              "reference_answer_raw": "B，-7。因为a-b=3，c+d=4，所以(b-c)-(a+d)=b-a-c-d=-(a-b)-(c+d)=-3-4=-7"
+            },
+            {
+              "item_id": "sub_4.blank_1",
+              "subquestion_id": "sub_4",
+              "subquestion_no": 4,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 4,
+              "answer": "D",
+              "answer_match_type": "choice",
+              "reference_answer_raw": "D，-5。由表格知，当x=2时，2k+b=5，所以-2k-b=-（2k+b）=-5"
+            }
+          ]
+        },
+        "answer_normalization_rule": {
+          "item_order_matters": true,
+          "partial_credit": true,
+          "unparsed_items_use_reference_answer_raw": true,
+          "answer_schema_version": "answer-units-v1"
+        },
+        "grading_readiness": "raw_answer_only"
+      },
+      "after": {
+        "correct_answer": {
+          "kind": "group",
+          "items": [
+            {
+              "answer": "A",
+              "item_id": "sub_1.blank_1",
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 1,
+              "subquestion_id": "sub_1",
+              "subquestion_no": 1,
+              "answer_match_type": "choice",
+              "reference_answer_raw": "A"
+            },
+            {
+              "answer": "B",
+              "item_id": "sub_2.blank_1",
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 2,
+              "subquestion_id": "sub_2",
+              "subquestion_no": 2,
+              "answer_match_type": "choice",
+              "reference_answer_raw": "B"
+            },
+            {
+              "answer": "B",
+              "item_id": "sub_3.blank_1",
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 3,
+              "subquestion_id": "sub_3",
+              "subquestion_no": 3,
+              "answer_match_type": "choice",
+              "reference_answer_raw": "B"
+            },
+            {
+              "answer": "D",
+              "item_id": "sub_4.blank_1",
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 4,
+              "subquestion_id": "sub_4",
+              "subquestion_no": 4,
+              "answer_match_type": "choice",
+              "reference_answer_raw": "D"
+            }
+          ],
+          "schema_version": "answer-units-v1"
+        },
+        "answer_normalization_rule": {
+          "trim_whitespace": true,
+          "case_insensitive": true,
+          "latex_source_exact": false,
+          "normalize_full_width": true
+        },
+        "grading_readiness": "machine_ready"
+      }
+    },
+    "q.math.g6.expr.school.032": {
+      "source_sha256": "19689c22016c625495da73cca77edbbfdd22c097029cea53071e78d0e4bbace7",
+      "before": {
+        "question_type": "fill_blank",
+        "correct_answer": {
+          "kind": "group",
+          "schema_version": "answer-units-v1",
+          "items": [
+            {
+              "item_id": "sub_1.blank_1",
+              "subquestion_id": "sub_1",
+              "subquestion_no": 1,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 1,
+              "answer": "共同特征：每组一次式相加后，所有字母项系数和为0，即结果为0或常数项；\n2m-3n、-5m+9n、-3m-n能构成“0系整式组”，因为相加为-6n，不符合0系，故不能。（2）若ax+y、-2x+by、2x-5y构成“0系整式组”，则x项系数a-2+2=a，y项系数1+b-5=b-4，都应为0，所以a=0，b=4。",
+              "answer_match_type": "exact",
+              "reference_answer_raw": "共同特征：每组一次式相加后，所有字母项系数和为0，即结果为0或常数项；\n2m-3n、-5m+9n、-3m-n能构成“0系整式组”，因为相加为-6n，不符合0系，故不能。（2）若ax+y、-2x+by、2x-5y构成“0系整式组”，则x项系数a-2+2=a，y项系数1+b-5=b-4，都应为0，所以a=0，b=4。"
+            },
+            {
+              "item_id": "sub_1.blank_2",
+              "subquestion_id": "sub_1",
+              "subquestion_no": 1,
+              "blank_id": "blank_2",
+              "blank_no": 2,
+              "order_no": 2,
+              "answer": null,
+              "answer_match_type": "manual",
+              "reference_answer_raw": null
+            }
+          ]
+        },
+        "answer_match_type": "group",
+        "answer_normalization_rule": {
+          "item_order_matters": true,
+          "partial_credit": true,
+          "unparsed_items_use_reference_answer_raw": true,
+          "answer_schema_version": "answer-units-v1"
+        },
+        "import_issues": [
+          "contains_asset",
+          "multiple_subquestions",
+          "answer_items_not_structured",
+          "answer_units_need_review",
+          "asset_needs_web_conversion",
+          "pool_manual_reasoning_required",
+          "pool_source_conflict"
+        ]
+      },
+      "after": {
+        "question_type": "solution",
+        "correct_answer": null,
+        "answer_match_type": null,
+        "answer_normalization_rule": {},
+        "import_issues": [
+          "answer_items_not_structured"
+        ]
+      }
+    },
+    "q.math.g6.rational.school.002": {
+      "source_sha256": "3cfdda565722a75b0e0681f6930405c3240142c487233307ef4e7784bcce51be",
+      "before": {
+        "correct_answer": {
+          "kind": "group",
+          "schema_version": "answer-units-v1",
+          "items": [
+            {
+              "item_id": "sub_1.blank_1",
+              "subquestion_id": "sub_1",
+              "subquestion_no": 1,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 1,
+              "answer": "C",
+              "answer_match_type": "choice",
+              "reference_answer_raw": "C。零下3摄氏度记作 −3℃（四个选项符号/单位均残缺，按规范答案应为 −3℃）"
+            },
+            {
+              "item_id": "sub_2.blank_1",
+              "subquestion_id": "sub_2",
+              "subquestion_no": 2,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 2,
+              "answer": "A",
+              "answer_match_type": "choice",
+              "reference_answer_raw": "A。有理数应分为正有理数、0、负有理数三类，A 漏掉了 0，故错误"
+            },
+            {
+              "item_id": "sub_3.blank_1",
+              "subquestion_id": "sub_3",
+              "subquestion_no": 3,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 3,
+              "answer": "C",
+              "answer_match_type": "choice",
+              "reference_answer_raw": "C（3 对）。相反意义的量需“意义相反且可量化”：存款/取款（相反）、海拔 856 米 与 −856 米（相反）、5 度 与 零下 5 度（相反）共 3 对；“往东 100 米/往南 100 米”方向不在同一直线上，不算相反意义"
+            },
+            {
+              "item_id": "sub_4.blank_1",
+              "subquestion_id": "sub_4",
+              "subquestion_no": 4,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 4,
+              "answer": "C",
+              "answer_match_type": "choice",
+              "reference_answer_raw": "C。没有最大的有理数，也没有最小的有理数"
+            }
+          ]
+        },
+        "answer_normalization_rule": {
+          "item_order_matters": true,
+          "partial_credit": true,
+          "unparsed_items_use_reference_answer_raw": true,
+          "answer_schema_version": "answer-units-v1"
+        }
+      },
+      "after": {
+        "correct_answer": {
+          "kind": "group",
+          "items": [
+            {
+              "answer": "C",
+              "item_id": "sub_1.blank_1",
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 1,
+              "subquestion_id": "sub_1",
+              "subquestion_no": 1,
+              "answer_match_type": "choice",
+              "reference_answer_raw": "C"
+            },
+            {
+              "answer": "A",
+              "item_id": "sub_2.blank_1",
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 2,
+              "subquestion_id": "sub_2",
+              "subquestion_no": 2,
+              "answer_match_type": "choice",
+              "reference_answer_raw": "A"
+            },
+            {
+              "answer": "C",
+              "item_id": "sub_3.blank_1",
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 3,
+              "subquestion_id": "sub_3",
+              "subquestion_no": 3,
+              "answer_match_type": "choice",
+              "reference_answer_raw": "C"
+            },
+            {
+              "answer": "C",
+              "item_id": "sub_4.blank_1",
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 4,
+              "subquestion_id": "sub_4",
+              "subquestion_no": 4,
+              "answer_match_type": "choice",
+              "reference_answer_raw": "C"
+            }
+          ],
+          "schema_version": "answer-units-v1"
+        },
+        "answer_normalization_rule": {
+          "trim_whitespace": true,
+          "case_insensitive": true,
+          "latex_source_exact": false,
+          "normalize_full_width": true
+        }
+      }
+    },
+    "q.math.g6.rational.school.070": {
+      "source_sha256": "7bcdfd181a3b57ab650775c0b0e434d0b8259e105befd1fb4356f78367e3cb67",
+      "before": {
+        "question_type": "fill_blank",
+        "correct_answer": {
+          "kind": "group",
+          "schema_version": "answer-units-v1",
+          "items": [
+            {
+              "item_id": "sub_1.blank_1",
+              "subquestion_id": "sub_1",
+              "subquestion_no": 1,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 1,
+              "answer": "当负因数个数为奇数时，积为 负；为偶数时，积为 正",
+              "answer_match_type": "exact",
+              "reference_answer_raw": "当负因数个数为奇数时，积为 负；为偶数时，积为 正"
+            },
+            {
+              "item_id": "sub_1.blank_2",
+              "subquestion_id": "sub_1",
+              "subquestion_no": 1,
+              "blank_id": "blank_2",
+              "blank_no": 2,
+              "order_no": 2,
+              "answer": null,
+              "answer_match_type": "manual",
+              "reference_answer_raw": null
+            },
+            {
+              "item_id": "sub_2.blank_1",
+              "subquestion_id": "sub_2",
+              "subquestion_no": 2,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 3,
+              "answer": "几个数相乘有一个因数为 0，积就为 0",
+              "answer_match_type": "exact",
+              "reference_answer_raw": "几个数相乘有一个因数为 0，积就为 0"
+            },
+            {
+              "item_id": "sub_3.blank_1",
+              "subquestion_id": "sub_3",
+              "subquestion_no": 3,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 4,
+              "answer": "（题面信息疑似残缺，条件缺失，请合作者核对原题后填写）",
+              "answer_match_type": "exact",
+              "reference_answer_raw": "（题面信息疑似残缺，条件缺失，请合作者核对原题后填写）"
+            },
+            {
+              "item_id": "sub_4.blank_1",
+              "subquestion_id": "sub_4",
+              "subquestion_no": 4,
+              "blank_id": "blank_1",
+              "blank_no": 1,
+              "order_no": 5,
+              "answer": "（题面信息疑似残缺，条件缺失，请合作者核对原题后填写）",
+              "answer_match_type": "exact",
+              "reference_answer_raw": "（题面信息疑似残缺，条件缺失，请合作者核对原题后填写）"
+            }
+          ]
+        },
+        "answer_match_type": "group",
+        "answer_normalization_rule": {
+          "item_order_matters": true,
+          "partial_credit": true,
+          "unparsed_items_use_reference_answer_raw": true,
+          "answer_schema_version": "answer-units-v1"
+        },
+        "import_issues": [
+          "multiple_subquestions",
+          "answer_items_not_structured",
+          "answer_units_need_review",
+          "pool_missing_source_content"
+        ]
+      },
+      "after": {
+        "question_type": "solution",
+        "correct_answer": null,
+        "answer_match_type": null,
+        "answer_normalization_rule": {},
+        "import_issues": [
+          "answer_items_not_structured"
+        ]
+      }
+    }
+  }
+}

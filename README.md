@@ -20,7 +20,7 @@ S3-D已完成新版逐页协议、模拟任务及百炼视觉HTTP/费用控制�
 
 - FastAPI + SQLAlchemy + PostgreSQL 后端；
 - Alembic 迁移、推荐审计、发布试卷快照保护、版本生命周期、批改审计和图片识别守卫；
-- 180 组完整题库（有理数139组、简单的代数式41组）；当前仓库基线为76组自动组卷题（62＋14），数据库题池随教师审核变化。有理数080保留结构化答案及最终结果判分能力，供后续视觉识别专项验证，已撤出日常自动组卷池；
+- 180 组完整题库（有理数139组、简单的代数式41组）；来源文件基线为76组自动组卷题，执行共享审核同步后为77组（62＋15）。各机器的数据库不会通过Git自动同步，命令见下文。有理数080保留结构化答案及最终结果判分能力，供后续视觉识别专项验证，已撤出日常自动组卷池；
 - 题库种子与班级、学生、作业、作答等业务演示数据分离，默认导入不会创建旧 Demo 数据；
 - 题库列表、筛选、分页、详情、已有题目编辑和业务删除 API / 页面；
 - 选择题、填空题支持教师修改答案、保存审核草稿、确认入池、撤回后重新编辑和版本冲突保护；
@@ -85,6 +85,7 @@ cd "D:\desktop\math-agent\code"
 Copy-Item .env.example .env
 docker compose up -d --build
 docker compose exec backend python -m scripts.seed_database --chapter all
+docker compose exec backend python -m scripts.sync_question_catalog --apply
 docker compose ps
 ```
 
@@ -170,6 +171,8 @@ cd "D:\desktop\math-agent\code"
 docker compose up -d
 docker compose exec backend python -m alembic upgrade head
 docker compose exec backend python -m scripts.seed_database --chapter all
+docker compose exec backend python -m scripts.sync_question_catalog
+docker compose exec backend python -m scripts.sync_question_catalog --apply
 docker compose ps
 docker compose exec backend python -m alembic current
 docker compose exec backend python -m scripts.verify_expr
@@ -426,7 +429,27 @@ Assignment
 
 待入库的选择题和填空题可从题目详情页点击“审核答案并进入组卷池”。老师可先保存审核草稿，再执行“校验并确认入池”。已入池题目可执行“撤回并重新编辑”，撤回后不再参与新组卷，修改并重新校验后可再次入池。每次保存、入池和撤回都会记录操作人、版本和前后答案。数值只接收整数或小数，分数、根式等请选择公式输入。当前公式采用 LaTeX 精确匹配，暂不承诺不同代数写法的等价判定。
 
-已经保存过教师审核记录的答案属于业务数据；以后再次执行 `seed_database` 时会保留其答案、判分规则、审核版本和入池状态。
+已经保存过教师审核记录的答案属于业务数据；以后再次执行 `seed_database` 时会保留其答案、判分规则、审核版本和入池状态。对已编辑内容或经过共享同步的记录，也保留题型和内容，避免把解答题重新导回填空题。
+
+### 协作者之间同步题库审核结果
+
+Git同步代码和题库文件，各自PostgreSQL数据卷独立。网页中保存的入池、撤回和题型修改不会随`git pull`自动传播。2026-11-20已将本地遗漏的E013入池、R002答案审核、R070与E032解答题归类整理为`data/config/question_catalog_reviews.json`；原始目录与历史修复依据保留。共享目标是180组中的77组自动组卷题；两道解答题仍在题库中，退出选择/填空候选。
+
+已经有题库的协作者拉取代码后，在项目根目录执行：
+
+```powershell
+git pull --ff-only
+# 先预览题号、字段变化和 conflicts
+docker compose exec backend python -m scripts.sync_question_catalog
+# 无冲突时备份当前待修改题目，再写库
+docker compose exec backend python -m scripts.sync_question_catalog --apply
+# 再次检查应为 changes: []
+docker compose exec backend python -m scripts.sync_question_catalog
+```
+
+脚本只同步79组来源选择/填空/判断题及其中的明确归类变更，不复制学生、试卷、作答或画像，不删除协作者新增的题目。`target_pool_count`为该范围的共享目标77，`database_pool_count`为当前数据库总入池量；自有新增题目可能使总数不同，`outside_scope_ready_ids`会列出范围外已入池题号。
+
+默认只预览；出现`conflicts`时退出码为2，整批不写入，不提供强制覆盖选项。`divergent_teacher_review`表示该机器存在不同的人工审核，需要逐题核对；`archived_question`保留归档决定；`missing_question_run_seed_first`则先执行`seed_database --chapter all`再预览同步。同步前的题目及完整审核历史备份在`data/uploads/question_catalog_sync/`，已被Git忽略。重复执行不会增加修订，不自动重评既有学生成绩，详见[共享题库审核同步记录](docs/阶段五-自动组卷池与题目答案治理/lin/08_共享题库审核结果同步与数量对齐记录.md)。
 
 ### 第二章“简单的代数式”
 
