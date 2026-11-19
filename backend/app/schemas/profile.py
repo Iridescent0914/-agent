@@ -89,6 +89,19 @@ class ProfileSummary(BaseModel):
     unassessed_knowledge_point_count: int
 
 
+class HistoricalAccuracyOut(BaseModel):
+    """All loaded history, one current confirmed result per Attempt (not blank)."""
+    scope: Literal["all_history"] = "all_history"
+    counting_unit: Literal["attempt_question_group"] = "attempt_question_group"
+    confirmed_attempt_count: int = Field(default=0, ge=0)
+    correct_count: int = Field(default=0, ge=0)
+    incorrect_count: int = Field(default=0, ge=0)
+    distinct_question_count: int = Field(default=0, ge=0)
+    pending_review_count: int = Field(default=0, ge=0)
+    excluded_attempt_count: int = Field(default=0, ge=0)
+    accuracy: float | None = Field(default=None, ge=0, le=1)
+
+
 class RecentWrong(EvidenceRef):
     answered_at: datetime
     original_qid: str
@@ -101,6 +114,7 @@ class ProfileOut(BaseModel):
     computed_at: datetime
     rule_version: str
     summary: ProfileSummary
+    historical_accuracy: HistoricalAccuracyOut = Field(default_factory=HistoricalAccuracyOut)
     masteries: list[MasteryOut]
     literacies: list[LiteracyScoreOut] = Field(default_factory=list)
     focus_points: list[FocusPoint]

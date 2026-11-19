@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Space, Switch, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Space, Statistic, Switch, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useMemo, useState } from 'react'
 import { apiGet, queryString } from '../api/client'
@@ -59,6 +59,7 @@ export function StudentProfileOverview({
   chapterCode: string
 }) {
   const literacies = profile.literacies ?? []
+  const history = profile.historical_accuracy
   const visibleChapters = useMemo(
     () => questionCatalog.filter((item) => !grade || (item.grades ?? []).includes(grade)),
     [grade, questionCatalog],
@@ -121,6 +122,20 @@ export function StudentProfileOverview({
   })), [chapterCatalog, masteryByCode])
 
   return <Space direction="vertical" size="large" className="full-width">
+    <Card title="历史累计正确率" aria-label="历史累计正确率统计">
+      {history ? <Space direction="vertical" className="full-width">
+        <Space wrap size="large">
+          <Statistic title="累计正确率" value={history.accuracy === null ? '—' : history.accuracy * 100}
+            precision={history.accuracy === null ? undefined : 1} suffix={history.accuracy === null ? undefined : '%'} />
+          <Statistic title="累计已确认题数" value={history.confirmed_attempt_count} />
+          <Statistic title="答对" value={history.correct_count} />
+          <Statistic title="答错" value={history.incorrect_count} />
+        </Space>
+        {history.accuracy === null && <Typography.Text type="secondary">暂无已确认作答，暂不计算正确率。</Typography.Text>}
+        <Typography.Text type="secondary">覆盖全部年级、全部章节；同一题不同次作答分别计入，每次只取当前判定，多空题按整题组统计。</Typography.Text>
+        <Typography.Text type="secondary">共 {history.distinct_question_count} 道不同题；待复核 {history.pending_review_count} 题、失效或无效记录 {history.excluded_attempt_count} 条不计入正确率。</Typography.Text>
+      </Space> : <Typography.Text type="secondary">累计统计暂不可用，请刷新后重试。</Typography.Text>}
+    </Card>
     <div className="section-heading">
       <div>
         <Typography.Title level={4}>知识点正确率</Typography.Title>

@@ -58,6 +58,17 @@ export interface Profile {
   student_id: string
   computed_at: string
   rule_version: string
+  historical_accuracy?: {
+    scope: 'all_history'
+    counting_unit: 'attempt_question_group'
+    confirmed_attempt_count: number
+    correct_count: number
+    incorrect_count: number
+    distinct_question_count: number
+    pending_review_count: number
+    excluded_attempt_count: number
+    accuracy: number | null
+  }
   summary: {
     total_attempt_count: number; valid_attempt_count: number; pending_review_count: number
     invalid_evidence_count: number; distinct_question_count: number

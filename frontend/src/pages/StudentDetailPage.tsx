@@ -87,7 +87,7 @@ function StudentWorkspace({ studentId }: { studentId: string }) {
       <Space wrap className="section-toolbar">
         <Select aria-label="选择画像年级" value={grade || undefined} onChange={setGrade} options={gradeOptions.map((item) => ({ value: item, label: item }))} style={{ width: 180 }} />
         <Select aria-label="选择画像章节" value={chapterCode || undefined} onChange={setChapterCode} options={visibleChapters.map((item) => ({ value: item.code, label: item.name }))} style={{ width: 240 }} />
-        <Typography.Text type="secondary">画像与历史作答共用当前年级、章节范围</Typography.Text>
+        <Typography.Text type="secondary">知识点画像与历史作答按当前年级、章节查看；累计正确率覆盖全部年级和章节。</Typography.Text>
       </Space>
       <Tabs activeKey={tab} onChange={setTab} items={[{ key: 'profile', label: '画像' }, { key: 'attempts', label: '历史作答' }]} />
       {tab === 'profile' && <StudentProfileOverview key={refresh} profile={profile} questionCatalog={questionCatalog} className={student.class_name} grade={grade} chapterCode={chapterCode} />}
