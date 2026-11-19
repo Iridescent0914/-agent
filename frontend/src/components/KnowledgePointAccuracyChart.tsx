@@ -43,6 +43,7 @@ export function KnowledgePointAccuracyChart({
     series: [
       {
         type: 'bar', name: '学生', barMaxWidth: 18,
+        itemStyle: { color: '#176c61' },
         data: rows.map((row) => ({
           value: Number(((row.accuracy ?? 0) * 100).toFixed(1)),
           itemStyle: { color: row.accuracy === null ? '#c8d0ce' : '#176c61' },
@@ -50,6 +51,7 @@ export function KnowledgePointAccuracyChart({
       },
       ...(showClassAverage ? [{
         type: 'bar', name: '班级平均', barMaxWidth: 18,
+        itemStyle: { color: '#315b8a' },
         data: rows.map((row) => ({
           value: Number(((row.classAverage ?? 0) * 100).toFixed(1)),
           itemStyle: { color: row.classAverage === null ? '#d7dce3' : '#315b8a' },
