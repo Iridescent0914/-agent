@@ -20,7 +20,7 @@ export interface AnswerPageCollection {
   missing_page_nos: number[]
   collection_ready: boolean
   is_active: boolean
-  recognition_status: 'not_started'
+  recognition_status: 'not_started' | 'tasks_created'
   can_submit: false
   effective_input_sha256: string
   pages: Array<{ page_no: number; effective_image_id: string | null; status: 'uploaded' | 'expired' | 'missing' }>

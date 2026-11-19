@@ -21,6 +21,7 @@ from app.services.question_import import ImportProblem
 from app.services.question_import_worker import process_one as process_question_import
 from app.services.assessment import AssessmentProblem
 from app.services.assessment_worker import process_one as process_assessment
+from app.services.vision_page_worker import process_one as process_vision_page
 
 
 settings = get_settings()
@@ -71,12 +72,24 @@ async def _assessment_loop(stop: asyncio.Event) -> None:
             await asyncio.wait_for(stop.wait(), timeout=settings.stage6_worker_interval_seconds)
 
 
+async def _vision_page_loop(stop: asyncio.Event) -> None:
+    while not stop.is_set():
+        try:
+            while not stop.is_set() and await asyncio.to_thread(process_vision_page):
+                pass
+        except Exception as exc:
+            logger.error("stage6 page vision worker failed (%s)", type(exc).__name__)
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(stop.wait(), timeout=settings.stage6_worker_interval_seconds)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     stop = asyncio.Event()
     task = asyncio.create_task(_maintenance_loop(stop))
     import_task = asyncio.create_task(_question_import_loop(stop))
     assessment_task = asyncio.create_task(_assessment_loop(stop))
+    vision_task = asyncio.create_task(_vision_page_loop(stop))
     try:
         yield
     finally:
@@ -84,6 +97,7 @@ async def lifespan(_: FastAPI):
         await task
         await import_task
         await assessment_task
+        await vision_task
 
 
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)

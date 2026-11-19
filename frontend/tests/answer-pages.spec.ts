@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import type { PageVisionTask } from '../src/types/visionPages'
 
 const paperId = '00000000-0000-4000-8000-000000000091'
 const artifactId = '00000000-0000-4000-8000-000000000092'
@@ -6,13 +7,33 @@ const artifactCode = 'A123456789ABCDEF'
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aHZkAAAAASUVORK5CYII=', 'base64')
 const prefix = `/api/v1/internal/stage6/paper-instances/${paperId}/answer-card-artifacts`
 
-async function mockWorkspace(page: Page, { failSecond = false, archived = false, noArtifacts = false } = {}) {
+async function mockWorkspace(page: Page, { failSecond = false, archived = false, noArtifacts = false, vision = false } = {}) {
   const images: Array<{ id: string; available: boolean; image_url: string }> = []
   const history: Array<{ revision_no: number; page_no: number; action: string; before_image_id: string | null; after_image_id: string | null; reviewer: string; reason: string }> = []
   const selected: Record<number, string | null> = {}
   let exists = false, revision = 0, calls = 0
   let failure = failSecond
   const unexpected: string[] = []
+  const visionTasks: PageVisionTask[] = []
+  let visionPosts = 0
+  const visionView = () => {
+    const rows = visionTasks.map(t => ({ ...t,
+      is_current: selected[t.page_no] === t.image_id && !visionTasks.some(newer => newer.page_no === t.page_no && newer.generation > t.generation && newer.image_id === t.image_id),
+      effective_status: selected[t.page_no] === t.image_id ? t.status : 'stale',
+    }))
+    return { configuration: { provider: 'fake', synthetic: true, error_code: null, real_provider_available: false },
+      collection_id: 'collection-test', collection_revision: revision,
+      current_tasks: rows.filter(t => t.is_current).sort((a, b) => a.page_no - b.page_no), history: rows, can_submit: false }
+  }
+  const newVisionTask = (number: number, generation = 1) => {
+    const task: PageVisionTask = { id: `vision-${visionTasks.length + 1}`, page_no: number,
+      image_id: selected[number]!, generation, revision_no: 3, status: 'needs_review', effective_status: 'needs_review',
+      is_current: true, synthetic: true, provider: 'fake', model: 'fake-stage6-vision-page-v2',
+      attempt_count: 1, max_attempts: 3, error_code: null, binding_error: null, received_unit_count: 1, can_submit: false,
+      identity_check: { status: 'unconfirmed', unknown_fields: ['artifact_code'], mismatched_fields: [] } }
+    visionTasks.unshift(task)
+    return task
+  }
   const view = () => ({
     id: 'collection-test', artifact_id: artifactId, artifact_code: artifactCode, revision_no: revision, total_pages: 2,
     status: selected[1] && selected[2] ? 'collected' : 'collecting',
@@ -33,6 +54,30 @@ async function mockWorkspace(page: Page, { failSecond = false, archived = false,
       return route.fulfill({ json: exists ? view() : null })
     }
     if (/\/page-collection\/images\//.test(url)) return route.fulfill({ contentType: 'image/png', body: png })
+    if (url.endsWith('/page-collection/vision-tasks')) {
+      if (request.method() === 'POST') {
+        visionPosts++
+        if (!vision) return route.fulfill({ status: 500, json: { message: 'unexpected vision POST' } })
+        for (const n of [1, 2]) {
+          if (selected[n] && !visionTasks.some(t => t.page_no === n && t.image_id === selected[n])) newVisionTask(n)
+        }
+      }
+      return route.fulfill({ json: visionView() })
+    }
+    const visionAction = url.match(/\/vision-tasks\/(vision-\d+)\/(retry|cancel|rerun)$/)
+    if (visionAction) {
+      const task = visionTasks.find(t => t.id === visionAction[1])!
+      if (visionAction[2] === 'rerun') newVisionTask(task.page_no, task.generation + 1)
+      return route.fulfill({ json: {} })
+    }
+    const visionDetail = url.match(/\/vision-tasks\/(vision-\d+)$/)
+    if (visionDetail) {
+      const task = visionTasks.find(t => t.id === visionDetail[1])!
+      return route.fulfill({ json: { ...task, snapshot: { slots: [{ slot_token: 'slot', order_no: 3, subquestion_no: 1, blank_no: 1 }] },
+        result: { answers: [{ slot_token: 'slot', recognition_status: 'illegible', answer: null, confidence: null }] },
+        calls: [{ id: 'call-test', call_no: 1, status: 'succeeded', raw_response: '{"synthetic":true}', usage: { cost_cny: 0 }, late_response: false }],
+        action_history: [{ action: 'create', reviewer: 'lin', reason: '逐页模拟', at: '2026-11-19' }] } })
+    }
     const upload = url.match(/\/page-collection\/pages\/(\d+)\/images$/)
     if (upload) {
       calls++
@@ -55,7 +100,7 @@ async function mockWorkspace(page: Page, { failSecond = false, archived = false,
     unexpected.push(`${request.method()} ${url}`)
     return route.fulfill({ status: 500, json: { message: 'unexpected API' } })
   })
-  return { unexpected, uploads: () => calls }
+  return { unexpected, uploads: () => calls, visionPosts: () => visionPosts }
 }
 
 async function openCollection(page: Page) {
@@ -129,5 +174,41 @@ test('duplicate page assignments are rejected before uploading any photo', async
   await page.getByRole('button', { name: /上传所选照片/ }).click()
   await expect(page.getByText('同一批照片的答题页编号重复，请核对后上传', { exact: true })).toBeVisible()
   expect(mock.uploads()).toBe(0)
+  expect(mock.unexpected).toEqual([])
+})
+
+test('page simulation stays inside photo collection and never enables submission', async ({ page }) => {
+  const mock = await mockWorkspace(page, { vision: true })
+  await openCollection(page)
+  const start = page.getByRole('button', { name: '运行模拟提取', exact: true })
+  await expect(start).toBeDisabled()
+  await queue(page, ['page-1.png', 'page-2.png'])
+  await expect(start).toBeEnabled()
+  await start.click()
+  await expect(page.getByText('模拟完成 · 待核对', { exact: true })).toHaveCount(2)
+  await page.getByRole('button', { name: '查看本页记录', exact: true }).first().click()
+  await expect(page.getByText('模拟记录不能作为真实识别或质量验收证据', { exact: true })).toBeVisible()
+  await expect(page.getByText('第 3 题 · 第 1 小题 · 第 1 空：无法辨认', { exact: true })).toBeVisible()
+  await page.getByRole('dialog', { name: '本页模拟提取记录' }).getByRole('button', { name: '关闭', exact: true }).click()
+  await page.getByRole('button', { name: '重新模拟本页', exact: true }).first().click()
+  await expect(page.getByText('答题页 1 · 第 2 次任务', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /提交为待复核|确认并规则判分|正式采用/ })).toHaveCount(0)
+  expect(mock.visionPosts()).toBe(1)
+  expect(mock.unexpected).toEqual([])
+})
+
+test('retake preserves unchanged page task and moves old photo result to history', async ({ page }) => {
+  const mock = await mockWorkspace(page, { vision: true })
+  await openCollection(page)
+  await queue(page, ['page-1.png', 'page-2.png'])
+  await page.getByRole('button', { name: '运行模拟提取', exact: true }).click()
+  await expect(page.getByText('模拟完成 · 待核对', { exact: true })).toHaveCount(2)
+  await queue(page, ['retake.png'])
+  await expect(page.getByText('模拟完成 · 待核对', { exact: true })).toHaveCount(1)
+  await page.getByRole('button', { name: '运行模拟提取', exact: true }).click()
+  await expect(page.getByText('模拟完成 · 待核对', { exact: true })).toHaveCount(2)
+  await page.getByText('历史任务（1）', { exact: true }).click()
+  await expect(page.getByText('照片已变化 · 结果失效', { exact: true })).toBeVisible()
+  expect(mock.visionPosts()).toBe(2)
   expect(mock.unexpected).toEqual([])
 })

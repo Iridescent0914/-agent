@@ -1,5 +1,6 @@
 from app.models.answer_card import AnswerCardArtifact
 from app.models.answer_pages import AnswerPageCollection, AnswerPageEvent, AnswerPageImage
+from app.models.vision_pages import VisionPageCall, VisionPageTask
 from app.models.assessment import (
     AssessmentCall, AssessmentInput, AssessmentTask, ModelQualityFeedback,
     ModelQualityFeedbackRevision,
@@ -25,6 +26,7 @@ from app.models.entities import (
 )
 
 __all__ = [
+    "VisionPageCall", "VisionPageTask",
     "AnswerPageCollection", "AnswerPageEvent", "AnswerPageImage",
     "AnswerCardArtifact",
     "AssessmentCall", "AssessmentInput", "AssessmentTask", "ModelQualityFeedback",

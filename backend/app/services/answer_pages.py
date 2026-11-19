@@ -7,7 +7,7 @@ from PIL import Image
 from sqlalchemy import func, select
 
 from app.core.config import get_settings
-from app.models import AnswerPageCollection, AnswerPageEvent, AnswerPageImage, PaperInstance, Student
+from app.models import AnswerPageCollection, AnswerPageEvent, AnswerPageImage, PaperInstance, Student, VisionPageTask
 from app.services.answer_card_artifacts import get_artifact
 from app.services.assessment import AssessmentProblem, now
 from app.services.assessment_protocol import input_hash
@@ -90,7 +90,9 @@ def collection_view(db, paper_id, artifact_id):
             "revision_no": collection.revision_no, "total_pages": artifact.total_pages,
             "status": "collected" if not missing else "collecting", "missing_page_nos": missing,
             "collection_ready": not missing and active, "is_active": active,
-            "identity_status": "manually_assigned_not_model_verified", "recognition_status": "not_started",
+            "identity_status": "manually_assigned_not_model_verified",
+            "recognition_status": "tasks_created" if db.scalar(select(VisionPageTask.id).where(
+                VisionPageTask.collection_id == collection.id).limit(1)) else "not_started",
             "can_submit": False, "effective_input_sha256": fingerprint, "pages": pages,
             "images": [{"id": str(i.id), "image_sha256": i.image_sha256, "width": i.width, "height": i.height,
                         "byte_size": i.byte_size, "created_at": i.created_at, "retention_until": i.retention_until,

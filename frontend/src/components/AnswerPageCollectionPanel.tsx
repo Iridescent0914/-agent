@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { apiGet, apiPost, apiPostForm, apiPut, apiUrl } from '../api/client'
 import type { AnswerCardArtifact } from '../types/recognition'
 import type { AnswerPageCollection } from '../types/answerPages'
+import { VisionPageTasksPanel } from './VisionPageTasksPanel'
 
 interface PaperIdentity {
   student_code: string
@@ -186,6 +187,7 @@ export function AnswerPageCollectionPanel({ paperId }: { paperId: string }) {
           })}
         </Space>
       </Card>
+      <VisionPageTasksPanel scope={scope} collection={collection} reviewer={reviewer} reason={reason} />
       <Card title="操作记录"><Space direction="vertical">
         {collection.history.length === 0 && <Typography.Text type="secondary">尚未上传照片</Typography.Text>}
         {collection.history.map(h => <Typography.Text key={h.revision_no}>v{h.revision_no} · 答题页 {h.page_no} · {({ upload: '上传/补拍', select: '切换有效照片', remove: '移除归属', restore: '重新上传过期照片' } as Record<string, string>)[h.action] ?? h.action} · {h.reviewer} · {h.reason}</Typography.Text>)}

@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     stage6_timeout_seconds: int = Field(default=10, ge=1, le=120)
     stage6_lease_seconds: int = Field(default=30, ge=2, le=600)
     stage6_max_attempts: int = Field(default=3, ge=1, le=5)
+    # S3-D currently implements only fake. Other values fail closed; never use
+    # the legacy VISION_PROVIDER or the equivalence provider as a fallback.
+    stage6_vision_provider: str = "fake"
+    stage6_vision_timeout_seconds: int = Field(default=45, ge=1, le=120)
+    stage6_vision_lease_seconds: int = Field(default=120, ge=2, le=600)
     stage6_equivalence_provider: str = "fake"
     stage6_equivalence_api_key: SecretStr = SecretStr("")
     stage6_equivalence_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -54,6 +59,8 @@ class Settings(BaseSettings):
     def stage6_valid_lease(self):
         if self.stage6_lease_seconds <= self.stage6_timeout_seconds:
             raise ValueError("STAGE6_LEASE_SECONDS 必须大于 STAGE6_TIMEOUT_SECONDS")
+        if self.stage6_vision_lease_seconds <= self.stage6_vision_timeout_seconds:
+            raise ValueError("STAGE6_VISION_LEASE_SECONDS 必须大于 STAGE6_VISION_TIMEOUT_SECONDS")
         return self
 
     question_import_dir: Path = Path(__file__).resolve().parents[3] / "data" / "uploads" / "question_imports"

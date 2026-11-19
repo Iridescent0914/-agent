@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.models import AnswerCardArtifact, AssessmentTask
 from app.schemas.answer_card import AnswerCardArtifactOut, CreateAnswerCardArtifact
 from app.schemas.answer_pages import CreatePageCollection, SelectPageImage
+from app.schemas.vision_pages import CreatePageVisionTasks, PageVisionAction
 from app.schemas.assessment import CreateAssessmentTask, QualityFeedbackIn, TaskAction
 from app.schemas.vision_preparation import VisionInventory
 from app.services import assessment as service
@@ -19,6 +20,7 @@ from app.services.assessment_worker import budget_state
 from app.services.vision_preparation import build_inventory
 from app.services import answer_card_artifacts as artifacts
 from app.services import answer_pages
+from app.services import vision_pages
 
 
 def internal_only():
@@ -138,6 +140,27 @@ def select_page_image(paper_id: UUID, artifact_id: UUID, page_no: int,
 def read_page_image(paper_id: UUID, artifact_id: UUID, image_id: UUID, db: Session = Depends(get_db)):
     return Response(answer_pages.read_image(db, paper_id, artifact_id, image_id), media_type="image/jpeg",
                     headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+
+
+@router.get(_PAGE_COLLECTION + "/vision-tasks")
+def list_page_vision_tasks(paper_id: UUID, artifact_id: UUID, db: Session = Depends(get_db)):
+    return vision_pages.list_tasks(db, paper_id, artifact_id)
+
+
+@router.post(_PAGE_COLLECTION + "/vision-tasks")
+def create_page_vision_tasks(paper_id: UUID, artifact_id: UUID, request: CreatePageVisionTasks, db: Session = Depends(get_db)):
+    return vision_pages.create_tasks(db, paper_id, artifact_id, request)
+
+
+@router.get(_PAGE_COLLECTION + "/vision-tasks/{task_id}")
+def read_page_vision_task(paper_id: UUID, artifact_id: UUID, task_id: UUID, db: Session = Depends(get_db)):
+    return vision_pages.task_detail(db, paper_id, artifact_id, task_id)
+
+
+@router.post(_PAGE_COLLECTION + "/vision-tasks/{task_id}/{action}")
+def act_on_page_vision_task(paper_id: UUID, artifact_id: UUID, task_id: UUID,
+                          action: Literal["retry", "cancel", "rerun"], request: PageVisionAction, db: Session = Depends(get_db)):
+    return vision_pages.task_action(db, paper_id, artifact_id, task_id, action, request)
 
 
 @router.post("/equivalence-tasks")
