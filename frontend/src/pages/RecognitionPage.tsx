@@ -7,10 +7,33 @@ import { apiDelete, apiGet, apiPost, apiPostForm, apiUrl } from '../api/client'
 import { AnswerView } from '../components/AnswerView'
 import type { RecognitionRun } from '../types/recognition'
 import type { SubmissionDetail } from '../types/submission'
+import { AnswerPageCollectionPanel } from '../components/AnswerPageCollectionPanel'
 
 const labels = { readable: '清晰', blank: '确认空白', missing: '缺失题号', illegible: '无法辨认', ambiguous: '存在歧义' }
 
 export function RecognitionPage() {
+  const { paperInstanceId } = useParams()
+  const [stage6, setStage6] = useState<boolean | null>(null)
+  const [showLegacy, setShowLegacy] = useState(false)
+  useEffect(() => {
+    const abort = new AbortController()
+    apiGet<{ enabled: boolean }>('/internal/stage6/status', abort.signal)
+      .then(value => { if (!abort.signal.aborted) setStage6(value.enabled) })
+      .catch(() => { if (!abort.signal.aborted) setStage6(false) })
+    return () => abort.abort()
+  }, [])
+  if (stage6 === null) return <Card loading />
+  if (stage6 && paperInstanceId && !showLegacy) return <>
+    <AnswerPageCollectionPanel key={paperInstanceId} paperId={paperInstanceId} />
+    <Button onClick={() => setShowLegacy(true)}>查看原单图识别记录</Button>
+  </>
+  return <>
+    {stage6 && <Button onClick={() => setShowLegacy(false)}>返回多页照片管理</Button>}
+    <LegacyRecognitionPage key={paperInstanceId} />
+  </>
+}
+
+function LegacyRecognitionPage() {
   const { paperInstanceId } = useParams()
   const navigate = useNavigate()
   const [paper, setPaper] = useState<SubmissionDetail | null>(null)
