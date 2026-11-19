@@ -26,7 +26,7 @@ from app.services.question_import_s3_images import image_bytes
 from app.services.question_import_s3_labels import _text_cost
 
 
-ANSWER_GENERATION_VERSION = "s3-answer-generation-v3"
+ANSWER_GENERATION_VERSION = "s3-answer-generation-v4"
 GROUP_SIZE = 8
 MAX_GROUP_CHARACTERS = 24_000
 MAX_IMAGES_PER_GROUP = 8
@@ -132,6 +132,9 @@ class QwenAnswerGenerationProvider:
             "选择题返回前逐字核对所选选项的 key 和 text，确认它与求解结果一致；"
             "不要把自己改写或省略后的选项当作原文。若发现题目或选项确有歧义，"
             "uncertainty 应引用实际收到的原文，并说明歧义如何影响答案。"
+            "判断条件是否缺失前，先检查 options 是否已经给出所需数据；选项本身也是题目数据。"
+            "例如题目让比较若干气温、数值或算式的大小，而这些值已列在选项中，"
+            "应直接比较选项，不要因题干没有重复列出这些值或没有题图就判定无法作答。"
             "answer_text 只写最终答案，不写解题过程或解析。"
             "选择题只写选项编号，如 C 或 A、C，不要重复选项内容；"
             "填空题按空顺序列出，多小题按原编号逐项列出。"

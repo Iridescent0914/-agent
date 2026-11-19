@@ -65,6 +65,7 @@ def test_provider_sends_only_selected_questions_and_images(monkeypatch):
     assert "1.2×10^8" in content[0]["text"]
     assert "逐字核对所选选项" in content[0]["text"]
     assert "不能读成 108" in content[0]["text"]
+    assert "选项本身也是题目数据" in content[0]["text"]
     assert "选择题只写选项编号" in content[0]["text"]
     assert content[1]["text"] == "题目 item-1 的图片 asset-1"
     assert content[2]["image_url"]["url"].startswith("data:image/png;base64,")
