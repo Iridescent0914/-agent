@@ -697,7 +697,7 @@ export function QuestionImportPage() {
       {removedCandidateImages.length > 0 && <Typography.Text type="warning">去重题目有 {removedCandidateImages.length} 张未自动转移的图片，请在上方“无法匹配到题目的图片”中核对是否缺图。</Typography.Text>}
       {canEditCandidates && <label>添加图片：<input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageBusy || !images?.files_available} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file && selectedBatch) void uploadCandidateImage(selectedBatch, item, file) }} /></label>}
       {item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}
-      {item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer">
+      {item.payload.answers?.map((answer) => <div key={answer.answer_id} className={`question-import-answer${answer.answer_source === 'model_generated' && answer.answer_id === item.payload.selected_answer_id && !answer.teacher_confirmed ? ' question-import-answer--model-pending' : ''}`}>
         <Typography.Text>{answer.answer_source === 'teacher_entered' ? '教师答案' : answer.answer_source === 'source_extracted' ? '资料答案' : answer.answer_source === 'model_generated' ? '模型生成答案' : '答案'}{answer.answer_id === item.payload.selected_answer_id ? answer.teacher_confirmed ? '（已确认采用）' : '（当前选择，待教师确认）' : ''}：</Typography.Text>
         {answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}
       </div>)}

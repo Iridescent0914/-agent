@@ -26,7 +26,7 @@ from app.services.question_import_s3_images import image_bytes
 from app.services.question_import_s3_labels import _text_cost
 
 
-ANSWER_GENERATION_VERSION = "s3-answer-generation-v2"
+ANSWER_GENERATION_VERSION = "s3-answer-generation-v3"
 GROUP_SIZE = 8
 MAX_GROUP_CHARACTERS = 24_000
 MAX_IMAGES_PER_GROUP = 8
@@ -132,7 +132,8 @@ class QwenAnswerGenerationProvider:
             "选择题返回前逐字核对所选选项的 key 和 text，确认它与求解结果一致；"
             "不要把自己改写或省略后的选项当作原文。若发现题目或选项确有歧义，"
             "uncertainty 应引用实际收到的原文，并说明歧义如何影响答案。"
-            "answer_text 只写最终答案，不写解题过程或解析；选择题写选项及必要的答案内容，"
+            "answer_text 只写最终答案，不写解题过程或解析。"
+            "选择题只写选项编号，如 C 或 A、C，不要重复选项内容；"
             "填空题按空顺序列出，多小题按原编号逐项列出。"
             "仅在题干残缺、解题必需的题图缺失、条件不足、选项均不符合或单选题多个选项都符合，"
             "以及确实无法可靠求解时，返回 status=uncertain、answer_text=null，"

@@ -65,6 +65,7 @@ def test_provider_sends_only_selected_questions_and_images(monkeypatch):
     assert "1.2×10^8" in content[0]["text"]
     assert "逐字核对所选选项" in content[0]["text"]
     assert "不能读成 108" in content[0]["text"]
+    assert "选择题只写选项编号" in content[0]["text"]
     assert content[1]["text"] == "题目 item-1 的图片 asset-1"
     assert content[2]["image_url"]["url"].startswith("data:image/png;base64,")
 
@@ -149,6 +150,8 @@ def test_question_only_generation_preserves_manual_answer_and_needs_teacher_revi
                          changes={"answers": [{**first.payload["answers"][0], "teacher_confirmed": True}]})
     assert forged.value.code == "INVALID_CANDIDATE"
     assert process_answer_generation_one() is False
+    start_answer_generation(db, batch.id, budget_cny=2, operator_token="operator-test")
+    assert [entry["item_id"] for entry in batch.checkpoint["s3"]["answer_generation"]["groups"][-1]["items"]] == [str(third.id)]
 
 
 def test_generation_rejects_answer_file_modes(db, tmp_path, monkeypatch):

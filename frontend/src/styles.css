@@ -35,6 +35,7 @@ a { color: inherit; }
 .question-rich-text { white-space: pre-wrap; font-size: 16px; line-height: 2; color: #111827; }
 .question-import-candidate .question-rich-text { margin-bottom: 0; }
 .question-import-answer .question-rich-text { margin: 0 0 8px; font-size: 14px; line-height: 1.6; }
+.question-import-answer--model-pending { background: #fffbe6; }
 .question-import-issues { margin: 16px 0; border: 1px solid #b9c8dc; border-radius: 8px; background: #f4f7fb; }
 .question-import-issues > summary { cursor: pointer; padding: 12px 16px; font-weight: 600; }
 .question-import-issues-content { padding: 12px 16px 16px; border-top: 1px solid #dbe3ef; }
