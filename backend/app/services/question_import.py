@@ -44,6 +44,9 @@ def _editable_after_dedupe(batch: QuestionImportBatch) -> None:
     matching = (s3.get("answer_model_matching") or {}).get("status")
     if matching in {"queued", "processing"}:
         raise ImportProblem("COMMIT_CONFLICT", "答案模型配对期间不可修改题目、答案或标签，请等待任务完成", 409)
+    generation = (s3.get("answer_generation") or {}).get("status")
+    if generation in {"queued", "processing"}:
+        raise ImportProblem("COMMIT_CONFLICT", "答案生成期间不可修改题目、答案或标签，请等待任务完成", 409)
     labels = (s3.get("labels") or {}).get("status")
     if labels in {"queued", "processing"}:
         raise ImportProblem("COMMIT_CONFLICT", "标签建议生成期间不可修改题目、答案或标签，请等待任务完成", 409)
@@ -448,7 +451,7 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         raise ImportProblem("REVISION_CONFLICT", "候选题已被修改，请刷新", 409)
     if batch.catalog_snapshot_sha256 != hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest():
         raise ImportProblem("CATALOG_CHANGED", "正式标签目录已变化，请重新上传批次", 409)
-    allowed = {"content", "tags", "answers", "selected_answer_id", "teacher_decision", "commit_intent", "warnings",
+    allowed = {"content", "tags", "selected_answer_id", "teacher_decision", "commit_intent",
                "teacher_answer_text"}
     if not changes or set(changes) - allowed:
         raise ImportProblem("INVALID_CANDIDATE", "候选题修改字段无效")
@@ -485,18 +488,7 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         if (not isinstance(answer_text, str) or not answer_text.strip()
                 or len(answer_text) > 30000):
             raise ImportProblem("INVALID_CANDIDATE", "请填写非空且不超过 30000 字的答案")
-    if "answers" in changes and (
-        not isinstance(changes["answers"], list)
-        or any(not isinstance(value, dict) or not isinstance(value.get("answer_id"), str)
-               for value in changes["answers"])
-    ):
-        raise ImportProblem("INVALID_CANDIDATE", "答案版本结构无效")
-    if "warnings" in changes and (
-        not isinstance(changes["warnings"], list)
-        or any(not isinstance(value, str) for value in changes["warnings"])
-    ):
-        raise ImportProblem("INVALID_CANDIDATE", "提示信息结构无效")
-    if set(changes) & {"content", "tags", "answers", "selected_answer_id", "teacher_answer_text"}:
+    if set(changes) & {"content", "tags", "selected_answer_id", "teacher_answer_text"}:
         _editable_after_dedupe(batch)
     if "tags" in changes:
         submitted = changes["tags"]

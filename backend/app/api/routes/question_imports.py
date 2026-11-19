@@ -24,6 +24,7 @@ from app.services.question_import_s3_images import (
 )
 from app.services.question_import_s3_separate import start_separate_answers
 from app.services.question_import_s3_labels import _allowed_kps, start_labels
+from app.services.question_import_s3_answer_generation import start_answer_generation
 from app.services.question_import_s3_review import list_review_issues
 
 
@@ -84,6 +85,10 @@ class S2SkipPageRequest(BaseModel):
 
 class S3ReviewRequest(BaseModel):
     budget_cny: float = Field(gt=0)
+
+
+class S3AnswerGenerationRequest(S3ReviewRequest):
+    item_ids: list[UUID] | None = None
 
 
 class ImageLinkRequest(BaseModel):
@@ -253,6 +258,14 @@ def start_model_answer_matching(batch_id: UUID, request: S3ReviewRequest,
                                 operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
     return start_answer_matching(db, batch_id, budget_cny=request.budget_cny,
                                  operator_token=operator_token)
+
+
+@router.post("/{batch_id}/s3/start-answer-generation", response_model=BatchOut)
+def start_model_answer_generation(batch_id: UUID, request: S3AnswerGenerationRequest,
+                                  db: Session = Depends(get_db),
+                                  operator_token: str | None = Header(None, alias="X-Import-S2-Token")):
+    return start_answer_generation(db, batch_id, budget_cny=request.budget_cny,
+                                   operator_token=operator_token, item_ids=request.item_ids)
 
 
 @router.post("/{batch_id}/s3/start-labels", response_model=BatchOut)

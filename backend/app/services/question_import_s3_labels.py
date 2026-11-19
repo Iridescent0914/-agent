@@ -225,6 +225,8 @@ def start_labels(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
     s3 = (batch.checkpoint or {}).get("s3") or {}
     if (s3.get("global_dedupe") or {}).get("status") != "completed":
         raise ImportProblem("S3_DEDUPE_PENDING", "请先完成整批去重", 409)
+    if (s3.get("answer_generation") or {}).get("status") in {"queued", "processing"}:
+        raise ImportProblem("COMMIT_CONFLICT", "请等待答案生成任务完成后再生成标签", 409)
     if batch.source_mode == "separate" and (s3.get("separate_answers") or {}).get("status") != "completed":
         raise ImportProblem("S3_ANSWERS_PENDING", "请先完成答案文件识别和关联", 409)
     if batch.source_mode in {"combined", "separate"} and not s3.get("source_answer_reconciliation"):

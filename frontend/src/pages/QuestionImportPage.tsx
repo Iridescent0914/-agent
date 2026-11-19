@@ -11,7 +11,7 @@ type Batch = {
   files: Array<{ file_id: string; original_name: string; size_bytes: number; page_count: number | null; role: string }>
   checkpoint: {
     s2?: { calls?: number; page_count?: number; prompt_version?: string; auto_global_dedupe?: boolean; auto_answer_matching?: boolean; failed_unit?: { index: number; code: string }; units?: Array<{ index: number; first_page: number; last_page: number; core_first_page: number; core_last_page: number; status: string; candidate_count?: number; skipped_by_teacher?: boolean; skip_error_message?: string | null; source_answers?: Array<{ source_file_id?: string; original_number: string | null; subquestion_number?: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; source_answer_signals?: Array<{ page: number; evidence: string }>; overlap_suspects?: Array<{ candidate_item_id: string; other_item_id: string }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }
-    s3?: { global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number }; separate_answers?: { status: string; auto_answer_matching?: boolean; calls?: number; error_message?: string; units?: Array<{ index: number; first_page: number; core_last_page: number; status: string; source_answers?: Array<{ source_file_id?: string; original_number: string | null; subquestion_number?: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }; answer_model_matching?: { status: string; calls?: number; estimated_cny?: number; error_message?: string; cost_unknown?: boolean; skipped?: Array<{ answer_id: string; reason: string }>; groups?: Array<{ status: string }> }; labels?: { status: string; calls?: number; estimated_cny?: number; cost_unknown?: boolean; error_code?: string; error_message?: string; skipped_item_ids?: string[]; groups?: Array<{ index: number; status: string; applied_count?: number; skipped_item_ids?: string[] }> }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; manual_candidate_changes_pending?: boolean; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ source_file_id?: string; original_number: string | null; text: string; page_start: number; subquestion_number?: string | null; reason: string; candidate_item_ids?: string[] }> } }
+    s3?: { global_dedupe?: { status: string; reviewed_candidate_count?: number; removed_duplicate_count?: number; error_message?: string; estimated_cny?: number }; separate_answers?: { status: string; auto_answer_matching?: boolean; calls?: number; error_message?: string; units?: Array<{ index: number; first_page: number; core_last_page: number; status: string; source_answers?: Array<{ source_file_id?: string; original_number: string | null; subquestion_number?: string | null; text: string; page_start: number; candidate_item_ids?: string[] }>; unresolved_fragments?: Array<{ page: number; text: string; reason: string }> }> }; answer_model_matching?: { status: string; calls?: number; estimated_cny?: number; error_message?: string; cost_unknown?: boolean; skipped?: Array<{ answer_id: string; reason: string }>; groups?: Array<{ status: string }> }; answer_generation?: { status: string; calls?: number; estimated_cny?: number; cost_unknown?: boolean; error_message?: string; groups?: Array<{ status: string; applied_count?: number; skipped_item_ids?: string[] }> }; labels?: { status: string; calls?: number; estimated_cny?: number; cost_unknown?: boolean; error_code?: string; error_message?: string; skipped_item_ids?: string[]; groups?: Array<{ index: number; status: string; applied_count?: number; skipped_item_ids?: string[] }> }; source_answer_reconciliation?: { schema_version: string; source_answer_count: number; linked_answer_count: number; linked_question_count: number; manual_candidate_changes_pending?: boolean; overlap_duplicate_answers?: Array<{ text: string; page_start: number; matched_original_number: string; matched_page: number }>; unassigned_answers: Array<{ source_file_id?: string; original_number: string | null; text: string; page_start: number; subquestion_number?: string | null; reason: string; candidate_item_ids?: string[] }> } }
   }
   error_code: string | null
   error_message: string | null
@@ -52,6 +52,7 @@ type Candidate = {
     answers?: Array<{ answer_id: string; answer_source: string; text: string | null; teacher_confirmed: boolean; evidence?: Array<{ file_id: string; page: number; quote: string }> }>
     selected_answer_id?: string | null
     answer_match_status?: string
+    teacher_decision?: string
     duplicate_status?: string
     label_status?: string
     tags?: { question_type?: string; difficulty?: number | null; main_kp_code?: string | null; grade?: string | null; chapter_code?: string | null; section?: string | null; core_literacies?: string[]; is_required?: boolean }
@@ -105,6 +106,11 @@ function stageLabel(batch: Batch): string {
   if (batch.stage === 's2_queued') return '等待识别题目文件'
   if (batch.stage === 's2_processing') return '正在识别题目文件页段'
   if (batch.stage === 's2_completed') {
+    const generation = batch.checkpoint?.s3?.answer_generation
+    if (generation?.status === 'queued') return '答案生成等待处理'
+    if (generation?.status === 'processing') return '正在生成答案'
+    if (generation?.status === 'paused') return '答案生成已暂停'
+    if (generation?.status === 'failed') return '答案生成失败'
     const labels = batch.checkpoint?.s3?.labels
     if (labels?.status === 'queued') return '标签建议等待处理'
     if (labels?.status === 'processing') return '正在生成标签建议'
@@ -478,6 +484,23 @@ export function QuestionImportPage() {
     })
   }
 
+  function confirmAnswerGeneration(batch: Batch, count: number, itemIds?: string[]) {
+    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
+    Modal.confirm({
+      title: `为 ${count} 道无答案题生成参考答案？`,
+      content: `仅处理${itemIds ? '所选' : '本批'}尚无答案的候选题；已有教师答案不会被覆盖。将题干、选项和已关联题图分组发送给百炼 ${s2Config?.model || ''}。模型无法确定时保留无答案，所有生成结果均须教师核对，不会再次调用模型预审，也不会自动入库或入池。预算阈值 ¥${budget}，此前答案生成费用计入该阈值；单次调用可能超过阈值。`,
+      okText: '开始生成答案', cancelText: '取消',
+      onOk: async () => {
+        try {
+          await apiPost(`/question-imports/${batch.id}/s3/start-answer-generation`,
+            { budget_cny: budget, ...(itemIds ? { item_ids: itemIds } : {}) }, undefined, { 'X-Import-S2-Token': operatorToken })
+          message.success('答案生成已排队')
+          await reload(batch.id)
+        } catch (error) { message.error(error instanceof Error ? error.message : '启动答案生成失败') }
+      },
+    })
+  }
+
   function confirmLabels(batch: Batch, rerun = false) {
     if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
     const replan = batch.checkpoint?.s3?.labels?.error_code === 'S3_LABEL_REPLAN_REQUIRED'
@@ -629,10 +652,14 @@ export function QuestionImportPage() {
   const answerModelExpected = !!answerModelTask || !!(selectedBatch?.source_mode === 'combined'
     ? s2?.auto_answer_matching : separateAnswers?.auto_answer_matching)
   const labelTaskStatus = selectedBatch?.checkpoint?.s3?.labels?.status
+  const generationTask = selectedBatch?.checkpoint?.s3?.answer_generation
   const canEditCandidates = selectedBatch?.status === 'review_pending' && selectedBatch.stage === 's2_completed'
     && dedupeStatus === 'completed' && (selectedBatch.source_mode !== 'separate' || separateAnswers?.status === 'completed')
     && !['queued', 'processing'].includes(labelTaskStatus || '')
     && !['queued', 'processing'].includes(answerModelTask?.status || '')
+    && !['queued', 'processing'].includes(generationTask?.status || '')
+  const unansweredCandidates = candidates.filter((item) => !item.is_fake && !item.payload.answers?.length
+    && (!item.payload.teacher_decision || item.payload.teacher_decision === 'pending'))
   const answerMatchingComplete = !!reconciliation && selectedBatch?.stage === 's2_completed'
     && (!dedupeStatus || dedupeStatus === 'completed')
     && (selectedBatch?.source_mode !== 'separate' || separateAnswers?.status === 'completed')
@@ -671,12 +698,17 @@ export function QuestionImportPage() {
       {canEditCandidates && <label>添加图片：<input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageBusy || !images?.files_available} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file && selectedBatch) void uploadCandidateImage(selectedBatch, item, file) }} /></label>}
       {item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}
       {item.payload.answers?.map((answer) => <div key={answer.answer_id} className="question-import-answer">
-        <Typography.Text>{answer.answer_source === 'teacher_entered' ? '教师答案' : answer.answer_source === 'source_extracted' ? '资料答案' : '答案'}{answer.answer_id === item.payload.selected_answer_id ? '（当前采用）' : ''}：</Typography.Text>
+        <Typography.Text>{answer.answer_source === 'teacher_entered' ? '教师答案' : answer.answer_source === 'source_extracted' ? '资料答案' : answer.answer_source === 'model_generated' ? '模型生成答案' : '答案'}{answer.answer_id === item.payload.selected_answer_id ? answer.teacher_confirmed ? '（已确认采用）' : '（当前选择，待教师确认）' : ''}：</Typography.Text>
         {answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}
       </div>)}
       {item.payload.warnings?.includes('题目已修改，请重新核对答案是否仍适用') && <Typography.Text type="warning">题目已修改，请重新核对答案是否仍适用。</Typography.Text>}
       {canEditCandidates && candidateEditor?.itemId !== item.id && <Space>
         <Button size="small" onClick={() => startEditingCandidate(item)}>编辑题目和答案</Button>
+        {selectedBatch && selectedBatch.source_mode === 'questions_only' && !item.payload.answers?.length && !item.is_fake
+          && (!item.payload.teacher_decision || item.payload.teacher_decision === 'pending')
+          && <Button size="small" disabled={!s2Config?.ready || !!selectedBatch.files_purged_at || !!generationTask?.cost_unknown
+            || (['failed', 'paused'].includes(generationTask?.status || '') && !!generationTask?.groups?.some((group) => group.status === 'pending'))}
+            onClick={() => confirmAnswerGeneration(selectedBatch, 1, [item.id])}>生成本题答案</Button>}
         <Button size="small" danger loading={deletingCandidateId === item.id} onClick={() => confirmDeleteCandidate(item)}>删除题目</Button>
       </Space>}
       {candidateEditor?.itemId === item.id && <Card size="small" title="编辑题目和答案" style={{ width: '100%' }}>
@@ -731,7 +763,7 @@ export function QuestionImportPage() {
 
   return <Space direction="vertical" size="large" style={{ width: '100%' }}>
     <Card title="批量题目导入 · 内部识别与候选核对">
-      <Typography.Paragraph>上传后先校验文件；S2 按页段提取题目并自动整批去重。同文件场景同时提取答案；分文件场景先读取题目文件，整批去重完成后识别答案文件。来源答案先按规则关联，再对有歧义的对应进行模型辅助判断，仍无法确定的留给教师核对；之后可单独启动标签建议。</Typography.Paragraph>
+      <Typography.Paragraph>上传后先校验文件；S2 按页段提取题目并自动整批去重。同文件场景同时提取答案；分文件场景先读取题目文件，整批去重完成后识别答案文件。来源答案先按规则关联，再对有歧义的对应进行模型辅助判断，仍无法确定的留给教师核对。“只有题目”批次可选择为无答案题生成参考答案，或由教师手填；之后可单独启动标签建议。</Typography.Paragraph>
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         <Select aria-label="文件场景" value={mode} onChange={(value) => { setMode(value); setAnswerFile(null) }}
           options={Object.entries(modeLabels).map(([value, label]) => ({ value, label }))} style={{ width: 260 }} />
@@ -751,7 +783,7 @@ export function QuestionImportPage() {
           { title: '上传时间', dataIndex: 'created_at', render: (value: string) => new Date(value).toLocaleString('zh-CN') },
           { title: '场景', dataIndex: 'source_mode', render: (value: string) => modeLabels[value] || value },
           { title: '文件', dataIndex: 'files', render: (files: Batch['files'], batch: Batch) => <Space wrap>{batch.id === focusedBatchId && <Tag color="blue">当前批次</Tag>}{files.map((file) => file.original_name).join('、')}</Space> },
-          { title: '状态', render: (_, batch: Batch) => <Space direction="vertical" size={0}><Tag color={batch.status === 'failed' ? 'red' : batch.status === 'cancelled' ? 'default' : batch.status === 'review_pending' ? 'green' : 'blue'}>{stageLabel(batch)}</Tag>{batch.checkpoint?.s2 && <Typography.Text type="secondary">题目识别调用 {batch.checkpoint.s2.calls || 0} 次</Typography.Text>}{batch.checkpoint?.s3?.separate_answers && <Typography.Text type={['failed', 'paused'].includes(batch.checkpoint.s3.separate_answers.status) ? 'warning' : 'secondary'}>答案识别：{batch.checkpoint.s3.separate_answers.status}，调用 {batch.checkpoint.s3.separate_answers.calls || 0} 次{batch.checkpoint.s3.separate_answers.error_message ? `；${batch.checkpoint.s3.separate_answers.error_message}` : ''}</Typography.Text>}{batch.checkpoint?.s3?.answer_model_matching && <Typography.Text type={['failed', 'pending_budget'].includes(batch.checkpoint.s3.answer_model_matching.status) ? 'warning' : 'secondary'}>模型辅助配对：{batch.checkpoint.s3.answer_model_matching.status}，调用 {batch.checkpoint.s3.answer_model_matching.calls || 0} 次{batch.checkpoint.s3.answer_model_matching.error_message ? `；${batch.checkpoint.s3.answer_model_matching.error_message}` : ''}</Typography.Text>}{batch.checkpoint?.s3?.labels && <Typography.Text type={['failed', 'paused'].includes(batch.checkpoint.s3.labels.status) ? 'warning' : 'secondary'}>标签建议：{batch.checkpoint.s3.labels.status}，调用 {batch.checkpoint.s3.labels.calls || 0} 次{batch.checkpoint.s3.labels.error_message ? `；${batch.checkpoint.s3.labels.error_message}` : ''}</Typography.Text>}{batch.error_message && <Typography.Text type="danger">{batch.error_message}</Typography.Text>}{batch.error_code === 'S2_REVIEW_REQUIRED' && <Typography.Text type="warning">{skippableS2Page(batch) !== null ? '请核对失败页和前一页段的候选题；确认没有新题遗漏后，可人工跳过本页并继续。' : '请检查原文件对应页面并重新上传清晰版，或将批次号发给管理员；已完成的候选题仍可查看。'}批次号：<Typography.Text copyable={{ text: batch.id }}>{batch.id}</Typography.Text></Typography.Text>}{batch.error_code === 'CALL_LIMIT_REACHED' && <Typography.Text type="warning">已达到单批调用次数上限，请将批次号发给管理员：<Typography.Text copyable={{ text: batch.id }}>{batch.id}</Typography.Text></Typography.Text>}</Space> },
+          { title: '状态', render: (_, batch: Batch) => <Space direction="vertical" size={0}><Tag color={batch.status === 'failed' ? 'red' : batch.status === 'cancelled' ? 'default' : batch.status === 'review_pending' ? 'green' : 'blue'}>{stageLabel(batch)}</Tag>{batch.checkpoint?.s2 && <Typography.Text type="secondary">题目识别调用 {batch.checkpoint.s2.calls || 0} 次</Typography.Text>}{batch.checkpoint?.s3?.separate_answers && <Typography.Text type={['failed', 'paused'].includes(batch.checkpoint.s3.separate_answers.status) ? 'warning' : 'secondary'}>答案识别：{batch.checkpoint.s3.separate_answers.status}，调用 {batch.checkpoint.s3.separate_answers.calls || 0} 次{batch.checkpoint.s3.separate_answers.error_message ? `；${batch.checkpoint.s3.separate_answers.error_message}` : ''}</Typography.Text>}{batch.checkpoint?.s3?.answer_model_matching && <Typography.Text type={['failed', 'pending_budget'].includes(batch.checkpoint.s3.answer_model_matching.status) ? 'warning' : 'secondary'}>模型辅助配对：{batch.checkpoint.s3.answer_model_matching.status}，调用 {batch.checkpoint.s3.answer_model_matching.calls || 0} 次{batch.checkpoint.s3.answer_model_matching.error_message ? `；${batch.checkpoint.s3.answer_model_matching.error_message}` : ''}</Typography.Text>}{batch.checkpoint?.s3?.answer_generation && <Typography.Text type={['failed', 'paused'].includes(batch.checkpoint.s3.answer_generation.status) ? 'warning' : 'secondary'}>答案生成：{batch.checkpoint.s3.answer_generation.status}，调用 {batch.checkpoint.s3.answer_generation.calls || 0} 次{batch.checkpoint.s3.answer_generation.error_message ? `；${batch.checkpoint.s3.answer_generation.error_message}` : ''}</Typography.Text>}{batch.checkpoint?.s3?.labels && <Typography.Text type={['failed', 'paused'].includes(batch.checkpoint.s3.labels.status) ? 'warning' : 'secondary'}>标签建议：{batch.checkpoint.s3.labels.status}，调用 {batch.checkpoint.s3.labels.calls || 0} 次{batch.checkpoint.s3.labels.error_message ? `；${batch.checkpoint.s3.labels.error_message}` : ''}</Typography.Text>}{batch.error_message && <Typography.Text type="danger">{batch.error_message}</Typography.Text>}{batch.error_code === 'S2_REVIEW_REQUIRED' && <Typography.Text type="warning">{skippableS2Page(batch) !== null ? '请核对失败页和前一页段的候选题；确认没有新题遗漏后，可人工跳过本页并继续。' : '请检查原文件对应页面并重新上传清晰版，或将批次号发给管理员；已完成的候选题仍可查看。'}批次号：<Typography.Text copyable={{ text: batch.id }}>{batch.id}</Typography.Text></Typography.Text>}{batch.error_code === 'CALL_LIMIT_REACHED' && <Typography.Text type="warning">已达到单批调用次数上限，请将批次号发给管理员：<Typography.Text copyable={{ text: batch.id }}>{batch.id}</Typography.Text></Typography.Text>}</Space> },
            { title: '操作', render: (_, batch: Batch) => <Space wrap>
              {['awaiting_s2', 's2_budget_paused'].includes(batch.stage) && batch.error_code !== 'CALL_LIMIT_REACHED' && <Button disabled={!s2Config?.ready} onClick={() => confirmStart(batch)}>{batch.stage === 's2_budget_paused' ? '调整预算并继续识别' : '开始 S2 识别'}</Button>}
              {batch.checkpoint?.s2 && <Button onClick={() => void viewCandidates(batch.id)}>查看候选与页段</Button>}
@@ -775,11 +807,19 @@ export function QuestionImportPage() {
         message={selectedBatch?.source_mode === 'separate'
           ? '先提取题目、整批去重，再识别答案文件；答案识别完成后才能增删改题目和答案。'
           : '先提取题目、整批去重；去重完成后才能增删改题目和答案。'}
-        description="题目、答案、题图和标签可在任务完成后编辑；模型配对或标签建议排队、运行期间暂不可编辑。修改题目或题图不会自动改变已有标签；主动点击“全部重新打标签”会覆盖已有的题型、难度和主属知识点。" />
+        description="题目、答案、题图和标签可在任务完成后编辑；模型配对、答案生成或标签建议排队、运行期间暂不可编辑。修改题目或题图不会自动改变已有标签；主动点击“全部重新打标签”会覆盖已有的题型、难度和主属知识点。" />
       {canEditCandidates && <Space style={{ marginBottom: 12 }}>
         <Button type="primary" onClick={() => { setNewCandidateDraft(emptyCandidateDraft()); setNewCandidateOpen(true) }}>新增题目</Button>
         <Typography.Text type="secondary">新增题目请人工核对重复情况；可在打标签前或后修改。</Typography.Text>
       </Space>}
+      {selectedBatch && selectedBatch.source_mode === 'questions_only' && dedupeStatus === 'completed' && <div style={{ marginBottom: 12 }}>
+        {generationTask?.cost_unknown && <Alert type="warning" showIcon message="上次答案生成调用费用未知，请先核对账单；当前不能重新发起调用。" style={{ marginBottom: 8 }} />}
+        <Button type="primary" disabled={!canEditCandidates || !s2Config?.ready || !!selectedBatch.files_purged_at || !!generationTask?.cost_unknown || unansweredCandidates.length === 0}
+          onClick={() => confirmAnswerGeneration(selectedBatch, unansweredCandidates.length)}>
+          {generationTask?.status === 'failed' || generationTask?.status === 'paused' ? '继续生成无答案题的答案' : '为无答案题生成答案'}
+        </Button>
+        <Typography.Text type="secondary"> 当前无答案 {unansweredCandidates.length} 题；也可以逐题手填。模型答案均待教师核对。</Typography.Text>
+      </div>}
       {selectedBatch?.stage === 's2_completed' && candidates.some((item) => !hasImportLabels(item)) && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={`还有 ${candidates.filter((item) => !hasImportLabels(item)).length} 道题缺少完整入库标签，请人工打标签；所有题都有标签后才能入库。`} />}
       {selectedBatch?.stage === 's2_completed' && <Card size="small" style={{ marginBottom: 16 }}><details>
         <summary>无法匹配到题目的图片（{unmatchedImages.length}）</summary>

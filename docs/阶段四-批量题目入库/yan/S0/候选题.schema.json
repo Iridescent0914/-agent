@@ -50,7 +50,7 @@
     "answers": {"type": "array", "items": {"$ref": "#/$defs/answer"}},
     "selected_answer_id": {"type": ["string", "null"]},
     "answer_match_status": {"enum": ["not_applicable", "matched", "uncertain", "unmatched", "conflict"]},
-    "precheck_status": {"enum": ["not_run", "matched", "suspect", "uncertain", "failed"]},
+    "precheck_status": {"enum": ["not_run", "matched", "suspect", "uncertain", "failed"], "description": "仅资料提取答案可做独立模型冲突预审；模型生成或教师手填答案保持 not_run，由教师直接核对"},
     "label_status": {"enum": ["matched", "needs_confirmation", "out_of_scope", "invalid"]},
     "label_suggestion": {"type": "object", "description": "S3 模型建议及来源版本；不代表教师确认", "additionalProperties": false,
       "required": ["item_id", "question_type", "difficulty", "main_kp_code", "alternative_kp_codes", "uncertainty", "model", "version", "revision", "fingerprint", "catalog_snapshot_sha256", "stale"],
@@ -93,7 +93,12 @@
         "answer_source": {"enum": ["source_extracted", "model_generated", "teacher_entered", "missing"]},
         "text": {"type": ["string", "null"]},
         "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
-        "teacher_confirmed": {"type": "boolean"}
+        "teacher_confirmed": {"type": "boolean"},
+        "model": {"type": "string", "description": "仅模型生成答案使用"},
+        "prompt_version": {"type": "string", "description": "仅模型生成答案使用"},
+        "response_id": {"type": ["string", "null"], "description": "仅模型生成答案使用"},
+        "input_fingerprint": {"type": "string", "description": "仅模型生成答案使用"},
+        "generated_at": {"type": "string", "description": "仅模型生成答案使用"}
       }
     }
   }

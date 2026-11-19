@@ -130,6 +130,9 @@ def process_one() -> bool:
         from app.services.question_import_s3_answer_match import process_answer_matching_one
         if process_answer_matching_one():
             return True
+        from app.services.question_import_s3_answer_generation import process_answer_generation_one
+        if process_answer_generation_one():
+            return True
         from app.services.question_import_s3_labels import process_labels_one
         return process_labels_one()
     batch_id, token = claimed
