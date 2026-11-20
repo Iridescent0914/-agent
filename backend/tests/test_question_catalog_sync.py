@@ -64,6 +64,10 @@ def test_preview_apply_backup_revisions_idempotence_and_history_protection(conte
     assert snapshot[0]["state"] == original
     assert question.review_revision == version + 1
     assert question.review_history[-1]["type"] == "question_catalog_synced"
+    from app.services.question_fingerprint_v2 import catalog_content_key, fingerprint
+    assert question.exact_fingerprint_v2 == fingerprint(catalog_content_key(
+        question.question_text, question.options, question.assets, has_image=question.has_image,
+    ))
     assert service.protected_fingerprints(db) == business
     repeated = service.synchronize(db, catalog=data, apply=True, backup_dir=tmp_path)
     assert not repeated["changes"] and not repeated["applied"]
@@ -80,6 +84,58 @@ def test_unknown_teacher_changes_block_the_entire_plan_without_backups(context, 
     result = service.synchronize(db, catalog=data, apply=True, backup_dir=tmp_path)
     assert not result["applied"] and result["conflicts"][0]["reason"] == "divergent_teacher_review"
     assert service.state(question) == before and not list(tmp_path.iterdir())
+
+
+def test_explicit_review_override_without_backup_keeps_audit_history(context, tmp_path):
+    db, _, _, _, question = context
+    data = catalog(question, grading_readiness="raw_answer_only")
+    question.correct_answer = {"kind": "group", "items": [{"item_id": "teacher", "answer": "OTHER"}]}
+    question.review_history = [{"type": "promoted", "reviewer": "任课教师"}]
+    db.flush()
+    before_business = service.protected_fingerprints(db)
+    result = service.synchronize(db, catalog=data, apply=True, backup=False, backup_dir=tmp_path,
+        accepted_review_overrides=frozenset({question.original_qid}))
+    assert result["applied"] and result["backup_path"] is None
+    assert result["changes"][0]["teacher_review_override"] is True
+    assert question.review_history[0]["type"] == "promoted"
+    assert question.review_history[-1]["teacher_review_override"] is True
+    assert question.review_history[-1]["before"]["correct_answer"]["items"][0]["answer"] == "OTHER"
+    assert question.grading_readiness == "raw_answer_only"
+    assert service.protected_fingerprints(db) == before_business
+    assert not list(tmp_path.iterdir())
+
+
+def test_replace_local_review_history_keeps_only_sync_marker(context, tmp_path):
+    db, _, _, _, question = context
+    data = catalog(question, grading_readiness="raw_answer_only")
+    question.review_history = [{"type": "withdrawn", "reviewer": "任课教师"}]
+    db.flush()
+    result = service.synchronize(db, catalog=data, apply=True, backup=False, backup_dir=tmp_path,
+        accepted_review_overrides=frozenset({question.original_qid}), retain_local_review_history=False)
+    assert result["applied"] and result["backup_path"] is None
+    assert [event["type"] for event in question.review_history] == ["question_catalog_synced"]
+    assert set(question.review_history[0]) == {"event_id", "type", "at", "reviewer"}
+    values = {"question_type": "source", "grading_readiness": "machine_ready"}
+    _preserve_reviewed_answer(question, values)
+    assert values == {}
+    assert not list(tmp_path.iterdir())
+
+
+def test_discard_prior_local_review_history_only_after_verified_sync(context, tmp_path):
+    db, _, _, _, question = context
+    data = catalog(question, grading_readiness="raw_answer_only")
+    question.review_history = [{"type": "withdrawn", "reviewer": "任课教师"}]
+    db.flush()
+    service.synchronize(db, catalog=data, apply=True, backup=False, backup_dir=tmp_path,
+        accepted_review_overrides=frozenset({question.original_qid}))
+    report = service.discard_local_review_history(db, [question.original_qid], catalog=data)
+    assert report == {"cleared_question_count": 1, "business_unchanged": True}
+    assert len(question.review_history) == 1
+    assert set(question.review_history[0]) == {"event_id", "type", "at", "reviewer"}
+    question.question_text += "修改"
+    db.flush()
+    with pytest.raises(ValueError, match="共享同步后改变"):
+        service.discard_local_review_history(db, [question.original_qid], catalog=data)
 
 
 def test_known_shared_before_state_can_be_updated_after_prior_teacher_review(context, tmp_path):

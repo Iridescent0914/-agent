@@ -54,17 +54,22 @@ def test_review_validation_is_scoped_and_rejects_unresolved_assets():
         )
 
 
-def test_teacher_can_save_draft_then_promote_fill_blank(client, db):
-    question = db.scalar(
-        select(Question)
-        .where(
-            Question.grading_readiness == "raw_answer_only",
-            Question.question_type == "fill_blank",
-        )
-        .order_by(Question.source_question_number)
-        .limit(1)
-    )
+def _reviewable_fill_blank(db):
+    # The shared 77-question catalog may have no pending fill-blank questions.
+    question = db.scalar(select(Question).where(
+        Question.question_type == "fill_blank", Question.archived_at.is_(None),
+    ).order_by(Question.source_question_number).limit(1))
     assert question is not None
+    question.grading_readiness = "raw_answer_only"
+    question.correct_answer = None
+    question.answer_match_type = None
+    question.answer_normalization_rule = {}
+    db.flush()
+    return question
+
+
+def test_teacher_can_save_draft_then_promote_fill_blank(client, db):
+    question = _reviewable_fill_blank(db)
     original_revision = question.review_revision
     body = {
         "expected_review_revision": original_revision,
@@ -128,16 +133,7 @@ def test_teacher_can_save_draft_then_promote_fill_blank(client, db):
 
 
 def test_question_cannot_enter_machine_ready_pool_with_unlabeled_literacy(client, db):
-    question = db.scalar(
-        select(Question)
-        .where(
-            Question.grading_readiness == "raw_answer_only",
-            Question.question_type == "fill_blank",
-        )
-        .order_by(Question.source_question_number)
-        .limit(1)
-    )
-    assert question is not None
+    question = _reviewable_fill_blank(db)
     question.core_literacy = "待标注"
     db.flush()
 

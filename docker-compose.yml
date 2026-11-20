@@ -92,7 +92,7 @@ services:
       QUESTION_IMPORT_S2_INPUT_MILLION_PRICE_CNY: ${QUESTION_IMPORT_S2_INPUT_MILLION_PRICE_CNY:-0.8}
       QUESTION_IMPORT_S2_OUTPUT_MILLION_PRICE_CNY: ${QUESTION_IMPORT_S2_OUTPUT_MILLION_PRICE_CNY:-2.7}
     command: >-
-      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+      sh -c "python -m scripts.repair_migration_0034 && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     working_dir: /app/backend
     ports:
       - "8000:8000"
