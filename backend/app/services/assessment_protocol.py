@@ -5,10 +5,11 @@ import hashlib
 import json
 from typing import Protocol
 
-from app.schemas.assessment import EquivalenceRequest, EquivalenceResponse, VisionRequest, VisionResponse
+from app.schemas.assessment import (EquivalenceRequest, EquivalenceResponse, ContextualEquivalenceRequest,
+                                    ContextualEquivalenceResponse, VisionRequest, VisionResponse)
 
-PROMPT_VERSION = "stage6-equivalence-s1-fake-v1"
-POLICY_VERSION = "stage6-equivalence-candidates-v1"
+PROMPT_VERSION = "stage6-contextual-fake-v2"
+POLICY_VERSION = "stage6-contextual-candidates-v3"
 FAKE_MODEL = "fake-stage6-v1"
 
 
@@ -29,10 +30,19 @@ def _unique_object(pairs):
     return result
 
 
+def parse_equivalence_request(request):
+    schema = ContextualEquivalenceRequest if request.get("schema_version") == "stage6-equivalence-request-v2" else EquivalenceRequest
+    return schema.model_validate(request)
+
+
+def response_schema(request):
+    return ContextualEquivalenceResponse if request.get("schema_version") == "stage6-equivalence-request-v2" else EquivalenceResponse
+
+
 def parse_response(raw: str, request: dict) -> dict:
-    expected = EquivalenceRequest.model_validate(request)
+    expected = parse_equivalence_request(request)
     value = json.loads(raw, object_pairs_hook=_unique_object)
-    result = EquivalenceResponse.model_validate(value)
+    result = response_schema(request).model_validate(value)
     if result.request_id != expected.request_id:
         raise ValueError("request_id mismatch")
     return result.model_dump()
@@ -45,9 +55,9 @@ class EquivalenceAdapter(Protocol):
 class FakeEquivalenceAdapter:
     """Synthetic transport check, never pretend to judge mathematical quality."""
     def invoke(self, request: dict, *, timeout_seconds: int) -> str:
-        payload = EquivalenceRequest.model_validate(request)
+        payload = parse_equivalence_request(request)
         return canonical_json({
-            "schema_version": "stage6-equivalence-response-v1",
+            "schema_version": "stage6-equivalence-response-v2" if isinstance(payload, ContextualEquivalenceRequest) else "stage6-equivalence-response-v1",
             "request_id": payload.request_id,
             "verdict": "uncertain", "reason_code": "unsupported_answer",
             "explanation": "S1 fake仅验证调用链路，未执行数学等价判断。",

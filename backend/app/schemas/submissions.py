@@ -102,6 +102,7 @@ class SubmissionCounts(BaseModel):
 
 
 class SubmissionDetailOut(BaseModel):
+    answer_transcription: dict[str, Any] | None = None
     submission_id: UUID | None
     paper_instance_id: UUID
     assignment_id: UUID

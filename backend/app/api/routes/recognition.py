@@ -21,6 +21,10 @@ from app.services.submission_workflow import GradingConflict, GradingValidation
 router = APIRouter(tags=["recognition"])
 
 
+def legacy_capture_retired():
+    raise HTTPException(410, "旧版单图识别入口已停用，请使用答题页照片管理、逐页提取与整卷核对录入。历史记录仍可查看。")
+
+
 def _error(exc: Exception) -> HTTPException:
     if isinstance(exc, LookupError):
         return HTTPException(404, str(exc))
@@ -41,6 +45,7 @@ def print_view(paper_id: UUID, db: Session = Depends(get_db)):
     "/paper-instances/{paper_id}/recognition-runs",
     response_model=RecognitionRunOut,
     status_code=201,
+    dependencies=[Depends(legacy_capture_retired)],
 )
 async def upload_recognition(
     paper_id: UUID,
@@ -77,7 +82,7 @@ def read_current_run(paper_id: UUID, db: Session = Depends(get_db)):
         raise _error(exc) from exc
 
 
-@router.post("/recognition-runs/{run_id}/extract", response_model=RecognitionRunOut)
+@router.post("/recognition-runs/{run_id}/extract", response_model=RecognitionRunOut, dependencies=[Depends(legacy_capture_retired)])
 def extract(run_id: UUID, db: Session = Depends(get_db)):
     try:
         return extract_run(db, run_id, release_lock_before_provider=True)
@@ -106,6 +111,7 @@ def read_image(run_id: UUID, db: Session = Depends(get_db)):
     "/recognition-runs/{run_id}/commit",
     response_model=SubmissionDetailOut,
     status_code=201,
+    dependencies=[Depends(legacy_capture_retired)],
 )
 def commit(run_id: UUID, db: Session = Depends(get_db)):
     try:

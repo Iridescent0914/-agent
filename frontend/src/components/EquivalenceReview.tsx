@@ -6,9 +6,11 @@ import type { AnswerDraft, SubmissionPaperItem } from '../types/submission'
 import { AnswerView } from './AnswerView'
 import { answerUnitCoordinates } from '../utils/answerUnits'
 import { answerMatchTypeLabel } from '../utils/gradingLabels'
+import { AnswerJudgmentContext } from './AnswerJudgmentContext'
 
 const prefix = '/internal/stage6'
 const verdictLabels: Record<EquivalenceVerdict, string> = { equivalent: '等价', not_equivalent: '不等价', uncertain: '无法确定' }
+const contextualLabels: Record<EquivalenceVerdict, string> = { equivalent: '本空可接受', not_equivalent: '本空不可接受', uncertain: '无法确定' }
 const statusLabels = { queued: '排队中', running: '处理中', succeeded: '建议已返回', failed: '处理失败', cancelled: '已取消', stale: '输入已失效' }
 const reviewLabels = { unreviewed: '未核对', correct: '确认正确', incorrect: '确认错误', uncertain: '暂无法确定' }
 
@@ -46,6 +48,8 @@ export function EquivalenceReview({ item, draft, active }: { item: SubmissionPap
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [serviceStatus, setServiceStatus] = useState<Stage6Status | null>(null)
+  const contextual = !!task?.request_payload.answer_context || task?.result?.schema_version === 'stage6-equivalence-response-v2'
+  const currentLabels = contextual ? contextualLabels : verdictLabels
   const [action, setAction] = useState<'retry' | 'rerun' | 'cancel' | null>(null)
   const [actionReason, setActionReason] = useState('')
   const generation = useRef(0)
@@ -171,7 +175,7 @@ export function EquivalenceReview({ item, draft, active }: { item: SubmissionPap
           ? <Alert type="info" showIcon message="模拟模式：验证逐空建议和质量核对流程" description="当前未执行真实数学判断。正式判分仍使用批改页原有复核操作。" />
           : <Alert type={serviceStatus.real_provider_available ? 'info' : 'warning'} showIcon
             message={serviceStatus.real_provider_available ? `文本模型：${serviceStatus.model}` : '文本模型配置尚未完成'}
-            description="只发送本空标答和学生答案。生成建议会调用模型；结果供人工核对，正式判分仍使用批改页原有复核操作。" />)}
+            description="结合发布题干和目标空位，核对本空标答与学生答案。生成建议会调用模型；有效的真实建议可在“整卷等价判断”中按题采用，也可使用原有人工复核。" />)}
         {!!serviceStatus?.budget && <Typography.Text>
           本库累计调用 {serviceStatus.budget.calls}/{serviceStatus.budget.max_calls} 次，估算费用 ¥{serviceStatus.budget.estimated_cost_cny.toFixed(4)}，预算 ¥{serviceStatus.budget.max_budget_cny}。
           {serviceStatus.budget.unknown_calls > 0 && '存在用量未知的调用，已暂停后续真实调用，请先核对审计记录与供应商账单。'}
@@ -194,6 +198,7 @@ export function EquivalenceReview({ item, draft, active }: { item: SubmissionPap
           {preview.match_type && <Typography.Paragraph type="secondary">本空判定方式：{answerMatchTypeLabel(preview.match_type)}</Typography.Paragraph>}
           <Typography.Paragraph>参考答案：<AnswerView answer={preview.reference_answer} /></Typography.Paragraph>
           <Typography.Paragraph>学生答案：<AnswerView answer={preview.student_answer} /></Typography.Paragraph>
+          <AnswerJudgmentContext context={preview.answer_context} />
         </Card>}
         <Typography.Text>已保存的运行记录</Typography.Text>
         <Select aria-label="选择建议记录" value={task?.id} placeholder="暂无该空运行记录" style={{ width: '100%' }} disabled={busy}
@@ -205,8 +210,11 @@ export function EquivalenceReview({ item, draft, active }: { item: SubmissionPap
           <Space direction="vertical" className="equivalence-panel">
             <Typography.Text>运行时参考答案：<AnswerView answer={task.request_payload.reference_answer} /></Typography.Text>
             <Typography.Text>运行时学生答案：<AnswerView answer={task.request_payload.student_answer} /></Typography.Text>
-            {task.result && <Alert type="info" message={`建议：${verdictLabels[task.result.verdict]}`} description={task.result.explanation} />}
+            <AnswerJudgmentContext context={task.request_payload.answer_context} />
+            {!contextual && <Tag>旧版记录：仅比较答案</Tag>}
+            {task.result && <Alert type="info" message={`建议：${currentLabels[task.result.verdict]}`} description={task.result.explanation} />}
             {task.status === 'stale' && <Alert type="warning" message="该建议的输入依据已失效，仅供追溯核对" />}
+            {task.adoption_status === 'teacher_adopted' && <Alert type="success" message="本建议已经教师采用，评分修订保留在本题历史中" />}
             {task.error_code && task.status === 'failed' && <Alert type="error" message={`建议任务失败：${task.error_code}`} />}
             <Typography.Text type="secondary">调用 {task.attempt_count} / {task.max_attempts}</Typography.Text>
             <Space wrap>
@@ -224,7 +232,7 @@ export function EquivalenceReview({ item, draft, active }: { item: SubmissionPap
               onChange={(value) => { setReviewStatus(value); if (value === 'uncertain') setErrorType('evidence_insufficient') }}
               options={(['correct', 'incorrect', 'uncertain'] as const).map((value) => ({ value, label: reviewLabels[value] }))} />
             {reviewStatus === 'incorrect' && <Select aria-label="人工正确等价结论" value={gold} style={{ width: '100%' }} disabled={busy} onChange={setGold}
-              options={Object.entries(verdictLabels).map(([value, label]) => ({ value, label, disabled: value === task.result?.verdict }))} />}
+              options={Object.entries(currentLabels).map(([value, label]) => ({ value, label, disabled: value === task.result?.verdict }))} />}
             {reviewStatus === 'uncertain' && <Select aria-label="无法确定原因" value={errorType} style={{ width: '100%' }} disabled={busy} onChange={setErrorType}
               options={[{ value: 'evidence_insufficient', label: '证据不足' }, { value: 'reference_issue', label: '参考答案有待核对' }, { value: 'input_changed', label: '输入已经改变' }]} />}
             <Input aria-label="质量核对人" placeholder="核对人" value={reviewer} disabled={busy} onChange={(event) => setReviewer(event.target.value)} />

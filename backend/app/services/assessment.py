@@ -17,7 +17,7 @@ from app.models import (
     Submission,
 )
 from app.schemas.assessment import (
-    CreateAssessmentTask, EquivalenceGold, EquivalenceRequest, QualityFeedbackIn,
+    CreateAssessmentTask, EquivalenceGold, ContextualEquivalenceRequest, QualityFeedbackIn,
     RecognitionGold,
 )
 from app.services.assessment_protocol import POLICY_VERSION, canonical_json, input_hash
@@ -25,6 +25,7 @@ from app.services.print_view import answer_subquestions, print_source_module
 from app.services.submission_workflow import _grading_reference, _initial_grading_reference
 from app.services.equivalence_candidates import classify_unit
 from app.services.equivalence_bailian import configuration
+from app.services.answer_context import build_context, ContextUnavailable
 
 
 class AssessmentProblem(Exception):
@@ -133,6 +134,12 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
         student_answer=student_answer, input_confirmed=confirmed,
         teacher_confirmed=attempt is not None and attempt.grade_status == "teacher_confirmed",
     )
+    context_binding = None
+    if candidate["eligible"]:
+        try:
+            context_binding = build_context(item, coordinates, request.item_id)
+        except ContextUnavailable as exc:
+            candidate.update(eligible=False, reason_code=exc.code, message=str(exc))
     if preview_only:
         return {
             **candidate, "paper_instance_item_id": item.id, "item_id": request.item_id,
@@ -141,6 +148,7 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
             "input_revision": current_input.revision_no if current_input else 0,
             "attempt_revision_no": attempt.revision_no if attempt else None,
             "subquestion_no": coordinates[request.item_id][0], "blank_no": coordinates[request.item_id][1],
+            "answer_context": context_binding["answer_context"] if context_binding else None,
         }
     if not candidate["eligible"]:
         raise AssessmentProblem("NOT_ELIGIBLE", candidate["message"], 422)
@@ -150,7 +158,7 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
         raise AssessmentProblem("CONFIG_INCOMPLETE", "请检查阶段六供应商、模型、北京地域接口地址和API Key配置", 422) from exc
     student_answer = _text(student_answer)
     snapshot = {
-        "hash_version": "stage6-input-hash-v1",
+        "hash_version": "stage6-input-hash-v2",
         "paper_instance_id": str(paper.id), "version_no": paper.version_no,
         "student_id": str(paper.student_id), "paper_instance_item_id": str(item.id),
         "item_id": request.item_id, "order_no": item.order_no,
@@ -163,6 +171,7 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
         "reference_sha256": input_hash({"answer": reference, "rule": rule, "source": source}),
         "published_structure": coordinates,
         "candidate_routing": candidate,
+        "context_binding": context_binding,
     }
     # JSON roundtrip normalizes tuple coordinates before comparison with JSONB.
     snapshot = json.loads(canonical_json(snapshot))
@@ -189,16 +198,17 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
     dedup = input_hash({
         "kind": "equivalence", "input_id": str(current_input.id), "revision": current_input.revision_no,
         "snapshot": snapshot, "configuration": provider_config,
-        "policy": POLICY_VERSION, "protocol": "stage6-equivalence-request-v1",
+        "policy": POLICY_VERSION, "protocol": "stage6-equivalence-request-v2",
         "rerun": str(uuid4()) if rerun_of else None,
     })
     existing = db.scalar(select(AssessmentTask).where(AssessmentTask.dedup_key == dedup))
     if existing:
         return existing, True
     settings = get_settings()
-    payload = EquivalenceRequest(
-        schema_version="stage6-equivalence-request-v1", request_id=str(uuid4()),
+    payload = ContextualEquivalenceRequest(
+        schema_version="stage6-equivalence-request-v2", request_id=str(uuid4()),
         reference_answer=reference_text, student_answer=student_answer,
+        answer_context=context_binding["answer_context"],
     ).model_dump()
     task = AssessmentTask(
         input_id=current_input.id, input_revision=current_input.revision_no,
@@ -250,6 +260,11 @@ def binding_error(db, task):
     try:
         if json.loads(canonical_json(_units(item.answer_snapshot, item.question_snapshot.get("question_type")))) != frozen["published_structure"]:
             return "REFERENCE_STRUCTURE_CHANGED"
+        context = build_context(item, _units(item.answer_snapshot, item.question_snapshot.get("question_type")), frozen["item_id"])
+        if (context != frozen.get("context_binding")
+                or task.request_payload.get("schema_version") != "stage6-equivalence-request-v2"
+                or task.request_payload.get("answer_context") != context["answer_context"]):
+            return "INPUT_STALE"
     except ValueError:
         return "REFERENCE_STRUCTURE_CHANGED"
     return None
@@ -292,8 +307,10 @@ def task_view(db, task):
         "rerun_of": task.rerun_of, "rerun_reason": task.rerun_reason,
         "action_history": task.action_history,
         "created_at": task.created_at, "completed_at": task.completed_at,
-        "adoption_status": "not_adopted", "synthetic": task.provider == "fake",
+        "adoption_status": "teacher_adopted" if any(e.get("action") == "teacher_adopt" for e in task.action_history) else "not_adopted",
+        "synthetic": task.provider == "fake",
         "candidate_routing": task.snapshot.get("candidate_routing"),
+        "judgment_mode": "contextual" if task.request_payload.get("schema_version") == "stage6-equivalence-request-v2" else "answer_pair_legacy",
         "calls": [{"id": c.id, "call_no": c.call_no, "status": c.status,
                    "raw_response": c.raw_response, "parsed_response": c.parsed_response,
                    "error_code": c.error_code, "usage": c.usage, "late_response": c.late_response,

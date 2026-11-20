@@ -1,5 +1,22 @@
 import type { AssetInfo } from './index'
 
+export interface AnswerCardArtifact {
+  id: string
+  paper_instance_id: string
+  artifact_code: string
+  revision_no: number
+  layout_version: 'answer-card-v3'
+  renderer_version: string
+  source_sha256: string
+  pdf_sha256: string
+  manifest_sha256: string
+  total_pages: number
+  created_at: string
+  pdf_url: string
+  manifest_url: string
+  reused: boolean
+}
+
 export type PrintSourceModule = 'required' | 'personalized' | 'history' | 'weekly_summary' | 'unclassified'
 
 export interface PrintAnswerSlot {

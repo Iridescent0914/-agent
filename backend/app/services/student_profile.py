@@ -15,7 +15,7 @@ from app.models import (
 from app.schemas.profile import (
     AttemptEvidenceOut, EvidenceRef, ExcludedEvidence, FocusPoint, KnowledgePointOut,
     HistoryPointOut, LiteracyScoreOut, MasteryHistoryOut, MasteryOut, ProfileOut,
-    ProfileSummary, RecentWrong,
+    HistoricalAccuracyOut, ProfileSummary, RecentWrong,
 )
 from app.schemas.students import StudentAttemptOut
 from app.services.assets import resolve_assets
@@ -264,6 +264,23 @@ def mastery_items(context: ProfileContext, chapter_code: str | None = None) -> l
     return items
 
 
+def historical_accuracy(context: ProfileContext) -> HistoricalAccuracyOut:
+    # Reference-only question types can have valid, teacher-confirmed grades.
+    # They belong in all-history accuracy even though mastery excludes them.
+    confirmed = [record for record in context.records
+                 if record.problem in {None, "unsupported_profile_question_type"}]
+    correct = sum(record.attempt.is_correct is True for record in confirmed)
+    pending = sum(record.problem == "needs_review" for record in context.records)
+    count = len(confirmed)
+    return HistoricalAccuracyOut(
+        confirmed_attempt_count=count, correct_count=correct, incorrect_count=count - correct,
+        distinct_question_count=len({record.attempt.question_id for record in confirmed}),
+        pending_review_count=pending,
+        excluded_attempt_count=len(context.records) - count - pending,
+        accuracy=correct / count if count else None,
+    )
+
+
 def build_profile(context: ProfileContext, *, computed_at: datetime | None = None) -> ProfileOut:
     items = mastery_items(context)
     focus = []
@@ -305,6 +322,7 @@ def build_profile(context: ProfileContext, *, computed_at: datetime | None = Non
     return ProfileOut(
         student_id=context.student.id, computed_at=computed_at or datetime.now(timezone.utc),
         rule_version=RULE_VERSION,
+        historical_accuracy=historical_accuracy(context),
         summary=ProfileSummary(
             total_attempt_count=len(context.records), valid_attempt_count=len(valid),
             pending_review_count=sum(record.problem == "needs_review" for record in context.records),

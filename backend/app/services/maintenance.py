@@ -18,6 +18,7 @@ from app.services.literacy_scoring import (
 )
 from app.services.recognition_workflow import purge_expired_recognition_images
 from app.services.question_import import purge_expired_import_files
+from app.services.answer_pages import purge_expired_page_images
 
 
 logger = logging.getLogger(__name__)
@@ -29,11 +30,13 @@ def run_file_maintenance() -> dict[str, int]:
         recognition_images = purge_expired_recognition_images(db)
         teacher_assets = cleanup_orphan_teacher_assets(db)
         question_import_files = purge_expired_import_files(db)
+        answer_page_images = purge_expired_page_images(db)
         db.commit()
     return {
         "recognition_images": recognition_images,
         "teacher_assets": teacher_assets,
         "question_import_files": question_import_files,
+        "answer_page_images": answer_page_images,
     }
 
 

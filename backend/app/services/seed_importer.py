@@ -245,7 +245,18 @@ def _preserve_reviewed_answer(question: Question, values: dict[str, Any]) -> Non
         "grading_readiness",
         "import_issues",
     ):
-        values.pop(field)
+        values.pop(field, None)
+    if any(event.get("type") in {"content_updated", "question_catalog_synced"}
+           for event in question.review_history):
+        # A source refresh must also preserve an explicitly reviewed reclassification
+        # and its content. Apply new shared catalog changes with the sync command.
+        for field in (
+            "question_type", "question_text", "options", "reference_answer_raw", "solution",
+            "wrong_analysis", "estimated_score_rate", "assets", "content_fingerprint", "has_image",
+            "has_equation", "difficulty", "main_knowledge_point_id", "core_literacy", "is_required",
+            "chapter_code", "chapter_name", "grade", "section",
+        ):
+            values.pop(field, None)
 
 
 def _import_questions(

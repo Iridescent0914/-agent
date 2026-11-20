@@ -51,6 +51,7 @@ export interface SubmissionPaperItem {
 }
 
 export interface SubmissionDetail {
+  answer_transcription?: { id: string; revision_no: number; pages: Array<{ page_no: number; image_url: string | null; provider: string; model: string }> } | null
   submission_id: string | null
   paper_instance_id: string
   assignment_id: string

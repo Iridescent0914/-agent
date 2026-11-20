@@ -79,10 +79,11 @@ def test_aliases_are_checked_before_model_and_other_wrong_leaf_does_not_hide_can
 
 
 @pytest.mark.parametrize("student,expected", [("一样", "相等"), ("负数", "负")])
-def test_exact_text_mismatch_message_does_not_claim_semantic_inequality(student, expected):
+def test_short_text_mismatch_is_candidate_without_claiming_semantic_inequality(student, expected):
     result = route(student, expected, "exact")
-    assert result["reason_code"] == "rule_incorrect" and not result["eligible"]
-    assert "精确文本" in result["message"] and "尚未进行语义等价判断" in result["message"]
+    assert result["reason_code"] == "short_text_candidate" and result["eligible"]
+    assert result["rule_result"]["is_correct"] is False
+    assert "精确文本" in result["message"] and "教师核对" in result["message"]
 
 
 def test_plus_sign_is_numeric_equality_without_model():
@@ -107,7 +108,7 @@ def test_preview_is_read_only_and_create_cannot_bypass_candidate_gate(context):
     task, _ = create_task(db, request(item, r"\frac{x+x}{2}"))
     db.commit()
     assert task.snapshot["candidate_routing"]["eligible"]
-    assert set(task.request_payload) == {"schema_version", "request_id", "reference_answer", "student_answer"}
+    assert set(task.request_payload) == {"schema_version", "request_id", "reference_answer", "student_answer", "answer_context"}
     assert task.request_payload["student_answer"] == r"\frac{x+x}{2}"
     assert "PRIVATE_" not in str(task.request_payload)
     process_one(factory)

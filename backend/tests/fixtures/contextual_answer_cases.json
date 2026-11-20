@@ -1,0 +1,63 @@
+{
+  "schema_version": "stage6-contextual-evaluation-cases-v1",
+  "label_status": "development_proposal_requires_teacher_review",
+  "description": "用于后续小额真实评测的对称样例和反例；不是模型已通过的验收结果，离线测试不调用模型。",
+  "cases": [
+    {
+      "case_id": "comparison_larger_omission",
+      "question_text": "从两个数中选择一个，用词语描述所选的数：【本空】。",
+      "reference_answer": "较大",
+      "student_answer": "大",
+      "expected_verdict": "equivalent",
+      "expected_reason_code": "contextual_match"
+    },
+    {
+      "case_id": "comparison_smaller_omission",
+      "question_text": "从两个数中选择一个，用词语描述所选的数：【本空】。",
+      "reference_answer": "较小",
+      "student_answer": "小的",
+      "expected_verdict": "equivalent",
+      "expected_reason_code": "contextual_match"
+    },
+    {
+      "case_id": "comparison_missing_context",
+      "question_text": "填写词语：【本空】。",
+      "reference_answer": "较大",
+      "student_answer": "大",
+      "expected_verdict": "uncertain",
+      "expected_reason_code": "context_required"
+    },
+    {
+      "case_id": "sign_boundary_zero",
+      "question_text": "两个负数相加，和的符号是【本空】。",
+      "reference_answer": "负",
+      "student_answer": "非正",
+      "expected_verdict": "not_equivalent",
+      "expected_reason_code": "contextual_mismatch"
+    },
+    {
+      "case_id": "strict_inequality_boundary",
+      "question_text": "若a-b>0，则a【本空】b，用文字表述大小关系。",
+      "reference_answer": "大于",
+      "student_answer": "大于等于",
+      "expected_verdict": "not_equivalent",
+      "expected_reason_code": "contextual_mismatch"
+    },
+    {
+      "case_id": "same_absolute_values_synonym",
+      "question_text": "互为相反数的两个数，其绝对值【本空】。",
+      "reference_answer": "相等",
+      "student_answer": "一样",
+      "expected_verdict": "equivalent",
+      "expected_reason_code": "contextual_match"
+    },
+    {
+      "case_id": "unprovided_diagram",
+      "question_text": "根据未提供的示意图，AB是【本空】的边。",
+      "reference_answer": "较大",
+      "student_answer": "大",
+      "expected_verdict": "uncertain",
+      "expected_reason_code": "context_incomplete"
+    }
+  ]
+}

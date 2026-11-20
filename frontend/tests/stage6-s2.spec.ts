@@ -124,6 +124,7 @@ test('feature off leaves the grading page without the internal suggestion entry'
   await page.goto(`/paper-instances/${paperId}/grading`)
   await expect(page.getByRole('heading', { name: 'S001 · 样例学生', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '答案等价建议', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '整卷等价判断', exact: true })).toHaveCount(0)
 })
 
 test('configured text model shows real mode and returns an unadopted suggestion', async ({ page }) => {
@@ -136,6 +137,7 @@ test('configured text model shows real mode and returns an unadopted suggestion'
   await expect(drawer.getByText('本空规则尚未确认，可请求等价建议')).toBeVisible()
   await drawer.getByRole('button', { name: '生成等价建议（调用模型）' }).click()
   await expect(drawer.getByText('建议：等价', { exact: true })).toBeVisible()
+  await expect(drawer.getByText('旧版记录：仅比较答案', { exact: true })).toBeVisible()
   await expect(drawer.getByText('模拟结果', { exact: true })).toHaveCount(0)
   expect(observed.officialWrites).toEqual([])
 })

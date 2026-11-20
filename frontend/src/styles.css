@@ -385,6 +385,9 @@ a { color: inherit; }
 
 .paper-print-page { width: min(210mm, 100%); margin: 0 auto; padding: 20px; background: #fff; color: #111827; }
 .print-toolbar { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.print-frozen-answer-zone { border-top: 0; padding-top: 0; }
+.frozen-answer-page { width: 100%; margin: 0 0 20px; }
+.frozen-answer-page img { display: block; width: 100%; height: auto; }
 .print-header { padding-bottom: 12px; border-bottom: 2px solid #111827; }
 .print-question { break-inside: avoid; padding: 14px 0; border-bottom: 1px solid #d1d5db; }
 .print-answer-zone { margin-top: 32px; padding-top: 20px; border-top: 2px solid #111827; }
@@ -424,7 +427,7 @@ a { color: inherit; }
 
 @media print {
   :root, body, .app-layout, .app-content { background: #fff !important; }
-  .app-header, .print-toolbar, .print-history-alert { display: none !important; }
+  .app-header, .print-toolbar, .print-history-alert, .print-error-alert { display: none !important; }
   .app-content { margin: 0 !important; padding: 0 !important; }
   .paper-print-page { width: 100%; padding: 0; }
   .print-answer-zone { break-before: page; page-break-before: always; margin-top: 0; padding-top: 0; border-top: 0; }
@@ -436,7 +439,18 @@ a { color: inherit; }
   .answer-subquestion { grid-template-columns: 48px minmax(0, 1fr); gap: 8px; }
   .print-footer { break-before: avoid; }
   @page { size: A4; margin: 14mm; }
+  @page frozen-answer { size: A4; margin: 0; }
+  .print-frozen-answer-zone { break-before: auto; page-break-before: auto; }
+  .frozen-answer-page { page: frozen-answer; width: 210mm; height: 297mm; margin: 0; break-before: page; page-break-before: always; break-inside: avoid; }
+  .frozen-answer-page img { width: 210mm; height: 297mm; }
 }
 .equivalence-entry { margin-top: 16px; }
 .equivalence-panel { width: 100%; min-width: 0; overflow-wrap: anywhere; }
 .equivalence-panel > .ant-space-item { min-width: 0; max-width: 100%; }
+.transcription-page-grid { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+.transcription-photo { position: sticky; top: 16px; min-width: 0; }
+.transcription-units, .transcription-units > .ant-space-item { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+@media (max-width: 800px) {
+  .transcription-page-grid { grid-template-columns: minmax(0, 1fr); }
+  .transcription-photo { position: static; }
+}

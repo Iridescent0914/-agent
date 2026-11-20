@@ -140,6 +140,13 @@ def _reference_details(
     return details
 
 
+def _recognition_details(details):
+    # Confirmation/provenance survives later answer corrections and regrading.
+    return {key: deepcopy(details[key]) for key in (
+        "recognition_reviewed", "recognition_review_source", "answer_transcription",
+    ) if key in details}
+
+
 def _validate_answer(
     item: PaperInstanceItem, incoming: ManualAnswerIn,
     reference: tuple[Any, dict[str, Any]] | None = None,
@@ -271,6 +278,7 @@ def submission_view(db: Session, paper_id: UUID, *, replayed: bool = False,
             ),
         ))
     values = list(attempts.values())
+    from app.services.answer_transcription import submission_provenance
     return SubmissionDetailOut(
         submission_id=submission.id if submission else None,
         paper_instance_id=paper.id, assignment_id=assignment.id,
@@ -280,6 +288,7 @@ def submission_view(db: Session, paper_id: UUID, *, replayed: bool = False,
         can_submit=(submission is None and paper_is_active),
         student_id=student.id, student_code=student.student_code,
         student_name=student.display_name, source=submission.source if submission else None,
+        answer_transcription=submission_provenance(db, submission),
         recognition_run_id=recognition_run.id if recognition_run else None,
         recognition_image_url=(
             f"/recognition-runs/{recognition_run.id}/image"
@@ -318,6 +327,15 @@ def submission_by_id(db: Session, submission_id: UUID) -> SubmissionDetailOut:
 
 def create_manual_submission(db: Session, paper_id: UUID,
                              request: ManualSubmissionRequest) -> SubmissionDetailOut:
+    return _create_graded_submission(db, paper_id, request)
+
+
+def create_confirmed_image_submission(db, paper_id, request, provenance):
+    """Internal bridge only, called after S3-E validates and locks all evidence."""
+    return _create_graded_submission(db, paper_id, request, transcription=provenance)
+
+
+def _create_graded_submission(db, paper_id, request, *, transcription=None):
     initial_paper = db.get(PaperInstance, paper_id)
     if initial_paper is None:
         raise LookupError("paper instance not found")
@@ -373,9 +391,10 @@ def create_manual_submission(db: Session, paper_id: UUID,
 
     answered_at = request.answered_at or datetime.now(timezone.utc)
     submission = Submission(
-        student_id=paper.student_id, paper_instance_id=paper.id, source="manual",
+        student_id=paper.student_id, paper_instance_id=paper.id,
+        source="image" if transcription else "manual",
         idempotency_key=request.idempotency_key, request_fingerprint=fingerprint,
-        attachments=[], submitted_at=answered_at,
+        attachments=[deepcopy(transcription)] if transcription else [], submitted_at=answered_at,
     )
     db.add(submission)
     db.flush()
@@ -388,6 +407,10 @@ def create_manual_submission(db: Session, paper_id: UUID,
             response_status=answer.response_status,
         )
         grading_details = result.details()
+        if transcription:
+            grading_details = {**grading_details, "recognition_reviewed": True,
+                "recognition_review_source": "stage6_transcription",
+                "answer_transcription": deepcopy(transcription)}
         if reference_source == "question_revision":
             grading_details = _reference_details(
                 grading_details, questions[item.question_id], reference_rule,
@@ -398,9 +421,10 @@ def create_manual_submission(db: Session, paper_id: UUID,
             paper_instance_item_id=item.id, question_id=item.question_id,
             student_answer=answer.answer, normalized_answer=result.normalized_answer,
             grading_details=grading_details, grade_status=result.grade_status,
-            is_correct=result.is_correct, ocr_confidence=None, recognition_status=None,
+            is_correct=result.is_correct, ocr_confidence=None,
+            recognition_status=("blank" if answer.response_status == "blank" else "readable") if transcription else None,
             manual_override=False, revision_no=1, answered_at=answered_at,
-            reviewed_at=None,
+            reviewed_at=answered_at if transcription else None,
         )
         db.add(attempt)
         attempts.append(attempt)
@@ -409,7 +433,7 @@ def create_manual_submission(db: Session, paper_id: UUID,
         db.add(AttemptRevision(
             attempt_id=attempt.id, revision_no=1, before_state=None,
             after_state=_attempt_state(attempt), operator_type="system",
-            operator_id="grading_engine", reason="manual_submission_auto_grade",
+            operator_id="grading_engine", reason="confirmed_image_submission_auto_grade" if transcription else "manual_submission_auto_grade",
             created_at=answered_at,
         ))
     db.flush()
@@ -450,7 +474,7 @@ def review_attempt(db: Session, attempt_id: UUID,
         )
         attempt.student_answer = incoming.answer
         attempt.normalized_answer = result.normalized_answer
-        details = result.details()
+        details = {**result.details(), **_recognition_details(attempt.grading_details or {})}
         if reference_source == "question_revision":
             previous = attempt.grading_details or {}
             details.update({
@@ -487,6 +511,39 @@ def review_attempt(db: Session, attempt_id: UUID,
     db.flush()
     mastery_stats = refresh_student_profiles(db, attempt.student_id)["mastery"]
     return submission_view(db, submission.paper_instance_id, mastery_stats=mastery_stats)
+
+
+def record_equivalence_review(db, attempt, item, decisions, request, receipt):
+    """Called only after S5 validates all current candidate leaves for this item."""
+    before = deepcopy(_attempt_state(attempt))
+    reference, rule, _ = _grading_reference(item, attempt)
+    result = grade_answer(attempt.student_answer, reference, rule,
+                          response_status="blank" if attempt.student_answer is None else "answered")
+    leaves = deepcopy(list(result.item_results)) if result.match_type == "group" else [
+        {"item_id": "answer", "is_correct": result.is_correct, "grade_status": result.grade_status,
+         "reason_code": result.reason_code}]
+    for leaf in leaves:
+        decision = decisions.get(leaf["item_id"])
+        if decision:
+            leaf.update(is_correct=decision["verdict"] == "equivalent", grade_status="teacher_confirmed",
+                        reason_code="teacher_adopted_equivalence", equivalence=decision)
+    # Preserve the existing question-group aggregation: any wrong leaf is wrong;
+    # otherwise an unresolved leaf keeps the question pending.
+    correct = False if any(l["is_correct"] is False for l in leaves) else (
+        True if all(l["is_correct"] is True for l in leaves) else None)
+    attempt.is_correct = correct
+    attempt.grade_status = "needs_review" if correct is None else "teacher_confirmed"
+    attempt.manual_override = True
+    attempt.revision_no += 1
+    attempt.reviewed_at = datetime.now(timezone.utc)
+    attempt.grading_details = {**deepcopy(attempt.grading_details or {}), "equivalence_review": {
+        "version": "stage6-contextual-teacher-adoption-v2", "judgment_mode": "contextual", "receipt": receipt,
+        "applied_revision_no": attempt.revision_no, "item_ids": sorted(decisions),
+        "decisions": decisions, "reviewed_item_results": leaves,
+        "reviewer": request.reviewer, "reason": request.reason}}
+    db.add(AttemptRevision(attempt_id=attempt.id, revision_no=attempt.revision_no,
+        before_state=before, after_state=_attempt_state(attempt), operator_type="teacher",
+        operator_id=request.reviewer, reason=request.reason))
 
 
 def regrade_submission(
@@ -545,7 +602,8 @@ def regrade_submission(
         )
         attempt.normalized_answer = result.normalized_answer
         attempt.grading_details = _reference_details(
-            result.details(), question, answer_rule, now, regraded=True,
+            {**result.details(), **_recognition_details(attempt.grading_details or {})},
+            question, answer_rule, now, regraded=True,
         )
         attempt.grade_status = result.grade_status
         attempt.is_correct = result.is_correct

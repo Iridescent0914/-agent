@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import engine, get_db
 from app.main import app
+from app.api.routes.recognition import legacy_capture_retired
 from app.models import (
     Attempt, RecognitionRun, Student, StudentLiteracyScore, StudentMastery,
 )
@@ -51,12 +52,17 @@ def db():
 
 @pytest.fixture
 def client(db):
+    # Historical M6 compatibility harness only. Production write routes return
+    # 410; test_stage6_s3_transcription tests that gate without this override.
+    # Keep the old fixtures reproducible to verify review/retention of old data.
+    app.dependency_overrides[legacy_capture_retired] = lambda: None
     app.dependency_overrides[get_db] = lambda: db
     try:
         with TestClient(app) as value:
             yield value
     finally:
         app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(legacy_capture_retired, None)
 
 
 def _published_paper(client: TestClient, db) -> tuple[Student, dict]:

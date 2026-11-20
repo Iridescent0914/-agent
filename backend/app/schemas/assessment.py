@@ -33,6 +33,25 @@ class EquivalenceRequest(StrictModel):
 Verdict = Literal["equivalent", "not_equivalent", "uncertain"]
 
 
+class AnswerContext(StrictModel):
+    scope: Literal["subquestion", "question_group"]
+    question_text: str = Field(min_length=1, max_length=12000)
+    target_subquestion_no: int = Field(ge=1, le=1000)
+    target_blank_no: int = Field(ge=1, le=1000)
+
+    @field_validator("question_text")
+    @classmethod
+    def marked_target(cls, value):
+        if value.count("【本空】") != 1:
+            raise ValueError("题干须唯一标记目标空位")
+        return value
+
+
+class ContextualEquivalenceRequest(EquivalenceRequest):
+    schema_version: Literal["stage6-equivalence-request-v2"]
+    answer_context: AnswerContext
+
+
 class EquivalenceResponse(StrictModel):
     schema_version: Literal["stage6-equivalence-response-v1"]
     request_id: str
@@ -47,6 +66,23 @@ class EquivalenceResponse(StrictModel):
             "not_equivalent": {"different_value_or_expression"},
             "uncertain": {"context_required", "unparseable_answer", "unsupported_answer"},
         }
+        if self.reason_code not in allowed[self.verdict] or not self.explanation.strip():
+            raise ValueError("结论与原因不一致或说明为空")
+        return self
+
+
+class ContextualEquivalenceResponse(StrictModel):
+    schema_version: Literal["stage6-equivalence-response-v2"]
+    request_id: str
+    verdict: Verdict
+    reason_code: Literal["contextual_match", "contextual_mismatch", "context_required", "context_incomplete",
+                         "reference_issue", "unparseable_answer", "unsupported_answer"]
+    explanation: str = Field(min_length=1, max_length=1000)
+
+    @model_validator(mode="after")
+    def consistent_reason(self):
+        allowed = {"equivalent": {"contextual_match"}, "not_equivalent": {"contextual_mismatch"},
+            "uncertain": {"context_required", "context_incomplete", "reference_issue", "unparseable_answer", "unsupported_answer"}}
         if self.reason_code not in allowed[self.verdict] or not self.explanation.strip():
             raise ValueError("结论与原因不一致或说明为空")
         return self
@@ -71,6 +107,31 @@ class TaskAction(BaseModel):
     def not_blank(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("必须提供操作原因")
+        return value
+
+
+class PaperEquivalenceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_input_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    reviewer: str = Field(min_length=1, max_length=80)
+    reason: str = Field(min_length=2, max_length=500)
+
+    @model_validator(mode="after")
+    def audit_labels(self):
+        self.reviewer, self.reason = self.reviewer.strip(), self.reason.strip()
+        if not self.reviewer or len(self.reason) < 2:
+            raise ValueError("请填写核对人及至少两个字的原因")
+        return self
+
+
+class AdoptPaperEquivalence(PaperEquivalenceRequest):
+    task_ids: list[UUID] = Field(min_length=1, max_length=500)
+
+    @field_validator("task_ids")
+    @classmethod
+    def unique_tasks(cls, value):
+        if len(set(value)) != len(value):
+            raise ValueError("建议记录不能重复")
         return value
 
 

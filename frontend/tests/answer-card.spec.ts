@@ -8,6 +8,10 @@ const references = JSON.parse(readFileSync(new URL('../../data/interim/rational_
   correct_answer: { items: Array<{ item_id: string; subquestion_no: number; blank_no: number }> }
 }>
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/v1/internal/stage6/status', route => route.fulfill({ json: { enabled: false } }))
+})
+
 function fixture() {
   const chosen = ['001', '020', '050'].map(suffix => references.find(q => q.original_qid.endsWith(`.${suffix}`))!)
   return {
@@ -87,4 +91,70 @@ test('empty ordinary modules stay visible and weekly summary keeps its own secti
   const card = page.getByRole('region', { name: '答题卡', exact: true })
   await expect(card.locator('.answer-module-heading')).toHaveText(['一、周总结'])
   await expect(card.locator('.answer-blank')).toHaveCount(13)
+})
+
+test('one print action combines questions and frozen answer pages', async ({ page }, testInfo) => {
+  const data = fixture()
+  const prefix = `/api/v1/internal/stage6/paper-instances/${paperId}/answer-card-artifacts`
+  const artifact = {
+    id: '00000000-0000-4000-8000-000000000072', paper_instance_id: paperId,
+    artifact_code: 'A123456789ABCDEF', revision_no: 1, total_pages: 3,
+    layout_version: 'answer-card-v3', renderer_version: 'fixture',
+    source_sha256: 'a'.repeat(64), pdf_sha256: 'b'.repeat(64), manifest_sha256: 'c'.repeat(64),
+    created_at: '2026-11-18T00:00:00Z', reused: false,
+    pdf_url: `${prefix}/00000000-0000-4000-8000-000000000072/pdf`, manifest_url: `${prefix}/00000000-0000-4000-8000-000000000072/manifest`,
+  }
+  let posts = 0
+  await page.addInitScript(() => { window.print = () => { document.documentElement.dataset.printCalls = String(Number(document.documentElement.dataset.printCalls || 0) + 1) } })
+  await page.route('**/api/v1/paper-instances/*/print-view', route => route.fulfill({ json: data }))
+  await page.route('**/api/v1/internal/stage6/status', route => route.fulfill({ json: { enabled: true } }))
+  await page.route(`**${prefix}`, route => {
+    if (route.request().method() === 'POST') {
+      expect(route.request().postDataJSON()).toEqual({ expected_version_no: 1 })
+      posts++
+      return route.fulfill({ json: artifact })
+    }
+    return route.fulfill({ json: [] })
+  })
+  await page.route(`**${artifact.manifest_url}`, route => route.fulfill({ json: {
+    artifact_id: artifact.id, paper_instance_id: paperId, version_no: 1, total_pages: 3,
+    pages: [{ page_no: 1 }, { page_no: 2 }, { page_no: 3 }],
+  } }))
+  await page.route(`**${prefix}/${artifact.id}/pages/*/image`, route => {
+    const number = route.request().url().match(/pages\/(\d+)\/image/)![1]
+    return route.fulfill({ contentType: 'image/svg+xml', body: `<svg xmlns="http://www.w3.org/2000/svg" width="595.276" height="841.89" viewBox="0 0 595.276 841.89"><rect x="24" y="24" width="547" height="763" fill="white" stroke="black"/><text x="40" y="70" font-size="20">ANSWER_AREA_PAGE_${number}</text><text x="40" y="810" font-size="10">RAT-CARD-0001 ${artifact.artifact_code} ${number}/3</text></svg>` })
+  })
+  await page.goto(`/paper-instances/${paperId}/print`)
+  const print = page.getByRole('button', { name: '打印 / 保存 PDF' })
+  await expect(page.getByRole('button', { name: '生成识别用答题卡' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: '下载识别用答题卡' })).toHaveCount(0)
+  expect(posts).toBe(0)
+  await print.click()
+  await expect(page.locator('html')).toHaveAttribute('data-print-calls', '1')
+  await expect(page.locator('.frozen-answer-page')).toHaveCount(3)
+  await expect(page.locator('.print-question')).toHaveCount(3)
+  expect(posts).toBe(1)
+  await print.click()
+  await expect(page.locator('html')).toHaveAttribute('data-print-calls', '2')
+  expect(posts).toBe(1)
+  await page.emulateMedia({ media: 'print' })
+  await expect(print).toBeHidden()
+  expect(await page.locator('.frozen-answer-page').evaluateAll(elements => elements.every(el => getComputedStyle(el).page === 'frozen-answer' && getComputedStyle(el).breakBefore === 'page'))).toBeTruthy()
+  if (testInfo.project.name === 'desktop') {
+    await page.pdf({ path: testInfo.outputPath('combined-student-paper.pdf'), preferCSSPageSize: true, printBackground: true })
+  }
+})
+
+test('failed print preparation blocks printing and keeps the existing paper visible', async ({ page }) => {
+  const data = fixture()
+  await page.addInitScript(() => { window.print = () => { document.documentElement.dataset.printCalled = 'yes' } })
+  await page.route('**/api/v1/paper-instances/*/print-view', route => route.fulfill({ json: data }))
+  await page.route('**/api/v1/internal/stage6/status', route => route.fulfill({ json: { enabled: true } }))
+  await page.route('**/answer-card-artifacts', route => route.fulfill({ status: 409, json: { message: '试卷版本已变更，请刷新后生成' } }))
+  await page.goto(`/paper-instances/${paperId}/print`)
+  await page.getByRole('button', { name: '打印 / 保存 PDF' }).click()
+  await expect(page.getByText('试卷版本已变更，请刷新后生成')).toBeVisible()
+  await expect(page.locator('html')).not.toHaveAttribute('data-print-called', 'yes')
+  await expect(page.locator('.print-question')).toHaveCount(3)
+  await expect(page.locator('.answer-blank')).toHaveCount(39)
 })
