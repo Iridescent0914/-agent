@@ -96,6 +96,12 @@ const questionTypeLabels: Record<string, string> = { choice: '选择题', fill_b
 
 type ImageAsset = { asset_id: string; kind: string; page: number | null; bbox: number[] | null; width: number; height: number; sha256: string; candidate_item_ids: string[]; removed_candidate_for_item_ids?: string[]; duplicate_of_kept_image?: boolean }
 type ImageInventory = { version: string | null; page_count: number | null; embedded_scanned: boolean; files_available: boolean; assets: ImageAsset[] }
+type ExactCatalogResult = {
+  version: string
+  batch_id: string
+  unindexed_catalog_count: number
+  results: Array<{ item_id: string; revision: number; status: 'unverifiable' | 'exact_matches' | 'no_exact_match'; stale_catalog_rows: number; matches: Array<{ question_id: string; original_qid: string; question_text: string; reference_answer_raw: string; answer_text_differs: boolean | null }> }>
+}
 
 const modeLabels: Record<string, string> = {
   questions_only: '只有题目', combined: '题目与答案同文件', separate: '题目与答案分文件',
@@ -196,11 +202,14 @@ export function QuestionImportPage() {
   const [newCandidateDraft, setNewCandidateDraft] = useState<NewCandidateDraft>(emptyCandidateDraft)
   const [creatingCandidate, setCreatingCandidate] = useState(false)
   const [deletingCandidateId, setDeletingCandidateId] = useState<string | null>(null)
+  const [exactCatalogResult, setExactCatalogResult] = useState<ExactCatalogResult | null>(null)
+  const [exactCatalogBusy, setExactCatalogBusy] = useState(false)
 
   function closeCandidateModal() {
     setCandidateEditor(null)
     setNewCandidateOpen(false)
     setSelectedBatchId(null)
+    setExactCatalogResult(null)
   }
 
   async function reload(focusBatchId?: string) {
@@ -388,7 +397,16 @@ export function QuestionImportPage() {
       setShowDuplicateCandidates(false)
       setReviewIssues(issues)
       setSelectedBatchId(id)
+      setExactCatalogResult(null)
     } catch (error) { message.error(error instanceof Error ? error.message : '候选题加载失败') }
+  }
+
+  async function checkExactCatalog(id: string) {
+    setExactCatalogBusy(true)
+    try {
+      setExactCatalogResult(await apiGet<ExactCatalogResult>(`/question-imports/${id}/s4/exact-matches`))
+    } catch (error) { message.error(error instanceof Error ? error.message : '题库精确查重失败') }
+    finally { setExactCatalogBusy(false) }
   }
 
   async function refreshImages(id: string) {
@@ -684,7 +702,22 @@ export function QuestionImportPage() {
     const clues = item.payload.extraction?.diagram_clues || []
     const figureMissing = !assetIds.length && (clues.length > 0 || ['complete', 'uncertain'].includes(item.payload.extraction?.figure_status || ''))
     const removedCandidateImages = unmatchedImages.filter((asset) => asset.removed_candidate_for_item_ids?.includes(item.id))
+    const exactRow = exactCatalogResult?.results.find((row) => row.item_id === item.id)
     return <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}>
+      {exactRow && (exactRow.revision !== item.revision
+        ? <Typography.Text type="warning">题目已修改，请重新检查题库精确重复。</Typography.Text>
+        : exactRow.status === 'unverifiable'
+          ? <Typography.Text type="warning">暂无法可靠比对题库精确重复，请核对题干、选项和题图。</Typography.Text>
+          : exactRow.matches.length > 0
+            ? <div><Tag color="warning">题库已有 {exactRow.matches.length} 道精确重复题</Tag>
+              {exactRow.matches.map((match) => <div key={match.question_id}>
+                <Typography.Text>题库编号 {match.original_qid}：{match.question_text.replace(/\[ASSET:[^\]]+\]/g, '[题图]').slice(0, 120)}</Typography.Text>
+                {match.reference_answer_raw && <Typography.Text type="secondary">；题库答案：{match.reference_answer_raw.slice(0, 100)}</Typography.Text>}
+                {match.answer_text_differs && <Typography.Text type="warning">；答案文本不同，请核对</Typography.Text>}
+              </div>)}
+            </div>
+            : <Typography.Text type="secondary">未检出题库精确重复题；疑似重复尚未检查。</Typography.Text>)}
+      {!!exactRow?.stale_catalog_rows && <Typography.Text type="warning">部分题库指纹已失效，请重新核对。</Typography.Text>}
       <RichQuestionText text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />
       {item.payload.content.options.map((option, index) => <RichQuestionText key={`option-${index}-${option.key}`} text={`${option.key}. ${option.text}`} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />)}
       {images?.files_available && assetIds.map((id) => { const asset = images.assets.find((value) => value.asset_id === id); return asset && selectedBatch && <div key={id}>
@@ -812,6 +845,10 @@ export function QuestionImportPage() {
         <Button type="primary" onClick={() => { setNewCandidateDraft(emptyCandidateDraft()); setNewCandidateOpen(true) }}>新增题目</Button>
         <Typography.Text type="secondary">新增题目请人工核对重复情况；可在打标签前或后修改。</Typography.Text>
       </Space>}
+      {selectedBatch && dedupeStatus === 'completed' && <div style={{ marginBottom: 12 }}>
+        <Button loading={exactCatalogBusy} onClick={() => void checkExactCatalog(selectedBatch.id)}>检查题库精确重复</Button>
+        {exactCatalogResult && <Typography.Text type="secondary"> 已检查 {exactCatalogResult.results.length} 道候选题；{exactCatalogResult.results.filter((row) => row.matches.length > 0).length} 道命中，{exactCatalogResult.results.filter((row) => row.status === 'unverifiable').length} 道无法可靠比对。题库另有 {exactCatalogResult.unindexed_catalog_count} 道未建立精确指纹；疑似重复待后续检查。</Typography.Text>}
+      </div>}
       {selectedBatch && selectedBatch.source_mode === 'questions_only' && dedupeStatus === 'completed' && <div style={{ marginBottom: 12 }}>
         {generationTask?.cost_unknown && <Alert type="warning" showIcon message="上次答案生成调用费用未知，请先核对账单；当前不能重新发起调用。" style={{ marginBottom: 8 }} />}
         <Button type="primary" disabled={!canEditCandidates || !s2Config?.ready || !!selectedBatch.files_purged_at || !!generationTask?.cost_unknown || unansweredCandidates.length === 0}

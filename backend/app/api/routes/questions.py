@@ -35,6 +35,7 @@ from app.services.assets import (
 )
 from app.services.knowledge_catalog import formal_kp, formal_literacy_dimensions, formal_question_literacy
 from app.services.question_import import content_fingerprint
+from app.services.question_fingerprint_v2 import catalog_content_key, fingerprint
 from app.services.question_review import (
     QuestionReviewConflict,
     QuestionReviewValidation,
@@ -261,6 +262,9 @@ def update_question(
     question.content_fingerprint = content_fingerprint(
         question.question_text, question.options, asset_records
     )
+    question.exact_fingerprint_v2 = fingerprint(catalog_content_key(
+        question.question_text, question.options, asset_records, has_image=question.has_image
+    ))
     # Content changes invalidate the previously structured answer. Published
     # papers keep their immutable snapshots and are not affected.
     question.correct_answer = None

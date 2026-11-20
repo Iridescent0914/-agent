@@ -26,6 +26,7 @@ from app.services.question_import_s3_separate import start_separate_answers
 from app.services.question_import_s3_labels import _allowed_kps, start_labels
 from app.services.question_import_s3_answer_generation import start_answer_generation
 from app.services.question_import_s3_review import list_review_issues
+from app.services.question_import_s4_exact import exact_catalog_matches
 
 
 router = APIRouter(prefix="/question-imports", tags=["question-imports"])
@@ -188,6 +189,11 @@ def list_items(batch_id: UUID, db: Session = Depends(get_db)):
     return [item for item in db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch_id
     ).order_by(QuestionImportItem.ordinal)) if active_candidate(item)]
+
+
+@router.get("/{batch_id}/s4/exact-matches")
+def read_exact_catalog_matches(batch_id: UUID, db: Session = Depends(get_db)):
+    return exact_catalog_matches(db, batch_id)
 
 
 @router.post("/{batch_id}/items", response_model=CandidateOut, status_code=201)

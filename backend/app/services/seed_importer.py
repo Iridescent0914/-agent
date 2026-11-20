@@ -16,6 +16,7 @@ from app.services.answer_units import (
 from app.services.question_pool_quality import pool_answer_issues
 from app.services.profile_evidence import PROFILE_QUESTION_TYPES
 from app.services.question_import import content_fingerprint
+from app.services.question_fingerprint_v2 import catalog_content_key, fingerprint
 
 from app.models import KnowledgePoint, Question
 
@@ -205,6 +206,10 @@ def _question_values(item: dict[str, Any], kp: KnowledgePoint) -> dict[str, Any]
         "content_fingerprint": content_fingerprint(
             item["question_text"], item.get("options"), item.get("assets", [])
         ),
+        "exact_fingerprint_v2": fingerprint(catalog_content_key(
+            item["question_text"], item.get("options"), item.get("assets", []),
+            has_image=bool(item.get("has_image")),
+        )),
         "options": item.get("options"),
         "correct_answer": item.get("correct_answer"),
         "reference_answer_raw": item.get("reference_answer_raw", ""),

@@ -96,6 +96,7 @@ class Question(TimestampMixin, Base):
     source_file: Mapped[str] = mapped_column(Text, nullable=False)
     source_question_number: Mapped[int] = mapped_column(Integer, nullable=False)
     content_fingerprint: Mapped[str | None] = mapped_column(String(64), index=True)
+    exact_fingerprint_v2: Mapped[str | None] = mapped_column(String(64), index=True)
     import_batch_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("question_import_batches.id", ondelete="SET NULL"), index=True
     )
