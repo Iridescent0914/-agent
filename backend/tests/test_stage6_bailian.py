@@ -37,8 +37,8 @@ def real_context(context, monkeypatch):
 def completion(req, *, content=None, **changes):
     data = json.loads(req.content)
     pair = json.loads(data["messages"][1]["content"])
-    response = {"schema_version": "stage6-equivalence-response-v1", "request_id": pair["request_id"],
-                "verdict": "equivalent", "reason_code": "equivalent_form", "explanation": "两段表达式恒等。"}
+    response = {"schema_version": "stage6-equivalence-response-v2", "request_id": pair["request_id"],
+                "verdict": "equivalent", "reason_code": "contextual_match", "explanation": "结合题干，本空答案可接受。"}
     body = {"id": "response-offline", "model": "qwen3.7-flash-2026-07-15",
             "usage": {"prompt_tokens": 500, "completion_tokens": 100, "total_tokens": 600},
             "choices": [{"finish_reason": "stop", "message": {"content": canonical_json(response) if content is None else content}}]}
@@ -71,7 +71,7 @@ def test_real_transport_whitelist_and_audit_without_grading(real_context):
         assert data["response_format"]["json_schema"]["strict"] is True
         assert data["max_tokens"] == 512
         pair = json.loads(data["messages"][1]["content"])
-        assert set(pair) == {"schema_version", "request_id", "reference_answer", "student_answer"}
+        assert set(pair) == {"schema_version", "request_id", "reference_answer", "student_answer", "answer_context"}
         assert pair["reference_answer"] == "x+x" and pair["student_answer"] == "2x"
         assert "PRIVATE_" not in req.content.decode()
         return httpx.Response(200, json=completion(req))
@@ -190,8 +190,8 @@ def test_cancelled_inflight_reservation_is_not_refunded_until_late_usage_arrives
     assert budget_state(db)["reserved_cost_cny"] > 0
     task_action(db, task.id, "cancel", "cancel while sending"); db.commit()
     assert budget_state(db)["unknown_calls"] == 1
-    raw = canonical_json({"schema_version": "stage6-equivalence-response-v1", "request_id": claim.request["request_id"],
-        "verdict": "equivalent", "reason_code": "equivalent_form", "explanation": "fixture"})
+    raw = canonical_json({"schema_version": "stage6-equivalence-response-v2", "request_id": claim.request["request_id"],
+        "verdict": "equivalent", "reason_code": "contextual_match", "explanation": "fixture"})
     finish(claim, raw, parse_response(raw, claim.request), None, factory,
            usage={"usage_status": "known", "cost_cny": 0.001, "input_tokens": 1, "output_tokens": 1})
     assert fresh(db, task).status == "cancelled"

@@ -8,6 +8,8 @@ import { AnswerView } from '../components/AnswerView'
 import { initialDraft, ManualAnswerEditor } from '../components/ManualAnswerEditor'
 import { RichQuestionText } from '../components/RichQuestionText'
 import { EquivalenceReview } from '../components/EquivalenceReview'
+import { PaperEquivalenceReview } from '../components/PaperEquivalenceReview'
+import { AdoptedEquivalenceReview } from '../components/AdoptedEquivalenceReview'
 import type { AnswerDraft, AttemptResult, AttemptRevision, SubmissionDetail, SubmissionPaperItem } from '../types/submission'
 import { answerMatchTypeLabel } from '../utils/gradingLabels'
 
@@ -229,6 +231,7 @@ export function PaperGradingPage() {
     {error && <Alert type="error" showIcon message="操作失败" description={error} action={<Button onClick={load}>刷新</Button>} />}
     {data && <><div className="student-heading"><div><Typography.Title level={2}>{data.student_code} · {data.student_name}</Typography.Title><Typography.Text type="secondary">{data.assignment_title} · v{data.version_no} · {data.instance_code}</Typography.Text></div><Space wrap>{data.can_submit && <Button type="primary" loading={loading} onClick={submit}>提交并自动判分</Button>}{data.submission_id && data.answer_key_update_count > 0 && <Button type="primary" danger loading={regrading} onClick={regrade}>重新评分（{data.answer_key_update_count} 题）</Button>}</Space></div>
       {equivalenceEnabled && <Button><Link to={`/paper-instances/${paperInstanceId}/recognize`}>管理答题页照片</Link></Button>}
+      {equivalenceEnabled && data.submission_id && <PaperEquivalenceReview data={data} onAdopted={setData} />}
       {!data.is_active && <Alert type="warning" showIcon message="历史失效版本" description={data.submission_id ? '已有提交仍可查看和复核，但不能创建新提交。' : '该版本不能创建新提交。'} />}
       {data.answer_key_update_count > 0 && <Alert type="warning" showIcon message="题库标准答案已重新发布" description="当前结果仍按原评分标准保留。请点击“重新评分”，确认后系统才会追加修订并更新画像。" />}
       {data.source === 'image' && data.recognition_image_url && <Card title="答题区原图"><div className="recognition-source-grid"><Image src={apiUrl(data.recognition_image_url)} /><Descriptions size="small" column={1}><Descriptions.Item label="来源">图片识别，教师确认前不进入画像</Descriptions.Item><Descriptions.Item label="模型">{data.recognition_provider} · {data.recognition_model}</Descriptions.Item><Descriptions.Item label="提示版本">{data.recognition_prompt_version}</Descriptions.Item></Descriptions></div></Card>}
@@ -247,6 +250,7 @@ export function PaperGradingPage() {
         <RichQuestionText text={item.question_snapshot.question_text ?? ''} assets={item.assets} />
         {!data.submission_id && <ManualAnswerEditor item={gradingEditorItem(item)} value={drafts[item.id] ?? initialDraft(gradingEditorItem(item))} onChange={(value) => setDrafts((current) => ({ ...current, [item.id]: value }))} />}
         {item.attempt && <Space direction="vertical" className="attempt-result" size="middle">
+          <AdoptedEquivalenceReview item={item} />
           <Descriptions bordered size="small" column={{ xs: 1, md: 2 }}>
             <Descriptions.Item label="学生原始答案"><AnswerView answer={item.attempt.student_answer} referenceAnswer={item.grading_answer_snapshot} assets={item.assets} /></Descriptions.Item>
             <Descriptions.Item label="当前评分标准答案"><AnswerView answer={item.grading_answer_snapshot} assets={item.assets} /></Descriptions.Item>

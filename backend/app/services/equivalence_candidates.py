@@ -8,13 +8,23 @@ import unicodedata
 
 from app.services.grading import grade_answer
 
-ROUTING_VERSION = "stage6-equivalence-routing-v1"
+ROUTING_VERSION = "stage6-equivalence-routing-v2"
 _COMMANDS = {"frac", "dfrac", "tfrac", "sqrt", "left", "right", "cdot", "times", "div"}
 _NORMALIZATION_KEYS = {
     "normalize_fullwidth_symbols", "ignore_whitespace", "trim_whitespace", "uppercase",
     "answer_schema_version", "item_order_matters", "partial_credit",
     "allow_equivalent_fraction", "allow_fraction_decimal_equivalence",
 }
+_TEXT_NORMALIZATION_KEYS = _NORMALIZATION_KEYS | {
+    "normalize_full_width", "case_insensitive", "latex_source_exact",
+    "unparsed_items_use_reference_answer_raw",
+}
+
+
+def _short_text(value):
+    # First semantic scope: bounded Chinese terms, not expressions, units,
+    # equations or prose requiring the question's context.
+    return isinstance(value, str) and re.fullmatch(r"[\u4e00-\u9fff]{1,24}", value.strip()) is not None
 
 
 def _expression_form(value) -> bool:
@@ -123,6 +133,12 @@ def classify_unit(*, question_type, reference, rule, item_id, student_answer,
         return blocked("rule_correct", "规则已确认本空正确（含已登记的答案别名）")
     if details["is_correct"] is False:
         if match_type == "exact":
+            if question_type == "fill_blank" and _short_text(expected) and _short_text(student_answer):
+                normalization = rule.get("answer_normalization_rule") or {}
+                if not isinstance(normalization, dict) or set(normalization) - _TEXT_NORMALIZATION_KEYS:
+                    return blocked("format_review_required", "本空包含额外格式或条件约束，请人工核对")
+                return {**base, "eligible": True, "reason_code": "short_text_candidate",
+                        "message": "精确文本未匹配，可请求短文本等价建议；结论仍需教师核对"}
             return blocked("rule_incorrect", "本空按精确文本规则未匹配标答或已登记别名；尚未进行语义等价判断，可人工复核")
         return blocked("rule_incorrect", "规则已有明确结果，请按现有判分或人工复核处理")
     if question_type != "fill_blank" or match_type != "latex_exact":

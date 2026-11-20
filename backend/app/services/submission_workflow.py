@@ -513,6 +513,39 @@ def review_attempt(db: Session, attempt_id: UUID,
     return submission_view(db, submission.paper_instance_id, mastery_stats=mastery_stats)
 
 
+def record_equivalence_review(db, attempt, item, decisions, request, receipt):
+    """Called only after S5 validates all current candidate leaves for this item."""
+    before = deepcopy(_attempt_state(attempt))
+    reference, rule, _ = _grading_reference(item, attempt)
+    result = grade_answer(attempt.student_answer, reference, rule,
+                          response_status="blank" if attempt.student_answer is None else "answered")
+    leaves = deepcopy(list(result.item_results)) if result.match_type == "group" else [
+        {"item_id": "answer", "is_correct": result.is_correct, "grade_status": result.grade_status,
+         "reason_code": result.reason_code}]
+    for leaf in leaves:
+        decision = decisions.get(leaf["item_id"])
+        if decision:
+            leaf.update(is_correct=decision["verdict"] == "equivalent", grade_status="teacher_confirmed",
+                        reason_code="teacher_adopted_equivalence", equivalence=decision)
+    # Preserve the existing question-group aggregation: any wrong leaf is wrong;
+    # otherwise an unresolved leaf keeps the question pending.
+    correct = False if any(l["is_correct"] is False for l in leaves) else (
+        True if all(l["is_correct"] is True for l in leaves) else None)
+    attempt.is_correct = correct
+    attempt.grade_status = "needs_review" if correct is None else "teacher_confirmed"
+    attempt.manual_override = True
+    attempt.revision_no += 1
+    attempt.reviewed_at = datetime.now(timezone.utc)
+    attempt.grading_details = {**deepcopy(attempt.grading_details or {}), "equivalence_review": {
+        "version": "stage6-contextual-teacher-adoption-v2", "judgment_mode": "contextual", "receipt": receipt,
+        "applied_revision_no": attempt.revision_no, "item_ids": sorted(decisions),
+        "decisions": decisions, "reviewed_item_results": leaves,
+        "reviewer": request.reviewer, "reason": request.reason}}
+    db.add(AttemptRevision(attempt_id=attempt.id, revision_no=attempt.revision_no,
+        before_state=before, after_state=_attempt_state(attempt), operator_type="teacher",
+        operator_id=request.reviewer, reason=request.reason))
+
+
 def regrade_submission(
     db: Session, submission_id: UUID, request: SubmissionRegradeRequest,
 ) -> SubmissionDetailOut:

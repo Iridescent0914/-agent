@@ -1,6 +1,13 @@
 export type EquivalenceVerdict = 'equivalent' | 'not_equivalent' | 'uncertain'
 export type AssessmentStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'stale'
 
+export interface AnswerContext {
+  scope: 'subquestion' | 'question_group'
+  question_text: string
+  target_subquestion_no: number
+  target_blank_no: number
+}
+
 export interface Stage6Status {
   enabled: boolean
   provider: string
@@ -11,6 +18,7 @@ export interface Stage6Status {
 }
 
 export interface EquivalencePreview {
+  answer_context?: AnswerContext | null
   match_type?: string
   eligible: boolean
   reason_code: string
@@ -37,8 +45,44 @@ export interface AssessmentTask {
   error_code: string | null
   created_at: string
   snapshot: { item_id: string; subquestion_no: number; blank_no: number; student_answer: string }
-  request_payload: { reference_answer: string; student_answer: string }
-  result: { verdict: EquivalenceVerdict; explanation: string } | null
+  request_payload: { reference_answer: string; student_answer: string; answer_context?: AnswerContext }
+  result: { schema_version?: string; verdict: EquivalenceVerdict; explanation: string } | null
+  judgment_mode?: 'contextual' | 'answer_pair_legacy'
+  adoption_status?: 'not_adopted' | 'teacher_adopted'
+}
+
+export interface PaperEquivalenceUnit {
+  answer_context?: AnswerContext | null
+  paper_instance_item_id: string
+  item_id: string
+  order_no: number
+  subquestion_no: number
+  blank_no: number
+  eligible: boolean
+  reason_code: string
+  message: string
+  reference_answer?: string
+  student_answer?: unknown
+  rule_result?: { is_correct: boolean | null } | null
+  task: {
+    id: string
+    status: AssessmentStatus
+    synthetic: boolean
+    error_code: string | null
+    adoptable: boolean
+    adoption_blocker?: { code: string; message: string } | null
+    result: { schema_version?: string; verdict: EquivalenceVerdict; explanation: string } | null
+  } | null
+}
+
+export interface PaperEquivalenceReport {
+  paper_instance_id: string
+  input_sha256: string
+  candidate_count: number
+  new_task_count: number
+  created_count?: number
+  reused_count?: number
+  units: PaperEquivalenceUnit[]
 }
 
 export interface QualityReview {

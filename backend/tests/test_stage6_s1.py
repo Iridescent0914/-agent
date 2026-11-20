@@ -57,7 +57,7 @@ def context(monkeypatch):
             db.flush()
             item = PaperInstanceItem(
                 paper_instance_id=paper.id, question_id=question.id, order_no=3,
-                question_snapshot={"question_type": "fill_blank", "question_text": "PRIVATE_QUESTION"},
+                question_snapshot={"question_type": "fill_blank", "question_text": "（1）化简x+x，得________。\n（2）填写术语：________。"},
                 answer_snapshot=deepcopy(reference), answer_rule_snapshot={"answer_match_type": "group", "answer_normalization_rule": {}},
                 knowledge_point_snapshot={}, selection_audit={"source_module": "history"},
             )
@@ -106,7 +106,7 @@ def test_persist_reuse_whitelist_and_feedback_never_grade(context):
         assert view["status"] == "succeeded" and view["result"]["verdict"] == "uncertain"
         assert view["snapshot"]["order_no"] == 3 and view["snapshot"]["source_module"] == "history"
         wire = view["request_payload"]
-        assert set(wire) == {"schema_version", "request_id", "reference_answer", "student_answer"}
+        assert set(wire) == {"schema_version", "request_id", "reference_answer", "student_answer", "answer_context"}
         assert "PRIVATE_" not in json.dumps(wire)
         assert wire["reference_answer"] == "x+x"
         assert view["calls"][0]["usage"]["cost_cny"] == 0 and view["synthetic"]

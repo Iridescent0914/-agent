@@ -12,7 +12,8 @@ from app.models import AnswerCardArtifact, AssessmentTask
 from app.schemas.answer_card import AnswerCardArtifactOut, CreateAnswerCardArtifact
 from app.schemas.answer_pages import CreatePageCollection, SelectPageImage
 from app.schemas.vision_pages import CreatePageVisionTasks, PageVisionAction
-from app.schemas.assessment import CreateAssessmentTask, QualityFeedbackIn, TaskAction
+from app.schemas.assessment import (CreateAssessmentTask, QualityFeedbackIn, TaskAction,
+                                    PaperEquivalenceRequest, AdoptPaperEquivalence)
 from app.schemas.vision_preparation import VisionInventory
 from app.services import assessment as service
 from app.services.equivalence_bailian import configuration
@@ -22,6 +23,7 @@ from app.services import answer_card_artifacts as artifacts
 from app.services import answer_pages
 from app.services import vision_pages
 from app.services import answer_transcription
+from app.services import paper_equivalence
 from app.schemas.answer_transcription import MergeTranscription, SaveTranscription, ConfirmTranscription
 from app.schemas.submissions import SubmissionDetailOut
 
@@ -102,6 +104,21 @@ def answer_card_page_image(paper_id: UUID, artifact_id: UUID, page_no: int, db: 
 @router.post("/equivalence-preview")
 def preview(request: CreateAssessmentTask, db: Session = Depends(get_db)):
     return service.create_task(db, request, preview_only=True)
+
+
+@router.get("/paper-instances/{paper_id}/equivalence")
+def paper_equivalence_preview(paper_id: UUID, db: Session = Depends(get_db)):
+    return paper_equivalence.preview(db, paper_id)
+
+
+@router.post("/paper-instances/{paper_id}/equivalence-tasks")
+def paper_equivalence_schedule(paper_id: UUID, request: PaperEquivalenceRequest, db: Session = Depends(get_db)):
+    return paper_equivalence.schedule(db, paper_id, request)
+
+
+@router.post("/paper-instances/{paper_id}/equivalence-adoptions", response_model=SubmissionDetailOut)
+def paper_equivalence_adopt(paper_id: UUID, request: AdoptPaperEquivalence, db: Session = Depends(get_db)):
+    return paper_equivalence.adopt(db, paper_id, request)
 
 
 _PAGE_COLLECTION = "/paper-instances/{paper_id}/answer-card-artifacts/{artifact_id}/page-collection"
