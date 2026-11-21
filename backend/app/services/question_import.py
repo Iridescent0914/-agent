@@ -457,9 +457,12 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         raise ImportProblem("INVALID_CANDIDATE", "候选题修改字段无效")
     payload = dict(item.payload)
     if "teacher_decision" in changes and changes["teacher_decision"] not in {
-        "pending", "approved", "rejected", "skipped_duplicate"
+        "pending", "approved", "rejected"
     }:
         raise ImportProblem("INVALID_CANDIDATE", "候选题决定无效")
+    if ("teacher_decision" in changes
+            and payload.get("teacher_decision") == "skipped_duplicate"):
+        raise ImportProblem("DUPLICATE_DECISION_REQUIRED", "请在查重记录中修改跳过决定", 409)
     if "commit_intent" in changes and changes["commit_intent"] not in {
         "library_only", "direct_pool"
     }:

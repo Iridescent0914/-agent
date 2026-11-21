@@ -96,12 +96,19 @@ const questionTypeLabels: Record<string, string> = { choice: '选择题', fill_b
 
 type ImageAsset = { asset_id: string; kind: string; page: number | null; bbox: number[] | null; width: number; height: number; sha256: string; candidate_item_ids: string[]; removed_candidate_for_item_ids?: string[]; duplicate_of_kept_image?: boolean }
 type ImageInventory = { version: string | null; page_count: number | null; embedded_scanned: boolean; files_available: boolean; assets: ImageAsset[] }
-type ExactCatalogResult = {
-  version: string
-  batch_id: string
-  unindexed_catalog_count: number
-  results: Array<{ item_id: string; revision: number; status: 'unverifiable' | 'exact_matches' | 'no_exact_match'; stale_catalog_rows: number; matches: Array<{ question_id: string; original_qid: string; question_text: string; reference_answer_raw: string; answer_text_differs: boolean | null }> }>
+type CatalogReviewMatch = {
+  id: string; question_id: string | null; original_qid: string; kind: 'exact' | 'nearby'
+  similarity: number | null; evidence: { differences?: string[]; image_relation?: string | null;
+    image_visual_distance?: number | null; answer_text_differs?: boolean | null }
+  decision: 'pending' | 'skip_existing' | 'keep_variant' | 'unrelated'; reason: string | null
+  catalog_stale: boolean; catalog_unverifiable: boolean; question_text: string | null
+  options: Array<{ key: string; text: string }> | null; reference_answer_raw: string | null
 }
+type CatalogReviewResult = { batch_id: string; items: Array<{
+  item_id: string; check_id: string; check_no: number; candidate_revision: number;
+  current_revision: number; candidate_stale: boolean; catalog_stale: boolean;
+  checked_at: string | null; matches: CatalogReviewMatch[]
+}> }
 
 const modeLabels: Record<string, string> = {
   questions_only: '只有题目', combined: '题目与答案同文件', separate: '题目与答案分文件',
@@ -202,14 +209,17 @@ export function QuestionImportPage() {
   const [newCandidateDraft, setNewCandidateDraft] = useState<NewCandidateDraft>(emptyCandidateDraft)
   const [creatingCandidate, setCreatingCandidate] = useState(false)
   const [deletingCandidateId, setDeletingCandidateId] = useState<string | null>(null)
-  const [exactCatalogResult, setExactCatalogResult] = useState<ExactCatalogResult | null>(null)
+  const [catalogReviewResult, setCatalogReviewResult] = useState<CatalogReviewResult | null>(null)
   const [exactCatalogBusy, setExactCatalogBusy] = useState(false)
+  const [catalogDecisionDraft, setCatalogDecisionDraft] = useState<{ item: Candidate; match: CatalogReviewMatch; decision: CatalogReviewMatch['decision'] } | null>(null)
+  const [catalogDecisionReason, setCatalogDecisionReason] = useState('')
+  const [catalogDecisionBusy, setCatalogDecisionBusy] = useState(false)
 
   function closeCandidateModal() {
     setCandidateEditor(null)
     setNewCandidateOpen(false)
     setSelectedBatchId(null)
-    setExactCatalogResult(null)
+    setCatalogReviewResult(null)
   }
 
   async function reload(focusBatchId?: string) {
@@ -390,6 +400,7 @@ export function QuestionImportPage() {
         try { imageRows = await apiPost<ImageInventory>(`/question-imports/${id}/s3/images`, {}) }
         catch (error) { message.warning(error instanceof Error ? error.message : 'PDF 图片自动提取失败') }
       }
+      const savedReview = await apiGet<CatalogReviewResult>(`/question-imports/${id}/s4/review`)
       setCandidates(items)
       setLabelCatalog(currentCatalog)
       setImages(imageRows)
@@ -397,16 +408,45 @@ export function QuestionImportPage() {
       setShowDuplicateCandidates(false)
       setReviewIssues(issues)
       setSelectedBatchId(id)
-      setExactCatalogResult(null)
+      setCatalogReviewResult(savedReview)
     } catch (error) { message.error(error instanceof Error ? error.message : '候选题加载失败') }
   }
 
   async function checkExactCatalog(id: string) {
     setExactCatalogBusy(true)
     try {
-      setExactCatalogResult(await apiGet<ExactCatalogResult>(`/question-imports/${id}/s4/exact-matches`))
-    } catch (error) { message.error(error instanceof Error ? error.message : '题库精确查重失败') }
+      setCatalogReviewResult(await apiPost<CatalogReviewResult>(`/question-imports/${id}/s4/review`, {}))
+      setCandidates(await apiGet<Candidate[]>(`/question-imports/${id}/items`))
+    } catch (error) { message.error(error instanceof Error ? error.message : '题库查重失败') }
     finally { setExactCatalogBusy(false) }
+  }
+
+  async function saveCatalogDecision() {
+    const draft = catalogDecisionDraft
+    if (!draft || !selectedBatchId) return
+    const needsReason = draft.decision === 'keep_variant' || (draft.decision === 'skip_existing' && draft.match.kind === 'nearby')
+    if (needsReason && !catalogDecisionReason.trim()) { message.warning('请填写判断理由'); return }
+    setCatalogDecisionBusy(true)
+    try {
+      const result = await apiPost<CatalogReviewResult>(
+        `/question-imports/${selectedBatchId}/s4/items/${draft.item.id}/matches/${draft.match.id}/decision`,
+        { expected_revision: draft.item.revision, decision: draft.decision, reason: catalogDecisionReason.trim() || null },
+      )
+      setCatalogReviewResult(result)
+      setCandidates(await apiGet<Candidate[]>(`/question-imports/${selectedBatchId}/items`))
+      setCatalogDecisionDraft(null)
+      setCatalogDecisionReason('')
+      message.success('查重决定已保存')
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '查重决定保存失败')
+      setCatalogReviewResult(await apiGet<CatalogReviewResult>(`/question-imports/${selectedBatchId}/s4/review`).catch(() => catalogReviewResult))
+      setCandidates(await apiGet<Candidate[]>(`/question-imports/${selectedBatchId}/items`).catch(() => candidates))
+    } finally { setCatalogDecisionBusy(false) }
+  }
+
+  function openCatalogDecision(item: Candidate, match: CatalogReviewMatch, decision: CatalogReviewMatch['decision']) {
+    setCatalogDecisionDraft({ item, match, decision })
+    setCatalogDecisionReason(decision === 'pending' ? '' : match.reason || '')
   }
 
   async function refreshImages(id: string) {
@@ -420,6 +460,7 @@ export function QuestionImportPage() {
         { expected_revision: candidate.revision, linked })
       setCandidates((rows) => rows.map((row) => row.id === updated.id ? updated : row))
       await refreshImages(batch.id)
+      setCatalogReviewResult(await apiGet<CatalogReviewResult>(`/question-imports/${batch.id}/s4/review`))
       message.success(linked ? '题图已关联' : '题图已删除')
     } catch (error) {
       message.error(error instanceof Error ? error.message : '题图关联失败')
@@ -437,6 +478,7 @@ export function QuestionImportPage() {
       const updated = await apiPostForm<Candidate>(`/question-imports/${batch.id}/s3/items/${candidate.id}/images`, body)
       setCandidates((rows) => rows.map((row) => row.id === updated.id ? updated : row))
       await refreshImages(batch.id)
+      setCatalogReviewResult(await apiGet<CatalogReviewResult>(`/question-imports/${batch.id}/s4/review`))
       message.success('图片已添加到该题')
     } catch (error) {
       message.error(error instanceof Error ? error.message : '题图上传失败')
@@ -702,22 +744,38 @@ export function QuestionImportPage() {
     const clues = item.payload.extraction?.diagram_clues || []
     const figureMissing = !assetIds.length && (clues.length > 0 || ['complete', 'uncertain'].includes(item.payload.extraction?.figure_status || ''))
     const removedCandidateImages = unmatchedImages.filter((asset) => asset.removed_candidate_for_item_ids?.includes(item.id))
-    const exactRow = exactCatalogResult?.results.find((row) => row.item_id === item.id)
+    const catalogRow = catalogReviewResult?.items.find((row) => row.item_id === item.id)
+    const catalogStale = !!catalogRow && (catalogRow.candidate_stale || catalogRow.catalog_stale)
     return <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}>
-      {exactRow && (exactRow.revision !== item.revision
-        ? <Typography.Text type="warning">题目已修改，请重新检查题库精确重复。</Typography.Text>
-        : exactRow.status === 'unverifiable'
-          ? <Typography.Text type="warning">暂无法可靠比对题库精确重复，请核对题干、选项和题图。</Typography.Text>
-          : exactRow.matches.length > 0
-            ? <div><Tag color="warning">题库已有 {exactRow.matches.length} 道精确重复题</Tag>
-              {exactRow.matches.map((match) => <div key={match.question_id}>
-                <Typography.Text>题库编号 {match.original_qid}：{match.question_text.replace(/\[ASSET:[^\]]+\]/g, '[题图]').slice(0, 120)}</Typography.Text>
-                {match.reference_answer_raw && <Typography.Text type="secondary">；题库答案：{match.reference_answer_raw.slice(0, 100)}</Typography.Text>}
-                {match.answer_text_differs && <Typography.Text type="warning">；答案文本不同，请核对</Typography.Text>}
-              </div>)}
-            </div>
-            : <Typography.Text type="secondary">未检出题库精确重复题；疑似重复尚未检查。</Typography.Text>)}
-      {!!exactRow?.stale_catalog_rows && <Typography.Text type="warning">部分题库指纹已失效，请重新核对。</Typography.Text>}
+      {catalogRow && <div style={{ width: '100%' }}>
+        {catalogStale && <Typography.Text type="warning">候选题或正式题内容已变化，查重决定暂不可用；请重新检查题库重复。</Typography.Text>}
+        <div><Tag color={catalogRow.matches.some((match) => match.kind === 'exact') ? 'warning' : 'default'}>
+          题库精确命中 {catalogRow.matches.filter((match) => match.kind === 'exact').length} 道
+        </Tag><Typography.Text type="secondary">索引近邻 {catalogRow.matches.filter((match) => match.kind === 'nearby').length} 道，仅供人工核对。</Typography.Text></div>
+        {catalogRow.matches.length > 0 && <details>
+          <summary>查看题库查重证据和决定</summary>
+          {catalogRow.matches.map((match) => <Card key={match.id} size="small" style={{ marginTop: 8 }}>
+            <Space wrap><Typography.Text strong>题库编号 {match.original_qid}</Typography.Text>
+              <Tag color={match.kind === 'exact' ? 'warning' : 'blue'}>{match.kind === 'exact' ? '精确重复' : '索引近邻'}</Tag>
+              <Tag color={match.decision === 'pending' ? 'default' : 'green'}>{match.decision === 'skip_existing' ? '已决定跳过此题' : match.decision === 'keep_variant' ? '已确认独立变式' : match.decision === 'unrelated' ? '已判为无关题' : '待决定'}</Tag>
+              {(match.catalog_stale || match.catalog_unverifiable) && <Tag color="warning">{match.catalog_stale ? '正式题内容已变化' : '正式题图片无法可靠比对'}</Tag>}
+            </Space>
+            {match.question_text && <div><Typography.Text>题干：{match.question_text.replace(/\[ASSET:[^\]]+\]/g, '[题图]').slice(0, 300)}</Typography.Text></div>}
+            {!!match.options?.length && <div><Typography.Text type="secondary">选项：{match.options.map((option) => `${option.key}. ${option.text}`).join('；').slice(0, 300)}</Typography.Text></div>}
+            {!!match.reference_answer_raw && <div><Typography.Text type="secondary">题库答案：{match.reference_answer_raw.slice(0, 120)}</Typography.Text></div>}
+            {!!match.evidence.answer_text_differs && <Typography.Text type="warning">候选答案与题库答案文本不同，请核对。</Typography.Text>}
+            {!!match.evidence.differences?.length && <div><Typography.Text type="warning">差异：{match.evidence.differences.join('；')}</Typography.Text></div>}
+            {match.kind === 'nearby' && <div><Typography.Text type="secondary">题图：{match.evidence.image_relation || '未比较'}{match.evidence.image_visual_distance != null ? `；视觉特征距离 ${match.evidence.image_visual_distance}/64` : ''}；索引相近度 {Math.round((match.similarity || 0) * 100)}%（排序参考）</Typography.Text></div>}
+            {match.reason && <div><Typography.Text type="secondary">判断理由：{match.reason}</Typography.Text></div>}
+            {canEditCandidates && !catalogStale && !match.catalog_unverifiable && <Space wrap style={{ marginTop: 8 }}>
+              {match.decision !== 'skip_existing' && <Button size="small" onClick={() => openCatalogDecision(item, match, 'skip_existing')}>跳过此题，关联旧题</Button>}
+              {match.kind === 'nearby' && match.decision !== 'keep_variant' && <Button size="small" onClick={() => openCatalogDecision(item, match, 'keep_variant')}>确认独立变式</Button>}
+              {match.kind === 'nearby' && match.decision !== 'unrelated' && <Button size="small" onClick={() => openCatalogDecision(item, match, 'unrelated')}>与此题无关</Button>}
+              {match.decision !== 'pending' && <Button size="small" onClick={() => openCatalogDecision(item, match, 'pending')}>撤销决定</Button>}
+            </Space>}
+          </Card>)}
+        </details>}
+      </div>}
       <RichQuestionText text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />
       {item.payload.content.options.map((option, index) => <RichQuestionText key={`option-${index}-${option.key}`} text={`${option.key}. ${option.text}`} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />)}
       {images?.files_available && assetIds.map((id) => { const asset = images.assets.find((value) => value.asset_id === id); return asset && selectedBatch && <div key={id}>
@@ -795,6 +853,18 @@ export function QuestionImportPage() {
   }
 
   return <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Modal open={!!catalogDecisionDraft} title="保存题库查重决定"
+      okText="保存决定" okButtonProps={{ loading: catalogDecisionBusy }}
+      onCancel={() => { if (!catalogDecisionBusy) setCatalogDecisionDraft(null) }}
+      onOk={() => void saveCatalogDecision()}>
+      {catalogDecisionDraft && <>
+        <Typography.Paragraph>候选第 {catalogDecisionDraft.item.ordinal} 题与题库编号 {catalogDecisionDraft.match.original_qid}：
+          {catalogDecisionDraft.decision === 'skip_existing' ? '跳过候选题并关联旧题' : catalogDecisionDraft.decision === 'keep_variant' ? '确认作为独立变式' : catalogDecisionDraft.decision === 'unrelated' ? '判为无关题' : '撤销原决定'}</Typography.Paragraph>
+        {catalogDecisionDraft.decision !== 'pending' && <Input.TextArea value={catalogDecisionReason} maxLength={500}
+          rows={3} placeholder={catalogDecisionDraft.decision === 'keep_variant' || catalogDecisionDraft.match.kind === 'nearby' ? '填写判断理由（必填）' : '判断理由（可选）'}
+          onChange={(event) => setCatalogDecisionReason(event.target.value)} />}
+      </>}
+    </Modal>
     <Card title="批量题目导入 · 内部识别与候选核对">
       <Typography.Paragraph>上传后先校验文件；S2 按页段提取题目并自动整批去重。同文件场景同时提取答案；分文件场景先读取题目文件，整批去重完成后识别答案文件。来源答案先按规则关联，再对有歧义的对应进行模型辅助判断，仍无法确定的留给教师核对。“只有题目”批次可选择为无答案题生成参考答案，或由教师手填；之后可单独启动标签建议。</Typography.Paragraph>
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -846,8 +916,8 @@ export function QuestionImportPage() {
         <Typography.Text type="secondary">新增题目请人工核对重复情况；可在打标签前或后修改。</Typography.Text>
       </Space>}
       {selectedBatch && dedupeStatus === 'completed' && <div style={{ marginBottom: 12 }}>
-        <Button loading={exactCatalogBusy} onClick={() => void checkExactCatalog(selectedBatch.id)}>检查题库精确重复</Button>
-        {exactCatalogResult && <Typography.Text type="secondary"> 已检查 {exactCatalogResult.results.length} 道候选题；{exactCatalogResult.results.filter((row) => row.matches.length > 0).length} 道命中，{exactCatalogResult.results.filter((row) => row.status === 'unverifiable').length} 道无法可靠比对。题库另有 {exactCatalogResult.unindexed_catalog_count} 道未建立精确指纹；疑似重复待后续检查。</Typography.Text>}
+        <Button loading={exactCatalogBusy} onClick={() => void checkExactCatalog(selectedBatch.id)}>检查题库重复</Button>
+        {catalogReviewResult && <Typography.Text type="secondary"> 已保存 {catalogReviewResult.items.length} 道候选题的查重证据；{catalogReviewResult.items.filter((row) => row.matches.some((match) => match.kind === 'exact')).length} 道精确命中，{catalogReviewResult.items.filter((row) => row.candidate_stale || row.catalog_stale).length} 道结果已过期。索引近邻仅供核对，正式提交仍需重新查库。</Typography.Text>}
       </div>}
       {selectedBatch && selectedBatch.source_mode === 'questions_only' && dedupeStatus === 'completed' && <div style={{ marginBottom: 12 }}>
         {generationTask?.cost_unknown && <Alert type="warning" showIcon message="上次答案生成调用费用未知，请先核对账单；当前不能重新发起调用。" style={{ marginBottom: 8 }} />}

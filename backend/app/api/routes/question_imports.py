@@ -27,6 +27,10 @@ from app.services.question_import_s3_labels import _allowed_kps, start_labels
 from app.services.question_import_s3_answer_generation import start_answer_generation
 from app.services.question_import_s3_review import list_review_issues
 from app.services.question_import_s4_exact import exact_catalog_matches
+from app.services.question_import_s4_near import catalog_near_matches
+from app.services.question_import_s4_review import (
+    decide_catalog_match, read_catalog_review, run_catalog_review,
+)
 
 
 router = APIRouter(prefix="/question-imports", tags=["question-imports"])
@@ -74,6 +78,12 @@ class CandidateCreate(BaseModel):
 
 class CandidateDelete(BaseModel):
     expected_revision: int = Field(ge=1)
+
+
+class CatalogDecisionRequest(BaseModel):
+    expected_revision: int = Field(ge=1)
+    decision: str
+    reason: str | None = None
 
 
 class S2StartRequest(BaseModel):
@@ -194,6 +204,30 @@ def list_items(batch_id: UUID, db: Session = Depends(get_db)):
 @router.get("/{batch_id}/s4/exact-matches")
 def read_exact_catalog_matches(batch_id: UUID, db: Session = Depends(get_db)):
     return exact_catalog_matches(db, batch_id)
+
+
+@router.get("/{batch_id}/s4/catalog-matches")
+def read_catalog_matches(batch_id: UUID, db: Session = Depends(get_db)):
+    return catalog_near_matches(db, batch_id)
+
+
+@router.post("/{batch_id}/s4/review")
+def check_and_save_catalog_matches(batch_id: UUID, db: Session = Depends(get_db)):
+    return run_catalog_review(db, batch_id)
+
+
+@router.get("/{batch_id}/s4/review")
+def read_saved_catalog_matches(batch_id: UUID, db: Session = Depends(get_db)):
+    return read_catalog_review(db, batch_id)
+
+
+@router.post("/{batch_id}/s4/items/{item_id}/matches/{match_id}/decision")
+def save_catalog_match_decision(batch_id: UUID, item_id: UUID, match_id: UUID,
+                                request: CatalogDecisionRequest,
+                                db: Session = Depends(get_db)):
+    return decide_catalog_match(db, batch_id, item_id, match_id,
+                                expected_revision=request.expected_revision,
+                                decision=request.decision, reason=request.reason)
 
 
 @router.post("/{batch_id}/items", response_model=CandidateOut, status_code=201)

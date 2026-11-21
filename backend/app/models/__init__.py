@@ -1,4 +1,5 @@
 from app.models.answer_card import AnswerCardArtifact
+from app.models.question_import_catalog import QuestionImportCatalogCheck, QuestionImportCatalogMatch
 from app.models.answer_transcription import AnswerTranscription, AnswerTranscriptionRevision
 from app.models.answer_pages import AnswerPageCollection, AnswerPageEvent, AnswerPageImage
 from app.models.vision_pages import VisionPageCall, VisionPageTask
@@ -31,6 +32,7 @@ __all__ = [
     "VisionPageCall", "VisionPageTask",
     "AnswerPageCollection", "AnswerPageEvent", "AnswerPageImage",
     "AnswerCardArtifact",
+    "QuestionImportCatalogCheck", "QuestionImportCatalogMatch",
     "AssessmentCall", "AssessmentInput", "AssessmentTask", "ModelQualityFeedback",
     "ModelQualityFeedbackRevision",
     "Assignment",

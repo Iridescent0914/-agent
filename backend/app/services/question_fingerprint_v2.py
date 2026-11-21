@@ -86,11 +86,11 @@ def fingerprint(key: dict[str, Any] | None) -> str | None:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def catalog_image_hashes(assets: Any, *, has_image: bool = False) -> list[str] | None:
+def catalog_image_bytes(assets: Any, *, has_image: bool = False) -> list[bytes] | None:
     if not isinstance(assets, list) or (has_image and not assets):
         return None
     settings = get_settings()
-    result: list[str] = []
+    result: list[bytes] = []
     for asset in assets:
         if not isinstance(asset, dict) or not isinstance(asset.get("path"), str):
             return None
@@ -107,10 +107,15 @@ def catalog_image_hashes(assets: Any, *, has_image: bool = False) -> list[str] |
                 return None
             path = settings.web_asset_dir / web_path
         try:
-            result.append(hashlib.sha256(path.read_bytes()).hexdigest())
+            result.append(path.read_bytes())
         except OSError:
             return None
     return result
+
+
+def catalog_image_hashes(assets: Any, *, has_image: bool = False) -> list[str] | None:
+    images = catalog_image_bytes(assets, has_image=has_image)
+    return None if images is None else [hashlib.sha256(data).hexdigest() for data in images]
 
 
 def catalog_content_key(question_text: str, options: Any, assets: Any, *,

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from io import BytesIO
 
 import pytest
-from sqlalchemy import select
+from PIL import Image
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -14,6 +16,7 @@ from app.services.question_fingerprint_v2 import (
     VERSION, catalog_content_key, catalog_image_hashes, content_key, fingerprint,
 )
 from app.services.question_import_s4_exact import exact_catalog_matches
+from app.services.question_import_s4_near import _visual_distance, catalog_near_matches
 
 
 @pytest.fixture
@@ -110,3 +113,59 @@ def test_s4_returns_all_indexed_catalog_matches_and_revisions(db):
                     "extraction": {"figure_status": "uncertain", "diagram_clues": ["右侧图形"]}}
     db.flush()
     assert exact_catalog_matches(db, batch_id)["results"][0]["status"] == "unverifiable"
+
+
+def test_s4_near_returns_numeric_variant_without_calling_it_exact(db):
+    source = db.scalar(select(Question).where(Question.has_image.is_(False),
+                                             Question.archived_at.is_(None)))
+    assert source is not None
+    values = {column.name: getattr(source, column.name) for column in Question.__table__.columns
+              if column.name not in {"id", "original_qid", "created_at", "updated_at"}}
+    formal = Question(id=uuid.uuid4(), original_qid="s4-near-" + uuid.uuid4().hex, **values)
+    formal.question_text = "计算 1+2 米，结果是多少？"
+    formal.options = []
+    formal.assets = []
+    formal.has_image = False
+    formal.exact_fingerprint_v2 = fingerprint(catalog_content_key(formal.question_text, [], []))
+    db.add(formal)
+    batch_id = uuid.uuid4()
+    db.add(QuestionImportBatch(
+        id=batch_id, owner_scope="internal-demo", request_fingerprint=uuid.uuid4().hex,
+        catalog_snapshot_sha256="0" * 64, source_mode="questions_only",
+        status="review_pending", stage="s2_completed", files=[],
+        checkpoint={"s3": {"global_dedupe": {"status": "completed"}}},
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    ))
+    db.flush()
+    item = QuestionImportItem(batch_id=batch_id, ordinal=1, revision=1, is_fake=False,
+                              payload={"content": {"question_text": "计算 1+3 米，结果是多少？",
+                                                   "options": [], "asset_ids": []}})
+    db.add(item)
+    db.flush()
+
+    result = catalog_near_matches(db, batch_id)
+    assert result["exact_results"][0]["matches"] == []
+    match = next(row for row in result["results"][0]["near_matches"]
+                 if row["question_id"] == str(formal.id))
+    assert "题干中的数字或指数不同" in match["differences"]
+    assert match["image_relation"] == "均无题图"
+    assert result["calibrated"] is False
+
+
+def test_s4_near_uses_gist_index_and_visual_distance(db):
+    db.execute(text("SET LOCAL enable_seqscan = off"))
+    plan = "\n".join(row[0] for row in db.execute(text(
+        "EXPLAIN SELECT id FROM questions WHERE archived_at IS NULL "
+        "ORDER BY (question_text || ' ' || coalesce(options::text, '')) <-> '计算 1+2 米' LIMIT 6"
+    )))
+    assert "ix_questions_active_text_trgm" in plan
+
+    image = Image.new("RGB", (24, 24), "white")
+    for x in range(4, 12):
+        for y in range(5, 19):
+            image.putpixel((x, y), (0, 0, 0))
+    png, bmp = BytesIO(), BytesIO()
+    image.save(png, format="PNG")
+    image.save(bmp, format="BMP")
+    assert png.getvalue() != bmp.getvalue()
+    assert _visual_distance(png.getvalue(), bmp.getvalue()) == 0
