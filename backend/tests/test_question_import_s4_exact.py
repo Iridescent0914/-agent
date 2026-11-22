@@ -113,7 +113,8 @@ def test_s4_returns_all_indexed_catalog_matches_and_revisions(db):
     assert exact_catalog_matches(db, batch_id)["results"][0]["status"] == "unverifiable"
 
 
-def test_s4_near_returns_numeric_variant_without_calling_it_exact(db):
+def test_s4_near_returns_numeric_variant_without_calling_it_exact(db, monkeypatch):
+    monkeypatch.setattr("app.services.question_import_s4_near.RECALL_LIMIT", 100000)
     source = db.scalar(select(Question).where(Question.has_image.is_(False),
                                              Question.archived_at.is_(None)))
     assert source is not None
@@ -126,6 +127,13 @@ def test_s4_near_returns_numeric_variant_without_calling_it_exact(db):
     formal.has_image = False
     formal.exact_fingerprint_v2 = fingerprint(catalog_content_key(formal.question_text, [], []))
     db.add(formal)
+    unrelated = Question(id=uuid.uuid4(), original_qid="s4-unrelated-" + uuid.uuid4().hex, **values)
+    unrelated.question_text = "描述冬季天气与植物生长的关系。"
+    unrelated.options = []
+    unrelated.assets = []
+    unrelated.has_image = False
+    unrelated.exact_fingerprint_v2 = fingerprint(catalog_content_key(unrelated.question_text, [], []))
+    db.add(unrelated)
     batch_id = uuid.uuid4()
     db.add(QuestionImportBatch(
         id=batch_id, owner_scope="internal-demo", request_fingerprint=uuid.uuid4().hex,
@@ -145,6 +153,9 @@ def test_s4_near_returns_numeric_variant_without_calling_it_exact(db):
     assert result["exact_results"][0]["matches"] == []
     match = next(row for row in result["results"][0]["near_matches"]
                  if row["question_id"] == str(formal.id))
+    assert all(row["question_id"] != str(unrelated.id)
+               for row in result["results"][0]["near_matches"])
+    assert result["near_review_min_similarity"] == 0.30
     assert "题干中的数字或指数不同" in match["differences"]
     assert match["image_relation"] == "均无题图"
     assert result["calibrated"] is False

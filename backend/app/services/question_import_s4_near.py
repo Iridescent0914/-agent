@@ -18,9 +18,10 @@ from app.services.question_import import active_candidate
 from app.services.question_import_s4_exact import _candidate_key, exact_catalog_matches
 
 
-VERSION = "s4-near-v2"
+VERSION = "s4-near-v3"
 RECALL_LIMIT = 32
 DISPLAY_LIMIT = 6
+NEAR_REVIEW_MIN_SIMILARITY = 0.30
 _NUMBER = re.compile(r"(?<![\w])[-+]?\d+(?:\.\d+)?(?:\^[-+]?\d+)?")
 _SEARCH_EXPRESSION = literal_column("(questions.question_text || ' ' || coalesce(questions.options::text, ''))")
 
@@ -93,7 +94,10 @@ def catalog_near_matches(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
         for question, trigram_distance in neighbors:
             if str(question.id) in exact_ids:
                 continue
-            trigram_similarity = round(max(0.0, 1.0 - float(trigram_distance)), 3)
+            raw_similarity = max(0.0, 1.0 - float(trigram_distance))
+            if raw_similarity < NEAR_REVIEW_MIN_SIMILARITY:
+                continue
+            trigram_similarity = round(raw_similarity, 3)
             if question.id not in formal_keys:
                 formal_keys[question.id] = catalog_content_key(
                     question.question_text, question.options, question.assets, has_image=question.has_image
@@ -118,4 +122,5 @@ def catalog_near_matches(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
             "exact_results": exact["results"], "results": results,
             "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
             "recall_limit": RECALL_LIMIT,
+            "near_review_min_similarity": NEAR_REVIEW_MIN_SIMILARITY,
             "calibrated": False}

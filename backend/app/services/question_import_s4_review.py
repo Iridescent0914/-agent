@@ -18,7 +18,11 @@ from app.models import (
 from app.services.question_fingerprint_v2 import catalog_content_key, fingerprint, normalized_text
 from app.services.question_import import OWNER_SCOPE, ImportProblem, active_candidate, get_batch
 from app.services.question_import_s4_exact import _candidate_key
-from app.services.question_import_s4_near import catalog_near_matches
+from app.services.question_import_s4_near import (
+    NEAR_REVIEW_MIN_SIMILARITY,
+    VERSION as NEAR_VERSION,
+    catalog_near_matches,
+)
 
 
 def _candidate_signature(db: Session, batch_id: uuid.UUID, item: QuestionImportItem) -> str:
@@ -89,6 +93,10 @@ def run_catalog_review(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
                     for row in result["exact_results"] for match in row["matches"]}
     question_ids.update(uuid.UUID(match["question_id"])
                         for row in result["results"] for match in row["near_matches"])
+    question_ids.update(match.question_id for matches in prior_matches.values()
+                        for match in matches.values()
+                        if match.question_id is not None and match.kind == "nearby"
+                        and match.decision != "pending")
     questions = {question.id: question for question in db.scalars(select(Question).where(
         Question.id.in_(question_ids)
     ))} if question_ids else {}
@@ -105,6 +113,24 @@ def run_catalog_review(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
         db.flush()
         exact_rows = [("exact", row) for row in exact_by_item[item_id]["matches"]]
         near_rows = [("nearby", row) for row in near_by_item[item_id]["near_matches"]]
+        current_ids = {uuid.UUID(row["question_id"]) for _, row in [*exact_rows, *near_rows]}
+        if old is not None and old.candidate_signature == signature:
+            for old_match in prior_matches.get(old.id, {}).values():
+                question = questions.get(old_match.question_id)
+                if (old_match.kind != "nearby" or old_match.decision == "pending"
+                        or old_match.question_id in current_ids or question is None
+                        or question.archived_at is not None or old_match.catalog_signature is None
+                        or _catalog_signature(question) != old_match.catalog_signature):
+                    continue
+                old_evidence = old_match.evidence or {}
+                near_rows.append(("nearby", {
+                    "question_id": str(question.id), "original_qid": question.original_qid,
+                    "trigram_similarity": old_match.similarity,
+                    "differences": old_evidence.get("differences") or [],
+                    "image_relation": old_evidence.get("image_relation"),
+                    "answer_text_differs": old_evidence.get("answer_text_differs"),
+                }))
+                current_ids.add(question.id)
         preserved_skip = False
         for kind, row in [*exact_rows, *near_rows]:
             question_id = uuid.UUID(row["question_id"])
@@ -200,6 +226,8 @@ def read_catalog_review(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
                        "check_no": check.check_no, "candidate_revision": check.candidate_revision,
                        "current_revision": item.revision,
                        "candidate_stale": candidate_stale, "catalog_stale": catalog_stale,
+                       "near_review_min_similarity": (NEAR_REVIEW_MIN_SIMILARITY
+                                                       if check.near_version == NEAR_VERSION else None),
                        "checked_at": check.checked_at.isoformat() if check.checked_at else None,
                        "matches": rows})
     return {"batch_id": str(batch_id), "items": output}

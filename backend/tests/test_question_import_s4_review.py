@@ -131,6 +131,25 @@ def test_near_variant_needs_reason_and_formal_content_change_invalidates(db):
     assert changed.value.code == "CATALOG_CHANGED"
 
 
+def test_existing_near_skip_survives_tighter_display_threshold(db, monkeypatch):
+    batch_id, item, question = _scenario(db, candidate_text="计算 1+3 米，结果是多少？",
+                                         catalog_text="计算 1+2 米，结果是多少？")
+    first = run_catalog_review(db, batch_id)
+    match = next(row for row in first["items"][0]["matches"]
+                 if row["question_id"] == str(question.id))
+    assert match["kind"] == "nearby"
+    decide_catalog_match(db, batch_id, item.id, uuid.UUID(match["id"]),
+                         expected_revision=item.revision, decision="skip_existing",
+                         reason="教师核对后认为属于已有题")
+    monkeypatch.setattr("app.services.question_import_s4_near.NEAR_REVIEW_MIN_SIMILARITY", 0.999)
+
+    refreshed = run_catalog_review(db, batch_id)
+    retained = next(row for row in refreshed["items"][0]["matches"]
+                    if row["question_id"] == str(question.id))
+    assert retained["decision"] == "skip_existing"
+    assert item.payload["teacher_decision"] == "skipped_duplicate"
+
+
 def test_generic_candidate_patch_cannot_bypass_duplicate_evidence(db):
     batch_id, item, _ = _scenario(db, candidate_text="计算 1+2 米，结果是多少？",
                                   catalog_text="计算 1+2 米，结果是多少？")

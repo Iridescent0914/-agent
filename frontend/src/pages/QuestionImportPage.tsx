@@ -107,6 +107,7 @@ type CatalogReviewMatch = {
 type CatalogReviewResult = { batch_id: string; items: Array<{
   item_id: string; check_id: string; check_no: number; candidate_revision: number;
   current_revision: number; candidate_stale: boolean; catalog_stale: boolean;
+  near_review_min_similarity?: number | null;
   checked_at: string | null; matches: CatalogReviewMatch[]
 }> }
 
@@ -751,7 +752,9 @@ export function QuestionImportPage() {
         {catalogStale && <Typography.Text type="warning">候选题或正式题内容已变化，查重决定暂不可用；请重新检查题库重复。</Typography.Text>}
         <div><Tag color={catalogRow.matches.some((match) => match.kind === 'exact') ? 'warning' : 'default'}>
           题库精确命中 {catalogRow.matches.filter((match) => match.kind === 'exact').length} 道
-        </Tag><Typography.Text type="secondary">索引近邻 {catalogRow.matches.filter((match) => match.kind === 'nearby').length} 道，仅供人工核对。</Typography.Text></div>
+        </Tag><Typography.Text type="secondary">需核对的文字近邻 {catalogRow.matches.filter((match) => match.kind === 'nearby').length} 道{catalogRow.near_review_min_similarity != null ? `（展示门槛 ${Math.round(catalogRow.near_review_min_similarity * 100)}%）` : ''}；相近度仅供筛选和排序。</Typography.Text></div>
+        {!catalogStale && catalogRow.matches.length === 0 && catalogRow.near_review_min_similarity != null &&
+          <Typography.Text type="secondary">本次没有显示需要核对的正式题，可按新题候选继续审核；文字筛选不能证明题库中没有同题，缺图或题干文字不足时请人工核对。</Typography.Text>}
         {catalogRow.matches.length > 0 && <details>
           <summary>查看题库查重证据和决定</summary>
           {catalogRow.matches.map((match) => <Card key={match.id} size="small" style={{ marginTop: 8 }}>
@@ -766,7 +769,7 @@ export function QuestionImportPage() {
             {!!match.reference_answer_raw && <div><Typography.Text type="secondary">题库答案：{match.reference_answer_raw.slice(0, 120)}</Typography.Text></div>}
             {!!match.evidence.answer_text_differs && <Typography.Text type="warning">候选答案与题库答案文本不同，请核对。</Typography.Text>}
             {!!match.evidence.differences?.length && <div><Typography.Text type="warning">差异：{match.evidence.differences.join('；')}</Typography.Text></div>}
-            {match.kind === 'nearby' && <div><Typography.Text type="secondary">题图：{match.evidence.image_relation || '未比较'}；文字相近度 {Math.round((match.similarity || 0) * 100)}%（仅供排序）</Typography.Text></div>}
+            {match.kind === 'nearby' && <div><Typography.Text type="secondary">题图：{match.evidence.image_relation || '未比较'}；文字相近度 {Math.round((match.similarity || 0) * 100)}%（用于筛选和排序，不是重复概率）</Typography.Text></div>}
             {match.reason && <div><Typography.Text type="secondary">判断理由：{match.reason}</Typography.Text></div>}
             {canEditCandidates && !catalogStale && !match.catalog_unverifiable && <Space wrap style={{ marginTop: 8 }}>
               {match.decision !== 'skip_existing' && <Button size="small" onClick={() => openCatalogDecision(item, match, 'skip_existing')}>跳过此题，关联旧题</Button>}
