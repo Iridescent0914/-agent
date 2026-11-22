@@ -99,7 +99,7 @@ type ImageInventory = { version: string | null; page_count: number | null; embed
 type CatalogReviewMatch = {
   id: string; question_id: string | null; original_qid: string; kind: 'exact' | 'nearby'
   similarity: number | null; evidence: { differences?: string[]; image_relation?: string | null;
-    image_visual_distance?: number | null; answer_text_differs?: boolean | null }
+    answer_text_differs?: boolean | null }
   decision: 'pending' | 'skip_existing' | 'keep_variant' | 'unrelated'; reason: string | null
   catalog_stale: boolean; catalog_unverifiable: boolean; question_text: string | null
   options: Array<{ key: string; text: string }> | null; reference_answer_raw: string | null
@@ -756,6 +756,7 @@ export function QuestionImportPage() {
           <summary>查看题库查重证据和决定</summary>
           {catalogRow.matches.map((match) => <Card key={match.id} size="small" style={{ marginTop: 8 }}>
             <Space wrap><Typography.Text strong>题库编号 {match.original_qid}</Typography.Text>
+              {match.question_id && <a href={`/questions/${match.question_id}`} target="_blank" rel="noopener noreferrer">打开正式题详情核对题图</a>}
               <Tag color={match.kind === 'exact' ? 'warning' : 'blue'}>{match.kind === 'exact' ? '精确重复' : '索引近邻'}</Tag>
               <Tag color={match.decision === 'pending' ? 'default' : 'green'}>{match.decision === 'skip_existing' ? '已决定跳过此题' : match.decision === 'keep_variant' ? '已确认独立变式' : match.decision === 'unrelated' ? '已判为无关题' : '待决定'}</Tag>
               {(match.catalog_stale || match.catalog_unverifiable) && <Tag color="warning">{match.catalog_stale ? '正式题内容已变化' : '正式题图片无法可靠比对'}</Tag>}
@@ -765,7 +766,7 @@ export function QuestionImportPage() {
             {!!match.reference_answer_raw && <div><Typography.Text type="secondary">题库答案：{match.reference_answer_raw.slice(0, 120)}</Typography.Text></div>}
             {!!match.evidence.answer_text_differs && <Typography.Text type="warning">候选答案与题库答案文本不同，请核对。</Typography.Text>}
             {!!match.evidence.differences?.length && <div><Typography.Text type="warning">差异：{match.evidence.differences.join('；')}</Typography.Text></div>}
-            {match.kind === 'nearby' && <div><Typography.Text type="secondary">题图：{match.evidence.image_relation || '未比较'}{match.evidence.image_visual_distance != null ? `；视觉特征距离 ${match.evidence.image_visual_distance}/64` : ''}；索引相近度 {Math.round((match.similarity || 0) * 100)}%（排序参考）</Typography.Text></div>}
+            {match.kind === 'nearby' && <div><Typography.Text type="secondary">题图：{match.evidence.image_relation || '未比较'}；文字相近度 {Math.round((match.similarity || 0) * 100)}%（仅供排序）</Typography.Text></div>}
             {match.reason && <div><Typography.Text type="secondary">判断理由：{match.reason}</Typography.Text></div>}
             {canEditCandidates && !catalogStale && !match.catalog_unverifiable && <Space wrap style={{ marginTop: 8 }}>
               {match.decision !== 'skip_existing' && <Button size="small" onClick={() => openCatalogDecision(item, match, 'skip_existing')}>跳过此题，关联旧题</Button>}

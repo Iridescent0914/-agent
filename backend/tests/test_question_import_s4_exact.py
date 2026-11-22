@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from io import BytesIO
 
 import pytest
-from PIL import Image
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
@@ -16,7 +14,7 @@ from app.services.question_fingerprint_v2 import (
     VERSION, catalog_content_key, catalog_image_hashes, content_key, fingerprint,
 )
 from app.services.question_import_s4_exact import exact_catalog_matches
-from app.services.question_import_s4_near import _visual_distance, catalog_near_matches
+from app.services.question_import_s4_near import _differences, catalog_near_matches
 
 
 @pytest.fixture
@@ -152,7 +150,7 @@ def test_s4_near_returns_numeric_variant_without_calling_it_exact(db):
     assert result["calibrated"] is False
 
 
-def test_s4_near_uses_gist_index_and_visual_distance(db):
+def test_s4_near_uses_gist_index_and_flags_same_stem_with_different_images(db):
     db.execute(text("SET LOCAL enable_seqscan = off"))
     plan = "\n".join(row[0] for row in db.execute(text(
         "EXPLAIN SELECT id FROM questions WHERE archived_at IS NULL "
@@ -160,12 +158,12 @@ def test_s4_near_uses_gist_index_and_visual_distance(db):
     )))
     assert "ix_questions_active_text_trgm" in plan
 
-    image = Image.new("RGB", (24, 24), "white")
-    for x in range(4, 12):
-        for y in range(5, 19):
-            image.putpixel((x, y), (0, 0, 0))
-    png, bmp = BytesIO(), BytesIO()
-    image.save(png, format="PNG")
-    image.save(bmp, format="BMP")
-    assert png.getvalue() != bmp.getvalue()
-    assert _visual_distance(png.getvalue(), bmp.getvalue()) == 0
+    question = Question(question_text="计算图中面积", options=[])
+    candidate = {"content": {"question_text": "计算图中面积", "options": []}}
+    differences, relation = _differences(
+        candidate, question,
+        {"images": ["a" * 64]}, {"images": ["b" * 64]},
+    )
+    assert relation == "题图文件不同"
+    assert "题干文字相同，但题图文件不同，请人工核对是否为同一道题" in differences
+    assert all("距离" not in value for value in differences)

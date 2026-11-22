@@ -119,7 +119,6 @@ def run_catalog_review(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
             preserved_skip |= decision == "skip_existing"
             evidence = {"differences": row.get("differences") or [],
                         "image_relation": row.get("image_relation"),
-                        "image_visual_distance": row.get("image_visual_distance"),
                         "answer_text_differs": row.get("answer_text_differs")}
             db.add(QuestionImportCatalogMatch(
                 check_id=check.id, question_id=question_id,
@@ -174,8 +173,16 @@ def read_catalog_review(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
                          and _catalog_signature(question) != match.catalog_signature))
             catalog_stale |= stale
             evidence = dict(match.evidence or {})
+            evidence.pop("image_visual_distance", None)
             if question is not None:
                 evidence["answer_text_differs"] = _answer_text_differs(item, question)
+                content = (item.payload or {}).get("content") or {}
+                same_stem = (normalized_text(content.get("question_text") or "", strip_question_number=True)
+                             == normalized_text(question.question_text, strip_question_number=True))
+                if not stale and same_stem and evidence.get("image_relation") == "题图文件不同":
+                    evidence["differences"] = [difference for difference in evidence.get("differences") or []
+                                               if "题图文件不同" not in difference]
+                    evidence["differences"].append("题干文字相同，但题图文件不同，请人工核对是否为同一道题")
             rows.append({
                 "id": str(match.id), "question_id": str(match.question_id) if match.question_id else None,
                 "original_qid": match.original_qid, "kind": match.kind,
