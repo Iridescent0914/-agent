@@ -223,10 +223,11 @@ def test_label_stage_waits_for_dedupe_then_preserves_candidate_identity(db, tmp_
     with pytest.raises(ImportProblem) as already_complete:
         start_labels(db, batch.id, budget_cny=1, operator_token="operator-test")
     assert already_complete.value.code == "COMMIT_CONFLICT"
-    update_candidate(db, batch.id, first.id, expected_revision=first.revision,
-                     changes={"teacher_decision": "approved"})
-    update_candidate(db, batch.id, second.id, expected_revision=second.revision,
-                     changes={"teacher_decision": "rejected"})
+    # Seed legacy decisions to verify label rerun invalidation. The public PATCH
+    # now refuses to create either decision; S5 owns that audited action.
+    first.payload = {**first.payload, "teacher_decision": "approved"}
+    second.payload = {**second.payload, "teacher_decision": "rejected"}
+    db.flush()
     start_labels(db, batch.id, budget_cny=1, operator_token="operator-test", rerun=True)
     assert len(batch.checkpoint["s3"]["label_group_audit"]) == 1
     assert batch.checkpoint["s3"]["labels"]["overwrite_manual_tags"] is True

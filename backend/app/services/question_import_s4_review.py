@@ -226,6 +226,7 @@ def read_catalog_review(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
                        "check_no": check.check_no, "candidate_revision": check.candidate_revision,
                        "current_revision": item.revision,
                        "candidate_stale": candidate_stale, "catalog_stale": catalog_stale,
+                       "exact_version": check.exact_version, "near_version": check.near_version,
                        "near_review_min_similarity": (NEAR_REVIEW_MIN_SIMILARITY
                                                        if check.near_version == NEAR_VERSION else None),
                        "checked_at": check.checked_at.isoformat() if check.checked_at else None,

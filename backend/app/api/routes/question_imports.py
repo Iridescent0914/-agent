@@ -11,6 +11,10 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.models import QuestionImportBatch, QuestionImportItem
+from app.schemas.question_import_s5 import (
+    S5AnswerClaimRequest, S5AnswerSourceRequest, S5IssueDecisionRequest,
+    S5ItemDecisionRequest, S5PreflightRequest,
+)
 from app.services.question_import import (
     OWNER_SCOPE, ImportProblem, active_candidate, cancel_batch, create_batch,
     create_teacher_candidate, delete_cancelled_batch, delete_teacher_candidate, get_batch, retry_batch, update_candidate,
@@ -30,6 +34,10 @@ from app.services.question_import_s4_exact import exact_catalog_matches
 from app.services.question_import_s4_near import catalog_near_matches
 from app.services.question_import_s4_review import (
     decide_catalog_match, read_catalog_review, run_catalog_review,
+)
+from app.services.question_import_s5_preflight import import_review_summary, preflight_import
+from app.services.question_import_s5_review import (
+    claim_source_answer, confirm_answer_source, decide_issue, decide_item, read_item_reviews,
 )
 
 
@@ -219,6 +227,46 @@ def check_and_save_catalog_matches(batch_id: UUID, db: Session = Depends(get_db)
 @router.get("/{batch_id}/s4/review")
 def read_saved_catalog_matches(batch_id: UUID, db: Session = Depends(get_db)):
     return read_catalog_review(db, batch_id)
+
+
+@router.post("/{batch_id}/s5/preflight")
+def read_s5_preflight(batch_id: UUID, request: S5PreflightRequest,
+                      db: Session = Depends(get_db)):
+    return preflight_import(db, batch_id, request)
+
+
+@router.get("/{batch_id}/s5/summary")
+def read_s5_summary(batch_id: UUID, db: Session = Depends(get_db)):
+    return import_review_summary(db, batch_id)
+
+
+@router.get("/{batch_id}/s5/reviews")
+def read_s5_reviews(batch_id: UUID, db: Session = Depends(get_db)):
+    return read_item_reviews(db, batch_id)
+
+
+@router.post("/{batch_id}/s5/items/{item_id}/decision")
+def save_s5_item_decision(batch_id: UUID, item_id: UUID, request: S5ItemDecisionRequest,
+                          db: Session = Depends(get_db)):
+    return decide_item(db, batch_id, item_id, request)
+
+
+@router.post("/{batch_id}/s5/issues/decision")
+def save_s5_issue_decision(batch_id: UUID, request: S5IssueDecisionRequest,
+                           db: Session = Depends(get_db)):
+    return decide_issue(db, batch_id, request)
+
+
+@router.post("/{batch_id}/s5/issues/claim-answer")
+def save_s5_answer_claim(batch_id: UUID, request: S5AnswerClaimRequest,
+                         db: Session = Depends(get_db)):
+    return claim_source_answer(db, batch_id, request)
+
+
+@router.post("/{batch_id}/s5/items/{item_id}/confirm-answer-source")
+def save_s5_answer_source(batch_id: UUID, item_id: UUID, request: S5AnswerSourceRequest,
+                          db: Session = Depends(get_db)):
+    return confirm_answer_source(db, batch_id, item_id, request)
 
 
 @router.post("/{batch_id}/s4/items/{item_id}/matches/{match_id}/decision")

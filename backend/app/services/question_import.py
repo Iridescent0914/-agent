@@ -451,22 +451,12 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         raise ImportProblem("REVISION_CONFLICT", "候选题已被修改，请刷新", 409)
     if batch.catalog_snapshot_sha256 != hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest():
         raise ImportProblem("CATALOG_CHANGED", "正式标签目录已变化，请重新上传批次", 409)
-    allowed = {"content", "tags", "selected_answer_id", "teacher_decision", "commit_intent",
-               "teacher_answer_text"}
+    allowed = {"content", "tags", "selected_answer_id", "teacher_answer_text"}
     if not changes or set(changes) - allowed:
-        raise ImportProblem("INVALID_CANDIDATE", "候选题修改字段无效")
+        raise ImportProblem("INVALID_CANDIDATE", "审核决定与入库路径只能通过 S5 审核动作修改")
     payload = dict(item.payload)
-    if "teacher_decision" in changes and changes["teacher_decision"] not in {
-        "pending", "approved", "rejected"
-    }:
-        raise ImportProblem("INVALID_CANDIDATE", "候选题决定无效")
-    if ("teacher_decision" in changes
-            and payload.get("teacher_decision") == "skipped_duplicate"):
+    if payload.get("teacher_decision") == "skipped_duplicate":
         raise ImportProblem("DUPLICATE_DECISION_REQUIRED", "请在查重记录中修改跳过决定", 409)
-    if "commit_intent" in changes and changes["commit_intent"] not in {
-        "library_only", "direct_pool"
-    }:
-        raise ImportProblem("INVALID_CANDIDATE", "提交意向无效")
     if "content" in changes and (
         not isinstance(changes["content"], dict)
         or not isinstance(changes["content"].get("question_text"), str)
@@ -539,8 +529,8 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
                    "teacher_confirmed": False}
         payload["answers"] = [*answers, version]
         payload["selected_answer_id"] = version["answer_id"]
-    if "content" in changes or "teacher_answer_text" in changes:
-        payload["teacher_decision"] = "pending"
+    payload["teacher_decision"] = "pending"
+    payload["commit_intent"] = None
     if "content" in changes and payload.get("answers"):
         payload["answer_match_status"] = "uncertain"
         warnings = list(payload.get("warnings") or [])

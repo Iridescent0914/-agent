@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Question
-from app.schemas.questions import QuestionReviewRequest, QuestionWithdrawRequest
+from app.schemas.questions import QuestionAnswerItemInput, QuestionReviewRequest, QuestionWithdrawRequest
 from app.services.literacy_catalog import normalize_literacy_label
 from app.services.question_pool_quality import pool_answer_issues
 from app.services.profile_evidence import PROFILE_QUESTION_TYPES
@@ -34,6 +34,13 @@ def validate_review_items(question_type: str, items: list[dict[str, Any]], *, fi
         raise QuestionReviewValidation("当前题型不支持结构化答案审核")
     if not items:
         raise QuestionReviewValidation("至少需要一个答案项")
+    ids = [item["item_id"] for item in items]
+    if len(ids) != len(set(ids)):
+        raise QuestionReviewValidation("答案项编号不能重复")
+    coordinates = [(item.get("subquestion_no"), item.get("blank_no")) for item in items
+                   if item.get("subquestion_no") is not None and item.get("blank_no") is not None]
+    if len(coordinates) != len(set(coordinates)):
+        raise QuestionReviewValidation("同一小题中的空号不能重复")
 
     for item in items:
         answer = item["answer"].strip()
@@ -93,10 +100,10 @@ def _locked_question(db: Session, question_id: UUID) -> Question:
     return question
 
 
-def _answer_payload(request: QuestionReviewRequest) -> dict[str, Any]:
+def _answer_payload(items: list[QuestionAnswerItemInput]) -> dict[str, Any]:
     next_blank_by_subquestion: dict[int, int] = {}
     payload_items = []
-    for index, item in enumerate(request.items, start=1):
+    for index, item in enumerate(items, start=1):
         subquestion_no = item.subquestion_no or 1
         blank_no = item.blank_no or next_blank_by_subquestion.get(
             subquestion_no, 1
@@ -137,14 +144,29 @@ def _answer_payload(request: QuestionReviewRequest) -> dict[str, Any]:
     }
 
 
-def _normalization_rules(request: QuestionReviewRequest) -> dict[str, Any]:
-    types = {item.answer_match_type for item in request.items}
+def _normalization_rules(items: list[QuestionAnswerItemInput]) -> dict[str, Any]:
+    types = {item.answer_match_type for item in items}
     return {
         "trim_whitespace": True,
         "normalize_full_width": True,
         "case_insensitive": "choice" in types,
         "latex_source_exact": "latex_exact" in types,
     }
+
+
+def prepare_pool_review(question_type: str, items: list[QuestionAnswerItemInput]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Validate a draft with the same pure rules used for pool promotion."""
+    if question_type not in PROFILE_QUESTION_TYPES:
+        raise QuestionReviewValidation(
+            "日常自动组卷池仅支持选择、填空、判断题；计算题参考答案和最终结果判分能力可保留用于专项验证"
+        )
+    validate_review_items(question_type, [item.model_dump() for item in items])
+    answer = _answer_payload(items)
+    rules = _normalization_rules(items)
+    issues = pool_answer_issues(answer, "group", rules)
+    if issues:
+        raise QuestionReviewValidation("答案尚不能可靠自动判分：" + "、".join(issues))
+    return answer, rules
 
 
 def _mutate(
@@ -162,11 +184,6 @@ def _mutate(
 
     items = [item.model_dump() for item in request.items]
     final_answer_only = request.final_answer_only and question.question_type == "calculation"
-    if promote and question.question_type not in PROFILE_QUESTION_TYPES:
-        raise QuestionReviewValidation(
-            "日常自动组卷池仅支持选择、填空、判断题；计算题参考答案和最终结果判分能力可保留用于专项验证"
-        )
-    validate_review_items(question.question_type, items, final_answer_only=final_answer_only)
     if promote:
         try:
             question.core_literacy = normalize_literacy_label(question.core_literacy)
@@ -176,17 +193,16 @@ def _mutate(
             ) from exc
     before_revision = question.review_revision
     before_answer = question.correct_answer
-    answer = _answer_payload(request)
-    rules = _normalization_rules(request)
+    if promote:
+        answer, rules = prepare_pool_review(question.question_type, request.items)
+    else:
+        validate_review_items(question.question_type, items, final_answer_only=final_answer_only)
+        answer = _answer_payload(request.items)
+        rules = _normalization_rules(request.items)
     if final_answer_only:
         rules.update({"final_answer_only": True, "normalize_fullwidth_symbols": True, "allow_fraction_decimal_equivalence": True, "allow_equivalent_fraction": True})
         if question.answer_normalization_rule.get("symbolic_variable"):
             rules.update({key: question.answer_normalization_rule[key] for key in ("symbolic_variable", "symbolic_domain")})
-    if promote:
-        issues = pool_answer_issues(answer, "group", rules)
-        if issues:
-            raise QuestionReviewValidation("答案尚不能可靠自动判分：" + "、".join(issues))
-
     question.correct_answer = answer
     question.answer_match_type = "group"
     question.answer_normalization_rule = rules

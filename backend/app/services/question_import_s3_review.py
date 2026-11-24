@@ -1,16 +1,26 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import uuid
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import QuestionImportBatch, QuestionImportItem
+from app.models import QuestionImportAuditEvent, QuestionImportBatch, QuestionImportItem
 from app.services.question_import import ImportProblem, OWNER_SCOPE, active_candidate
 from app.services.question_import_s3 import linked_source_answer_item, source_answer_identity
+from app.services.question_import_s3_images import list_images
 
 MAX_LIST_CANDIDATES = 8
+
+
+def issue_signature(issue: dict[str, Any]) -> str:
+    evidence = {key: value for key, value in issue.items()
+                if key not in {"handling", "signature"}}
+    return hashlib.sha256(json.dumps(evidence, sort_keys=True, ensure_ascii=False,
+                                     default=str).encode("utf-8")).hexdigest()
 
 
 def _candidate_context(item: QuestionImportItem) -> dict[str, Any]:
@@ -181,10 +191,26 @@ def list_review_issues(db: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]
         raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
     items = [item for item in db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch_id)) if active_candidate(item)]
+    events = list(db.scalars(select(QuestionImportAuditEvent).where(
+        QuestionImportAuditEvent.batch_id == batch_id,
+        QuestionImportAuditEvent.kind == "issue",
+    ).order_by(QuestionImportAuditEvent.created_at.desc(), QuestionImportAuditEvent.id.desc())))
+    latest = {}
+    for event in events:
+        latest.setdefault(event.issue_key, event)
+    issue_rows = _issue_rows(batch, items)
+    for asset in list_images(db, batch_id)["assets"]:
+        if asset["candidate_item_ids"] or asset["duplicate_of_kept_image"]:
+            continue
+        issue_rows.append({"key": "image:" + asset["asset_id"], "kind": "image",
+                           "unit_index": None, "summary": "待认领题图",
+                           "content": {"page": asset.get("page"), "asset_id": asset["asset_id"],
+                                       "source_file_id": asset.get("source_file_id"),
+                                       "sha256": asset.get("sha256")}, "candidates": []})
     result = []
-    for issue in _issue_rows(batch, items):
+    for issue in issue_rows:
         pages = _pages_for_issue(issue)
-        result.append({"key": issue["key"], "kind": issue["kind"], "unit_index": issue["unit_index"],
+        row = {"key": issue["key"], "kind": issue["kind"], "unit_index": issue["unit_index"],
                        "summary": issue["summary"],
                        "fragment_text": issue["content"].get("text") if issue["kind"] in {"fragment", "answer_fragment", "skipped_page"} else None,
                        "fragment_reason": issue["content"].get("reason") if issue["kind"] in {"fragment", "answer_fragment", "skipped_page"} else None,
@@ -192,10 +218,18 @@ def list_review_issues(db: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]
                        "answer_number": issue["content"].get("original_number") if issue["kind"] in {"answer", "answer_match_warning", "answer_match_disagreement"} else None,
                        "source_answer": issue["content"] if issue["kind"] in {"answer", "answer_match_warning", "answer_match_disagreement"} else None,
                        "model_reason": issue.get("model_reason"),
+                       "asset_id": issue["content"].get("asset_id") if issue["kind"] == "image" else None,
                        "model_suggestion": issue.get("model_suggestion"),
                        "current_item_id": issue.get("current_item_id"),
                        "evidence_quote": issue.get("evidence_quote"),
                        "page_numbers": pages, "candidate_item_ids": [c["item_id"] for c in issue["candidates"]],
                        "candidate_total": issue.get("candidate_total", len(issue["candidates"])),
-                       "recall_method": issue.get("recall_method")})
+                       "recall_method": issue.get("recall_method")}
+        row["signature"] = issue_signature(row)
+        event = latest.get(row["key"])
+        row["handling"] = ({"decision": event.decision, "reason": event.reason,
+                            "valid": event.signature == row["signature"],
+                            "created_at": event.created_at.isoformat()}
+                           if event else None)
+        result.append(row)
     return result

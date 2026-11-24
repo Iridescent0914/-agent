@@ -82,7 +82,7 @@ def test_exact_decision_is_saved_and_content_change_invalidates_it(db):
     with pytest.raises(ImportProblem) as bypass:
         update_candidate(db, batch_id, item.id, expected_revision=item.revision,
                          changes={"teacher_decision": "approved"})
-    assert bypass.value.code == "DUPLICATE_DECISION_REQUIRED"
+    assert bypass.value.code == "INVALID_CANDIDATE"
     again = run_catalog_review(db, batch_id)
     assert again["items"][0]["matches"][0]["decision"] == "skip_existing"
 

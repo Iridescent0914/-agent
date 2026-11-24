@@ -1,0 +1,365 @@
+from __future__ import annotations
+
+import hashlib
+import uuid
+from datetime import datetime, timedelta, timezone
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.core.database import engine, get_db
+from app.main import app
+from app.models import Question, QuestionImportBatch, QuestionImportCatalogCheck, QuestionImportCatalogMatch, QuestionImportItem
+from app.models import QuestionImportAuditEvent
+from app.schemas.question_import_s5 import (
+    S5AnswerClaimRequest, S5AnswerSourceRequest, S5IssueDecisionRequest, S5ItemDecisionRequest,
+    S5PreflightRequest, S5PreflightSelection,
+)
+from app.services.question_import import ImportProblem, update_candidate
+from app.services.question_import_s3_review import list_review_issues
+from app.services.knowledge_catalog import CATALOG_PATH
+from app.services.question_fingerprint_v2 import VERSION as EXACT_VERSION
+from app.services.question_import_s3_labels import _allowed_kps
+from app.services.question_import_s4_near import VERSION as NEAR_VERSION
+from app.services.question_import_s4_review import _candidate_signature, _catalog_signature
+from app.services.question_import_s5_preflight import import_review_summary, preflight_import
+from app.services.question_import_s5_review import (
+    claim_source_answer, confirm_answer_source, decide_issue, decide_item, read_item_reviews,
+)
+
+
+@pytest.fixture
+def db():
+    with engine.connect() as connection:
+        transaction = connection.begin()
+        session = Session(bind=connection, expire_on_commit=False,
+                          join_transaction_mode="create_savepoint")
+        try:
+            yield session
+        finally:
+            session.close()
+            transaction.rollback()
+
+
+def _case(db: Session, *, fake: bool = False):
+    code, kp = next(iter(_allowed_kps(db).items()))
+    batch = QuestionImportBatch(
+        id=uuid.uuid4(), owner_scope="internal-demo", request_fingerprint=uuid.uuid4().hex,
+        catalog_snapshot_sha256=hashlib.sha256(CATALOG_PATH.read_bytes()).hexdigest(),
+        source_mode="questions_only", status="review_pending", stage="s2_completed", files=[],
+        checkpoint={"s3": {"global_dedupe": {"status": "completed"}}},
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+    )
+    item = QuestionImportItem(
+        id=uuid.uuid4(), batch_id=batch.id, ordinal=1, revision=1, is_fake=fake,
+        payload={
+            "content": {"question_text": "计算以下算式的结果。", "options": [
+                {"key": "A", "text": "1"}, {"key": "B", "text": "2"}], "asset_ids": []},
+            "tags": {"question_type": "choice", "difficulty": 2, "main_kp_code": code,
+                     "is_required": False, "grade": kp["grade"],
+                     "chapter_code": kp["chapter_code"], "section": kp["section"],
+                     "core_literacies": kp["core_competencies"]},
+            "teacher_decision": "pending", "answers": [], "selected_answer_id": None,
+        },
+    )
+    db.add_all([batch, item])
+    db.flush()
+    check = QuestionImportCatalogCheck(
+        batch_id=batch.id, item_id=item.id, check_no=1, candidate_revision=1,
+        candidate_signature=_candidate_signature(db, batch.id, item),
+        exact_version=EXACT_VERSION, near_version=NEAR_VERSION,
+    )
+    db.add(check)
+    db.flush()
+    return batch, item, check
+
+
+def _request(item: QuestionImportItem, *, route: str = "library_only",
+             answer_review_items=None, expected_revision=None):
+    return S5PreflightRequest(items=[S5PreflightSelection(
+        item_id=item.id, expected_revision=expected_revision or item.revision,
+        route=route, answer_review_items=answer_review_items,
+    )])
+
+
+def _codes(result):
+    return {issue["code"] for issue in result["items"][0]["blockers"]}
+
+
+def test_library_only_allows_missing_answer_and_preflight_is_read_only(db):
+    batch, item, check = _case(db)
+    before = (item.revision, item.payload.copy(), check.check_no)
+    result = preflight_import(db, batch.id, _request(item))
+    assert result["summary"] == {"selected": 1, "eligible": 1, "blocked": 0,
+                                  "library_only": 1, "direct_pool": 0}
+    assert result["items"][0]["batch_eligible"] is True
+    assert {row["code"] for row in result["items"][0]["warnings"]} == {"ANSWER_PENDING"}
+    assert (item.revision, item.payload, check.check_no) == before
+    summary = import_review_summary(db, batch.id)["counts"]
+    assert summary["active_real"] == 1
+    assert summary["ready_for_library_confirmation"] == 1
+    assert summary["ready_for_pool_confirmation"] == 0
+
+
+def test_direct_pool_reuses_answer_review_rules_without_confirming(db):
+    batch, item, _ = _case(db)
+    item.payload = {**item.payload, "selected_answer_id": "a1", "answer_match_status": "matched",
+                    "answers": [{"answer_id": "a1", "answer_source": "source_file", "text": "A",
+                                 "teacher_confirmed": False}]}
+    db.flush()
+    missing = preflight_import(db, batch.id, _request(item, route="direct_pool"))
+    assert "ANSWER_UNITS_REQUIRED" in _codes(missing)
+    valid_items = [{"item_id": "answer-1", "answer": "A", "answer_match_type": "choice"}]
+    ready = preflight_import(db, batch.id, _request(item, route="direct_pool",
+                                                  answer_review_items=valid_items))
+    assert ready["items"][0]["batch_eligible"] is True
+    assert ready["items"][0]["confirmation_pending"] is True
+    assert "ANSWER_CONFIRMATION_REQUIRED" in {row["code"] for row in ready["items"][0]["warnings"]}
+    invalid = preflight_import(db, batch.id, _request(item, route="direct_pool",
+                                                    answer_review_items=[{"item_id": "answer-1", "answer": "Z",
+                                                                          "answer_match_type": "choice"}]))
+    assert "ANSWER_REVIEW_INVALID" in _codes(invalid)
+
+
+def test_version_stale_check_and_invalid_tags_are_independent_blockers(db):
+    batch, item, check = _case(db)
+    assert "REVISION_CONFLICT" in _codes(preflight_import(
+        db, batch.id, _request(item, expected_revision=item.revision + 1)))
+    check.near_version = "s4-near-v2"
+    item.payload = {**item.payload, "tags": {**item.payload["tags"], "main_kp_code": "unknown"}}
+    db.flush()
+    result = preflight_import(db, batch.id, _request(item))
+    assert {"TAG_OUT_OF_SCOPE", "DUPLICATE_CHECK_STALE"} <= _codes(result)
+
+
+def test_fake_candidate_cannot_be_approved_by_preflight(db):
+    batch, item, _ = _case(db, fake=True)
+    result = preflight_import(db, batch.id, _request(item))
+    assert "CANDIDATE_UNAVAILABLE" in _codes(result)
+    assert import_review_summary(db, batch.id)["counts"]["active_fake"] == 1
+
+
+def test_missing_key_figure_and_pending_near_match_block_confirmation(db):
+    batch, item, check = _case(db)
+    item.payload = {**item.payload, "extraction": {"diagram_clues": ["图形面积"]}}
+    formal = db.scalar(select(Question).where(Question.has_image.is_(False),
+                                              Question.archived_at.is_(None)))
+    assert formal is not None
+    db.add(QuestionImportCatalogMatch(
+        check_id=check.id, question_id=formal.id, original_qid=formal.original_qid,
+        catalog_review_revision=formal.review_revision, catalog_signature=_catalog_signature(formal),
+        kind="nearby", similarity=0.5, evidence={}, decision="pending",
+    ))
+    db.flush()
+    result = preflight_import(db, batch.id, _request(item))
+    assert {"ASSET_UNASSIGNED", "DUPLICATE_DECISION_REQUIRED"} <= _codes(result)
+    assert result["items"][0]["batch_eligible"] is False
+
+
+def test_duplicate_answer_coordinates_fail_same_pool_review_rules(db):
+    batch, item, _ = _case(db)
+    item.payload = {**item.payload, "selected_answer_id": "a1", "answer_match_status": "matched",
+                    "answers": [{"answer_id": "a1", "text": "A", "teacher_confirmed": False}]}
+    db.flush()
+    result = preflight_import(db, batch.id, _request(item, route="direct_pool", answer_review_items=[
+        {"item_id": "a", "subquestion_no": 1, "blank_no": 1, "answer": "A", "answer_match_type": "choice"},
+        {"item_id": "b", "subquestion_no": 1, "blank_no": 1, "answer": "B", "answer_match_type": "choice"},
+    ]))
+    assert "ANSWER_REVIEW_INVALID" in _codes(result)
+
+
+def test_preflight_and_summary_http_contract(db):
+    batch, item, _ = _case(db)
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        client = TestClient(app)
+        response = client.post(f"/api/v1/question-imports/{batch.id}/s5/preflight", json={
+            "items": [{"item_id": str(item.id), "expected_revision": item.revision,
+                       "route": "library_only"}],
+        })
+        assert response.status_code == 200
+        assert response.json()["items"][0]["batch_eligible"] is True
+        summary = client.get(f"/api/v1/question-imports/{batch.id}/s5/summary")
+        assert summary.status_code == 200
+        assert summary.json()["counts"]["ready_for_library_confirmation"] == 1
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
+
+def test_review_approval_is_version_bound_and_patch_cannot_bypass(db):
+    batch, item, _ = _case(db)
+    with pytest.raises(ImportProblem) as bypass:
+        update_candidate(db, batch.id, item.id, expected_revision=1,
+                         changes={"teacher_decision": "approved", "commit_intent": "library_only"})
+    assert bypass.value.code == "INVALID_CANDIDATE"
+    saved = decide_item(db, batch.id, item.id, S5ItemDecisionRequest(
+        expected_revision=1, decision="approved", route="library_only"))
+    assert saved["revision"] == 2
+    assert read_item_reviews(db, batch.id)["items"][0]["valid"] is True
+    assert read_item_reviews(db, batch.id)["items"][0]["route"] == "library_only"
+    assert db.scalar(select(QuestionImportAuditEvent).where(
+        QuestionImportAuditEvent.item_id == item.id,
+        QuestionImportAuditEvent.kind == "question")).candidate_revision == 2
+    with pytest.raises(ImportProblem) as conflict:
+        decide_item(db, batch.id, item.id, S5ItemDecisionRequest(
+            expected_revision=1, decision="approved", route="library_only"))
+    assert conflict.value.code == "REVISION_CONFLICT"
+    update_candidate(db, batch.id, item.id, expected_revision=2,
+                     changes={"tags": {"difficulty": 3}})
+    assert item.payload["teacher_decision"] == "pending"
+    review = read_item_reviews(db, batch.id)["items"][0]
+    assert review["recorded_decision"] == "approved" and review["valid"] is False
+
+
+def test_direct_pool_has_separate_answer_event_and_rejection_keeps_reason(db):
+    batch, item, _ = _case(db)
+    item.payload = {**item.payload, "selected_answer_id": "a1", "answer_match_status": "matched",
+                    "answers": [{"answer_id": "a1", "answer_source": "source_extracted", "text": "A"}]}
+    db.flush()
+    saved = decide_item(db, batch.id, item.id, S5ItemDecisionRequest(
+        expected_revision=1, decision="approved", route="direct_pool",
+        answer_review_items=[{"item_id": "answer-1", "answer": "A", "answer_match_type": "choice"}]))
+    assert saved["answer_confirmed"] is True
+    assert read_item_reviews(db, batch.id)["items"][0]["answer_confirmed"] is True
+    assert len(list(db.scalars(select(QuestionImportAuditEvent).where(
+        QuestionImportAuditEvent.item_id == item.id)))) == 2
+    rejected = decide_item(db, batch.id, item.id, S5ItemDecisionRequest(
+        expected_revision=2, decision="rejected", reason="题干不完整"))
+    assert rejected["revision"] == 3
+    review = read_item_reviews(db, batch.id)["items"][0]
+    assert review["decision"] == "rejected" and review["reason"] == "题干不完整"
+    assert review["answer_confirmed"] is False
+
+
+def test_review_refuses_pending_nearby_even_when_called_directly(db):
+    batch, item, check = _case(db)
+    formal = db.scalar(select(Question).where(Question.has_image.is_(False),
+                                              Question.archived_at.is_(None)))
+    db.add(QuestionImportCatalogMatch(
+        check_id=check.id, question_id=formal.id, original_qid=formal.original_qid,
+        catalog_review_revision=formal.review_revision, catalog_signature=_catalog_signature(formal),
+        kind="nearby", similarity=0.5, evidence={}, decision="pending"))
+    db.flush()
+    with pytest.raises(ImportProblem) as blocked:
+        decide_item(db, batch.id, item.id, S5ItemDecisionRequest(
+            expected_revision=1, decision="approved", route="library_only"))
+    assert blocked.value.code == "S5_PREFLIGHT_BLOCKED"
+    assert item.revision == 1
+
+
+def test_issue_decision_is_bound_to_evidence(db):
+    batch, _, _ = _case(db)
+    batch.checkpoint = {**batch.checkpoint, "s2": {"units": [
+        {"core_first_page": 1, "unresolved_fragments": [
+            {"page": 1, "text": "无法判断的残片", "reason": "无法分类"}]}]}}
+    db.flush()
+    issue = list_review_issues(db, batch.id)[0]
+    saved = decide_issue(db, batch.id, S5IssueDecisionRequest(
+        issue_key=issue["key"], signature=issue["signature"], decision="deferred",
+        reason="等待核对原件"))
+    assert saved["decision"] == "deferred"
+    assert list_review_issues(db, batch.id)[0]["handling"]["valid"] is True
+    batch.checkpoint = {**batch.checkpoint, "s2": {"units": [
+        {"core_first_page": 1, "unresolved_fragments": [
+            {"page": 1, "text": "残片已变化", "reason": "无法分类"}]}]}}
+    db.flush()
+    assert list_review_issues(db, batch.id)[0]["handling"]["valid"] is False
+    with pytest.raises(ImportProblem) as stale:
+        decide_issue(db, batch.id, S5IssueDecisionRequest(
+            issue_key=issue["key"], signature=issue["signature"], decision="acknowledged"))
+    assert stale.value.code == "REVISION_CONFLICT"
+
+
+def test_candidate_overlap_issue_blocks_until_explicitly_resolved(db):
+    batch, item, _ = _case(db)
+    batch.checkpoint = {**batch.checkpoint, "s2": {"units": [
+        {"overlap_suspects": [{"other_item_id": str(item.id),
+                               "candidate_item_id": str(item.id)}]}]}}
+    db.flush()
+    assert "REVIEW_ISSUE_PENDING" in _codes(preflight_import(db, batch.id, _request(item)))
+    issue = list_review_issues(db, batch.id)[0]
+    decide_issue(db, batch.id, S5IssueDecisionRequest(
+        issue_key=issue["key"], signature=issue["signature"], decision="acknowledged",
+        reason="已对照原页确认只有一道题"))
+    assert preflight_import(db, batch.id, _request(item))["items"][0]["batch_eligible"] is True
+
+
+def test_manual_answer_claim_uses_source_identity_and_invalidates_review(db):
+    batch, item, _ = _case(db)
+    file_id = str(uuid.uuid4())
+    source_answer = {"source_file_id": file_id, "page_start": 1, "page_end": 1,
+                     "original_number": "1", "subquestion_number": None,
+                     "text": "A", "reason": "manual"}
+    batch.source_mode = "combined"
+    batch.files = [{"file_id": file_id, "role": "questions"}]
+    batch.checkpoint = {**batch.checkpoint, "s3": {**batch.checkpoint["s3"],
+                        "source_answer_reconciliation": {"unassigned_answers": [source_answer]}}}
+    db.flush()
+    issue = next(row for row in list_review_issues(db, batch.id) if row["kind"] == "answer")
+    result = claim_source_answer(db, batch.id, S5AnswerClaimRequest(
+        issue_key=issue["key"], signature=issue["signature"],
+        item_id=item.id, expected_revision=1))
+    assert result["revision"] == 2
+    assert item.payload["selected_answer_id"] == result["answer_id"]
+    assert not any(row["kind"] == "answer" for row in list_review_issues(db, batch.id))
+    assert item.payload["teacher_decision"] == "pending"
+
+
+def test_s5_review_http_contract(db):
+    batch, item, _ = _case(db)
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        client = TestClient(app)
+        response = client.post(f"/api/v1/question-imports/{batch.id}/s5/items/{item.id}/decision",
+                               json={"expected_revision": 1, "decision": "approved",
+                                     "route": "library_only"})
+        assert response.status_code == 200, response.text
+        assert response.json()["revision"] == 2
+        reviews = client.get(f"/api/v1/question-imports/{batch.id}/s5/reviews")
+        assert reviews.status_code == 200
+        assert reviews.json()["items"][0]["valid"] is True
+        counts = client.get(f"/api/v1/question-imports/{batch.id}/s5/summary").json()["counts"]
+        assert counts["approved"] == 1
+        assert counts["ready_for_library_confirmation"] == 0
+        bypass = client.patch(f"/api/v1/question-imports/{batch.id}/items/{item.id}",
+                              json={"expected_revision": 2, "changes": {"teacher_decision": "rejected"}})
+        assert bypass.status_code == 422
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
+
+def test_unassigned_image_has_stable_issue_and_explicit_defer(db):
+    batch, _, _ = _case(db)
+    asset_id = str(uuid.uuid4())
+    batch.checkpoint = {**batch.checkpoint, "s3": {**batch.checkpoint["s3"],
+                        "images": {"assets": [{"asset_id": asset_id, "kind": "embedded",
+                                                "page": 1, "source_file_id": "source-1",
+                                                "sha256": "f" * 64}]}}}
+    db.flush()
+    issue = next(row for row in list_review_issues(db, batch.id) if row["kind"] == "image")
+    assert issue["asset_id"] == asset_id
+    decide_issue(db, batch.id, S5IssueDecisionRequest(
+        issue_key=issue["key"], signature=issue["signature"],
+        decision="deferred", reason="题干不需要这张页眉插图"))
+    updated = next(row for row in list_review_issues(db, batch.id) if row["kind"] == "image")
+    assert updated["handling"]["valid"] is True
+    assert updated["handling"]["decision"] == "deferred"
+
+
+def test_uncertain_answer_source_requires_separate_confirmation(db):
+    batch, item, _ = _case(db)
+    item.payload = {**item.payload, "selected_answer_id": "a1", "answer_match_status": "uncertain",
+                    "answers": [{"answer_id": "a1", "answer_source": "source_extracted",
+                                 "text": "A", "teacher_confirmed": False}]}
+    db.flush()
+    review_items = [{"item_id": "answer-1", "answer": "A", "answer_match_type": "choice"}]
+    assert "ANSWER_SOURCE_UNCERTAIN" in _codes(preflight_import(
+        db, batch.id, _request(item, route="direct_pool", answer_review_items=review_items)))
+    source = confirm_answer_source(db, batch.id, item.id, S5AnswerSourceRequest(
+        expected_revision=1, selected_answer_id="a1"))
+    assert source["source_confirmed"] is True and source["answer_content_confirmed"] is False
+    assert preflight_import(db, batch.id, _request(item, route="direct_pool",
+                                               answer_review_items=review_items))["items"][0]["batch_eligible"] is True
+    assert read_item_reviews(db, batch.id)["items"][0]["decision"] == "pending"

@@ -335,6 +335,8 @@ def set_candidate_image(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
             (payload.get("extraction") or {}).get("figure_status") in {"complete", "uncertain"}):
         warnings.append(REVIEW_WARNING if asset_ids else UNEXTRACTED_WARNING)
     payload["warnings"] = warnings
+    payload["teacher_decision"] = "pending"
+    payload["commit_intent"] = None
     item.revision += 1
     payload["revision"] = item.revision
     if payload.get("label_suggestion"):
@@ -408,6 +410,8 @@ def upload_candidate_image(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
     candidate_payload["content"] = content
     candidate_payload["warnings"] = [warning for warning in candidate_payload.get("warnings") or []
                                      if warning not in {UNEXTRACTED_WARNING, REVIEW_WARNING}]
+    candidate_payload["teacher_decision"] = "pending"
+    candidate_payload["commit_intent"] = None
     item.revision += 1
     candidate_payload["revision"] = item.revision
     if candidate_payload.get("label_suggestion"):
