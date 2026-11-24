@@ -22,12 +22,12 @@ td:first-child { width:26%; } li { margin:9px 0; } ol { padding-left:24px; }
 @media(max-width:700px) { main { width:100%; margin:0; padding:25px 20px; border:0; } h1 { font-size:26px; } h2 { font-size:20px; } .toolbar { padding:10px 20px; } .shot-empty { min-height:190px; } }
 @page { size:A4; margin:18mm 17mm; }
 @media print { body { background:white; font-size:10.5pt; line-height:1.75; } main { width:100%; margin:0; padding:0; border:0; max-width:none; } .toolbar,.toc { display:none; } h1 { font-size:22pt; } h2 { font-size:15pt; break-after:avoid; } h3,h4 { break-after:avoid; } .screenshot { border-radius:0; break-inside:auto; } .shot-empty { min-height:53mm; } .shot-figure img { max-height:220mm; object-fit:contain; } table { font-size:9pt; } tr { break-inside:avoid; } .table-wrap { overflow:visible; } }
-</style></head><body><div class="toolbar">系统介绍与演示说明 · 已插入17张截图 · 可通过浏览器打印保存为PDF</div><main><h1>数学教学辅助系统介绍</h1>
+</style></head><body><div class="toolbar">系统介绍与演示说明 · 已插入19张截图 · 可通过浏览器打印保存为PDF</div><main><h1>数学教学辅助系统介绍</h1>
 <p>更新日期：2026年11月24日。适用版本：当前开发与内部试用版。</p>
 <nav class="toc" aria-label="目录"><strong>内容目录</strong><a href="#section-1">一 系统定位</a><a href="#section-2">二 系统解决的主要问题</a><a href="#section-3">三 题库与知识标签管理</a><a href="#section-4">四 分层作业与个性化组卷</a><a href="#section-5">五 独立周总结与持续回顾</a><a href="#section-6">六 学生画像与班级学情</a><a href="#section-7">七 学生版试卷与答题区打印</a><a href="#section-8">八 多页视觉识别与整卷核对</a><a href="#section-9">九 规则判分与结合题干的答案判断</a><a href="#section-10">十 批量资料处理与题库查重</a><a href="#section-11">十一 技术实现与记录保障</a><a href="#section-12">十二 当前完成情况与下一步</a><a href="#section-13">附录 截图与现场演示安排</a></nav>
 <h2 id="section-1">一 系统定位</h2>
 <p>本系统面向中学数学教师，围绕题目整理、作业设计、纸面作答采集、答案批改和学情分析提供辅助。教师可以从经过审核的题库中组织班级作业，为不同学生安排个性化练习和历史错题回顾；学生完成纸面作业后，系统通过视觉模型提取答案，再由规则判分与文本模型建议辅助教师核对，最终更新学生画像和班级学情。</p>
-<p>目前，日常组卷、打印、作答录入、教师复核和画像更新的主要流程已实现。视觉提取和结合题干的答案判断已接入阿里云百炼，并完成少量真实作业试用；模型质量仍需扩大样本验证。批量资料处理已实现候选题提取、整理和查重，完整审核工作台及正式入库事务仍在后续开发范围。</p>
+<p>目前，日常组卷、打印、作答录入、教师复核和画像更新的主要流程已实现。视觉提取和结合题干的答案判断已接入阿里云百炼，并完成少量真实作业试用；模型质量仍需扩大样本验证。批量资料处理已实现候选题提取、整理、查重和逐题审核工作台；批量确认及正式入库事务仍在后续开发范围。</p>
 <p>系统首页与各模块可从本地前端入口 <code>http://localhost:5173</code> 进入。</p>
 <section class="screenshot" aria-label="截图 01 系统首页与功能导航" data-placeholder="SHOT_01"><h4>截图 01 系统首页与功能导航</h4><div class="shot-notes"><p>页面入口：顶部导航 → 学情，路径 <code>/analytics</code>。</p><p>取景建议：展示系统导航、班级筛选、知识点正确率图和素养雷达图，说明系统覆盖题库、批量导入、学生、班级、组卷和批改。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2001%20%E7%B3%BB%E7%BB%9F%E9%A6%96%E9%A1%B5%E4%B8%8E%E5%8A%9F%E8%83%BD%E5%AF%BC%E8%88%AA.png" alt="图01 系统首页与功能导航"><figcaption>图01 系统首页与功能导航</figcaption></figure></section>
 <h2 id="section-2">二 系统解决的主要问题</h2>
@@ -81,20 +81,20 @@ td:first-child { width:26%; } li { margin:9px 0; } ol { padding-left:24px; }
 <h2 id="section-10">十 批量资料处理与题库查重</h2>
 <p>批量导入模块面向PDF和DOCX教学资料，支持只有题目、题答同文件、题答分文件三种场景。当前内部流程已能够提取候选题、整理资料答案、处理题答对应、关联题图并给出标签建议；只有题目的批次可由教师显式发起答案生成，生成结果保留待核对状态。</p>
 <p>候选题先进行批内去重，再与正式题库进行精确匹配和文字相近题召回。页面展示题干、数字、选项和题图差异，教师可保存跳过旧题、保留独立变式或判为无关的决定。候选内容或正式题变化时，旧查重结果会提示过期。相近度用于筛选和排序，不代表重复概率。</p>
-<p>服务端已增加逐题审核、题目与答案审核记录、未认领答案及问题处理，以及提交前只读预检。审核决定与候选版本绑定，内容变化后须重新确认；预检会列出缺标签、关键题图缺失、查重未完成及答案未审核等具体阻断原因。</p>
-<p>该模块目前用于候选题整理和内部审核试验，审核工作台界面、批量确认及正式入库事务尚待完善；候选题不会由当前入口直接成为正式题库内容。后续正式提交还需在事务中复查题库重复及审核依据。</p>
-<section class="screenshot" aria-label="截图 14 批量导入与候选题整理" data-placeholder="SHOT_14"><h4>截图 14 批量导入与候选题整理</h4><div class="shot-notes"><p>页面入口：顶部导航 → 批量导入，路径 <code>/question-imports</code>。</p><p>取景建议：展示批次状态、候选题内容、题图、资料答案或标签建议，优先使用已有处理完成的批次。</p></div><div class="shot-empty"><span class="shot-number">14</span><span>此处插入截图</span></div></section>
-<section class="screenshot" aria-label="截图 15 题库查重证据与教师决定" data-placeholder="SHOT_15"><h4>截图 15 题库查重证据与教师决定</h4><div class="shot-notes"><p>页面入口：批量导入 → 已完成批内去重的批次 → 检查题库重复 → 展开查重证据和决定。</p><p>取景建议：展示一条精确或相近匹配、具体差异及教师决定；避免将“本次未检出匹配”表述为已经证明全库无重复。</p></div><div class="shot-empty"><span class="shot-number">15</span><span>此处插入截图</span></div></section>
+<p>逐题审核工作台已接入批量导入页，可查看批次审核概况、筛选候选题，并在“预检与审核”中选择仅题目入库或题目与答案拟直接入池。服务端保存题目与答案审核记录、未认领答案及问题处理决定，并提供只读预检。审核决定与候选版本绑定，内容变化后须重新确认；预检按所选路径列出缺标签、关键题图缺失、查重未完成及答案未审核等阻断或提醒。</p>
+<p>该模块目前用于候选题整理和内部审核试验。逐题工作台可保存审核意向，但批量确认及正式入库事务尚待开发；候选题不会由当前入口直接成为正式题库内容。后续正式提交还需在事务中复查题库重复及审核依据。</p>
+<section class="screenshot" aria-label="截图 14 批量导入与候选题整理" data-placeholder="SHOT_14"><h4>截图 14 批量导入与候选题整理</h4><div class="shot-notes"><p>页面入口：顶部导航 → 批量导入，路径 <code>/question-imports</code>。</p><p>画面说明：上方选择题答文件场景并上传资料，下方列出批次文件、处理状态及“查看候选与页段”入口。示例批次分别显示预算暂停、批内去重失败和标签建议完成等状态；进入批次后可继续核对候选题。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2014%20%E6%89%B9%E9%87%8F%E5%AF%BC%E5%85%A5%E4%B8%8E%E5%80%99%E9%80%89%E9%A2%98%E6%95%B4%E7%90%86.png" alt="图14 批量导入场景与批次状态"><figcaption>图14 批量导入场景与批次状态</figcaption></figure></section>
+<section class="screenshot" aria-label="截图 15 题库查重结果与教师待审状态" data-placeholder="SHOT_15"><h4>截图 15 题库查重结果与教师待审状态</h4><div class="shot-notes"><p>页面入口：批量导入 → 查看候选与页段 → 检查题库重复 → 候选题列表。</p><p>画面说明：示例批次有22道真实候选，已执行题库查重，未检出相同题或相近题；22道仍待教师审核，另有4张图片无法自动匹配到题目。可在单题“预检与审核”中核对证据并保存决定。本图尚未展示已保存的教师决定；“未检出匹配”不等于证明全库无重复。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2015%20%E9%A2%98%E5%BA%93%E6%9F%A5%E9%87%8D%E8%AF%81%E6%8D%AE%E4%B8%8E%E6%95%99%E5%B8%88%E5%86%B3%E5%AE%9A.png" alt="图15 题库查重结果与教师待审状态"><figcaption>图15 题库查重结果与教师待审状态</figcaption></figure></section>
 <h2 id="section-11">十一 技术实现与记录保障</h2>
 <div class="table-wrap"><table><thead><tr><th>层次</th><th>当前实现</th></tr></thead><tbody><tr><td>前端交互</td><td>React、TypeScript、Ant Design；使用ECharts展示画像，支持数学公式显示和输入</td></tr><tr><td>后端业务</td><td>FastAPI与SQLAlchemy，统一处理题库、组卷、提交、审核及画像更新</td></tr><tr><td>数据存储</td><td>PostgreSQL保存题目、试卷快照、作答、模型任务及修订记录；Alembic管理结构升级</td></tr><tr><td>模型服务</td><td>阿里云百炼分别承担资料识别、答题照片提取及文本答案判断，不同任务保留独立记录和配置</td></tr><tr><td>运行方式</td><td>Docker Compose统一运行前端、后端和数据库</td></tr><tr><td>验证与评测</td><td>自动化业务测试、浏览器回归，以及模型结果导出、人工标注和离线核对工具</td></tr></tbody></table></div>
 <p>模型任务保留调用次数、费用估算及超时等状态，并通过版本检查防止旧结果覆盖教师新修改。重复提交和重复采用有相应保护，避免同一次作答被反复计入画像。</p>
 <p>协作开发中，题库审核结果可通过共享配置和显式同步工具对齐。代码拉取与数据库同步分开处理，既有历史试卷、作答和画像按各自记录保留。</p>
 <h2 id="section-12">十二 当前完成情况与下一步</h2>
-<div class="table-wrap"><table><thead><tr><th>功能范围</th><th>当前进度</th></tr></thead><tbody><tr><td>题库维护与答案审核</td><td>已实现，首批覆盖两个章节</td></tr><tr><td>普通作业、个性化三题、历史回顾和周总结</td><td>已实现，按题库库存和现有规则生成</td></tr><tr><td>试卷打印、手动录入、规则批改和画像更新</td><td>已实现主要业务流程</td></tr><tr><td>多页视觉提取与结合题干判断</td><td>工程链路已实现，完成少量真实试用，质量验收待扩大样本</td></tr><tr><td>批量资料识别、候选整理与题库查重</td><td>已实现内部流程及服务端逐题审核、只读预检；审核工作台界面、批量确认与正式入库仍待开发</td></tr><tr><td>离线人工标注与结果核对</td><td>已开发工具并生成初始待标注清单，后续需积累人工结论</td></tr></tbody></table></div>
-<p>下一步重点是使用更多真实手写作业，分别核对原始抄录、结合题干的判断及最终评分，记录不同笔迹、拍摄条件和答案形式下的问题。同时继续完成批量题目审核工作台、批量确认与正式入库，完善多教师试用所需的身份和数据归属校验。</p>
+<div class="table-wrap"><table><thead><tr><th>功能范围</th><th>当前进度</th></tr></thead><tbody><tr><td>题库维护与答案审核</td><td>已实现，首批覆盖两个章节</td></tr><tr><td>普通作业、个性化三题、历史回顾和周总结</td><td>已实现，按题库库存和现有规则生成</td></tr><tr><td>试卷打印、手动录入、规则批改和画像更新</td><td>已实现主要业务流程</td></tr><tr><td>多页视觉提取与结合题干判断</td><td>工程链路已实现，完成少量真实试用，质量验收待扩大样本</td></tr><tr><td>批量资料识别、候选整理与题库查重</td><td>已实现内部流程、逐题审核工作台及只读预检；批量确认与正式入库仍待开发</td></tr><tr><td>离线人工标注与结果核对</td><td>已开发工具并生成初始待标注清单，后续需积累人工结论</td></tr></tbody></table></div>
+<p>下一步重点是使用更多真实手写作业，分别核对原始抄录、结合题干的判断及最终评分，记录不同笔迹、拍摄条件和答案形式下的问题。同时继续完成批量确认与正式入库，完善多教师试用所需的身份和数据归属校验。</p>
 <p>按卷识别错误记录、质量接受阈值、低正确率异常提醒及模型建议自动采用继续暂缓，待业务口径和真实样本结果明确后推进。</p>
 <h2 id="section-13">附录 截图与现场演示安排</h2>
-<p>已插入截图01～13的17张图片，其中07、09、10和12分别使用两张图展示。截图14“批量导入与候选题整理”和15“题库查重证据与教师决定”保留待补充位置。图片统一保存在同级“系统介绍图片目录”，分享或移动本文及HTML版时请一并保留该目录。</p>
+<p>已插入截图01～15的19张图片，其中07、09、10和12分别使用两张图展示。图片统一保存在同级“系统介绍图片目录”，分享或移动本文及HTML版时请一并保留该目录。</p>
 <p>建议现场演示依次进行：</p>
 <ol><li>从班级学情进入学生画像，说明目前的知识点表现和练习需求。</li><li>查看题库和答案审核状态，再创建包含三个模块的作业。</li><li>打开学生试卷及打印预览，展示题目与分区答题区。</li><li>查看已有多页照片和提取结果，演示核对后录入的流程。</li><li>在批改页查看规则结果、模型建议及逐空采用记录，再回到学生画像。</li><li>展示批量资料候选整理和查重，说明正式入库仍在后续开发范围。</li></ol>
 <p>篇幅较短的汇报可优先采用截图04、07、09、11、12和15，分别说明组卷、画像、打印、识别核对、批改和题库整理。</p>
