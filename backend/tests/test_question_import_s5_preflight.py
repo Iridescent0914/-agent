@@ -330,7 +330,7 @@ def test_s5_review_http_contract(db):
         app.dependency_overrides.pop(get_db, None)
 
 
-def test_unassigned_image_has_stable_issue_and_explicit_defer(db):
+def test_unassigned_image_is_inventory_only_not_review_issue(db):
     batch, _, _ = _case(db)
     asset_id = str(uuid.uuid4())
     batch.checkpoint = {**batch.checkpoint, "s3": {**batch.checkpoint["s3"],
@@ -338,14 +338,8 @@ def test_unassigned_image_has_stable_issue_and_explicit_defer(db):
                                                 "page": 1, "source_file_id": "source-1",
                                                 "sha256": "f" * 64}]}}}
     db.flush()
-    issue = next(row for row in list_review_issues(db, batch.id) if row["kind"] == "image")
-    assert issue["asset_id"] == asset_id
-    decide_issue(db, batch.id, S5IssueDecisionRequest(
-        issue_key=issue["key"], signature=issue["signature"],
-        decision="deferred", reason="题干不需要这张页眉插图"))
-    updated = next(row for row in list_review_issues(db, batch.id) if row["kind"] == "image")
-    assert updated["handling"]["valid"] is True
-    assert updated["handling"]["decision"] == "deferred"
+    assert not any(row["kind"] == "image" for row in list_review_issues(db, batch.id))
+    assert import_review_summary(db, batch.id)["counts"]["unassigned_images"] == 1
 
 
 def test_uncertain_answer_source_requires_separate_confirmation(db):

@@ -147,6 +147,33 @@ def list_images(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
             "assets": [decorated(asset) for asset in assets]}
 
 
+def discard_unmatched_images(db: Session, batch_id: uuid.UUID) -> dict[str, int]:
+    """Discard staged images that no active real candidate currently references."""
+    batch = _live_batch(db, batch_id, lock=True)
+    _editable_after_dedupe(batch)
+    items = db.scalars(select(QuestionImportItem).where(QuestionImportItem.batch_id == batch_id))
+    linked_ids = {
+        str(asset_id)
+        for item in items if active_candidate(item) and not item.is_fake
+        for asset_id in ((item.payload or {}).get("content") or {}).get("asset_ids") or []
+    }
+    state = _image_state(batch)
+    assets = list(state.get("assets") or [])
+    discarded = [asset for asset in assets if asset["asset_id"] not in linked_ids]
+    if not discarded:
+        return {"deleted_count": 0, "retained_count": len(assets)}
+    checkpoint = dict(batch.checkpoint or {})
+    s3 = dict(checkpoint.get("s3") or {})
+    s3["images"] = {**state, "assets": [asset for asset in assets
+                                         if asset["asset_id"] in linked_ids]}
+    checkpoint["s3"] = s3
+    batch.checkpoint = checkpoint
+    db.flush()
+    for asset in discarded:
+        _asset_path(batch_id, uuid.UUID(asset["asset_id"])).unlink(missing_ok=True)
+    return {"deleted_count": len(discarded), "retained_count": len(assets) - len(discarded)}
+
+
 def extract_images(db: Session, batch_id: uuid.UUID, *,
                    s2_worker_token: uuid.UUID | None = None) -> dict[str, Any]:
     batch = _live_batch(db, batch_id, lock=True, s2_worker_token=s2_worker_token)

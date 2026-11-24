@@ -24,7 +24,7 @@ from app.services.question_import_s3 import reconcile_source_answers
 from app.services.question_import_s3_global import dedupe_batch
 from app.services.question_import_s3_answer_match import start_answer_matching
 from app.services.question_import_s3_images import (
-    extract_images, image_bytes, list_images, set_candidate_image, upload_candidate_image,
+    discard_unmatched_images, extract_images, image_bytes, list_images, set_candidate_image, upload_candidate_image,
 )
 from app.services.question_import_s3_separate import start_separate_answers
 from app.services.question_import_s3_labels import _allowed_kps, start_labels
@@ -294,6 +294,11 @@ def read_images(batch_id: UUID, db: Session = Depends(get_db)):
 @router.post("/{batch_id}/s3/images")
 def collect_images(batch_id: UUID, db: Session = Depends(get_db)):
     return extract_images(db, batch_id)
+
+
+@router.post("/{batch_id}/s5/images/discard-unmatched")
+def discard_unmatched_question_images(batch_id: UUID, db: Session = Depends(get_db)):
+    return discard_unmatched_images(db, batch_id)
 
 
 @router.get("/{batch_id}/s3/images/{asset_id}/content")

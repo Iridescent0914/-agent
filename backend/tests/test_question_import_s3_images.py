@@ -16,7 +16,8 @@ from app.main import app
 from app.services.question_import import ImportProblem, add_candidate, create_batch, purge_expired_import_files, update_candidate
 from app.services.question_import_s2 import ModelQuestion
 from app.services.question_import_s3_images import (
-    extract_images, image_bytes, list_images, question_figure_assets, set_candidate_image,
+    _asset_path, discard_unmatched_images, extract_images, image_bytes, list_images,
+    question_figure_assets, set_candidate_image,
     upload_candidate_image,
 )
 from app.services.question_import_worker import fake_candidate
@@ -69,6 +70,23 @@ def _batch_with_candidate(db):
     payload["extraction"] = {"diagram_clues": ["数轴"]}
     candidate = add_candidate(db, batch, payload)
     return batch, candidate
+
+
+def test_discard_unmatched_images_keeps_linked_candidate_image(db, private_dir):
+    batch, candidate = _batch_with_candidate(db)
+    orphan_id = UUID(extract_images(db, batch.id)["assets"][0]["asset_id"])
+    uploaded = BytesIO()
+    Image.new("RGB", (20, 20), "blue").save(uploaded, format="PNG")
+    upload_candidate_image(db, batch.id, candidate.id, uploaded.getvalue(),
+                           expected_revision=candidate.revision)
+    linked_id = UUID(candidate.payload["content"]["asset_ids"][0])
+
+    result = discard_unmatched_images(db, batch.id)
+    assert result == {"deleted_count": 1, "retained_count": 1}
+    assert not _asset_path(batch.id, orphan_id).exists()
+    assert _asset_path(batch.id, linked_id).is_file()
+    assert [row["asset_id"] for row in list_images(db, batch.id)["assets"]] == [str(linked_id)]
+    assert discard_unmatched_images(db, batch.id)["deleted_count"] == 0
 
 
 def test_embedded_image_is_private_and_can_be_linked(db, private_dir):

@@ -48,6 +48,10 @@ a { color: inherit; }
 .question-import-issue-group[open] > summary { border-bottom: 1px solid #e7ecf4; }
 .question-import-issue-list { padding: 0 12px 12px; }
 .question-import-issue-card { margin-top: 12px; }
+.question-import-review-compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; }
+.question-import-review-compare > .ant-card { min-width: 0; max-height: 440px; overflow: auto; }
+.question-import-review-image { display: block; max-width: 100%; max-height: 220px; object-fit: contain; margin: 8px 0; }
+@media (max-width: 760px) { .question-import-review-compare { grid-template-columns: 1fr; } }
 .question-markdown-table-wrap { max-width: 100%; overflow-x: auto; margin: 8px 0; }
 .question-markdown-table { border-collapse: collapse; min-width: max-content; max-width: 100%; font-size: 16px; color: #111827; }
 .question-markdown-table th, .question-markdown-table td { border: 1px solid #cbd5e1; padding: 4px 12px; text-align: center; white-space: nowrap; }

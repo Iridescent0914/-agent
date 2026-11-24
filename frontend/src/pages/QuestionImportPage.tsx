@@ -38,6 +38,8 @@ type ReviewIssue = {
   model_suggestion?: string | null
   current_item_id?: string | null
   evidence_quote?: string | null
+  signature: string
+  handling?: { decision: string; reason: string | null; valid: boolean; created_at: string } | null
 }
 
 type Candidate = {
@@ -53,6 +55,7 @@ type Candidate = {
     selected_answer_id?: string | null
     answer_match_status?: string
     teacher_decision?: string
+    commit_intent?: 'library_only' | 'direct_pool' | null
     duplicate_status?: string
     label_status?: string
     tags?: { question_type?: string; difficulty?: number | null; main_kp_code?: string | null; grade?: string | null; chapter_code?: string | null; section?: string | null; core_literacies?: string[]; is_required?: boolean }
@@ -103,7 +106,7 @@ type CatalogReviewMatch = {
     answer_text_differs?: boolean | null }
   decision: 'pending' | 'skip_existing' | 'keep_variant' | 'unrelated'; reason: string | null
   catalog_stale: boolean; catalog_unverifiable: boolean; question_text: string | null
-  options: Array<{ key: string; text: string }> | null; reference_answer_raw: string | null
+  options: unknown; reference_answer_raw: string | null
 }
 type CatalogReviewResult = { batch_id: string; items: Array<{
   item_id: string; check_id: string; check_no: number; candidate_revision: number;
@@ -111,6 +114,65 @@ type CatalogReviewResult = { batch_id: string; items: Array<{
   near_review_min_similarity?: number | null;
   checked_at: string | null; matches: CatalogReviewMatch[]
 }> }
+
+type S5Problem = { code: string; message: string }
+type S5Summary = { counts: {
+  active_real: number; active_fake: number; pending: number; approved: number; rejected: number;
+  skipped_duplicate: number; invalid_review_records: number;
+  ready_for_library_confirmation: number; ready_for_pool_confirmation: number;
+  needs_answer_review_for_pool: number; missing_catalog_check: number; stale_catalog_check: number;
+  exact_match_items: number; near_match_items: number; unassigned_answer_issues: number;
+  unassigned_images: number; review_issues: number; resolved_review_issues: number;
+} }
+type S5ReviewRow = { item_id: string; decision: string; recorded_decision?: string; valid: boolean;
+  reason: string | null; route: 'library_only' | 'direct_pool' | null;
+  question_event_id: string | null; answer_confirmed: boolean; candidate_revision?: number; created_at?: string }
+type S5Reviews = { batch_id: string; items: S5ReviewRow[] }
+type S5PreflightRow = { item_id: string; current_revision: number | null; route: 'library_only' | 'direct_pool';
+  batch_eligible: boolean; blockers: S5Problem[]; warnings: S5Problem[]; confirmation_pending: boolean }
+type S5Preflight = { items: S5PreflightRow[]; summary: { selected: number; eligible: number; blocked: number } }
+type AnswerUnitDraft = { item_id: string; subquestion_no: number | null; blank_no: number | null;
+  answer: string; accepted_answers: string; answer_match_type: 'choice' | 'numeric' | 'exact' | 'latex_exact' }
+type S5ReviewDraft = { itemId: string; revision: number; route: 'library_only' | 'direct_pool';
+  reason: string; units: AnswerUnitDraft[]; preflight: S5PreflightRow | null }
+type S5IssueDraft = { issue: ReviewIssue; decision: 'acknowledged' | 'deferred' | 'ignored' | 'pending'; reason: string }
+
+function defaultAnswerUnit(item: Candidate): AnswerUnitDraft {
+  const questionType = item.payload.tags?.question_type
+  const selected = item.payload.answers?.find((answer) => answer.answer_id === item.payload.selected_answer_id)
+  return { item_id: 'answer-1', subquestion_no: null, blank_no: null,
+    answer: selected?.text || '', accepted_answers: '',
+    answer_match_type: questionType === 'choice' ? 'choice' : questionType === 'true_false' ? 'exact' : 'exact' }
+}
+
+function answerUnitsPayload(units: AnswerUnitDraft[]) {
+  return units.map((unit) => ({ item_id: unit.item_id, subquestion_no: unit.subquestion_no,
+    blank_no: unit.blank_no, answer: unit.answer.trim(),
+    accepted_answers: unit.accepted_answers.split(/[\n；;]/).map((value) => value.trim()).filter(Boolean),
+    answer_match_type: unit.answer_match_type }))
+}
+
+function catalogOptionRows(options: unknown): Array<{ key: string; text: string }> {
+  if (Array.isArray(options)) {
+    return options.flatMap((option, index) => {
+      if (typeof option === 'string') return [{ key: String.fromCharCode(65 + index), text: option }]
+      if (option && typeof option === 'object' && typeof option.text === 'string') {
+        return [{ key: typeof option.key === 'string' ? option.key : String.fromCharCode(65 + index), text: option.text }]
+      }
+      return []
+    })
+  }
+  if (options && typeof options === 'object') {
+    return Object.entries(options).flatMap(([key, value]) => {
+      if (typeof value === 'string') return [{ key, text: value }]
+      if (value && typeof value === 'object' && 'text' in value && typeof value.text === 'string') {
+        return [{ key, text: value.text }]
+      }
+      return []
+    })
+  }
+  return []
+}
 
 const modeLabels: Record<string, string> = {
   questions_only: '只有题目', combined: '题目与答案同文件', separate: '题目与答案分文件',
@@ -217,6 +279,17 @@ export function QuestionImportPage() {
   const [catalogDecisionDraft, setCatalogDecisionDraft] = useState<{ item: Candidate; match: CatalogReviewMatch; decision: CatalogReviewMatch['decision'] } | null>(null)
   const [catalogDecisionReason, setCatalogDecisionReason] = useState('')
   const [catalogDecisionBusy, setCatalogDecisionBusy] = useState(false)
+  const [s5Summary, setS5Summary] = useState<S5Summary | null>(null)
+  const [s5Reviews, setS5Reviews] = useState<S5Reviews | null>(null)
+  const [candidateFilter, setCandidateFilter] = useState('all')
+  const [candidateQuery, setCandidateQuery] = useState('')
+  const [reviewDraft, setReviewDraft] = useState<S5ReviewDraft | null>(null)
+  const [reviewBusy, setReviewBusy] = useState(false)
+  const [issueDraft, setIssueDraft] = useState<S5IssueDraft | null>(null)
+  const [issueBusy, setIssueBusy] = useState(false)
+  const [answerClaimTargets, setAnswerClaimTargets] = useState<Record<string, string>>({})
+  const [answerSourceBusy, setAnswerSourceBusy] = useState<string | null>(null)
+  const [answerSourceDraft, setAnswerSourceDraft] = useState<{ itemId: string; revision: number; answerId: string; reason: string } | null>(null)
 
   function closeCandidateModal() {
     setCandidateEditor(null)
@@ -225,6 +298,22 @@ export function QuestionImportPage() {
     setLabelScopes({})
     setSelectedBatchId(null)
     setCatalogReviewResult(null)
+    setS5Summary(null)
+    setS5Reviews(null)
+    setReviewDraft(null)
+    setIssueDraft(null)
+    setAnswerSourceDraft(null)
+  }
+
+  async function refreshS5(id: string) {
+    const [summary, reviews, issues] = await Promise.all([
+      apiGet<S5Summary>(`/question-imports/${id}/s5/summary`),
+      apiGet<S5Reviews>(`/question-imports/${id}/s5/reviews`),
+      apiGet<ReviewIssue[]>(`/question-imports/${id}/s3/review-issues`),
+    ])
+    setS5Summary(summary)
+    setS5Reviews(reviews)
+    setReviewIssues(issues)
   }
 
   async function reload(focusBatchId?: string) {
@@ -394,11 +483,13 @@ export function QuestionImportPage() {
 
   async function viewCandidates(id: string) {
     try {
-      const [items, issues, initialImages, currentCatalog] = await Promise.all([
+      const [items, issues, initialImages, currentCatalog, summary, reviews] = await Promise.all([
         apiGet<Candidate[]>(`/question-imports/${id}/items`),
         apiGet<ReviewIssue[]>(`/question-imports/${id}/s3/review-issues`),
         apiGet<ImageInventory>(`/question-imports/${id}/s3/images`),
         apiGet<LabelCatalogPoint[]>('/question-imports/label-catalog').catch(() => labelCatalog),
+        apiGet<S5Summary>(`/question-imports/${id}/s5/summary`),
+        apiGet<S5Reviews>(`/question-imports/${id}/s5/reviews`),
       ])
       let imageRows = initialImages
       if (!imageRows.embedded_scanned && imageRows.files_available && batches.find((batch) => batch.id === id)?.stage === 's2_completed') {
@@ -414,6 +505,9 @@ export function QuestionImportPage() {
       setReviewIssues(issues)
       setSelectedBatchId(id)
       setCatalogReviewResult(savedReview)
+      setS5Summary(summary)
+      setS5Reviews(reviews)
+      if (imageRows !== initialImages) await refreshS5(id)
     } catch (error) { message.error(error instanceof Error ? error.message : '候选题加载失败') }
   }
 
@@ -422,6 +516,7 @@ export function QuestionImportPage() {
     try {
       setCatalogReviewResult(await apiPost<CatalogReviewResult>(`/question-imports/${id}/s4/review`, {}))
       setCandidates(await apiGet<Candidate[]>(`/question-imports/${id}/items`))
+      await refreshS5(id)
     } catch (error) { message.error(error instanceof Error ? error.message : '题库查重失败') }
     finally { setExactCatalogBusy(false) }
   }
@@ -439,6 +534,7 @@ export function QuestionImportPage() {
       )
       setCatalogReviewResult(result)
       setCandidates(await apiGet<Candidate[]>(`/question-imports/${selectedBatchId}/items`))
+      await refreshS5(selectedBatchId)
       setCatalogDecisionDraft(null)
       setCatalogDecisionReason('')
       message.success('查重决定已保存')
@@ -446,12 +542,110 @@ export function QuestionImportPage() {
       message.error(error instanceof Error ? error.message : '查重决定保存失败')
       setCatalogReviewResult(await apiGet<CatalogReviewResult>(`/question-imports/${selectedBatchId}/s4/review`).catch(() => catalogReviewResult))
       setCandidates(await apiGet<Candidate[]>(`/question-imports/${selectedBatchId}/items`).catch(() => candidates))
+      await refreshS5(selectedBatchId).catch(() => undefined)
     } finally { setCatalogDecisionBusy(false) }
   }
 
   function openCatalogDecision(item: Candidate, match: CatalogReviewMatch, decision: CatalogReviewMatch['decision']) {
     setCatalogDecisionDraft({ item, match, decision })
     setCatalogDecisionReason(decision === 'pending' ? '' : match.reason || '')
+  }
+
+  function openS5Review(item: Candidate) {
+    const current = s5Reviews?.items.find((row) => row.item_id === item.id)
+    setReviewDraft({ itemId: item.id, revision: item.revision,
+      route: current?.valid && current.route ? current.route : 'library_only',
+      reason: '', units: [defaultAnswerUnit(item)], preflight: null })
+  }
+
+  async function previewS5Review() {
+    if (!selectedBatchId || !reviewDraft) return
+    const item = candidates.find((row) => row.id === reviewDraft.itemId)
+    if (!item || item.revision !== reviewDraft.revision) { message.warning('候选题已变化，请刷新后重新审核'); return }
+    setReviewBusy(true)
+    try {
+      const result = await apiPost<S5Preflight>(`/question-imports/${selectedBatchId}/s5/preflight`, {
+        items: [{ item_id: item.id, expected_revision: reviewDraft.revision, route: reviewDraft.route,
+          ...(reviewDraft.route === 'direct_pool' ? { answer_review_items: answerUnitsPayload(reviewDraft.units) } : {}) }],
+      })
+      setReviewDraft((current) => current ? { ...current, preflight: result.items[0] } : current)
+    } catch (error) { message.error(error instanceof Error ? error.message : '预检失败') }
+    finally { setReviewBusy(false) }
+  }
+
+  async function saveS5Review(decision: 'approved' | 'rejected' | 'pending') {
+    if (!selectedBatchId || !reviewDraft) return
+    if (decision === 'approved' && !reviewDraft.preflight?.batch_eligible) {
+      message.warning('请先通过当前路径的预检'); return
+    }
+    if (decision === 'rejected' && !reviewDraft.reason.trim()) { message.warning('请填写拒绝理由'); return }
+    setReviewBusy(true)
+    try {
+      await apiPost(`/question-imports/${selectedBatchId}/s5/items/${reviewDraft.itemId}/decision`, {
+        expected_revision: reviewDraft.revision, decision,
+        ...(decision === 'approved' ? { route: reviewDraft.route,
+          ...(reviewDraft.route === 'direct_pool' ? { answer_review_items: answerUnitsPayload(reviewDraft.units) } : {}) } : {}),
+        reason: reviewDraft.reason.trim() || null,
+      })
+      setReviewDraft(null)
+      await viewCandidates(selectedBatchId)
+      message.success(decision === 'approved' ? '审核决定已保存' : decision === 'rejected' ? '已拒绝并记录理由' : '已撤回审核决定')
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '审核决定保存失败')
+      await viewCandidates(selectedBatchId)
+      setReviewDraft(null)
+    } finally { setReviewBusy(false) }
+  }
+
+  async function saveS5IssueDecision() {
+    if (!selectedBatchId || !issueDraft) return
+    if (['ignored', 'deferred'].includes(issueDraft.decision) && !issueDraft.reason.trim()) {
+      message.warning('忽略或延后需要填写理由'); return
+    }
+    setIssueBusy(true)
+    try {
+      await apiPost(`/question-imports/${selectedBatchId}/s5/issues/decision`, {
+        issue_key: issueDraft.issue.key, signature: issueDraft.issue.signature,
+        decision: issueDraft.decision, reason: issueDraft.reason.trim() || null,
+      })
+      setIssueDraft(null)
+      await refreshS5(selectedBatchId)
+      message.success('问题处理决定已保存')
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '问题处理失败')
+      await refreshS5(selectedBatchId).catch(() => undefined)
+    } finally { setIssueBusy(false) }
+  }
+
+  async function claimS5Answer(issue: ReviewIssue) {
+    if (!selectedBatchId) return
+    const target = candidates.find((item) => item.id === answerClaimTargets[issue.key])
+    if (!target) { message.warning('请先选择要关联的候选题'); return }
+    setAnswerSourceBusy(issue.key)
+    try {
+      await apiPost(`/question-imports/${selectedBatchId}/s5/issues/claim-answer`, {
+        issue_key: issue.key, signature: issue.signature, item_id: target.id,
+        expected_revision: target.revision,
+      })
+      await viewCandidates(selectedBatchId)
+      message.success('来源答案已关联；答案内容仍需审核')
+    } catch (error) { message.error(error instanceof Error ? error.message : '答案认领失败') }
+    finally { setAnswerSourceBusy(null) }
+  }
+
+  async function confirmS5AnswerSource() {
+    if (!selectedBatchId || !answerSourceDraft) return
+    setAnswerSourceBusy(answerSourceDraft.itemId)
+    try {
+      await apiPost(`/question-imports/${selectedBatchId}/s5/items/${answerSourceDraft.itemId}/confirm-answer-source`, {
+        expected_revision: answerSourceDraft.revision, selected_answer_id: answerSourceDraft.answerId,
+        reason: answerSourceDraft.reason.trim() || null,
+      })
+      setAnswerSourceDraft(null)
+      await viewCandidates(selectedBatchId)
+      message.success('已确认答案归属；答案内容仍需单独审核')
+    } catch (error) { message.error(error instanceof Error ? error.message : '答案归属确认失败') }
+    finally { setAnswerSourceBusy(null) }
   }
 
   async function refreshImages(id: string) {
@@ -466,11 +660,31 @@ export function QuestionImportPage() {
       setCandidates((rows) => rows.map((row) => row.id === updated.id ? updated : row))
       await refreshImages(batch.id)
       setCatalogReviewResult(await apiGet<CatalogReviewResult>(`/question-imports/${batch.id}/s4/review`))
+      await refreshS5(batch.id)
       message.success(linked ? '题图已关联' : '题图已删除')
     } catch (error) {
       message.error(error instanceof Error ? error.message : '题图关联失败')
       setCandidates(await apiGet<Candidate[]>(`/question-imports/${batch.id}/items`).catch(() => candidates))
+      await refreshS5(batch.id).catch(() => undefined)
     } finally { setImageBusy(false) }
+  }
+
+  function confirmDiscardUnmatchedImages(batch: Batch, count: number) {
+    Modal.confirm({
+      title: '完成题图核对并删除未匹配图片？',
+      content: `将删除当前没有关联到有效候选题的 ${count} 张临时图片（包括未展示的重复图片）。删除后不能再从本批图片列表关联这些图片；已关联图片会保留。`,
+      okText: '删除未匹配图片', okButtonProps: { danger: true }, cancelText: '继续核对',
+      onOk: async () => {
+        setImageBusy(true)
+        try {
+          const result = await apiPost<{ deleted_count: number }>(`/question-imports/${batch.id}/s5/images/discard-unmatched`, {})
+          await refreshImages(batch.id)
+          await refreshS5(batch.id)
+          message.success(`已删除 ${result.deleted_count} 张未匹配的临时图片`)
+        } catch (error) { message.error(error instanceof Error ? error.message : '未匹配图片清理失败') }
+        finally { setImageBusy(false) }
+      },
+    })
   }
 
   async function uploadCandidateImage(batch: Batch, candidate: Candidate, file: File) {
@@ -484,6 +698,7 @@ export function QuestionImportPage() {
       setCandidates((rows) => rows.map((row) => row.id === updated.id ? updated : row))
       await refreshImages(batch.id)
       setCatalogReviewResult(await apiGet<CatalogReviewResult>(`/question-imports/${batch.id}/s4/review`))
+      await refreshS5(batch.id)
       message.success('图片已添加到该题')
     } catch (error) {
       message.error(error instanceof Error ? error.message : '题图上传失败')
@@ -702,7 +917,27 @@ export function QuestionImportPage() {
   const suspectedIds = new Set(s2?.units?.flatMap((unit) => unit.overlap_suspects?.map((pair) => pair.candidate_item_id) || []) || [])
   const duplicateCandidates = selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'completed' ? []
     : candidates.filter((item) => item.payload.duplicate_status === 'suspected' || suspectedIds.has(item.id))
-  const visibleCandidates = showDuplicateCandidates ? candidates : candidates.filter((item) => !duplicateCandidates.includes(item))
+  const candidateSource = showDuplicateCandidates ? candidates : candidates.filter((item) => !duplicateCandidates.includes(item))
+  const visibleCandidates = candidateSource.filter((item) => {
+    const review = s5Reviews?.items.find((row) => row.item_id === item.id)
+    const catalog = catalogReviewResult?.items.find((row) => row.item_id === item.id)
+    const status = review?.valid ? review.decision : item.payload.teacher_decision === 'skipped_duplicate' ? 'skipped_duplicate' : 'pending'
+    const hasFigureIssue = !(item.payload.content.asset_ids || []).length
+      && !!(item.payload.extraction?.diagram_clues?.length || ['complete', 'uncertain'].includes(item.payload.extraction?.figure_status || ''))
+    const match = candidateFilter === 'all' || candidateFilter === status
+      || (candidateFilter === 'exact' && !!catalog?.matches.some((row) => row.kind === 'exact'))
+      || (candidateFilter === 'nearby' && !!catalog?.matches.some((row) => row.kind === 'nearby'))
+      || (candidateFilter === 'stale' && !!catalog && (catalog.candidate_stale || catalog.catalog_stale))
+      || (candidateFilter === 'missing_tag' && !hasImportLabels(item))
+      || (candidateFilter === 'missing_answer' && !item.payload.answers?.length)
+      || (candidateFilter === 'figure' && hasFigureIssue)
+      || (candidateFilter === 'issue' && reviewIssues.some((issue) => issue.candidate_item_ids.includes(item.id)
+        && !(issue.handling?.valid && ['acknowledged', 'ignored'].includes(issue.handling.decision))))
+    const query = candidateQuery.trim().toLowerCase()
+    return match && (!query || String(item.ordinal).includes(query)
+      || (item.payload.source.original_number || '').toLowerCase().includes(query)
+      || item.payload.content.question_text.toLowerCase().includes(query))
+  })
   const separateAnswers = selectedBatch?.checkpoint?.s3?.separate_answers
   const sourceAnswers = (selectedBatch?.source_mode === 'separate'
     ? separateAnswers?.units?.flatMap((unit) => unit.source_answers || [])
@@ -711,7 +946,7 @@ export function QuestionImportPage() {
     ? reviewIssues.filter((issue) => issue.kind === 'answer' && issue.source_answer).map((issue) => issue.source_answer!)
     : sourceAnswers
   const linkedSourceQuestionCount = candidates.filter((item) => item.payload.answers?.some((answer) => answer.answer_source === 'source_extracted')).length
-  const teacherReviewIssues = reviewIssues.filter((issue) => issue.kind !== 'image')
+  const teacherReviewIssues = reviewIssues
   const reviewCategories = [
     { kind: 'answer', title: '答案归属待核对' },
     { kind: 'answer_match_disagreement', title: '模型建议更换已关联题目' },
@@ -739,6 +974,7 @@ export function QuestionImportPage() {
     && (selectedBatch?.source_mode !== 'separate' || separateAnswers?.status === 'completed')
     && (!answerModelExpected || answerModelTask?.status === 'completed')
   const matchedImageIds = new Set(candidates.flatMap((candidate) => candidate.payload.content.asset_ids || []))
+  const unmatchedImageCount = (images?.assets || []).filter((asset) => !matchedImageIds.has(asset.asset_id)).length
   const unmatchedImages = (images?.assets || []).filter((asset) => !matchedImageIds.has(asset.asset_id) && !asset.duplicate_of_kept_image)
   const imageTargetOptions = candidates.filter((candidate) => !candidate.is_fake).map((candidate) => ({
     value: candidate.id,
@@ -767,7 +1003,7 @@ export function QuestionImportPage() {
               {(match.catalog_stale || match.catalog_unverifiable) && <Tag color="warning">{match.catalog_stale ? '正式题内容已变化' : '正式题图片无法可靠比对'}</Tag>}
             </Space>
             {match.question_text && <div><Typography.Text>题干：{match.question_text.replace(/\[ASSET:[^\]]+\]/g, '[题图]').slice(0, 300)}</Typography.Text></div>}
-            {!!match.options?.length && <div><Typography.Text type="secondary">选项：{match.options.map((option) => `${option.key}. ${option.text}`).join('；').slice(0, 300)}</Typography.Text></div>}
+            {catalogOptionRows(match.options).length > 0 && <div><Typography.Text type="secondary">选项：{catalogOptionRows(match.options).map((option) => `${option.key}. ${option.text}`).join('；').slice(0, 300)}</Typography.Text></div>}
             {!!match.reference_answer_raw && <div><Typography.Text type="secondary">题库答案：{match.reference_answer_raw.slice(0, 120)}</Typography.Text></div>}
             {!!match.evidence.answer_text_differs && <Typography.Text type="warning">候选答案与题库答案文本不同，请核对。</Typography.Text>}
             {!!match.evidence.differences?.length && <div><Typography.Text type="warning">差异：{match.evidence.differences.join('；')}</Typography.Text></div>}
@@ -821,8 +1057,10 @@ export function QuestionImportPage() {
       {canEditCandidates && <label>添加图片：<input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageBusy || !images?.files_available} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file && selectedBatch) void uploadCandidateImage(selectedBatch, item, file) }} /></label>}
       {item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}
       {item.payload.answers?.map((answer) => <div key={answer.answer_id} className={`question-import-answer${answer.answer_source === 'model_generated' && answer.answer_id === item.payload.selected_answer_id && !answer.teacher_confirmed ? ' question-import-answer--model-pending' : ''}`}>
-        <Typography.Text>{answer.answer_source === 'teacher_entered' ? '教师答案' : answer.answer_source === 'source_extracted' ? '资料答案' : answer.answer_source === 'model_generated' ? '模型生成答案' : '答案'}{answer.answer_id === item.payload.selected_answer_id ? answer.teacher_confirmed ? '（已确认采用）' : '（当前选择，待教师确认）' : ''}：</Typography.Text>
+        <Typography.Text>{answer.answer_source === 'teacher_entered' ? '教师答案' : answer.answer_source === 'source_extracted' ? '资料答案' : answer.answer_source === 'model_generated' ? '模型生成答案' : '答案'}{answer.answer_id === item.payload.selected_answer_id ? answer.teacher_confirmed ? '（归属已核对，内容仍须审核）' : '（当前选择，待教师确认）' : ''}：</Typography.Text>
         {answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}
+        {canEditCandidates && !item.is_fake && answer.answer_id === item.payload.selected_answer_id && !answer.teacher_confirmed &&
+          <Button size="small" loading={answerSourceBusy === item.id} onClick={() => setAnswerSourceDraft({ itemId: item.id, revision: item.revision, answerId: answer.answer_id, reason: '' })}>确认答案归属</Button>}
       </div>)}
       {item.payload.warnings?.includes('题目已修改，请重新核对答案是否仍适用') && <Typography.Text type="warning">题目已修改，请重新核对答案是否仍适用。</Typography.Text>}
       {canEditCandidates && candidateEditor?.itemId !== item.id && <Space>
@@ -896,6 +1134,11 @@ export function QuestionImportPage() {
     </Space>
   }
 
+  const activeReviewItem = candidates.find((item) => item.id === reviewDraft?.itemId)
+  const activeReviewCatalog = catalogReviewResult?.items.find((row) => row.item_id === reviewDraft?.itemId)
+  const effectiveReview = activeReviewItem && s5Reviews?.items.find((row) => row.item_id === activeReviewItem.id)
+  const activeSelectedAnswer = activeReviewItem?.payload.answers?.find((answer) => answer.answer_id === activeReviewItem.payload.selected_answer_id)
+
   return <Space direction="vertical" size="large" style={{ width: '100%' }}>
     <Modal open={!!catalogDecisionDraft} title="保存题库查重决定"
       okText="保存决定" okButtonProps={{ loading: catalogDecisionBusy }}
@@ -908,6 +1151,102 @@ export function QuestionImportPage() {
           rows={3} placeholder={catalogDecisionDraft.decision === 'keep_variant' || catalogDecisionDraft.match.kind === 'nearby' ? '填写判断理由（必填）' : '判断理由（可选）'}
           onChange={(event) => setCatalogDecisionReason(event.target.value)} />}
       </>}
+    </Modal>
+    <Modal title="逐题审核与预检" open={!!reviewDraft} width={1050}
+      onCancel={() => { if (!reviewBusy) setReviewDraft(null) }}
+      footer={<Space wrap>
+        <Button onClick={() => setReviewDraft(null)} disabled={reviewBusy}>关闭</Button>
+        {effectiveReview?.valid && effectiveReview.decision !== 'pending' && <Button disabled={reviewBusy} onClick={() => void saveS5Review('pending')}>撤回审核</Button>}
+        <Button danger disabled={reviewBusy || !reviewDraft?.reason.trim()} onClick={() => void saveS5Review('rejected')}>拒绝此题</Button>
+        <Button loading={reviewBusy} onClick={() => void previewS5Review()}>检查所选路径</Button>
+        <Button type="primary" disabled={!reviewDraft?.preflight?.batch_eligible || reviewBusy} onClick={() => void saveS5Review('approved')}>确认审核意向</Button>
+      </Space>}>
+      {reviewDraft && activeReviewItem && <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Alert type="info" showIcon message="确认只保存审核意向，尚不会把题目加入正式题库。" />
+        {effectiveReview?.question_event_id && <Typography.Text type={effectiveReview.valid ? 'success' : 'warning'}>
+          最近一次决定：{effectiveReview.recorded_decision === 'approved' ? '已确认' : effectiveReview.recorded_decision === 'rejected' ? '已拒绝' : '待审核'}；{effectiveReview.valid ? '当前有效' : '题目或证据变化，须重新核对'}
+        </Typography.Text>}
+        <div className="question-import-review-compare">
+          <Card size="small" title={`本批候选第 ${activeReviewItem.ordinal} 题`}>
+            <Typography.Paragraph type="secondary">原题号 {activeReviewItem.payload.source.original_number || '未识别'} · 来源第 {activeReviewItem.payload.source.page_start ?? '?'}–{activeReviewItem.payload.source.page_end ?? '?'} 页 · 版本 {activeReviewItem.revision}</Typography.Paragraph>
+            <RichQuestionText text={activeReviewItem.payload.content.question_text} assets={[]} />
+            {activeReviewItem.payload.content.options.map((option) => <RichQuestionText key={option.key} text={`${option.key}. ${option.text}`} assets={[]} />)}
+            {activeReviewItem.payload.content.asset_ids?.map((assetId) => selectedBatch && images?.files_available && <img key={assetId} alt="候选题图" src={apiUrl(`/question-imports/${selectedBatch.id}/s3/images/${assetId}/content`)} className="question-import-review-image" />)}
+            <Typography.Paragraph type="secondary">题型：{questionTypeLabels[activeReviewItem.payload.tags?.question_type || 'unknown']}；难度：{activeReviewItem.payload.tags?.difficulty ?? '待填'}；主属知识点：{labelCatalog.find((point) => point.code === activeReviewItem.payload.tags?.main_kp_code)?.name || '待填'}</Typography.Paragraph>
+            <Typography.Text strong>选定答案：</Typography.Text>
+            <RichQuestionText text={activeSelectedAnswer?.text || '未选择答案'} assets={[]} />
+            {activeSelectedAnswer?.evidence?.map((evidence, index) => <Typography.Paragraph key={`${evidence.file_id}-${evidence.page}-${index}`} type="secondary">
+              答案来源第 {evidence.page} 页摘录：{evidence.quote}
+            </Typography.Paragraph>)}
+            {activeReviewItem.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Paragraph key={`uncertain-${index}`} type="warning">
+              识别不确定片段：{fragment}
+            </Typography.Paragraph>)}
+          </Card>
+          <Card size="small" title="题库查重证据">
+            {!activeReviewCatalog && <Typography.Text type="warning">尚未检查题库重复。请先在候选页点击“检查题库重复”。</Typography.Text>}
+            {activeReviewCatalog && <>
+              {(activeReviewCatalog.candidate_stale || activeReviewCatalog.catalog_stale) && <Alert type="warning" showIcon message="查重记录已过期，请重新检查" />}
+              {activeReviewCatalog.matches.length === 0 && <Typography.Text type="secondary">本次检查未发现需要人工决定的匹配。</Typography.Text>}
+              {activeReviewCatalog.matches.map((match) => <Card key={match.id} size="small" style={{ marginBottom: 8 }}>
+                <Space wrap><Tag color={match.kind === 'exact' ? 'orange' : 'blue'}>{match.kind === 'exact' ? '相同题' : '可能相似'}</Tag><Typography.Text strong>{match.original_qid}</Typography.Text><Typography.Text type="secondary">{match.decision === 'pending' ? '待决定' : match.decision === 'skip_existing' ? '已跳过' : match.decision === 'keep_variant' ? '独立变式' : '无关'}</Typography.Text></Space>
+                {match.question_text && <RichQuestionText text={match.question_text.replace(/\[ASSET:[^\]]+\]/g, '[题图]')} assets={[]} />}
+                {catalogOptionRows(match.options).map((option) => <RichQuestionText key={option.key} text={`${option.key}. ${option.text}`} assets={[]} />)}
+                {match.question_id && <a href={`/questions/${match.question_id}`} target="_blank" rel="noopener noreferrer">打开正式题核对题图</a>}
+                {match.reason && <Typography.Paragraph type="secondary">判断理由：{match.reason}</Typography.Paragraph>}
+              </Card>)}
+            </>}
+          </Card>
+        </div>
+        <Space wrap><Typography.Text strong>拟入库路径</Typography.Text><Select aria-label="拟入库路径" style={{ width: 300 }} value={reviewDraft.route}
+          onChange={(route: 'library_only' | 'direct_pool') => setReviewDraft((current) => current ? { ...current, route, preflight: null } : current)}
+          options={[{ value: 'library_only', label: '仅题目入库，答案后续审核' }, { value: 'direct_pool', label: '题目和答案拟直接入池' }]} /></Space>
+        {reviewDraft.route === 'direct_pool' && <Card size="small" title="逐小题／空的答案审核">
+          <Typography.Paragraph type="secondary">请根据题目和来源答案核对每一项。表格中的内容是草稿，只有点击“确认审核意向”才会保存教师决定。</Typography.Paragraph>
+          {reviewDraft.units.map((unit, index) => <Card key={unit.item_id} size="small" style={{ marginBottom: 8 }} title={`答案项 ${index + 1}`}
+            extra={reviewDraft.units.length > 1 && <Button size="small" danger onClick={() => setReviewDraft((current) => current ? { ...current, units: current.units.filter((row) => row.item_id !== unit.item_id), preflight: null } : current)}>删除</Button>}>
+            <Space wrap>
+              <label>小题号 <InputNumber min={1} max={99} value={unit.subquestion_no} onChange={(value) => setReviewDraft((current) => current ? { ...current, units: current.units.map((row) => row.item_id === unit.item_id ? { ...row, subquestion_no: value } : row), preflight: null } : current)} /></label>
+              <label>空号 <InputNumber min={1} max={99} value={unit.blank_no} onChange={(value) => setReviewDraft((current) => current ? { ...current, units: current.units.map((row) => row.item_id === unit.item_id ? { ...row, blank_no: value } : row), preflight: null } : current)} /></label>
+              <label>判分方式 <Select style={{ width: 150 }} value={unit.answer_match_type}
+                options={activeReviewItem.payload.tags?.question_type === 'choice' ? [{ value: 'choice', label: '选项 A-H' }] : activeReviewItem.payload.tags?.question_type === 'true_false' ? [{ value: 'exact', label: '正确／错误' }] : [
+                  { value: 'exact', label: '精确文字' }, { value: 'numeric', label: '整数或小数' }, { value: 'latex_exact', label: '公式' }]}
+                onChange={(value: AnswerUnitDraft['answer_match_type']) => setReviewDraft((current) => current ? { ...current, units: current.units.map((row) => row.item_id === unit.item_id ? { ...row, answer_match_type: value } : row), preflight: null } : current)} /></label>
+            </Space>
+            <Input aria-label={`答案项 ${index + 1} 标准答案`} placeholder="标准答案" maxLength={2000} value={unit.answer} style={{ marginTop: 8 }}
+              onChange={(event) => setReviewDraft((current) => current ? { ...current, units: current.units.map((row) => row.item_id === unit.item_id ? { ...row, answer: event.target.value } : row), preflight: null } : current)} />
+            <Input.TextArea aria-label={`答案项 ${index + 1} 可接受答案`} placeholder="其他可接受答案，可用分号或换行分隔" rows={2} value={unit.accepted_answers} style={{ marginTop: 8 }}
+              onChange={(event) => setReviewDraft((current) => current ? { ...current, units: current.units.map((row) => row.item_id === unit.item_id ? { ...row, accepted_answers: event.target.value } : row), preflight: null } : current)} />
+          </Card>)}
+          {reviewDraft.units.length < 50 && <Button onClick={() => setReviewDraft((current) => current ? { ...current, units: [...current.units, { ...defaultAnswerUnit(activeReviewItem), item_id: `answer-${crypto.randomUUID().slice(0, 8)}`, answer: '' }], preflight: null } : current)}>添加答案项</Button>}
+        </Card>}
+        <label>审核理由（拒绝时必填）<Input.TextArea rows={2} maxLength={500} value={reviewDraft.reason} placeholder="记录判断依据"
+          onChange={(event) => setReviewDraft((current) => current ? { ...current, reason: event.target.value } : current)} /></label>
+        {reviewDraft.preflight && <Alert showIcon type={reviewDraft.preflight.batch_eligible ? 'success' : 'warning'}
+          message={reviewDraft.preflight.batch_eligible ? '当前路径通过预检，可以确认审核意向' : '当前路径有阻断项'}
+          description={<Space direction="vertical" size={2}>
+            {reviewDraft.preflight.blockers.map((problem, index) => <Typography.Text key={`b-${index}`} type="danger">阻断：{problem.message}</Typography.Text>)}
+            {reviewDraft.preflight.warnings.map((problem, index) => <Typography.Text key={`w-${index}`} type="warning">提醒：{problem.message}</Typography.Text>)}
+          </Space>} />}
+      </Space>}
+    </Modal>
+    <Modal title="处理待核对问题" open={!!issueDraft} okText="保存决定" okButtonProps={{ loading: issueBusy }}
+      onCancel={() => { if (!issueBusy) setIssueDraft(null) }} onOk={() => void saveS5IssueDecision()}>
+      {issueDraft && <Space direction="vertical" style={{ width: '100%' }}>
+        <Typography.Paragraph>{issueDraft.issue.summary}</Typography.Paragraph>
+        <Select aria-label="问题处理决定" value={issueDraft.decision} style={{ width: '100%' }}
+          options={[{ value: 'acknowledged', label: '已核对，问题已处理' }, { value: 'deferred', label: '延后处理' }, { value: 'ignored', label: '确认无需处理' }, { value: 'pending', label: '恢复待处理' }]}
+          onChange={(decision: S5IssueDraft['decision']) => setIssueDraft((current) => current ? { ...current, decision } : current)} />
+        <Input.TextArea aria-label="问题处理理由" rows={3} maxLength={500} value={issueDraft.reason} placeholder="填写核对依据；延后或忽略时必填"
+          onChange={(event) => setIssueDraft((current) => current ? { ...current, reason: event.target.value } : current)} />
+      </Space>}
+    </Modal>
+    <Modal title="确认答案归属" open={!!answerSourceDraft} okText="确认答案归属"
+      okButtonProps={{ loading: !!answerSourceBusy }} onCancel={() => { if (!answerSourceBusy) setAnswerSourceDraft(null) }}
+      onOk={() => void confirmS5AnswerSource()}>
+      <Typography.Paragraph>请对照题目与来源答案核对关联。此操作不确认答案内容正确。</Typography.Paragraph>
+      <Input.TextArea aria-label="答案关联理由" rows={3} maxLength={500} value={answerSourceDraft?.reason || ''}
+        placeholder="若来源配对冲突或未匹配，请填写人工关联依据"
+        onChange={(event) => setAnswerSourceDraft((current) => current ? { ...current, reason: event.target.value } : current)} />
     </Modal>
     <Card title="批量题目导入 · 内部识别与候选核对">
       <Typography.Paragraph>上传后先校验文件；S2 按页段提取题目并自动整批去重。同文件场景同时提取答案；分文件场景先读取题目文件，整批去重完成后识别答案文件。来源答案先按规则关联，再对有歧义的对应进行模型辅助判断，仍无法确定的留给教师核对。“只有题目”批次可选择为无答案题生成参考答案，或由教师手填；之后可单独启动标签建议。</Typography.Paragraph>
@@ -959,6 +1298,31 @@ export function QuestionImportPage() {
         <Button type="primary" onClick={() => { setNewCandidateDraft(emptyCandidateDraft()); setNewCandidateOpen(true) }}>新增题目</Button>
         <Typography.Text type="secondary">新增题目请人工核对重复情况；可在打标签前或后修改。</Typography.Text>
       </Space>}
+      {s5Summary && <Card size="small" title="S5 教师审核概况" style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <Tag color="blue">真实候选 {s5Summary.counts.active_real}</Tag>
+          <Tag>待审 {s5Summary.counts.pending}</Tag>
+          <Tag color="green">已确认 {s5Summary.counts.approved}</Tag>
+          <Tag color="red">已拒绝 {s5Summary.counts.rejected}</Tag>
+          <Tag color="orange">跳过已有题 {s5Summary.counts.skipped_duplicate}</Tag>
+          <Tag color="cyan">可确认仅入库 {s5Summary.counts.ready_for_library_confirmation}</Tag>
+          <Tag color="purple">可确认直接入池 {s5Summary.counts.ready_for_pool_confirmation}</Tag>
+          {s5Summary.counts.invalid_review_records > 0 && <Tag color="warning">旧审核已失效 {s5Summary.counts.invalid_review_records}</Tag>}
+        </Space>
+        <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 4 }}>
+          查重未检查 {s5Summary.counts.missing_catalog_check} 题，已过期 {s5Summary.counts.stale_catalog_check} 题；相同题 {s5Summary.counts.exact_match_items} 题，可能相似 {s5Summary.counts.near_match_items} 题；待认领答案 {s5Summary.counts.unassigned_answer_issues} 条，待认领题图 {s5Summary.counts.unassigned_images} 张。
+        </Typography.Paragraph>
+        <Typography.Text type="secondary">有效审核决定会在刷新后恢复。正式入库入口将在 S6 完成；当前确认只保存拟入库路径。</Typography.Text>
+        {s5Reviews && s5Reviews.items.some((row) => row.valid && row.decision === 'approved') && <details style={{ marginTop: 8 }}>
+          <summary>查看拟入库清单</summary>
+          <Space direction="vertical" size={2} style={{ marginTop: 8 }}>
+            {s5Reviews.items.filter((row) => row.valid && row.decision === 'approved').map((row) => {
+              const item = candidates.find((candidate) => candidate.id === row.item_id)
+              return <Typography.Text key={row.item_id}>第 {item?.ordinal ?? '?'} 题 · {row.route === 'direct_pool' ? '题目与答案拟直接入池' : '拟仅题目入库'} · {item?.payload.content.question_text.slice(0, 70)}</Typography.Text>
+            })}
+          </Space>
+        </details>}
+      </Card>}
       {selectedBatch && dedupeStatus === 'completed' && <div style={{ marginBottom: 12 }}>
         <Button loading={exactCatalogBusy} onClick={() => void checkExactCatalog(selectedBatch.id)}>检查题库重复</Button>
         {catalogReviewResult && <Typography.Text type="secondary"> 已检查 {catalogReviewResult.items.length} 道题；{catalogReviewResult.items.filter((row) => row.matches.some((match) => match.kind === 'exact')).length} 道找到相同题，{catalogReviewResult.items.filter((row) => row.candidate_stale || row.catalog_stale).length} 道检查结果已失效。相似题需要人工判断；正式入库前会再次检查。</Typography.Text>}
@@ -975,7 +1339,7 @@ export function QuestionImportPage() {
       {selectedBatch?.stage === 's2_completed' && <Card size="small" style={{ marginBottom: 16 }}><details>
         <summary>无法匹配到题目的图片（{unmatchedImages.length}）</summary>
         {!images?.files_available && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message="临时题图已过期，无法显示或修改；请重新上传文件" />}
-        {unmatchedImages.length === 0 ? <Typography.Text type="secondary">暂无未匹配图片</Typography.Text> : images?.files_available ? <>
+        {unmatchedImages.length === 0 ? <Typography.Text type="secondary">暂无需要人工关联的图片</Typography.Text> : images?.files_available ? <>
           <Typography.Paragraph type="warning">无法匹配到题目，请人工复核。</Typography.Paragraph>
           <Space wrap>{unmatchedImages.map((asset) => <div key={asset.asset_id} style={{ width: 180 }}>
             <img src={apiUrl(`/question-imports/${selectedBatch.id}/s3/images/${asset.asset_id}/content`)} alt="未匹配的题图" style={{ maxWidth: 180, maxHeight: 160, objectFit: 'contain' }} />
@@ -991,6 +1355,10 @@ export function QuestionImportPage() {
             </Space>
           </div>)}</Space>
         </> : null}
+        {unmatchedImageCount > 0 && images?.files_available && <div style={{ marginTop: 12 }}>
+          <Typography.Paragraph type="secondary">核对结束后，可以删除剩余 {unmatchedImageCount} 张未关联临时图片；其中重复图片不会在上方列表展示。</Typography.Paragraph>
+          <Button danger disabled={!canEditCandidates || imageBusy} onClick={() => confirmDiscardUnmatchedImages(selectedBatch, unmatchedImageCount)}>完成题图核对并删除未匹配图片</Button>
+        </div>}
       </details></Card>}
       {['combined', 'separate'].includes(selectedBatch?.source_mode || '') && <Typography.Paragraph>
         {reconciliation
@@ -1019,7 +1387,7 @@ export function QuestionImportPage() {
         </div>)}
       </details>}
       {!!teacherReviewIssues.length && <details key={`${selectedBatch?.id}:review-issues`} className="question-import-issues">
-        <summary>待教师核对的问题（{teacherReviewIssues.length} 条）</summary>
+        <summary>问题处理清单（{teacherReviewIssues.length} 条，已处理 {teacherReviewIssues.filter((issue) => issue.handling?.valid && ['acknowledged', 'ignored'].includes(issue.handling.decision)).length} 条）</summary>
         <div className="question-import-issues-content">
           <Typography.Paragraph type="secondary">请根据来源页码、原文件和候选题人工核对。</Typography.Paragraph>
           <div className="question-import-issue-types">
@@ -1037,7 +1405,8 @@ export function QuestionImportPage() {
                     const candidateSummaries = issue.candidate_item_ids.map(candidateSummary)
                     return <Card key={issue.key} size="small" className="question-import-issue-card"
                       title={`${selectedBatch?.source_mode === 'separate' ? ['answer', 'answer_fragment', 'answer_match_warning', 'answer_match_disagreement'].includes(issue.kind) ? '答案文件' : '题目文件' : '原文件'}${issue.summary}`}
-                      extra={<Tag color={issue.kind === 'answer_match_disagreement' ? 'red' : 'orange'}>待教师核对</Tag>}>
+                      extra={<Tag color={issue.handling?.valid && ['acknowledged', 'ignored'].includes(issue.handling.decision) ? 'green' : issue.handling?.decision === 'deferred' && issue.handling.valid ? 'blue' : 'orange'}>
+                        {issue.handling?.valid ? issue.handling.decision === 'acknowledged' ? '已核对' : issue.handling.decision === 'ignored' ? '无需处理' : issue.handling.decision === 'deferred' ? '已延后' : '待处理' : issue.handling ? '处理证据已变化' : '待教师核对'}</Tag>}>
                       {['fragment', 'answer_fragment', 'skipped_page'].includes(issue.kind) && <>
                         <Typography.Paragraph><Typography.Text strong>{issue.kind === 'skipped_page' ? '跳过记录：' : '待核对片段：'}</Typography.Text></Typography.Paragraph>
                         <RichQuestionText text={issue.fragment_text || '内容未记录'} assets={[]} />
@@ -1068,6 +1437,18 @@ export function QuestionImportPage() {
                           : `候选 ${issue.candidate_item_ids.length} 条。`}
                         {issue.candidate_total > issue.candidate_item_ids.length && `共 ${issue.candidate_total} 条候选，此处仅列部分。`}
                       </Typography.Paragraph>
+                      {issue.handling?.reason && <Typography.Paragraph type="secondary">上次处理理由：{issue.handling.reason}</Typography.Paragraph>}
+                      {issue.kind === 'answer' && <Space wrap style={{ marginBottom: 8 }}>
+                        <Select aria-label={`为问题 ${issue.key} 选择候选题`} showSearch optionFilterProp="label" placeholder="选择答案所属题目" style={{ width: 340 }}
+                          value={answerClaimTargets[issue.key]} options={imageTargetOptions}
+                          onChange={(itemId: string) => setAnswerClaimTargets((current) => ({ ...current, [issue.key]: itemId }))} />
+                        <Button type="primary" size="small" disabled={!canEditCandidates || !answerClaimTargets[issue.key]} loading={answerSourceBusy === issue.key}
+                          onClick={() => void claimS5Answer(issue)}>认领此答案</Button>
+                      </Space>}
+                      <Space wrap>
+                        <Button size="small" disabled={!canEditCandidates} onClick={() => setIssueDraft({ issue, decision: 'acknowledged', reason: issue.handling?.valid ? issue.handling.reason || '' : '' })}>记录处理决定</Button>
+                        {issue.handling && !issue.handling.valid && <Typography.Text type="warning">原决定所依据的内容已变化，请重新核对。</Typography.Text>}
+                      </Space>
                     </Card>
                   })}
                 </div>
@@ -1077,13 +1458,38 @@ export function QuestionImportPage() {
         </div>
       </details>}
       {!!duplicateCandidates.length && <Typography.Paragraph><Button size="small" onClick={() => setShowDuplicateCandidates((value) => !value)}>{showDuplicateCandidates ? '收起' : '显示'}疑似重复候选 {duplicateCandidates.length} 条</Button><Typography.Text type="secondary"> 原始记录仍保留；确认不是重复题时可展开核对。</Typography.Text></Typography.Paragraph>}
+      <Space wrap style={{ marginBottom: 12 }}>
+        <Select aria-label="筛选候选题" value={candidateFilter} style={{ width: 220 }} onChange={setCandidateFilter}
+          options={[{ value: 'all', label: '全部候选' }, { value: 'pending', label: '待审核' },
+            { value: 'approved', label: '已确认' }, { value: 'rejected', label: '已拒绝' },
+            { value: 'skipped_duplicate', label: '已跳过旧题' }, { value: 'exact', label: '命中相同题' },
+            { value: 'nearby', label: '命中相似题' }, { value: 'stale', label: '查重已过期' },
+            { value: 'missing_tag', label: '标签不完整' }, { value: 'missing_answer', label: '缺少答案' },
+            { value: 'figure', label: '题图待核对' }, { value: 'issue', label: '问题待处理' }]} />
+        <Input.Search aria-label="搜索候选题" allowClear value={candidateQuery} placeholder="题号或题干关键词" style={{ width: 260 }}
+          onChange={(event) => setCandidateQuery(event.target.value)} />
+        <Typography.Text type="secondary">显示 {visibleCandidates.length} / {candidateSource.length} 道题</Typography.Text>
+      </Space>
       <Table className="question-import-candidates-table" rowKey="id" dataSource={visibleCandidates}
-        size="small" tableLayout="fixed" scroll={{ x: 1250 }} pagination={{ pageSize: 10 }} columns={[
+        size="small" tableLayout="fixed" scroll={{ x: 1400 }} pagination={{ pageSize: 10 }} columns={[
         { title: '序号', dataIndex: 'ordinal', width: 70 },
         { title: '原题号', render: (_, item: Candidate) => item.payload.source.original_number || '未识别', width: 90 },
         { title: '原页', render: (_, item: Candidate) => `${item.payload.source.page_start ?? '?'}–${item.payload.source.page_end ?? '?'}`, width: 90 },
         { title: '题目、题图与答案', render: (_, item: Candidate) => renderCandidateContent(item) },
         { title: '题库查重结果', render: (_, item: Candidate) => renderCatalogReviewContent(item), width: 380 },
+        { title: 'S5 审核', width: 200, render: (_, item: Candidate) => {
+          const review = s5Reviews?.items.find((row) => row.item_id === item.id)
+          const skipped = item.payload.teacher_decision === 'skipped_duplicate'
+          return <Space direction="vertical" size={4}>
+            {item.is_fake ? <Tag>测试题，不参与审核</Tag> : skipped ? <Tag color="orange">已跳过旧题</Tag>
+              : review?.valid && review.decision === 'approved' ? <Tag color="green">{review.route === 'direct_pool' ? '已确认拟直接入池' : '已确认仅题目入库'}</Tag>
+                : review?.valid && review.decision === 'rejected' ? <Tag color="red">已拒绝</Tag>
+                  : <Tag color="default">待审核</Tag>}
+            {review?.question_event_id && !review.valid && <Typography.Text type="warning">旧审核已失效</Typography.Text>}
+            {review?.reason && review.valid && <Typography.Text type="secondary">理由：{review.reason}</Typography.Text>}
+            {!item.is_fake && !skipped && <Button size="small" disabled={!canEditCandidates} onClick={() => openS5Review(item)}>预检与审核</Button>}
+          </Space>
+        } },
       ]} />
     </Modal>
     <Modal title="新增候选题" open={newCandidateOpen} width={760}

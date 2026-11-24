@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from app.models import QuestionImportAuditEvent, QuestionImportBatch, QuestionImportItem
 from app.services.question_import import ImportProblem, OWNER_SCOPE, active_candidate
 from app.services.question_import_s3 import linked_source_answer_item, source_answer_identity
-from app.services.question_import_s3_images import list_images
 
 MAX_LIST_CANDIDATES = 8
 
@@ -199,14 +198,6 @@ def list_review_issues(db: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]
     for event in events:
         latest.setdefault(event.issue_key, event)
     issue_rows = _issue_rows(batch, items)
-    for asset in list_images(db, batch_id)["assets"]:
-        if asset["candidate_item_ids"] or asset["duplicate_of_kept_image"]:
-            continue
-        issue_rows.append({"key": "image:" + asset["asset_id"], "kind": "image",
-                           "unit_index": None, "summary": "待认领题图",
-                           "content": {"page": asset.get("page"), "asset_id": asset["asset_id"],
-                                       "source_file_id": asset.get("source_file_id"),
-                                       "sha256": asset.get("sha256")}, "candidates": []})
     result = []
     for issue in issue_rows:
         pages = _pages_for_issue(issue)
@@ -218,7 +209,6 @@ def list_review_issues(db: Session, batch_id: uuid.UUID) -> list[dict[str, Any]]
                        "answer_number": issue["content"].get("original_number") if issue["kind"] in {"answer", "answer_match_warning", "answer_match_disagreement"} else None,
                        "source_answer": issue["content"] if issue["kind"] in {"answer", "answer_match_warning", "answer_match_disagreement"} else None,
                        "model_reason": issue.get("model_reason"),
-                       "asset_id": issue["content"].get("asset_id") if issue["kind"] == "image" else None,
                        "model_suggestion": issue.get("model_suggestion"),
                        "current_item_id": issue.get("current_item_id"),
                        "evidence_quote": issue.get("evidence_quote"),
