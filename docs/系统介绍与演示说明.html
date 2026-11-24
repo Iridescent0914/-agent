@@ -1,0 +1,101 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>数学教学辅助系统介绍</title><style>
+:root { color-scheme: light; --ink:#1c293b; --muted:#5c6a7b; --line:#dbe3ec; --accent:#245c92; }
+* { box-sizing:border-box; } html { scroll-behavior:smooth; }
+body { margin:0; color:var(--ink); background:#edf1f5; font:17px/1.85 "Microsoft YaHei", "PingFang SC", sans-serif; }
+.toolbar { background:#183a5c; color:white; padding:12px max(24px, calc((100vw - 1440px)/2 + 40px)); font-size:13px; }
+main { width:calc(100% - 48px); max-width:1440px; margin:24px auto; padding:44px 40px; background:white; border:1px solid var(--line); }
+h1 { margin:0 0 12px; font-size:32px; line-height:1.4; letter-spacing:.03em; }
+h1 + p { color:var(--muted); font-size:13px; margin-bottom:28px; }
+h2 { margin:38px 0 14px; padding-bottom:8px; font-size:22px; border-bottom:2px solid var(--line); scroll-margin-top:20px; }
+h3 { font-size:18px; margin:24px 0 8px; } p { margin:12px 0; } a { color:var(--accent); text-decoration:none; overflow-wrap:anywhere; }
+strong { font-weight:650; } code { font-family:Consolas,monospace; font-size:.87em; padding:2px 5px; background:#f0f4f8; border-radius:3px; overflow-wrap:anywhere; }
+.toc { margin:28px 0; padding:18px 22px; background:#f6f8fb; border:1px solid var(--line); }
+.toc strong { display:block; margin-bottom:8px; } .toc a { display:inline-block; margin-right:20px; font-size:13px; }
+.table-wrap { overflow-x:auto; margin:18px 0; } table { width:100%; border-collapse:collapse; font-size:14px; line-height:1.75; }
+th,td { border:1px solid var(--line); padding:10px 13px; vertical-align:top; text-align:left; } th { background:#eef4fa; font-weight:650; }
+td:first-child { width:26%; } li { margin:9px 0; } ol { padding-left:24px; }
+.screenshot { margin:22px 0 28px; border:1px solid #c8d6e4; border-radius:5px; overflow:hidden; break-inside:avoid; }
+.screenshot h4 { margin:0; padding:10px 16px; font-size:15px; background:#eef4fa; color:#224c74; }
+.shot-notes { padding:8px 16px; color:var(--muted); font-size:13px; line-height:1.7; } .shot-notes p { margin:5px 0; }
+.shot-empty { margin:4px 16px 16px; min-height:260px; border:2px dashed #b7c9da; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:6px; color:#7b91a6; background:#fbfcfe; }
+.shot-number { font-size:34px; font-weight:300; color:#b1c2d3; } .shot-figure { margin:12px 16px 20px; break-inside:avoid; } .shot-figure img { display:block; max-width:100%; height:auto; margin:0 auto; } figcaption { margin-top:8px; text-align:center; color:var(--muted); font-size:13px; }
+@media(max-width:700px) { main { width:100%; margin:0; padding:25px 20px; border:0; } h1 { font-size:26px; } h2 { font-size:20px; } .toolbar { padding:10px 20px; } .shot-empty { min-height:190px; } }
+@page { size:A4; margin:18mm 17mm; }
+@media print { body { background:white; font-size:10.5pt; line-height:1.75; } main { width:100%; margin:0; padding:0; border:0; max-width:none; } .toolbar,.toc { display:none; } h1 { font-size:22pt; } h2 { font-size:15pt; break-after:avoid; } h3,h4 { break-after:avoid; } .screenshot { border-radius:0; break-inside:auto; } .shot-empty { min-height:53mm; } .shot-figure img { max-height:220mm; object-fit:contain; } table { font-size:9pt; } tr { break-inside:avoid; } .table-wrap { overflow:visible; } }
+</style></head><body><div class="toolbar">系统介绍与演示说明 · 已插入17张截图 · 可通过浏览器打印保存为PDF</div><main><h1>数学教学辅助系统介绍</h1>
+<p>更新日期：2026年11月24日。适用版本：当前开发与内部试用版。</p>
+<nav class="toc" aria-label="目录"><strong>内容目录</strong><a href="#section-1">一 系统定位</a><a href="#section-2">二 系统解决的主要问题</a><a href="#section-3">三 题库与知识标签管理</a><a href="#section-4">四 分层作业与个性化组卷</a><a href="#section-5">五 独立周总结与持续回顾</a><a href="#section-6">六 学生画像与班级学情</a><a href="#section-7">七 学生版试卷与答题区打印</a><a href="#section-8">八 多页视觉识别与整卷核对</a><a href="#section-9">九 规则判分与结合题干的答案判断</a><a href="#section-10">十 批量资料处理与题库查重</a><a href="#section-11">十一 技术实现与记录保障</a><a href="#section-12">十二 当前完成情况与下一步</a><a href="#section-13">附录 截图与现场演示安排</a></nav>
+<h2 id="section-1">一 系统定位</h2>
+<p>本系统面向中学数学教师，围绕题目整理、作业设计、纸面作答采集、答案批改和学情分析提供辅助。教师可以从经过审核的题库中组织班级作业，为不同学生安排个性化练习和历史错题回顾；学生完成纸面作业后，系统通过视觉模型提取答案，再由规则判分与文本模型建议辅助教师核对，最终更新学生画像和班级学情。</p>
+<p>目前，日常组卷、打印、作答录入、教师复核和画像更新的主要流程已实现。视觉提取和结合题干的答案判断已接入阿里云百炼，并完成少量真实作业试用；模型质量仍需扩大样本验证。批量资料处理已实现候选题提取、整理和查重，完整审核工作台及正式入库事务仍在后续开发范围。</p>
+<p>系统首页与各模块可从本地前端入口 <code>http://localhost:5173</code> 进入。</p>
+<section class="screenshot" aria-label="截图 01 系统首页与功能导航" data-placeholder="SHOT_01"><h4>截图 01 系统首页与功能导航</h4><div class="shot-notes"><p>页面入口：顶部导航 → 学情，路径 <code>/analytics</code>。</p><p>取景建议：展示系统导航、班级筛选、知识点正确率图和素养雷达图，说明系统覆盖题库、批量导入、学生、班级、组卷和批改。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2001%20%E7%B3%BB%E7%BB%9F%E9%A6%96%E9%A1%B5%E4%B8%8E%E5%8A%9F%E8%83%BD%E5%AF%BC%E8%88%AA.png" alt="图01 系统首页与功能导航"><figcaption>图01 系统首页与功能导航</figcaption></figure></section>
+<h2 id="section-2">二 系统解决的主要问题</h2>
+<p>教师日常需要从多份资料中整理题目，按教学进度和学生差异布置练习，再将纸面作答结果转化为可持续使用的学情记录。系统把这些环节连接起来，使题目、作业、作答和画像能够对应到同一条教学记录。</p>
+<div class="table-wrap"><table><thead><tr><th>教学环节</th><th>系统提供的支持</th></tr></thead><tbody><tr><td>题目准备</td><td>按年级、章节、知识点和核心素养组织题库，保存题图、参考答案和审核状态</td></tr><tr><td>作业设计</td><td>组合必做题、个性化题和历史回顾题，预览库存缺口并调整草稿</td></tr><tr><td>纸面作答采集</td><td>生成带答题区的学生版试卷，支持多页照片上传、补拍和答案提取</td></tr><tr><td>答案批改</td><td>先使用确定性规则，再对允许范围内的答案提供结合题干的判断建议</td></tr><tr><td>学情分析</td><td>根据有效批改结果更新学生知识点表现、动态素养分和班级统计</td></tr></tbody></table></div>
+<p>当前常规作业流程为：</p>
+<p><strong>审核题库 → 教师配置作业 → 逐学生生成试卷 → 打印与作答 → 上传照片或手动录入 → 教师核对批改 → 更新画像 → 安排后续练习。</strong></p>
+<h2 id="section-3">三 题库与知识标签管理</h2>
+<p>系统使用统一的数学知识目录组织题目。每道题关联主属知识点，并由目录确定相应的年级、章节和核心素养，减少同一题目在题库、组卷和画像中使用不同标签的情况。当前共享样例题库覆盖“有理数”和“简单的代数式”两个章节，共180组题，其中77组处于可自动组卷状态；这是共享基线，后续可随审核和同步继续扩充。</p>
+<p>教师可以筛选、查看和编辑已有题目，包括题干、选项、题图、难度、参考答案及判分规则。多空题按“小题—空位”保存答案；已支持普通文本、数值和可视化公式输入。参考答案经过审核后，符合要求的选择、填空和判断题才能进入日常自动组卷池。</p>
+<p>题目内容与答案审核分别保留记录。教师可保存审核草稿、确认入池或撤回修改；题库内容后续变化时，已有试卷仍保留发布时的题目快照，历史作答不会随之被静默替换。</p>
+<section class="screenshot" aria-label="截图 02 题库筛选与题目列表" data-placeholder="SHOT_02"><h4>截图 02 题库筛选与题目列表</h4><div class="shot-notes"><p>页面入口：顶部导航 → 题库，路径 <code>/questions</code>。</p><p>取景建议：展示年级、章节、知识点等筛选，以及题型、难度、审核或入池状态。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2002%20%E9%A2%98%E5%BA%93%E7%AD%9B%E9%80%89%E4%B8%8E%E9%A2%98%E7%9B%AE%E5%88%97%E8%A1%A8.png" alt="图02 题库筛选与题目列表"><figcaption>图02 题库筛选与题目列表</figcaption></figure></section>
+<section class="screenshot" aria-label="截图 03 题目详情与答案审核" data-placeholder="SHOT_03"><h4>截图 03 题目详情与答案审核</h4><div class="shot-notes"><p>页面入口：题库 → 选择一道多空题 → 题目详情。</p><p>取景建议：展示题干或题图、逐小题逐空参考答案，以及审核操作；优先选择公式和题图均能正常显示的题目。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2003%20%E9%A2%98%E7%9B%AE%E8%AF%A6%E6%83%85%E4%B8%8E%E7%AD%94%E6%A1%88%E5%AE%A1%E6%A0%B8.png" alt="图03 题目详情与答案审核"><figcaption>图03 题目详情与答案审核</figcaption></figure></section>
+<h2 id="section-4">四 分层作业与个性化组卷</h2>
+<p>普通作业由必做题、个性化题和历史回顾题三个模块组成。教师先选择班级、学生及题目范围，系统预检后显示每名学生的推荐结果和缺题情况，确认后生成草稿。</p>
+<div class="table-wrap"><table><thead><tr><th>模块</th><th>当前组卷方式</th></tr></thead><tbody><tr><td>必做题</td><td>按教师指定的年级、章节、知识点、核心素养和难度题量选题，初始作为全班共同练习</td></tr><tr><td>个性化题</td><td>根据学生当前动态素养分和所选知识范围，每人安排3道题；题位按基础星级、再提高一级和两级设置，最高五星</td></tr><tr><td>历史回顾题</td><td>根据教师指定作业中三星及以下的必做错题，安排同知识点、同难度的回顾题，并排除来源试卷中的重复题</td></tr></tbody></table></div>
+<p>系统会显示选题依据和库存不足的具体原因。个性化模块无法凑齐规定题位时阻止创建，教师可以调整范围或补充题库。生成草稿后支持备选换题、删题和调整顺序；发布后如需修改，通过新版本继续处理，保留原有试卷与作答记录。</p>
+<p>个性化能力以当前题库库存为基础。系统按学生分别选题，并控制近期重复和班级内题目复用；实际题目差异取决于知识范围、难度和可用库存。</p>
+<section class="screenshot" aria-label="截图 04 创建作业与模块配置" data-placeholder="SHOT_04"><h4>截图 04 创建作业与模块配置</h4><div class="shot-notes"><p>页面入口：顶部导航 → 组卷 → 创建作业，路径 <code>/assignments/new</code>。</p><p>取景建议：展示必做、个性化、历史回顾三个模块，以及班级、知识点和难度配置。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2004%20%E5%88%9B%E5%BB%BA%E4%BD%9C%E4%B8%9A%E4%B8%8E%E6%A8%A1%E5%9D%97%E9%85%8D%E7%BD%AE.png" alt="图04 创建作业与模块配置"><figcaption>图04 创建作业与模块配置</figcaption></figure></section>
+<section class="screenshot" aria-label="截图 05 逐学生预检与试卷草稿" data-placeholder="SHOT_05"><h4>截图 05 逐学生预检与试卷草稿</h4><div class="shot-notes"><p>页面入口：创建作业 → 执行预检；生成后也可进入学生试卷详情。</p><p>取景建议：展示每名学生的三个模块题量、个性化依据和缺口提示；也可用两名学生的试卷对比展示个性化差异。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2005%20%E9%80%90%E5%AD%A6%E7%94%9F%E9%A2%84%E6%A3%80%E4%B8%8E%E8%AF%95%E5%8D%B7%E8%8D%89%E7%A8%BF.png" alt="图05 逐学生预检与试卷草稿"><figcaption>图05 逐学生预检与试卷草稿</figcaption></figure></section>
+<h2 id="section-5">五 独立周总结与持续回顾</h2>
+<p>系统支持单独创建周总结作业。教师从当前班级近期已全部批改完成的普通作业中选择来源，系统逐学生识别历史回顾中再次答错的知识点，为每个需要回顾的知识点安排两道题。当前周总结使用固定三星题。</p>
+<p>知识点回顾标签关联具体作答链路：必做题答错后，历史回顾再次答错，形成“否”标签；周总结中同知识点仍出错，形成“弱”标签。教师可以据此区分需要继续巩固的知识点。没有相应回顾目标的学生会显示无需回顾。</p>
+<section class="screenshot" aria-label="截图 06 周总结预检" data-placeholder="SHOT_06"><h4>截图 06 周总结预检</h4><div class="shot-notes"><p>页面入口：顶部导航 → 组卷 → 创建周总结，路径 <code>/assignments/weekly-summary/new</code>。</p><p>取景建议：展示来源作业选择、需回顾学生、涉及知识点和题目库存缺口。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2006%20%E5%91%A8%E6%80%BB%E7%BB%93%E9%A2%84%E6%A3%80.png" alt="图06 周总结预检"><figcaption>图06 周总结预检</figcaption></figure></section>
+<h2 id="section-6">六 学生画像与班级学情</h2>
+<h3>学生画像</h3>
+<p>学生画像展示历史累计正确率、分知识点正确率、知识点回顾标签和九维动态素养分，并支持与班级平均水平对照。九项素养为抽象能力、运算能力、几何直观、空间观念、推理能力、数据观念、模型观念、应用意识和创新意识。</p>
+<p>历史累计正确率覆盖全部年级、章节和作答时间，按已确认的有效题组统计。同一道题的不同次练习分别计入；一次作答经过多次改判，只取当前有效结果。待复核记录不计入答对、答错或分母。多空题仍沿用整题组判定口径。</p>
+<p>动态素养分由题目关联素养、难度及有效作答记录计算，作为后续练习安排的参考。无证据维度保留初始化状态，不能解释为已经测得的实际能力。教师确认、修改答案或改判后，系统按当前有效证据更新画像。</p>
+<section class="screenshot" aria-label="截图 07 学生画像与历史累计正确率" data-placeholder="SHOT_07"><h4>截图 07 学生画像与历史累计正确率</h4><div class="shot-notes"><p>页面入口：顶部导航 → 学生 → 选择学生 → 画像。</p><p>取景建议：展示历史累计正确率、学生与班级知识点正确率对比、回顾标签和素养雷达图；页面较长时可分上下两张截图。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2007%20%E5%AD%A6%E7%94%9F%E7%94%BB%E5%83%8F.png" alt="图07-1 历史累计正确率与知识点正确率"><figcaption>图07-1 历史累计正确率与知识点正确率</figcaption></figure><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2007%20%E5%8E%86%E5%8F%B2%E7%B4%AF%E8%AE%A1%E6%AD%A3%E7%A1%AE%E7%8E%87.png" alt="图07-2 知识点回顾标签与素养能力"><figcaption>图07-2 知识点回顾标签与素养能力</figcaption></figure></section>
+<h3>班级学情</h3>
+<p>班级学情页面汇总知识点平均正确率、素养能力平均水平和作业进度。教师可以按班级、年级和章节查看，并进入具体学生进一步分析。暂无有效作答的知识点显示未评估状态，避免将缺少证据误读为零分。</p>
+<p>作业进度区分未提交、待复核、已完成及历史版本，帮助教师定位尚未提交或需要人工处理的学生。</p>
+<section class="screenshot" aria-label="截图 08 班级学情与作业进度" data-placeholder="SHOT_08"><h4>截图 08 班级学情与作业进度</h4><div class="shot-notes"><p>页面入口：顶部导航 → 学情，路径 <code>/analytics</code>。</p><p>取景建议：重点截取知识点表现、素养平均水平和某次作业的学生进度；与截图01相比，突出具体教学数据。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2008%20%E7%8F%AD%E7%BA%A7%E5%AD%A6%E6%83%85%E4%B8%8E%E4%BD%9C%E4%B8%9A%E8%BF%9B%E5%BA%A6.png" alt="图08 班级学情与作业进度"><figcaption>图08 班级学情与作业进度</figcaption></figure></section>
+<h2 id="section-7">七 学生版试卷与答题区打印</h2>
+<p>系统统一生成一份学生版试卷，前面为题目，后面另页开始答题区。普通作业答题区按必做题、个性化题和历史回顾分块，并依据发布参考答案的小题、空位结构排版，保留原试卷题号。</p>
+<p>答题页包含试卷短码、版本、产物标识、页码和定位标记，便于后续照片归属与逐空对应。多页答题区使用保存的页清单，打印内容与识别空位保持关联。教师可通过同一打印入口打印或保存PDF。</p>
+<section class="screenshot" aria-label="截图 09 学生版试卷与分区答题区" data-placeholder="SHOT_09"><h4>截图 09 学生版试卷与分区答题区</h4><div class="shot-notes"><p>页面入口：组卷 → 作业详情 → 学生试卷 → 打印或保存PDF。</p><p>取景建议：并列展示题目页和答题页，突出答题区独立起页、三个模块、小题空号及页码标记。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2009%20%E5%AD%A6%E7%94%9F%E7%89%88%E8%AF%95%E5%8D%B7.png" alt="图09-1 学生版试卷"><figcaption>图09-1 学生版试卷</figcaption></figure><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2009%20%E5%88%86%E5%8C%BA%E7%AD%94%E9%A2%98%E5%8C%BA.png" alt="图09-2 分区答题区"><figcaption>图09-2 分区答题区</figcaption></figure></section>
+<h2 id="section-8">八 多页视觉识别与整卷核对</h2>
+<p>系统已接入阿里云百炼视觉模型，支持多页答题照片上传、缺页检查、补拍和有效页切换。每页识别任务保留状态和调用记录，未变化页面的提取结果可以复用。</p>
+<p>视觉模型负责忠实读取学生原写答案，不接收参考答案。提取结果按页、小题和空位组织，区分可读、留白、缺失、不可辨和歧义。教师对照原图核对纸面标识及抄录内容，修正后保存整卷清单，再明确确认录入批改系统。</p>
+<p>已经完成少量真实作业的提取与录入试用。对不同笔迹、拍摄角度、分数和涂改的识别质量仍需后续样本验证；目前保留教师核对环节。</p>
+<section class="screenshot" aria-label="截图 10 多页照片管理与提取结果" data-placeholder="SHOT_10"><h4>截图 10 多页照片管理与提取结果</h4><div class="shot-notes"><p>页面入口：学生试卷详情 → 上传答题照片，或批改页 → 管理答题页照片。</p><p>取景建议：展示已上传页、有效照片、缺页或补拍状态，以及逐页提取任务结果。使用已存在的结果即可，无须为截图重复发起模型调用。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2010%20%E5%A4%9A%E9%A1%B5%E7%85%A7%E7%89%87%E7%AE%A1%E7%90%86.png" alt="图10-1 多页照片管理"><figcaption>图10-1 多页照片管理</figcaption></figure><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2010%20%E6%8F%90%E5%8F%96%E7%BB%93%E6%9E%9C.png" alt="图10-2 提取结果"><figcaption>图10-2 提取结果</figcaption></figure></section>
+<section class="screenshot" aria-label="截图 11 整卷答案核对与录入" data-placeholder="SHOT_11"><h4>截图 11 整卷答案核对与录入</h4><div class="shot-notes"><p>页面入口：同一照片页面 → 合并最新整卷提取结果 → 核对清单。</p><p>取景建议：展示原图与逐空学生答案的对应关系、修正位置及确认录入操作。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2011%20%E6%95%B4%E5%8D%B7%E7%AD%94%E6%A1%88%E6%A0%B8%E5%AF%B9%E4%B8%8E%E5%BD%95%E5%85%A5.png" alt="图11 整卷答案核对与录入"><figcaption>图11 整卷答案核对与录入</figcaption></figure></section>
+<h2 id="section-9">九 规则判分与结合题干的答案判断</h2>
+<p>批改先使用现有规则处理选择、判断、数值及明确的文本匹配。对符合条件的候选答案，系统可以统一发起文本模型判断：读取实际发布题干中的相关条件，标记目标空位，并结合本空参考答案和学生答案，返回“本空可接受”“本空不可接受”或“无法确定”。</p>
+<p>例如，标答为“较大”、学生写“大”时，需要依据本空题干判断含义是否一致。模型建议经教师核对、按题确认采用后，系统追加评分修订并更新画像。当前仍保留原有整题组规则：组内任一空明确错误，整题仍为错误。</p>
+<p>批改页显示采用建议的具体小题、空号、结论及核对信息；后续产生新修订时，旧采用记录作为历史展示。教师可以查看原始答案、当前评分标准和修订历史，继续人工修正或改判。</p>
+<section class="screenshot" aria-label="截图 12 批改结果与逐题答案对照" data-placeholder="SHOT_12"><h4>截图 12 批改结果与逐题答案对照</h4><div class="shot-notes"><p>页面入口：顶部导航 → 批改 → 选择已录入的学生试卷，路径 <code>/grading</code>。</p><p>展示说明：上图为原图来源及批改汇总，下图为学生原答、参考答案和逐题规则判定。某题采用模型建议后，还可在该题下方查看“答案建议采用记录”。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2012%20%E6%89%B9%E6%94%B9%E7%BB%93%E6%9E%9C.png" alt="图12-1 批改结果"><figcaption>图12-1 批改结果</figcaption></figure><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2012%20%E9%80%90%E7%A9%BA%E9%87%87%E7%94%A8%E8%AE%B0%E5%BD%95.png" alt="图12-2 学生原答与参考答案对照及规则判定"><figcaption>图12-2 学生原答与参考答案对照及规则判定</figcaption></figure></section>
+<section class="screenshot" aria-label="截图 13 整卷答案判断建议" data-placeholder="SHOT_13"><h4>截图 13 整卷答案判断建议</h4><div class="shot-notes"><p>页面入口：试卷批改页 → 整卷等价判断。</p><p>取景建议：展开本空题干和位置，展示模型结论、教师采用按钮，以及无法采用时的具体原因。</p></div><figure class="shot-figure"><img src="%E7%B3%BB%E7%BB%9F%E4%BB%8B%E7%BB%8D%E5%9B%BE%E7%89%87%E7%9B%AE%E5%BD%95/%E6%88%AA%E5%9B%BE%2013%20%E6%95%B4%E5%8D%B7%E7%AD%94%E6%A1%88%E5%88%A4%E6%96%AD%E5%BB%BA%E8%AE%AE.png" alt="图13 整卷答案判断建议"><figcaption>图13 整卷答案判断建议</figcaption></figure></section>
+<h2 id="section-10">十 批量资料处理与题库查重</h2>
+<p>批量导入模块面向PDF和DOCX教学资料，支持只有题目、题答同文件、题答分文件三种场景。当前内部流程已能够提取候选题、整理资料答案、处理题答对应、关联题图并给出标签建议；只有题目的批次可由教师显式发起答案生成，生成结果保留待核对状态。</p>
+<p>候选题先进行批内去重，再与正式题库进行精确匹配和文字相近题召回。页面展示题干、数字、选项和题图差异，教师可保存跳过旧题、保留独立变式或判为无关的决定。候选内容或正式题变化时，旧查重结果会提示过期。相近度用于筛选和排序，不代表重复概率。</p>
+<p>服务端已增加逐题审核、题目与答案审核记录、未认领答案及问题处理，以及提交前只读预检。审核决定与候选版本绑定，内容变化后须重新确认；预检会列出缺标签、关键题图缺失、查重未完成及答案未审核等具体阻断原因。</p>
+<p>该模块目前用于候选题整理和内部审核试验，审核工作台界面、批量确认及正式入库事务尚待完善；候选题不会由当前入口直接成为正式题库内容。后续正式提交还需在事务中复查题库重复及审核依据。</p>
+<section class="screenshot" aria-label="截图 14 批量导入与候选题整理" data-placeholder="SHOT_14"><h4>截图 14 批量导入与候选题整理</h4><div class="shot-notes"><p>页面入口：顶部导航 → 批量导入，路径 <code>/question-imports</code>。</p><p>取景建议：展示批次状态、候选题内容、题图、资料答案或标签建议，优先使用已有处理完成的批次。</p></div><div class="shot-empty"><span class="shot-number">14</span><span>此处插入截图</span></div></section>
+<section class="screenshot" aria-label="截图 15 题库查重证据与教师决定" data-placeholder="SHOT_15"><h4>截图 15 题库查重证据与教师决定</h4><div class="shot-notes"><p>页面入口：批量导入 → 已完成批内去重的批次 → 检查题库重复 → 展开查重证据和决定。</p><p>取景建议：展示一条精确或相近匹配、具体差异及教师决定；避免将“本次未检出匹配”表述为已经证明全库无重复。</p></div><div class="shot-empty"><span class="shot-number">15</span><span>此处插入截图</span></div></section>
+<h2 id="section-11">十一 技术实现与记录保障</h2>
+<div class="table-wrap"><table><thead><tr><th>层次</th><th>当前实现</th></tr></thead><tbody><tr><td>前端交互</td><td>React、TypeScript、Ant Design；使用ECharts展示画像，支持数学公式显示和输入</td></tr><tr><td>后端业务</td><td>FastAPI与SQLAlchemy，统一处理题库、组卷、提交、审核及画像更新</td></tr><tr><td>数据存储</td><td>PostgreSQL保存题目、试卷快照、作答、模型任务及修订记录；Alembic管理结构升级</td></tr><tr><td>模型服务</td><td>阿里云百炼分别承担资料识别、答题照片提取及文本答案判断，不同任务保留独立记录和配置</td></tr><tr><td>运行方式</td><td>Docker Compose统一运行前端、后端和数据库</td></tr><tr><td>验证与评测</td><td>自动化业务测试、浏览器回归，以及模型结果导出、人工标注和离线核对工具</td></tr></tbody></table></div>
+<p>模型任务保留调用次数、费用估算及超时等状态，并通过版本检查防止旧结果覆盖教师新修改。重复提交和重复采用有相应保护，避免同一次作答被反复计入画像。</p>
+<p>协作开发中，题库审核结果可通过共享配置和显式同步工具对齐。代码拉取与数据库同步分开处理，既有历史试卷、作答和画像按各自记录保留。</p>
+<h2 id="section-12">十二 当前完成情况与下一步</h2>
+<div class="table-wrap"><table><thead><tr><th>功能范围</th><th>当前进度</th></tr></thead><tbody><tr><td>题库维护与答案审核</td><td>已实现，首批覆盖两个章节</td></tr><tr><td>普通作业、个性化三题、历史回顾和周总结</td><td>已实现，按题库库存和现有规则生成</td></tr><tr><td>试卷打印、手动录入、规则批改和画像更新</td><td>已实现主要业务流程</td></tr><tr><td>多页视觉提取与结合题干判断</td><td>工程链路已实现，完成少量真实试用，质量验收待扩大样本</td></tr><tr><td>批量资料识别、候选整理与题库查重</td><td>已实现内部流程及服务端逐题审核、只读预检；审核工作台界面、批量确认与正式入库仍待开发</td></tr><tr><td>离线人工标注与结果核对</td><td>已开发工具并生成初始待标注清单，后续需积累人工结论</td></tr></tbody></table></div>
+<p>下一步重点是使用更多真实手写作业，分别核对原始抄录、结合题干的判断及最终评分，记录不同笔迹、拍摄条件和答案形式下的问题。同时继续完成批量题目审核工作台、批量确认与正式入库，完善多教师试用所需的身份和数据归属校验。</p>
+<p>按卷识别错误记录、质量接受阈值、低正确率异常提醒及模型建议自动采用继续暂缓，待业务口径和真实样本结果明确后推进。</p>
+<h2 id="section-13">附录 截图与现场演示安排</h2>
+<p>已插入截图01～13的17张图片，其中07、09、10和12分别使用两张图展示。截图14“批量导入与候选题整理”和15“题库查重证据与教师决定”保留待补充位置。图片统一保存在同级“系统介绍图片目录”，分享或移动本文及HTML版时请一并保留该目录。</p>
+<p>建议现场演示依次进行：</p>
+<ol><li>从班级学情进入学生画像，说明目前的知识点表现和练习需求。</li><li>查看题库和答案审核状态，再创建包含三个模块的作业。</li><li>打开学生试卷及打印预览，展示题目与分区答题区。</li><li>查看已有多页照片和提取结果，演示核对后录入的流程。</li><li>在批改页查看规则结果、模型建议及逐空采用记录，再回到学生画像。</li><li>展示批量资料候选整理和查重，说明正式入库仍在后续开发范围。</li></ol>
+<p>篇幅较短的汇报可优先采用截图04、07、09、11、12和15，分别说明组卷、画像、打印、识别核对、批改和题库整理。</p>
+<p>相关开发记录：<a href="../README.md">项目总览</a>、<a href="阶段三-画像与个性化题目/README.md">阶段三画像与个性化</a>、<a href="阶段四-批量题目入库/yan/阶段开发计划.md">阶段四批量导入计划</a>、<a href="阶段六-答题卡与识别批改/lin/阶段开发计划.md">阶段六识别批改计划</a>。</p></main></body></html>
