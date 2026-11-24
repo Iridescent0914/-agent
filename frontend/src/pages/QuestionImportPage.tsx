@@ -62,8 +62,9 @@ type Candidate = {
 }
 
 type S2Config = { ready: boolean; model: string; max_budget_cny: number; max_output_tokens: number; pages_per_unit: number; overlap_pages: number }
-type LabelCatalogPoint = { code: string; name: string; grade: string; chapter_name: string; section: string; core_literacies: string[] }
+type LabelCatalogPoint = { code: string; name: string; grade: string; chapter_code: string; chapter_name: string; section: string; core_literacies: string[] }
 type LabelEdit = { question_type?: string; difficulty?: number | null; main_kp_code?: string | null; is_required?: boolean }
+type LabelScope = { grade: string | null; chapter_code: string | null }
 type CandidateEditor = {
   itemId: string
   revision: number
@@ -203,6 +204,7 @@ export function QuestionImportPage() {
   const [unmatchedImageTargets, setUnmatchedImageTargets] = useState<Record<string, string>>({})
   const [labelCatalog, setLabelCatalog] = useState<LabelCatalogPoint[]>([])
   const [labelEdits, setLabelEdits] = useState<Record<string, LabelEdit>>({})
+  const [labelScopes, setLabelScopes] = useState<Record<string, LabelScope>>({})
   const [labelSaving, setLabelSaving] = useState<string | null>(null)
   const [candidateEditor, setCandidateEditor] = useState<CandidateEditor | null>(null)
   const [candidateSaving, setCandidateSaving] = useState(false)
@@ -219,6 +221,8 @@ export function QuestionImportPage() {
   function closeCandidateModal() {
     setCandidateEditor(null)
     setNewCandidateOpen(false)
+    setLabelEdits({})
+    setLabelScopes({})
     setSelectedBatchId(null)
     setCatalogReviewResult(null)
   }
@@ -574,6 +578,7 @@ export function QuestionImportPage() {
           await apiPost(`/question-imports/${batch.id}/s3/${rerun ? 'rerun-labels' : 'start-labels'}`,
             { budget_cny: budget }, undefined, { 'X-Import-S2-Token': operatorToken })
           setLabelEdits({})
+          setLabelScopes({})
           message.success('标签建议已排队')
           await reload(batch.id)
         } catch (error) { message.error(error instanceof Error ? error.message : '启动标签建议失败') }
@@ -585,11 +590,18 @@ export function QuestionImportPage() {
     if (!selectedBatch || !canEditCandidates) return
     const changes = labelEdits[item.id]
     if (!changes || !Object.keys(changes).length) return
+    const scope = labelScopes[item.id]
+    if (scope && !labelCatalog.some((point) => point.code === changes.main_kp_code
+      && point.grade === scope.grade && point.chapter_code === scope.chapter_code)) {
+      message.warning('请依次选择年级、章和知识点后再保存')
+      return
+    }
     setLabelSaving(item.id)
     try {
       await apiPatch(`/question-imports/${selectedBatch.id}/items/${item.id}`,
         { expected_revision: item.revision, changes: { tags: changes } })
       setLabelEdits((current) => { const copy = { ...current }; delete copy[item.id]; return copy })
+      setLabelScopes((current) => { const copy = { ...current }; delete copy[item.id]; return copy })
       await viewCandidates(selectedBatch.id)
       message.success('标签调整已保存，仍需教师审核后才能入库')
     } catch (error) { message.error(error instanceof Error ? error.message : '保存标签失败') }
@@ -699,6 +711,7 @@ export function QuestionImportPage() {
     ? reviewIssues.filter((issue) => issue.kind === 'answer' && issue.source_answer).map((issue) => issue.source_answer!)
     : sourceAnswers
   const linkedSourceQuestionCount = candidates.filter((item) => item.payload.answers?.some((answer) => answer.answer_source === 'source_extracted')).length
+  const teacherReviewIssues = reviewIssues.filter((issue) => issue.kind !== 'image')
   const reviewCategories = [
     { kind: 'answer', title: '答案归属待核对' },
     { kind: 'answer_match_disagreement', title: '模型建议更换已关联题目' },
@@ -732,35 +745,24 @@ export function QuestionImportPage() {
     label: `第 ${candidate.ordinal} 题${candidate.payload.source.original_number ? `（原题号 ${candidate.payload.source.original_number}）` : ''}${candidate.payload.source.page_start ? ` · 第 ${candidate.payload.source.page_start} 页` : ''} · ${candidate.payload.content.question_text.replace(/\s+/g, ' ').slice(0, 48)}`,
   }))
 
-  function renderCandidateContent(item: Candidate) {
-    const assetIds = item.payload.content.asset_ids || []
-    const tags = item.payload.tags || {}
-    const suggestion = item.payload.label_suggestion
-    const edit = labelEdits[item.id] || {}
-    const selectedKp = labelCatalog.find((point) => point.code === tags.main_kp_code)
-    const editedKpCode = edit.main_kp_code === undefined ? tags.main_kp_code : edit.main_kp_code
-    const visibleKpCode = labelCatalog.some((point) => point.code === editedKpCode) ? editedKpCode : undefined
-    const labelTask = selectedBatch?.checkpoint?.s3?.labels
-    const skippedByTask = labelTask?.skipped_item_ids?.includes(item.id) || labelTask?.groups?.some((group) => group.skipped_item_ids?.includes(item.id))
-    const clues = item.payload.extraction?.diagram_clues || []
-    const figureMissing = !assetIds.length && (clues.length > 0 || ['complete', 'uncertain'].includes(item.payload.extraction?.figure_status || ''))
-    const removedCandidateImages = unmatchedImages.filter((asset) => asset.removed_candidate_for_item_ids?.includes(item.id))
+  function renderCatalogReviewContent(item: Candidate) {
     const catalogRow = catalogReviewResult?.items.find((row) => row.item_id === item.id)
-    const catalogStale = !!catalogRow && (catalogRow.candidate_stale || catalogRow.catalog_stale)
-    return <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}>
-      {catalogRow && <div style={{ width: '100%' }}>
+    if (!catalogRow) return <Typography.Text type="secondary">未检查</Typography.Text>
+    const catalogStale = catalogRow.candidate_stale || catalogRow.catalog_stale
+    return <div className="question-import-catalog-result">
+      <div style={{ width: '100%' }}>
         {catalogStale && <Typography.Text type="warning">候选题或正式题内容已变化，查重决定暂不可用；请重新检查题库重复。</Typography.Text>}
         <div><Tag color={catalogRow.matches.some((match) => match.kind === 'exact') ? 'warning' : 'default'}>
-          题库精确命中 {catalogRow.matches.filter((match) => match.kind === 'exact').length} 道
-        </Tag><Typography.Text type="secondary">需核对的文字近邻 {catalogRow.matches.filter((match) => match.kind === 'nearby').length} 道{catalogRow.near_review_min_similarity != null ? `（展示门槛 ${Math.round(catalogRow.near_review_min_similarity * 100)}%）` : ''}；相近度仅供筛选和排序。</Typography.Text></div>
+          相同题 {catalogRow.matches.filter((match) => match.kind === 'exact').length} 道
+        </Tag><Typography.Text type="secondary">可能相似的题 {catalogRow.matches.filter((match) => match.kind === 'nearby').length} 道</Typography.Text></div>
         {!catalogStale && catalogRow.matches.length === 0 && catalogRow.near_review_min_similarity != null &&
-          <Typography.Text type="secondary">本次没有显示需要核对的正式题，可按新题候选继续审核；文字筛选不能证明题库中没有同题，缺图或题干文字不足时请人工核对。</Typography.Text>}
+          <Typography.Text type="secondary">这次没有找出需要核对的题，可以按新题继续审核。如果题目主要靠图片表达，或题干文字很少，请人工再核对。</Typography.Text>}
         {catalogRow.matches.length > 0 && <details>
-          <summary>查看题库查重证据和决定</summary>
+          <summary>查看相同或相似的题并处理</summary>
           {catalogRow.matches.map((match) => <Card key={match.id} size="small" style={{ marginTop: 8 }}>
             <Space wrap><Typography.Text strong>题库编号 {match.original_qid}</Typography.Text>
               {match.question_id && <a href={`/questions/${match.question_id}`} target="_blank" rel="noopener noreferrer">打开正式题详情核对题图</a>}
-              <Tag color={match.kind === 'exact' ? 'warning' : 'blue'}>{match.kind === 'exact' ? '精确重复' : '索引近邻'}</Tag>
+              <Tag color={match.kind === 'exact' ? 'warning' : 'blue'}>{match.kind === 'exact' ? '相同题' : '可能相似'}</Tag>
               <Tag color={match.decision === 'pending' ? 'default' : 'green'}>{match.decision === 'skip_existing' ? '已决定跳过此题' : match.decision === 'keep_variant' ? '已确认独立变式' : match.decision === 'unrelated' ? '已判为无关题' : '待决定'}</Tag>
               {(match.catalog_stale || match.catalog_unverifiable) && <Tag color="warning">{match.catalog_stale ? '正式题内容已变化' : '正式题图片无法可靠比对'}</Tag>}
             </Space>
@@ -779,7 +781,33 @@ export function QuestionImportPage() {
             </Space>}
           </Card>)}
         </details>}
-      </div>}
+      </div>
+    </div>
+  }
+
+  function renderCandidateContent(item: Candidate) {
+    const assetIds = item.payload.content.asset_ids || []
+    const tags = item.payload.tags || {}
+    const suggestion = item.payload.label_suggestion
+    const edit = labelEdits[item.id] || {}
+    const savedKp = labelCatalog.find((point) => point.code === tags.main_kp_code)
+    const scope = labelScopes[item.id]
+    const selectedGrade = scope ? scope.grade : savedKp?.grade || tags.grade || null
+    const selectedChapterCode = scope ? scope.chapter_code : savedKp?.chapter_code || tags.chapter_code || null
+    const gradeOptions = [...new Set(labelCatalog.map((point) => point.grade))].map((grade) => ({ value: grade, label: grade }))
+    const chapterOptions = [...new Map(labelCatalog.filter((point) => point.grade === selectedGrade)
+      .map((point) => [point.chapter_code, { value: point.chapter_code, label: point.chapter_name }])).values()]
+    const knowledgePointOptions = labelCatalog.filter((point) => point.grade === selectedGrade && point.chapter_code === selectedChapterCode)
+      .map((point) => ({ value: point.code, label: point.name }))
+    const editedKpCode = edit.main_kp_code === undefined ? tags.main_kp_code : edit.main_kp_code
+    const visibleKpCode = knowledgePointOptions.some((point) => point.value === editedKpCode) ? editedKpCode : undefined
+    const visibleKp = labelCatalog.find((point) => point.code === visibleKpCode)
+    const labelTask = selectedBatch?.checkpoint?.s3?.labels
+    const skippedByTask = labelTask?.skipped_item_ids?.includes(item.id) || labelTask?.groups?.some((group) => group.skipped_item_ids?.includes(item.id))
+    const clues = item.payload.extraction?.diagram_clues || []
+    const figureMissing = !assetIds.length && (clues.length > 0 || ['complete', 'uncertain'].includes(item.payload.extraction?.figure_status || ''))
+    const removedCandidateImages = unmatchedImages.filter((asset) => asset.removed_candidate_for_item_ids?.includes(item.id))
+    return <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}>
       <RichQuestionText text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />
       {item.payload.content.options.map((option, index) => <RichQuestionText key={`option-${index}-${option.key}`} text={`${option.key}. ${option.text}`} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />)}
       {images?.files_available && assetIds.map((id) => { const asset = images.assets.find((value) => value.asset_id === id); return asset && selectedBatch && <div key={id}>
@@ -834,21 +862,33 @@ export function QuestionImportPage() {
         {suggestion && (suggestion.uncertainty || suggestion.alternative_kp_codes.length > 0) && <Typography.Paragraph type="secondary">{suggestion.uncertainty ? `不确定：${suggestion.uncertainty}` : ''}{suggestion.alternative_kp_codes.length ? `${suggestion.uncertainty ? '；' : ''}备选知识点：${suggestion.alternative_kp_codes.map((code) => labelCatalog.find((point) => point.code === code)?.name || '知识点名称待加载').join('、')}` : ''}</Typography.Paragraph>}
         {!suggestion && <Typography.Paragraph type="warning">{skippedByTask ? '本题在排队后发生变化，未发送给模型；请在任务完成后人工填写，或全部重新打标签。' : ['queued', 'processing'].includes(labelTask?.status || '') ? '标签任务尚未处理本题；请等待任务完成。' : '本题没有可用的模型建议，请人工填写或全部重新打标签。'}</Typography.Paragraph>}
         <Space wrap>
+          <label>年级：<Select aria-label={`第 ${item.ordinal} 题年级`} disabled={!canEditCandidates} allowClear showSearch optionFilterProp="label" placeholder="选择年级" style={{ width: 140 }} value={selectedGrade}
+            options={gradeOptions}
+            onChange={(value: string | undefined) => {
+              setLabelScopes((current) => ({ ...current, [item.id]: { grade: value ?? null, chapter_code: null } }))
+              setLabelEdits((current) => ({ ...current, [item.id]: { ...current[item.id], main_kp_code: null } }))
+            }} /></label>
+          <label>章：<Select aria-label={`第 ${item.ordinal} 题章`} disabled={!canEditCandidates || !selectedGrade} allowClear showSearch optionFilterProp="label" placeholder={selectedGrade ? '选择章' : '先选年级'} style={{ width: 210 }} value={selectedChapterCode}
+            options={chapterOptions}
+            onChange={(value: string | undefined) => {
+              setLabelScopes((current) => ({ ...current, [item.id]: { grade: selectedGrade, chapter_code: value ?? null } }))
+              setLabelEdits((current) => ({ ...current, [item.id]: { ...current[item.id], main_kp_code: null } }))
+            }} /></label>
+          <label>主属知识点：<Select aria-label={`第 ${item.ordinal} 题主属知识点`} disabled={!canEditCandidates || !selectedChapterCode} allowClear showSearch optionFilterProp="label" placeholder={selectedChapterCode ? '选择知识点' : '先选章'} style={{ width: 300 }} value={visibleKpCode}
+            options={knowledgePointOptions}
+            onChange={(value: string | undefined) => setLabelEdits((current) => ({ ...current, [item.id]: { ...current[item.id], main_kp_code: value ?? null } }))} /></label>
           <label>题型：<Select aria-label={`第 ${item.ordinal} 题题型`} disabled={!canEditCandidates} style={{ width: 120 }} value={edit.question_type ?? tags.question_type ?? 'unknown'}
             options={Object.entries(questionTypeLabels).map(([value, label]) => ({ value, label }))}
             onChange={(value: string) => setLabelEdits((current) => ({ ...current, [item.id]: { ...current[item.id], question_type: value } }))} /></label>
           <label>难度：<Select aria-label={`第 ${item.ordinal} 题难度`} disabled={!canEditCandidates} allowClear placeholder="待确认" style={{ width: 105 }} value={edit.difficulty === undefined ? tags.difficulty : edit.difficulty}
             options={[1, 2, 3, 4, 5].map((value) => ({ value, label: `${value} 星` }))}
             onChange={(value: number | undefined) => setLabelEdits((current) => ({ ...current, [item.id]: { ...current[item.id], difficulty: value ?? null } }))} /></label>
-          <label>主属知识点：<Select aria-label={`第 ${item.ordinal} 题主属知识点`} disabled={!canEditCandidates} allowClear showSearch optionFilterProp="label" placeholder={editedKpCode ? '知识点名称待加载' : '待确认'} style={{ width: 300 }} value={visibleKpCode}
-            options={labelCatalog.map((point) => ({ value: point.code, label: point.name }))}
-            onChange={(value: string | undefined) => setLabelEdits((current) => ({ ...current, [item.id]: { ...current[item.id], main_kp_code: value ?? null } }))} /></label>
           <label>必做：<Select aria-label={`第 ${item.ordinal} 题必做`} disabled={!canEditCandidates} style={{ width: 90 }} value={edit.is_required ?? tags.is_required ?? false}
             options={[{ value: false, label: '否' }, { value: true, label: '是' }]}
             onChange={(value: boolean) => setLabelEdits((current) => ({ ...current, [item.id]: { ...current[item.id], is_required: value } }))} /></label>
-          <Button size="small" disabled={!canEditCandidates || !Object.keys(edit).length} loading={labelSaving === item.id} onClick={() => void saveLabels(item)}>保存调整</Button>
+          <Button size="small" disabled={!canEditCandidates || !Object.keys(edit).length || (!!scope && !visibleKpCode)} loading={labelSaving === item.id} onClick={() => void saveLabels(item)}>保存调整</Button>
         </Space>
-        <div><Typography.Text type="secondary">当前派生标签：年级：{selectedKp?.grade || tags.grade || '待定'}；章：{selectedKp?.chapter_name || (tags.main_kp_code ? '名称待加载' : '待定')}；节：{selectedKp?.section || tags.section || '待定'}；核心素养：{(selectedKp?.core_literacies || tags.core_literacies || []).join('、') || '待定'}；必做：{tags.is_required ? '是' : '否（默认）'}；状态：{item.payload.label_status === 'out_of_scope' ? '超出当前知识点范围或无法判断' : '待核对'}</Typography.Text></div>
+        <div><Typography.Text type="secondary">派生标签：节：{visibleKp?.section || (edit.main_kp_code === undefined ? tags.section : null) || '待定'}；核心素养：{(visibleKp?.core_literacies || (edit.main_kp_code === undefined ? tags.core_literacies : null) || []).join('、') || '待定'}。标签状态：{item.payload.label_status === 'out_of_scope' ? '超出当前知识点范围或无法判断' : '待核对'}</Typography.Text></div>
       </Card>}
       {answerMatchingComplete && !item.payload.answers?.some((answer) => !!answer.text?.trim()) && <Typography.Text type="warning">无答案</Typography.Text>}
       {pendingAnswers.filter((answer) => answer.candidate_item_ids?.length === 1 && answer.candidate_item_ids[0] === item.id).map((answer, index) => <div key={`pending-${index}`} className="question-import-answer"><Typography.Text type="warning">{selectedBatch?.source_mode === 'separate' ? '答案文件' : '原文件'}第 {answer.page_start} 页资料答案（归属待确认）：</Typography.Text><RichQuestionText text={answer.text} assets={[]} /></div>)}
@@ -908,7 +948,7 @@ export function QuestionImportPage() {
            </Space> },
         ]} />
     </Card>
-    <Modal title="候选题、来源答案与页段记录" open={!!selectedBatchId} width={900} footer={<Button onClick={closeCandidateModal}>关闭</Button>} onCancel={closeCandidateModal}>
+    <Modal title="候选题、来源答案与页段记录" open={!!selectedBatchId} width={1300} footer={<Button onClick={closeCandidateModal}>关闭</Button>} onCancel={closeCandidateModal}>
       <Typography.Paragraph>按 PDF 页段自动提取位图，并由模型识别题目和所需题图；题答同文件时还会在同次调用中提取原文答案。缺少独立题图时按模型坐标自动裁剪。已匹配图片直接显示在对应题目处。</Typography.Paragraph>
       <Alert type="info" showIcon style={{ marginBottom: 12 }}
         message={selectedBatch?.source_mode === 'separate'
@@ -921,7 +961,7 @@ export function QuestionImportPage() {
       </Space>}
       {selectedBatch && dedupeStatus === 'completed' && <div style={{ marginBottom: 12 }}>
         <Button loading={exactCatalogBusy} onClick={() => void checkExactCatalog(selectedBatch.id)}>检查题库重复</Button>
-        {catalogReviewResult && <Typography.Text type="secondary"> 已保存 {catalogReviewResult.items.length} 道候选题的查重证据；{catalogReviewResult.items.filter((row) => row.matches.some((match) => match.kind === 'exact')).length} 道精确命中，{catalogReviewResult.items.filter((row) => row.candidate_stale || row.catalog_stale).length} 道结果已过期。索引近邻仅供核对，正式提交仍需重新查库。</Typography.Text>}
+        {catalogReviewResult && <Typography.Text type="secondary"> 已检查 {catalogReviewResult.items.length} 道题；{catalogReviewResult.items.filter((row) => row.matches.some((match) => match.kind === 'exact')).length} 道找到相同题，{catalogReviewResult.items.filter((row) => row.candidate_stale || row.catalog_stale).length} 道检查结果已失效。相似题需要人工判断；正式入库前会再次检查。</Typography.Text>}
       </div>}
       {selectedBatch && selectedBatch.source_mode === 'questions_only' && dedupeStatus === 'completed' && <div style={{ marginBottom: 12 }}>
         {generationTask?.cost_unknown && <Alert type="warning" showIcon message="上次答案生成调用费用未知，请先核对账单；当前不能重新发起调用。" style={{ marginBottom: 8 }} />}
@@ -978,13 +1018,13 @@ export function QuestionImportPage() {
           {selectedBatch?.source_mode !== 'combined' && unit.source_answer_signals?.map((signal, index) => <Typography.Paragraph key={`answer-signal-${index}`} type="warning">第 {signal.page} 页可能含资料答案，请核对上传场景：{signal.evidence}</Typography.Paragraph>)}
         </div>)}
       </details>}
-      {!!reviewIssues.length && <details key={`${selectedBatch?.id}:review-issues`} className="question-import-issues">
-        <summary>待教师核对的问题（{reviewIssues.length} 条）</summary>
+      {!!teacherReviewIssues.length && <details key={`${selectedBatch?.id}:review-issues`} className="question-import-issues">
+        <summary>待教师核对的问题（{teacherReviewIssues.length} 条）</summary>
         <div className="question-import-issues-content">
           <Typography.Paragraph type="secondary">请根据来源页码、原文件和候选题人工核对。</Typography.Paragraph>
           <div className="question-import-issue-types">
             {reviewCategories.map((category) => {
-              const categoryIssues = reviewIssues.filter((issue) => issue.kind === category.kind)
+              const categoryIssues = teacherReviewIssues.filter((issue) => issue.kind === category.kind)
               return <details key={category.kind} className="question-import-issue-group">
                 <summary>{category.title}（{categoryIssues.length} 条）</summary>
                 <div className="question-import-issue-list">
@@ -1037,11 +1077,13 @@ export function QuestionImportPage() {
         </div>
       </details>}
       {!!duplicateCandidates.length && <Typography.Paragraph><Button size="small" onClick={() => setShowDuplicateCandidates((value) => !value)}>{showDuplicateCandidates ? '收起' : '显示'}疑似重复候选 {duplicateCandidates.length} 条</Button><Typography.Text type="secondary"> 原始记录仍保留；确认不是重复题时可展开核对。</Typography.Text></Typography.Paragraph>}
-      <Table rowKey="id" dataSource={visibleCandidates} size="small" pagination={{ pageSize: 10 }} columns={[
+      <Table className="question-import-candidates-table" rowKey="id" dataSource={visibleCandidates}
+        size="small" tableLayout="fixed" scroll={{ x: 1250 }} pagination={{ pageSize: 10 }} columns={[
         { title: '序号', dataIndex: 'ordinal', width: 70 },
         { title: '原题号', render: (_, item: Candidate) => item.payload.source.original_number || '未识别', width: 90 },
         { title: '原页', render: (_, item: Candidate) => `${item.payload.source.page_start ?? '?'}–${item.payload.source.page_end ?? '?'}`, width: 90 },
         { title: '题目、题图与答案', render: (_, item: Candidate) => renderCandidateContent(item) },
+        { title: '题库查重结果', render: (_, item: Candidate) => renderCatalogReviewContent(item), width: 380 },
       ]} />
     </Modal>
     <Modal title="新增候选题" open={newCandidateOpen} width={760}

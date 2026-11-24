@@ -34,6 +34,8 @@ a { color: inherit; }
 .table-card .ant-table-cell-fix-right .ant-btn { font-weight: 600; }
 .question-rich-text { white-space: pre-wrap; font-size: 16px; line-height: 2; color: #111827; }
 .question-import-candidate .question-rich-text { margin-bottom: 0; }
+.question-import-candidate, .question-import-candidate > .ant-space-item { min-width: 0; max-width: 100%; }
+.question-import-candidates-table .ant-table-cell { overflow-wrap: anywhere; }
 .question-import-answer .question-rich-text { margin: 0 0 8px; font-size: 14px; line-height: 1.6; }
 .question-import-answer--model-pending { background: #fffbe6; }
 .question-import-issues { margin: 16px 0; border: 1px solid #b9c8dc; border-radius: 8px; background: #f4f7fb; }
