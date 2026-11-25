@@ -24,6 +24,8 @@ from app.services import answer_pages
 from app.services import vision_pages
 from app.services import answer_transcription
 from app.services import paper_equivalence
+from app.services import paper_recognition_review
+from app.schemas.paper_recognition_review import SavePaperRecognitionReview
 from app.schemas.answer_transcription import MergeTranscription, SaveTranscription, ConfirmTranscription
 from app.schemas.submissions import SubmissionDetailOut
 
@@ -122,6 +124,16 @@ def paper_equivalence_adopt(paper_id: UUID, request: AdoptPaperEquivalence, db: 
 
 
 _PAGE_COLLECTION = "/paper-instances/{paper_id}/answer-card-artifacts/{artifact_id}/page-collection"
+
+
+@router.get(_PAGE_COLLECTION + "/recognition-review")
+def read_paper_recognition_review(paper_id: UUID, artifact_id: UUID, db: Session = Depends(get_db)):
+    return paper_recognition_review.view(db, paper_id, artifact_id)
+
+
+@router.put(_PAGE_COLLECTION + "/recognition-review")
+def save_paper_recognition_review(paper_id: UUID, artifact_id: UUID, request: SavePaperRecognitionReview, db: Session = Depends(get_db)):
+    return paper_recognition_review.save(db, paper_id, artifact_id, request)
 
 
 @router.get(_PAGE_COLLECTION + "/transcription")

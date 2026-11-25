@@ -1,4 +1,5 @@
 from app.models.answer_card import AnswerCardArtifact
+from app.models.paper_recognition_review import PaperRecognitionReview, PaperRecognitionReviewRevision
 from app.models.question_import_catalog import QuestionImportCatalogCheck, QuestionImportCatalogMatch
 from app.models.question_import_s5 import QuestionImportAuditEvent
 from app.models.answer_transcription import AnswerTranscription, AnswerTranscriptionRevision
@@ -29,6 +30,7 @@ from app.models.entities import (
 )
 
 __all__ = [
+    "PaperRecognitionReview", "PaperRecognitionReviewRevision",
     "AnswerTranscription", "AnswerTranscriptionRevision",
     "VisionPageCall", "VisionPageTask",
     "AnswerPageCollection", "AnswerPageEvent", "AnswerPageImage",

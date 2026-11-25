@@ -62,6 +62,7 @@ async function mockWorkspace(page: Page, { failSecond = false, archived = false,
     }
     if (/\/page-collection\/images\//.test(url)) return route.fulfill({ contentType: 'image/png', body: png })
     if (url.endsWith('/page-collection/transcription') && request.method() === 'GET') return route.fulfill({ json: transcriptionView() })
+    if (url.endsWith('/page-collection/recognition-review') && request.method() === 'GET') return route.fulfill({ status: 503, json: { message: 'quality review unavailable in transcription fixture' } })
     if (url.endsWith('/transcription/merge') && transcription) {
       const body = request.postDataJSON()
       expect(body.expected_revision_no).toBe(draft?.revision_no ?? 0)
@@ -309,7 +310,7 @@ test('merge, correct, save and explicitly submit whole-paper answers', async ({ 
   await expect(page.getByRole('button', { name: '确认录入并判分', exact: true })).toBeDisabled()
   for (const n of [1, 2]) await page.getByRole('checkbox', { name: `已对照照片核对答题页 ${n} 的编号和全部答案`, exact: true }).check()
   await page.getByRole('button', { name: '保存核对清单', exact: true }).click()
-  await expect(page.getByRole('button', { name: '保存核对清单', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: /保存核对清单/ })).toBeDisabled()
   await page.getByRole('button', { name: '刷新核对清单（放弃未保存修改）', exact: true }).click()
   await expect(editor).toHaveValue('-1/56')
   await expect(page.getByText('模型原始抄读：已作答', { exact: true })).toHaveCount(2)
