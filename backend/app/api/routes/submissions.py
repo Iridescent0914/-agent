@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.schemas.paper_accuracy import PaperAccuracyComparisonOut
+from app.services.paper_accuracy import paper_accuracy_comparison
 from app.schemas.submissions import (
     AttemptReviewRequest, AttemptRevisionOut, GradingQueueOut,
     ManualSubmissionRequest, SubmissionDetailOut, SubmissionRegradeRequest,
@@ -46,6 +48,14 @@ def get_submission(paper_id: UUID, db: Session = Depends(get_db)):
     try:
         return submission_view(db, paper_id)
     except (LookupError, ValueError) as exc:
+        raise _error(exc) from exc
+
+
+@router.get("/paper-instances/{paper_id}/accuracy-comparison", response_model=PaperAccuracyComparisonOut)
+def get_accuracy_comparison(paper_id: UUID, db: Session = Depends(get_db)):
+    try:
+        return paper_accuracy_comparison(db, paper_id)
+    except LookupError as exc:
         raise _error(exc) from exc
 
 

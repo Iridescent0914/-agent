@@ -48,6 +48,7 @@ async function workspace(page: Page, value = submission()) {
       needs_review_count: value.summary.needs_review_count, submitted_at: value.submitted_at,
     }] } })
     if (url.endsWith(`/paper-instances/${paperId}/submission`)) return route.fulfill({ json: value })
+    if (url.endsWith(`/paper-instances/${paperId}/accuracy-comparison`) && request.method() === 'GET') return route.fulfill({ status: 503, json: { message: 'comparison unavailable in grading fixture' } })
     if (url.endsWith('/regrade')) return route.fulfill({ json: { ...value, answer_key_update_count: 0, regraded_count: 1 } })
     if (url.endsWith('/fixture-image')) return route.fulfill({ contentType: 'image/png', body: image })
     unexpected.push(`${request.method()} ${url}`)
