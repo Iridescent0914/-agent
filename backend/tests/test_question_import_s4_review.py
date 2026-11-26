@@ -101,23 +101,20 @@ def test_exact_decision_is_saved_and_content_change_invalidates_it(db):
     assert item.payload["teacher_decision"] == "pending"
 
 
-def test_near_variant_needs_reason_and_formal_content_change_invalidates(db):
+def test_near_variant_reason_optional_and_formal_content_change_invalidates(db):
     batch_id, item, question = _scenario(db, candidate_text="计算 1+3 米，结果是多少？",
                                          catalog_text="计算 1+2 米，结果是多少？")
     review = run_catalog_review(db, batch_id)
     match = next(value for value in review["items"][0]["matches"]
                  if value["question_id"] == str(question.id))
     assert match["kind"] == "nearby"
-    with pytest.raises(ImportProblem) as no_reason:
-        decide_catalog_match(db, batch_id, item.id, uuid.UUID(match["id"]),
-                             expected_revision=item.revision, decision="keep_variant", reason=" ")
-    assert no_reason.value.code == "DUPLICATE_DECISION_REQUIRED"
     saved = decide_catalog_match(db, batch_id, item.id, uuid.UUID(match["id"]),
                                  expected_revision=item.revision, decision="keep_variant",
-                                 reason="数字条件不同，是独立变式")
+                                 reason=" ")
     selected = next(value for value in saved["items"][0]["matches"]
                     if value["question_id"] == str(question.id))
     assert selected["decision"] == "keep_variant"
+    assert selected["reason"] is None
     assert item.payload["teacher_decision"] == "pending"
 
     question.question_text = "计算 1+4 米，结果是多少？"
@@ -129,6 +126,38 @@ def test_near_variant_needs_reason_and_formal_content_change_invalidates(db):
         decide_catalog_match(db, batch_id, item.id, uuid.UUID(match["id"]),
                              expected_revision=item.revision, decision="unrelated", reason=None)
     assert changed.value.code == "CATALOG_CHANGED"
+
+
+def test_unverifiable_near_match_accepts_decision_without_reason(db, monkeypatch):
+    batch_id, item, question = _scenario(
+        db, candidate_text="计算 1+3 的结果是多少？",
+        catalog_text="计算 1+2 的结果是多少？")
+    question.has_image = True
+    question.assets = []
+    question.exact_fingerprint_v2 = None
+    db.flush()
+    row = run_catalog_review(db, batch_id)["items"][0]
+    match = next(value for value in row["matches"] if value["question_id"] == str(question.id))
+    assert match["kind"] == "nearby" and match["catalog_unverifiable"]
+    assert not row["catalog_stale"]
+
+    saved = decide_catalog_match(db, batch_id, item.id, uuid.UUID(match["id"]),
+                                 expected_revision=item.revision, decision="unrelated",
+                                 reason=None)
+    assert saved["items"][0]["matches"][0]["decision"] == "unrelated"
+    assert saved["items"][0]["matches"][0]["reason"] is None
+    assert run_catalog_review(db, batch_id)["items"][0]["matches"][0]["decision"] == "unrelated"
+
+    current = read_catalog_review(db, batch_id)["items"][0]["matches"][0]
+    decide_catalog_match(db, batch_id, item.id, uuid.UUID(current["id"]),
+                         expected_revision=item.revision, decision="skip_existing",
+                         reason=None)
+    monkeypatch.setattr("app.services.question_import_s4_near.NEAR_REVIEW_MIN_SIMILARITY", 0.999)
+    assert run_catalog_review(db, batch_id)["items"][0]["matches"][0]["decision"] == "skip_existing"
+
+    question.question_text = "计算 1+4 的结果是多少？"
+    db.flush()
+    assert read_catalog_review(db, batch_id)["items"][0]["catalog_stale"]
 
 
 def test_existing_near_skip_survives_tighter_display_threshold(db, monkeypatch):

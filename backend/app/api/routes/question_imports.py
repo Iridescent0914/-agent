@@ -35,6 +35,7 @@ from app.services.question_import_s4_near import catalog_near_matches
 from app.services.question_import_s4_review import (
     decide_catalog_match, read_catalog_review, run_catalog_review,
 )
+from app.services.question_import_figure_review import set_figure_text_confirmation
 from app.services.question_import_s5_preflight import import_review_summary, preflight_import
 from app.services.question_import_s5_review import (
     claim_source_answer, confirm_answer_source, decide_issue, decide_item, decide_items_bulk, read_item_reviews,
@@ -92,6 +93,11 @@ class CatalogDecisionRequest(BaseModel):
     expected_revision: int = Field(ge=1)
     decision: str
     reason: str | None = None
+
+
+class FigureTextConfirmationRequest(BaseModel):
+    expected_revision: int = Field(ge=1)
+    confirmed: bool
 
 
 class S2StartRequest(BaseModel):
@@ -282,6 +288,17 @@ def save_catalog_match_decision(batch_id: UUID, item_id: UUID, match_id: UUID,
     return decide_catalog_match(db, batch_id, item_id, match_id,
                                 expected_revision=request.expected_revision,
                                 decision=request.decision, reason=request.reason)
+
+
+@router.post("/{batch_id}/s5/items/{item_id}/figure-text-confirmation", response_model=CandidateOut)
+def save_figure_text_confirmation(batch_id: UUID, item_id: UUID,
+                                  request: FigureTextConfirmationRequest,
+                                  db: Session = Depends(get_db)):
+    item = set_figure_text_confirmation(db, batch_id, item_id,
+                                        expected_revision=request.expected_revision,
+                                        confirmed=request.confirmed)
+    run_catalog_review(db, batch_id)
+    return item
 
 
 @router.post("/{batch_id}/items", response_model=CandidateOut, status_code=201)

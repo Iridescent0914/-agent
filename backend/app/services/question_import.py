@@ -523,6 +523,8 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
                          "core_literacies": []})
         payload["tags"] = tags
     payload.update({key: value for key, value in changes.items() if key not in {"tags", "teacher_answer_text"}})
+    if "content" in changes:
+        payload.pop("figure_text_confirmation", None)
     if "teacher_answer_text" in changes:
         answers = list(payload.get("answers") or [])
         version = {"answer_id": "teacher-" + str(uuid.uuid4()), "answer_source": "teacher_entered",

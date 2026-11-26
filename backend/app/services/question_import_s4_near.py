@@ -47,7 +47,10 @@ def _differences(candidate: dict[str, Any], question: Question,
         differences.append("选项内容或顺序不同")
 
     if formal_key is None or candidate_key is None:
-        image_relation = "无法可靠比对"
+        extraction = candidate.get("extraction") or {}
+        figure_expected = bool(extraction.get("diagram_clues")) or extraction.get("figure_status") in {"complete", "uncertain"}
+        image_relation = ("均无题图" if not content.get("asset_ids") and not question.has_image
+                          and not question.assets and not figure_expected else "无法可靠比对")
     elif bool(candidate_key["images"]) != bool(formal_key["images"]):
         image_relation = "一侧缺图"
     elif not candidate_key["images"]:

@@ -50,6 +50,11 @@ def normalized_text(value: str, *, strip_question_number: bool = False) -> str:
 def normalized_options(options: Any) -> list[list[str]] | None:
     if options is None or options == []:
         return []
+    if isinstance(options, dict):
+        if any(not isinstance(key, str) or not isinstance(value, str)
+               for key, value in options.items()):
+            return None
+        options = [{"key": key, "text": value} for key, value in sorted(options.items())]
     if not isinstance(options, list):
         return None
     result: list[list[str]] = []

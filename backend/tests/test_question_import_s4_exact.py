@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -52,6 +53,22 @@ def test_math_aware_fingerprint_keeps_critical_differences():
     assert value("4、计算 1+2") == value("5、计算 1+2")
     assert value("选择", [{"key": "A", "text": "1. 数值"}]) != value(
         "选择", [{"key": "A", "text": "2. 数值"}])
+
+
+def test_legacy_dict_options_match_candidate_list_options():
+    text = "计算 1+2 的结果是（ ）"
+    legacy = {"B": "4", "A": "3"}
+    candidate = [{"key": "A", "text": "3"}, {"key": "B", "text": "4"}]
+    assert fingerprint(catalog_content_key(text, legacy, [])) == fingerprint(content_key(text, candidate, []))
+    assert catalog_content_key(text, {"A": {"text": "3"}}, []) is None
+
+
+def test_unverifiable_text_metadata_does_not_claim_image_is_missing():
+    formal = SimpleNamespace(question_text="计算 1+2", options={"A": {"text": "3"}},
+                             has_image=False, assets=[])
+    candidate = {"content": {"question_text": "计算 1+3", "options": [], "asset_ids": []}}
+    _, image_relation = _differences(candidate, formal, content_key("计算 1+3", [], []), None)
+    assert image_relation == "均无题图"
 
 
 def test_catalog_image_requires_real_bytes(tmp_path, monkeypatch):

@@ -10,11 +10,13 @@ from sqlalchemy.orm import Session
 
 from app.models import QuestionImportItem
 from app.schemas.question_import_s5 import S5PreflightRequest, S5PreflightSelection
+from app.services.answer_units import _expected_coordinates, _prefix_subquestion_markers
 from app.services.knowledge_catalog import CATALOG_PATH
 from app.services.profile_evidence import PROFILE_QUESTION_TYPES
 from app.services.question_import import active_candidate, get_batch
 from app.services.question_import_s3_images import _asset_path, list_images
 from app.services.question_import_s3_labels import _allowed_kps
+from app.services.question_import_figure_review import figure_text_confirmed
 from app.services.question_import_s3_review import list_review_issues
 from app.services.question_import_s4_near import VERSION as NEAR_VERSION
 from app.services.question_import_s4_review import read_catalog_review
@@ -94,7 +96,7 @@ def _question_issues(ctx: dict[str, Any], item: QuestionImportItem,
         asset_ids = []
     extraction = payload.get("extraction") if isinstance(payload.get("extraction"), dict) else {}
     needs_figure = bool(extraction.get("diagram_clues")) or extraction.get("figure_status") in {"complete", "uncertain"}
-    if needs_figure and not asset_ids:
+    if needs_figure and not asset_ids and not figure_text_confirmed(payload):
         blockers.append(_problem("ASSET_UNASSIGNED", "题干所需的关键题图尚未关联"))
     for asset_id in asset_ids:
         asset = ctx["image_assets"].get(str(asset_id))
@@ -127,16 +129,14 @@ def _duplicate_issues(ctx: dict[str, Any], item: QuestionImportItem,
     if row.get("exact_version") != EXACT_VERSION or row.get("near_version") != NEAR_VERSION:
         blockers.append(_problem("DUPLICATE_CHECK_STALE", "查重规则已更新，请重新检查题库重复"))
     for match in row["matches"]:
-        if match["catalog_unverifiable"]:
-            blockers.append(_problem("DUPLICATE_UNVERIFIABLE", "命中的正式题题图无法可靠比对"))
+        if match["catalog_unverifiable"] and match["decision"] == "pending":
+            blockers.append(_problem("DUPLICATE_UNVERIFIABLE", "相近的正式题内容无法自动核验，请人工核对并作出判断"))
         if match["decision"] == "skip_existing":
             blockers.append(_problem("SKIPPED_DUPLICATE", "该题已决定关联旧题，不应再次建题"))
         elif match["kind"] == "exact":
             blockers.append(_problem("EXACT_DUPLICATE", "题库已有精确重复题，请跳过候选题"))
         elif match["decision"] == "pending":
             blockers.append(_problem("DUPLICATE_DECISION_REQUIRED", "仍有相近题待教师判断"))
-        elif match["decision"] == "keep_variant" and not (match["reason"] or "").strip():
-            blockers.append(_problem("DUPLICATE_DECISION_REQUIRED", "确认独立变式需要填写理由"))
 
 
 def _answer_issues(selection: S5PreflightSelection, item: QuestionImportItem,
@@ -162,7 +162,47 @@ def _answer_issues(selection: S5PreflightSelection, item: QuestionImportItem,
         blockers.append(_problem("ANSWER_UNITS_REQUIRED", "直接入池需要逐小题或空的结构化答案审核草稿"))
     elif question_type in PROFILE_QUESTION_TYPES:
         try:
-            prepare_pool_review(question_type, selection.answer_review_items)
+            review_items = selection.answer_review_items
+            if question_type == "choice" and len(review_items) == 1:
+                only_answer = review_items[0]
+                if only_answer.subquestion_no is not None or only_answer.blank_no is not None:
+                    raise QuestionReviewValidation("单道选择题的小题号和空号请留空；有多个小题时请分别添加答案项")
+            if len(review_items) > 1 and any(
+                row.subquestion_no is None or row.blank_no is None for row in review_items
+            ):
+                raise QuestionReviewValidation("多个答案项必须逐项填写小题号和空号；未填完整时请选择仅题目入库")
+            content = payload.get("content") if isinstance(payload.get("content"), dict) else {}
+            question_text = content.get("question_text") if isinstance(content.get("question_text"), str) else ""
+            source_answer_text = answer.get("text") if isinstance(answer, dict) else None
+            source_has_subanswers = (
+                question_type == "choice" and isinstance(source_answer_text, str)
+                and len(_prefix_subquestion_markers(source_answer_text)) > 1
+            )
+            expected = _expected_coordinates(
+                question_type, question_text,
+                grouped_answer=len(review_items) > 1 or source_has_subanswers,
+            )
+            if len(expected) > 1:
+                actual = [(row.subquestion_no, row.blank_no) for row in review_items]
+                if len(review_items) != len(expected) or set(actual) != set(expected):
+                    raise QuestionReviewValidation("答案项与题干中识别到的小题或空位不一致；请核对编号，或选择仅题目入库")
+            elif len(review_items) > 1:
+                coordinates = {(row.subquestion_no, row.blank_no) for row in review_items}
+                subquestions = {sub for sub, _ in coordinates}
+                if subquestions != set(range(1, max(subquestions) + 1)) or any(
+                    {blank for sub, blank in coordinates if sub == number}
+                    != set(range(1, max(blank for sub, blank in coordinates if sub == number) + 1))
+                    for number in subquestions
+                ):
+                    raise QuestionReviewValidation("小题号和空号必须从 1 开始连续编号；请核对题目结构")
+            if question_type == "choice":
+                options = content.get("options") if isinstance(content.get("options"), list) else []
+                valid_keys = {option["key"].strip().upper() for option in options
+                              if isinstance(option, dict) and isinstance(option.get("key"), str)}
+                if any(value.strip().upper() not in valid_keys
+                       for row in review_items for value in [row.answer, *row.accepted_answers]):
+                    raise QuestionReviewValidation("选择题答案必须是本题实际存在的选项字母")
+            prepare_pool_review(question_type, review_items)
         except QuestionReviewValidation as exc:
             blockers.append(_problem("ANSWER_REVIEW_INVALID", str(exc)))
 

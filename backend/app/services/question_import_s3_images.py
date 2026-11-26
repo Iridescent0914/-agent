@@ -356,6 +356,8 @@ def set_candidate_image(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         asset_ids = [value for value in asset_ids if value != str(asset_id)]
     content["asset_ids"] = asset_ids
     payload["content"] = content
+    if was_linked != linked:
+        payload.pop("figure_text_confirmation", None)
     warnings = [warning for warning in payload.get("warnings") or []
                 if warning not in {UNEXTRACTED_WARNING, REVIEW_WARNING}]
     if ((payload.get("extraction") or {}).get("diagram_clues") or

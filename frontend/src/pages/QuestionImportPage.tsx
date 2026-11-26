@@ -51,6 +51,7 @@ type Candidate = {
     source: { original_number: string | null; page_start: number | null; page_end: number | null }
     content: { question_text: string; options: Array<{ key: string; text: string }>; asset_ids?: string[] }
     extraction?: { math_fragments?: string[]; diagram_clues?: string[]; figure_status?: 'no_figure' | 'complete' | 'uncertain'; uncertain_fragments?: string[] }
+    figure_text_confirmation?: { signature: string; confirmed_at: string }
     answers?: Array<{ answer_id: string; answer_source: string; text: string | null; teacher_confirmed: boolean; evidence?: Array<{ file_id: string; page: number; quote: string }> }>
     selected_answer_id?: string | null
     answer_match_status?: string
@@ -147,6 +148,16 @@ function defaultAnswerUnit(item: Candidate): AnswerUnitDraft {
   return { item_id: 'answer-1', subquestion_no: null, blank_no: null,
     answer: selected?.text || '', accepted_answers: '',
     answer_match_type: questionType === 'choice' ? 'choice' : questionType === 'true_false' ? 'exact' : 'exact' }
+}
+
+function answerMatchOptions(questionType?: string): Array<{ value: AnswerUnitDraft['answer_match_type']; label: string }> {
+  if (questionType === 'choice') return [{ value: 'choice', label: '选项字母' }]
+  if (questionType === 'true_false') return [{ value: 'exact', label: '正确／错误' }]
+  return [{ value: 'exact', label: '精确文字' }, { value: 'numeric', label: '整数或小数' }, { value: 'latex_exact', label: '公式' }]
+}
+
+function choiceOptionKeys(item: Candidate): string {
+  return item.payload.content.options.map((option) => option.key).join('、')
 }
 
 function answerUnitsPayload(units: AnswerUnitDraft[]) {
@@ -291,6 +302,7 @@ export function QuestionImportPage() {
   const [reviewBusy, setReviewBusy] = useState(false)
   const [bulkDraft, setBulkDraft] = useState<S5BulkDraft | null>(null)
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [figureTextBusy, setFigureTextBusy] = useState<string | null>(null)
   const [issueDraft, setIssueDraft] = useState<S5IssueDraft | null>(null)
   const [issueBusy, setIssueBusy] = useState(false)
   const [answerClaimTargets, setAnswerClaimTargets] = useState<Record<string, string>>({})
@@ -530,8 +542,6 @@ export function QuestionImportPage() {
   async function saveCatalogDecision() {
     const draft = catalogDecisionDraft
     if (!draft || !selectedBatchId) return
-    const needsReason = draft.decision === 'keep_variant' || (draft.decision === 'skip_existing' && draft.match.kind === 'nearby')
-    if (needsReason && !catalogDecisionReason.trim()) { message.warning('请填写判断理由'); return }
     setCatalogDecisionBusy(true)
     try {
       const result = await apiPost<CatalogReviewResult>(
@@ -555,6 +565,69 @@ export function QuestionImportPage() {
   function openCatalogDecision(item: Candidate, match: CatalogReviewMatch, decision: CatalogReviewMatch['decision']) {
     setCatalogDecisionDraft({ item, match, decision })
     setCatalogDecisionReason(decision === 'pending' ? '' : match.reason || '')
+  }
+
+  function confirmFigureText(item: Candidate, confirmed: boolean) {
+    if (!selectedBatchId) return
+    Modal.confirm({
+      title: confirmed ? '确认文字已完整表达，无需题图？' : '撤销无需题图的确认？',
+      width: 680,
+      content: confirmed ? <Space direction="vertical" style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+        <Typography.Text>请对照原文件第 {item.payload.source.page_start ?? '?'} 页，确认表格或图示中的所有解题信息均已写入文字。</Typography.Text>
+        <RichQuestionText text={item.payload.content.question_text} assets={[]} />
+        {item.payload.content.options.map((option) => <RichQuestionText key={option.key} text={`${option.key}. ${option.text}`} assets={[]} />)}
+        {(item.payload.extraction?.diagram_clues || []).map((clue, index) => <Typography.Text type="warning" key={index}>题图线索：{clue}</Typography.Text>)}
+        <Typography.Text type="secondary">保存后系统会自动重新查重和预检。</Typography.Text>
+      </Space> : '撤销后，该题会重新要求关联关键题图，系统会自动重新查重和预检。',
+      okText: confirmed ? '确认无需题图' : '撤销确认',
+      onOk: async () => {
+        const batchId = selectedBatchId
+        let saved = false
+        setFigureTextBusy(item.id)
+        try {
+          await apiPost<Candidate>(`/question-imports/${batchId}/s5/items/${item.id}/figure-text-confirmation`,
+            { expected_revision: item.revision, confirmed })
+          saved = true
+          setBulkDraft((current) => current ? { ...current, preflight: null, screening: null } : current)
+          const rows = await apiGet<Candidate[]>(`/question-imports/${batchId}/items`)
+          setCandidates(rows)
+          setCatalogReviewResult(await apiGet<CatalogReviewResult>(`/question-imports/${batchId}/s4/review`))
+          await refreshS5(batchId)
+          setReviewDraft(null)
+          if (bulkDraft) {
+            const selections = bulkDraft.selectedIds.length ? bulkSelections(bulkDraft, bulkDraft.selectedIds, rows) : []
+            const screeningSelections = bulkDraft.screening
+              ? bulkSelections(bulkDraft, bulkDraft.screening.items.map((row) => row.item_id), rows) : []
+            const [preflight, screening] = await Promise.all([
+              selections.length ? apiPost<S5Preflight>(`/question-imports/${batchId}/s5/preflight`, { items: selections }) : Promise.resolve(null),
+              screeningSelections.length ? apiPost<S5Preflight>(`/question-imports/${batchId}/s5/preflight`, { items: screeningSelections }) : Promise.resolve(null),
+            ])
+            setBulkDraft((current) => current ? { ...current, preflight, screening } : current)
+          }
+          message.success(confirmed ? '已确认无需题图，查重与预检已自动更新' : '已撤销确认，查重与预检已自动更新')
+        } catch (error) {
+          message.error(saved ? '确认已保存，但预检状态刷新失败；请重新打开审核页面' : error instanceof Error ? error.message : '题图确认保存失败')
+          setCandidates(await apiGet<Candidate[]>(`/question-imports/${batchId}/items`).catch(() => candidates))
+          if (saved) setCatalogReviewResult(await apiGet<CatalogReviewResult>(`/question-imports/${batchId}/s4/review`).catch(() => catalogReviewResult))
+        } finally {
+          setFigureTextBusy(null)
+        }
+      },
+    })
+  }
+
+  function renderFigureTextAction(item: Candidate) {
+    const extraction = item.payload.extraction
+    if ((item.payload.content.asset_ids || []).length || !(extraction?.diagram_clues?.length
+      || ['complete', 'uncertain'].includes(extraction?.figure_status || ''))) return null
+    const confirmed = !!item.payload.figure_text_confirmation
+    return <Space wrap style={{ marginTop: 6 }}>
+      <Tag color={confirmed ? 'green' : 'orange'}>{confirmed ? '教师已确认文字完整，无需题图' : '题图线索待核对'}</Tag>
+      {canEditCandidates && dedupeStatus === 'completed' && <Button size="small" loading={figureTextBusy === item.id}
+        disabled={!!figureTextBusy || bulkBusy} onClick={() => confirmFigureText(item, !confirmed)}>
+        {confirmed ? '撤销无需题图的确认' : '确认文字已完整表达，无需题图'}
+      </Button>}
+    </Space>
   }
 
   function openS5Review(item: Candidate) {
@@ -632,9 +705,9 @@ export function QuestionImportPage() {
     setBulkDraft({ selectedIds: [], route: 'library_only', reason: '', units: {}, preflight: null, screening: null })
   }
 
-  function bulkSelections(draft: S5BulkDraft, ids: string[]) {
+  function bulkSelections(draft: S5BulkDraft, ids: string[], rows: Candidate[] = candidates) {
     return ids.map((id) => {
-      const item = candidates.find((row) => row.id === id)!
+      const item = rows.find((row) => row.id === id)!
       return { item_id: id, expected_revision: item.revision, route: draft.route,
         ...(draft.route === 'direct_pool' ? {
           answer_review_items: answerUnitsPayload(draft.units[id] || [defaultAnswerUnit(item)]),
@@ -645,16 +718,23 @@ export function QuestionImportPage() {
   async function previewBulkReview(selectEligible = false) {
     if (!selectedBatchId || !bulkDraft) return
     const ids = selectEligible ? bulkPendingItems().slice(0, 200).map((item) => item.id) : bulkDraft.selectedIds
-    if (!ids.length) { message.warning('请先选择题目'); return }
+    if (!ids.length) { message.warning(selectEligible ? '当前没有待审题' : '请先选择题目'); return }
     setBulkBusy(true)
     try {
       const result = await apiPost<S5Preflight>(`/question-imports/${selectedBatchId}/s5/preflight`, {
         items: bulkSelections(bulkDraft, ids),
       })
-      setBulkDraft((current) => current ? { ...current,
-        selectedIds: selectEligible ? result.items.filter((row) => row.batch_eligible).map((row) => row.item_id) : ids,
-        preflight: selectEligible ? null : result, screening: selectEligible ? result : current.screening } : current)
-      if (selectEligible) message.info(`预检通过 ${result.summary.eligible} 题，已选中；请查看并再次预检所选题目`)
+      const eligibleRows = result.items.filter((row) => row.batch_eligible)
+      const selectedPreflight: S5Preflight = { items: eligibleRows,
+        summary: { selected: eligibleRows.length, eligible: eligibleRows.length, blocked: 0 } }
+      setBulkDraft((current) => current === bulkDraft ? { ...current,
+        selectedIds: selectEligible ? eligibleRows.map((row) => row.item_id) : ids,
+        preflight: selectEligible ? selectedPreflight : result,
+        screening: selectEligible ? result : current.screening } : current)
+      if (selectEligible) {
+        if (eligibleRows.length) message.info(`预检通过 ${eligibleRows.length} 题，已选中；核对后可直接确认`)
+        else message.warning('当前没有通过预检的题，请查看各题阻断原因')
+      }
     } catch (error) { message.error(error instanceof Error ? error.message : '批量预检失败') }
     finally { setBulkBusy(false) }
   }
@@ -1014,6 +1094,7 @@ export function QuestionImportPage() {
     const catalog = catalogReviewResult?.items.find((row) => row.item_id === item.id)
     const status = review?.valid ? review.decision : item.payload.teacher_decision === 'skipped_duplicate' ? 'skipped_duplicate' : 'pending'
     const hasFigureIssue = !(item.payload.content.asset_ids || []).length
+      && !item.payload.figure_text_confirmation
       && !!(item.payload.extraction?.diagram_clues?.length || ['complete', 'uncertain'].includes(item.payload.extraction?.figure_status || ''))
     const match = candidateFilter === 'all' || candidateFilter === status
       || (candidateFilter === 'exact' && !!catalog?.matches.some((row) => row.kind === 'exact'))
@@ -1088,10 +1169,10 @@ export function QuestionImportPage() {
           <summary>查看相同或相似的题并处理</summary>
           {catalogRow.matches.map((match) => <Card key={match.id} size="small" style={{ marginTop: 8 }}>
             <Space wrap><Typography.Text strong>题库编号 {match.original_qid}</Typography.Text>
-              {match.question_id && <a href={`/questions/${match.question_id}`} target="_blank" rel="noopener noreferrer">打开正式题详情核对题图</a>}
+              {match.question_id && <a href={`/questions/${match.question_id}`} target="_blank" rel="noopener noreferrer">打开正式题详情核对</a>}
               <Tag color={match.kind === 'exact' ? 'warning' : 'blue'}>{match.kind === 'exact' ? '相同题' : '可能相似'}</Tag>
-              <Tag color={match.decision === 'pending' ? 'default' : 'green'}>{match.decision === 'skip_existing' ? '已决定跳过此题' : match.decision === 'keep_variant' ? '已确认独立变式' : match.decision === 'unrelated' ? '已判为无关题' : '待决定'}</Tag>
-              {(match.catalog_stale || match.catalog_unverifiable) && <Tag color="warning">{match.catalog_stale ? '正式题内容已变化' : '正式题图片无法可靠比对'}</Tag>}
+              <Tag color={match.decision === 'pending' ? 'default' : 'green'}>{match.decision === 'skip_existing' ? '题库已有此题，不再入库' : match.decision === 'keep_variant' ? '已确认独立变式' : match.decision === 'unrelated' ? '已判为无关题' : '待决定'}</Tag>
+              {(match.catalog_stale || match.catalog_unverifiable) && <Tag color="warning">{match.catalog_stale ? '正式题内容已变化' : '正式题内容无法自动核验，请人工核对'}</Tag>}
             </Space>
             {match.question_text && <div><Typography.Text>题干：{match.question_text.replace(/\[ASSET:[^\]]+\]/g, '[题图]').slice(0, 300)}</Typography.Text></div>}
             {catalogOptionRows(match.options).length > 0 && <div><Typography.Text type="secondary">选项：{catalogOptionRows(match.options).map((option) => `${option.key}. ${option.text}`).join('；').slice(0, 300)}</Typography.Text></div>}
@@ -1100,8 +1181,8 @@ export function QuestionImportPage() {
             {!!match.evidence.differences?.length && <div><Typography.Text type="warning">差异：{match.evidence.differences.join('；')}</Typography.Text></div>}
             {match.kind === 'nearby' && <div><Typography.Text type="secondary">题图：{match.evidence.image_relation || '未比较'}；文字相近度 {Math.round((match.similarity || 0) * 100)}%（用于筛选和排序，不是重复概率）</Typography.Text></div>}
             {match.reason && <div><Typography.Text type="secondary">判断理由：{match.reason}</Typography.Text></div>}
-            {canEditCandidates && !catalogStale && !match.catalog_unverifiable && <Space wrap style={{ marginTop: 8 }}>
-              {match.decision !== 'skip_existing' && <Button size="small" onClick={() => openCatalogDecision(item, match, 'skip_existing')}>跳过此题，关联旧题</Button>}
+            {canEditCandidates && !catalogStale && <Space wrap style={{ marginTop: 8 }}>
+              {match.decision !== 'skip_existing' && <Button size="small" onClick={() => openCatalogDecision(item, match, 'skip_existing')}>题库已有此题，不再入库</Button>}
               {match.kind === 'nearby' && match.decision !== 'keep_variant' && <Button size="small" onClick={() => openCatalogDecision(item, match, 'keep_variant')}>确认独立变式</Button>}
               {match.kind === 'nearby' && match.decision !== 'unrelated' && <Button size="small" onClick={() => openCatalogDecision(item, match, 'unrelated')}>与此题无关</Button>}
               {match.decision !== 'pending' && <Button size="small" onClick={() => openCatalogDecision(item, match, 'pending')}>撤销决定</Button>}
@@ -1133,6 +1214,7 @@ export function QuestionImportPage() {
     const skippedByTask = labelTask?.skipped_item_ids?.includes(item.id) || labelTask?.groups?.some((group) => group.skipped_item_ids?.includes(item.id))
     const clues = item.payload.extraction?.diagram_clues || []
     const figureMissing = !assetIds.length && (clues.length > 0 || ['complete', 'uncertain'].includes(item.payload.extraction?.figure_status || ''))
+    const figureTextConfirmed = figureMissing && !!item.payload.figure_text_confirmation
     const removedCandidateImages = unmatchedImages.filter((asset) => asset.removed_candidate_for_item_ids?.includes(item.id))
     return <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}>
       <RichQuestionText text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />
@@ -1143,7 +1225,8 @@ export function QuestionImportPage() {
       </div> })}
       {figureMissing && clues.map((clue, index) => <Typography.Text type="warning" key={`clue-${index}`}>题图线索：{clue}</Typography.Text>)}
       {figureMissing && clues.length === 0 && <Typography.Text type="warning">题图线索：模型未提供具体描述</Typography.Text>}
-      {figureMissing && <Typography.Text type="warning">题图尚未裁剪；请对照原页复核</Typography.Text>}
+      {figureMissing && !figureTextConfirmed && <Typography.Text type="warning">题图尚未裁剪；请对照原页复核</Typography.Text>}
+      {figureMissing && renderFigureTextAction(item)}
       {removedCandidateImages.length > 0 && <Typography.Text type="warning">去重题目有 {removedCandidateImages.length} 张未自动转移的图片，请在上方“无法匹配到题目的图片”中核对是否缺图。</Typography.Text>}
       {canEditCandidates && <label>添加图片：<input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageBusy || !images?.files_available} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file && selectedBatch) void uploadCandidateImage(selectedBatch, item, file) }} /></label>}
       {item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}
@@ -1239,9 +1322,9 @@ export function QuestionImportPage() {
       onOk={() => void saveCatalogDecision()}>
       {catalogDecisionDraft && <>
         <Typography.Paragraph>候选第 {catalogDecisionDraft.item.ordinal} 题与题库编号 {catalogDecisionDraft.match.original_qid}：
-          {catalogDecisionDraft.decision === 'skip_existing' ? '跳过候选题并关联旧题' : catalogDecisionDraft.decision === 'keep_variant' ? '确认作为独立变式' : catalogDecisionDraft.decision === 'unrelated' ? '判为无关题' : '撤销原决定'}</Typography.Paragraph>
+          {catalogDecisionDraft.decision === 'skip_existing' ? '题库已有此题，本批候选题不再作为新题入库；题库中的原题继续保留。' : catalogDecisionDraft.decision === 'keep_variant' ? '确认作为独立变式' : catalogDecisionDraft.decision === 'unrelated' ? '判为无关题' : '撤销原决定'}</Typography.Paragraph>
         {catalogDecisionDraft.decision !== 'pending' && <Input.TextArea value={catalogDecisionReason} maxLength={500}
-          rows={3} placeholder={catalogDecisionDraft.decision === 'keep_variant' || catalogDecisionDraft.match.kind === 'nearby' ? '填写判断理由（必填）' : '判断理由（可选）'}
+          rows={3} placeholder="判断理由（可选）"
           onChange={(event) => setCatalogDecisionReason(event.target.value)} />}
       </>}
     </Modal>
@@ -1266,7 +1349,7 @@ export function QuestionImportPage() {
           <Button onClick={() => setBulkDraft((current) => current ? { ...current,
             selectedIds: bulkPendingItems().slice(0, 200).map((item) => item.id), preflight: null, screening: null } : current)}>选择全部待审题</Button>
           <Button loading={bulkBusy} onClick={() => void previewBulkReview(true)}>只选当前预检通过的题</Button>
-          <Typography.Text type="secondary">每次最多选择 200 题</Typography.Text>
+          <Typography.Text type="secondary">自动筛选已完成预检；手动选题或修改答案后需重新预检。每次最多选择 200 题</Typography.Text>
         </Space>
         <div style={{ maxHeight: 190, overflowY: 'auto', border: '1px solid #eee', padding: 8 }}>
           {bulkPendingItems().map((item) => <div key={item.id} style={{ marginBottom: 5 }}>
@@ -1278,6 +1361,7 @@ export function QuestionImportPage() {
             </Checkbox>
             {bulkDraft.screening?.items.find((row) => row.item_id === item.id && !row.batch_eligible)?.blockers.map((problem, index) =>
               <Tag key={`${item.id}-${index}`} color="orange">待处理：{problem.message}</Tag>)}
+            {renderFigureTextAction(item)}
           </div>)}
           {!bulkPendingItems().length && <Empty description="没有可批量审核的待审题" />}
         </div>
@@ -1296,21 +1380,24 @@ export function QuestionImportPage() {
             <RichQuestionText text={item.payload.content.question_text} assets={[]} />
             {item.payload.content.options.map((option) => <RichQuestionText key={option.key} text={`${option.key}. ${option.text}`} assets={[]} />)}
             {item.payload.content.asset_ids?.map((assetId) => selectedBatch && images?.files_available && <img key={assetId} alt={`第 ${item.ordinal} 题题图`} src={apiUrl(`/question-imports/${selectedBatch.id}/s3/images/${assetId}/content`)} className="question-import-review-image" />)}
+            {renderFigureTextAction(item)}
             <Typography.Paragraph>{selectedAnswer ? '当前答案' : linkedAnswer ? '已关联但未选定的答案' : '来源答案'}：{selectedAnswer?.text || linkedAnswer?.text || '无'}</Typography.Paragraph>
             <Typography.Paragraph type="secondary">查重：{!catalog ? '尚未检查' : catalog.candidate_stale || catalog.catalog_stale ? '检查已过期' : catalog.matches.length ? catalog.matches.map((match) => `${match.kind === 'exact' ? '相同' : '相似'} ${match.original_qid}（${match.decision === 'pending' ? '待决定' : match.decision}）`).join('；') : '未发现需人工决定的匹配'}</Typography.Paragraph>
             {bulkDraft.route === 'direct_pool' && <Card size="small" title="逐题答案审核草稿">
+              <Typography.Paragraph type="secondary">单道选择题无需填写编号。多个小题或空须逐项填写小题号、空号并核对答案；未填好不能拟直接入池，请改选“仅题目入库”，后续补齐答案再审核入池。</Typography.Paragraph>
+              {item.payload.tags?.question_type === 'choice' && <Typography.Paragraph type="secondary">选择题按选项字母判分；本题有效选项：{choiceOptionKeys(item)}。</Typography.Paragraph>}
               {units.map((unit, index) => <Space key={unit.item_id} wrap style={{ marginBottom: 8 }}>
-                <InputNumber aria-label={`第 ${item.ordinal} 题答案项 ${index + 1} 小题号`} min={1} max={99} placeholder="小题号" value={unit.subquestion_no}
+                <InputNumber aria-label={`第 ${item.ordinal} 题答案项 ${index + 1} 小题号`} min={1} max={99} placeholder="小题号" value={unit.subquestion_no} disabled={item.payload.tags?.question_type === 'choice' && units.length === 1 && unit.subquestion_no === null && unit.blank_no === null}
                   onChange={(value) => setBulkDraft((current) => current ? { ...current, preflight: null, screening: null, units: { ...current.units,
                     [id]: units.map((row) => row.item_id === unit.item_id ? { ...row, subquestion_no: value } : row) } } : current)} />
-                <InputNumber aria-label={`第 ${item.ordinal} 题答案项 ${index + 1} 空号`} min={1} max={99} placeholder="空号" value={unit.blank_no}
+                <InputNumber aria-label={`第 ${item.ordinal} 题答案项 ${index + 1} 空号`} min={1} max={99} placeholder="空号" value={unit.blank_no} disabled={item.payload.tags?.question_type === 'choice' && units.length === 1 && unit.subquestion_no === null && unit.blank_no === null}
                   onChange={(value) => setBulkDraft((current) => current ? { ...current, preflight: null, screening: null, units: { ...current.units,
                     [id]: units.map((row) => row.item_id === unit.item_id ? { ...row, blank_no: value } : row) } } : current)} />
                 <Input aria-label={`第 ${item.ordinal} 题答案项 ${index + 1}`} style={{ width: 220 }} placeholder="标准答案" value={unit.answer}
                   onChange={(event) => setBulkDraft((current) => current ? { ...current, preflight: null, screening: null, units: { ...current.units,
                     [id]: units.map((row) => row.item_id === unit.item_id ? { ...row, answer: event.target.value } : row) } } : current)} />
                 <Select aria-label={`第 ${item.ordinal} 题判分方式`} style={{ width: 140 }} value={unit.answer_match_type}
-                  options={[{ value: 'choice', label: '选项' }, { value: 'exact', label: '精确文字' }, { value: 'numeric', label: '数值' }, { value: 'latex_exact', label: '公式' }]}
+                  options={answerMatchOptions(item.payload.tags?.question_type)}
                   onChange={(value: AnswerUnitDraft['answer_match_type']) => setBulkDraft((current) => current ? { ...current, preflight: null, screening: null, units: { ...current.units,
                     [id]: units.map((row) => row.item_id === unit.item_id ? { ...row, answer_match_type: value } : row) } } : current)} />
                 <Input aria-label={`第 ${item.ordinal} 题可接受答案`} style={{ width: 220 }} placeholder="其他可接受答案，以换行或分号分隔" value={unit.accepted_answers}
@@ -1374,10 +1461,10 @@ export function QuestionImportPage() {
               {(activeReviewCatalog.candidate_stale || activeReviewCatalog.catalog_stale) && <Alert type="warning" showIcon message="查重记录已过期，请重新检查" />}
               {activeReviewCatalog.matches.length === 0 && <Typography.Text type="secondary">本次检查未发现需要人工决定的匹配。</Typography.Text>}
               {activeReviewCatalog.matches.map((match) => <Card key={match.id} size="small" style={{ marginBottom: 8 }}>
-                <Space wrap><Tag color={match.kind === 'exact' ? 'orange' : 'blue'}>{match.kind === 'exact' ? '相同题' : '可能相似'}</Tag><Typography.Text strong>{match.original_qid}</Typography.Text><Typography.Text type="secondary">{match.decision === 'pending' ? '待决定' : match.decision === 'skip_existing' ? '已跳过' : match.decision === 'keep_variant' ? '独立变式' : '无关'}</Typography.Text></Space>
+                <Space wrap><Tag color={match.kind === 'exact' ? 'orange' : 'blue'}>{match.kind === 'exact' ? '相同题' : '可能相似'}</Tag><Typography.Text strong>{match.original_qid}</Typography.Text><Typography.Text type="secondary">{match.decision === 'pending' ? '待决定' : match.decision === 'skip_existing' ? '题库已有，不再入库' : match.decision === 'keep_variant' ? '独立变式' : '无关'}</Typography.Text></Space>
                 {match.question_text && <RichQuestionText text={match.question_text.replace(/\[ASSET:[^\]]+\]/g, '[题图]')} assets={[]} />}
                 {catalogOptionRows(match.options).map((option) => <RichQuestionText key={option.key} text={`${option.key}. ${option.text}`} assets={[]} />)}
-                {match.question_id && <a href={`/questions/${match.question_id}`} target="_blank" rel="noopener noreferrer">打开正式题核对题图</a>}
+                {match.question_id && <a href={`/questions/${match.question_id}`} target="_blank" rel="noopener noreferrer">打开正式题详情核对</a>}
                 {match.reason && <Typography.Paragraph type="secondary">判断理由：{match.reason}</Typography.Paragraph>}
               </Card>)}
             </>}
@@ -1387,15 +1474,15 @@ export function QuestionImportPage() {
           onChange={(route: 'library_only' | 'direct_pool') => setReviewDraft((current) => current ? { ...current, route, preflight: null } : current)}
           options={[{ value: 'library_only', label: '仅题目入库，答案后续审核' }, { value: 'direct_pool', label: '题目和答案拟直接入池' }]} /></Space>
         {reviewDraft.route === 'direct_pool' && <Card size="small" title="逐小题／空的答案审核">
-          <Typography.Paragraph type="secondary">请根据题目和来源答案核对每一项。表格中的内容是草稿，只有点击“确认审核意向”才会保存教师决定。</Typography.Paragraph>
+          <Typography.Paragraph type="secondary">请核对每项答案。单道选择题无需填写编号；多个小题或空须逐项填写小题号、空号，未填好请改选“仅题目入库”，后续补齐答案再审核入池。只有点击“确认审核意向”才会保存教师决定。</Typography.Paragraph>
+          {activeReviewItem.payload.tags?.question_type === 'choice' && <Typography.Paragraph type="secondary">选择题按选项字母判分；本题有效选项：{choiceOptionKeys(activeReviewItem)}。</Typography.Paragraph>}
           {reviewDraft.units.map((unit, index) => <Card key={unit.item_id} size="small" style={{ marginBottom: 8 }} title={`答案项 ${index + 1}`}
             extra={reviewDraft.units.length > 1 && <Button size="small" danger onClick={() => setReviewDraft((current) => current ? { ...current, units: current.units.filter((row) => row.item_id !== unit.item_id), preflight: null } : current)}>删除</Button>}>
             <Space wrap>
-              <label>小题号 <InputNumber min={1} max={99} value={unit.subquestion_no} onChange={(value) => setReviewDraft((current) => current ? { ...current, units: current.units.map((row) => row.item_id === unit.item_id ? { ...row, subquestion_no: value } : row), preflight: null } : current)} /></label>
-              <label>空号 <InputNumber min={1} max={99} value={unit.blank_no} onChange={(value) => setReviewDraft((current) => current ? { ...current, units: current.units.map((row) => row.item_id === unit.item_id ? { ...row, blank_no: value } : row), preflight: null } : current)} /></label>
+              <label>小题号 <InputNumber min={1} max={99} value={unit.subquestion_no} disabled={activeReviewItem.payload.tags?.question_type === 'choice' && reviewDraft.units.length === 1 && unit.subquestion_no === null && unit.blank_no === null} onChange={(value) => setReviewDraft((current) => current ? { ...current, units: current.units.map((row) => row.item_id === unit.item_id ? { ...row, subquestion_no: value } : row), preflight: null } : current)} /></label>
+              <label>空号 <InputNumber min={1} max={99} value={unit.blank_no} disabled={activeReviewItem.payload.tags?.question_type === 'choice' && reviewDraft.units.length === 1 && unit.subquestion_no === null && unit.blank_no === null} onChange={(value) => setReviewDraft((current) => current ? { ...current, units: current.units.map((row) => row.item_id === unit.item_id ? { ...row, blank_no: value } : row), preflight: null } : current)} /></label>
               <label>判分方式 <Select style={{ width: 150 }} value={unit.answer_match_type}
-                options={activeReviewItem.payload.tags?.question_type === 'choice' ? [{ value: 'choice', label: '选项 A-H' }] : activeReviewItem.payload.tags?.question_type === 'true_false' ? [{ value: 'exact', label: '正确／错误' }] : [
-                  { value: 'exact', label: '精确文字' }, { value: 'numeric', label: '整数或小数' }, { value: 'latex_exact', label: '公式' }]}
+                options={answerMatchOptions(activeReviewItem.payload.tags?.question_type)}
                 onChange={(value: AnswerUnitDraft['answer_match_type']) => setReviewDraft((current) => current ? { ...current, units: current.units.map((row) => row.item_id === unit.item_id ? { ...row, answer_match_type: value } : row), preflight: null } : current)} /></label>
             </Space>
             <Input aria-label={`答案项 ${index + 1} 标准答案`} placeholder="标准答案" maxLength={2000} value={unit.answer} style={{ marginTop: 8 }}
@@ -1494,13 +1581,13 @@ export function QuestionImportPage() {
           <Tag color="red">已拒绝 {s5Summary.counts.rejected}</Tag>
           <Tag color="orange">跳过已有题 {s5Summary.counts.skipped_duplicate}</Tag>
           <Tag color="cyan">可确认仅入库 {s5Summary.counts.ready_for_library_confirmation}</Tag>
-          <Tag color="purple">可确认直接入池 {s5Summary.counts.ready_for_pool_confirmation}</Tag>
+          <Tag color="purple">直接入池待核答案 {s5Summary.counts.needs_answer_review_for_pool}</Tag>
           {s5Summary.counts.invalid_review_records > 0 && <Tag color="warning">旧审核已失效 {s5Summary.counts.invalid_review_records}</Tag>}
         </Space>
         <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 4 }}>
           查重未检查 {s5Summary.counts.missing_catalog_check} 题，已过期 {s5Summary.counts.stale_catalog_check} 题；相同题 {s5Summary.counts.exact_match_items} 题，可能相似 {s5Summary.counts.near_match_items} 题；待认领答案 {s5Summary.counts.unassigned_answer_issues} 条，待认领题图 {s5Summary.counts.unassigned_images} 张。
         </Typography.Paragraph>
-        <Typography.Text type="secondary">有效审核决定会在刷新后恢复。正式入库入口将在 S6 完成；当前确认只保存拟入库路径。</Typography.Text>
+        <Typography.Text type="secondary">选择“批量预检与审核”中的“题目与答案直接入池”，系统会预填当前答案；教师核对后可批量确认拟入池意向。正式入库和入池将在 S6 完成。</Typography.Text>
         {s5Reviews && s5Reviews.items.some((row) => row.valid && row.decision === 'approved') && <details style={{ marginTop: 8 }}>
           <summary>查看拟入库清单</summary>
           <Space direction="vertical" size={2} style={{ marginTop: 8 }}>
@@ -1650,7 +1737,7 @@ export function QuestionImportPage() {
         <Select aria-label="筛选候选题" value={candidateFilter} style={{ width: 220 }} onChange={setCandidateFilter}
           options={[{ value: 'all', label: '全部候选' }, { value: 'pending', label: '待审核' },
             { value: 'approved', label: '已确认' }, { value: 'rejected', label: '已拒绝' },
-            { value: 'skipped_duplicate', label: '已跳过旧题' }, { value: 'exact', label: '命中相同题' },
+            { value: 'skipped_duplicate', label: '题库已有，不再入库' }, { value: 'exact', label: '命中相同题' },
             { value: 'nearby', label: '命中相似题' }, { value: 'stale', label: '查重已过期' },
             { value: 'missing_tag', label: '标签不完整' }, { value: 'missing_answer', label: '缺少答案' },
             { value: 'figure', label: '题图待核对' }, { value: 'issue', label: '问题待处理' }]} />
@@ -1669,7 +1756,7 @@ export function QuestionImportPage() {
           const review = s5Reviews?.items.find((row) => row.item_id === item.id)
           const skipped = item.payload.teacher_decision === 'skipped_duplicate'
           return <Space direction="vertical" size={4}>
-            {item.is_fake ? <Tag>测试题，不参与审核</Tag> : skipped ? <Tag color="orange">已跳过旧题</Tag>
+            {item.is_fake ? <Tag>测试题，不参与审核</Tag> : skipped ? <Tag color="orange">题库已有，不再入库</Tag>
               : review?.valid && review.decision === 'approved' ? <Tag color="green">{review.route === 'direct_pool' ? '已确认拟直接入池' : '已确认仅题目入库'}</Tag>
                 : review?.valid && review.decision === 'rejected' ? <Tag color="red">已拒绝</Tag>
                   : <Tag color="default">待审核</Tag>}

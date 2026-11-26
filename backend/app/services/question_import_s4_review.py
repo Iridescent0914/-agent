@@ -43,6 +43,14 @@ def _catalog_signature(question: Question) -> str | None:
                                            question.assets, has_image=question.has_image))
 
 
+def _catalog_snapshot_signature(question: Question) -> str:
+    raw = {"question_text": question.question_text, "options": question.options,
+           "assets": question.assets, "has_image": question.has_image,
+           "review_revision": question.review_revision}
+    return hashlib.sha256(json.dumps(raw, ensure_ascii=False, sort_keys=True,
+                                     default=str).encode("utf-8")).hexdigest()
+
+
 def _answer_text_differs(item: QuestionImportItem, question: Question) -> bool | None:
     payload = item.payload or {}
     selected = next((answer.get("text") for answer in payload.get("answers") or []
@@ -119,8 +127,13 @@ def run_catalog_review(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
                 question = questions.get(old_match.question_id)
                 if (old_match.kind != "nearby" or old_match.decision == "pending"
                         or old_match.question_id in current_ids or question is None
-                        or question.archived_at is not None or old_match.catalog_signature is None
-                        or _catalog_signature(question) != old_match.catalog_signature):
+                        or question.archived_at is not None
+                        or (old_match.catalog_signature is not None
+                            and _catalog_signature(question) != old_match.catalog_signature)
+                        or (old_match.catalog_signature is None
+                            and (_catalog_signature(question) is not None
+                                 or (old_match.evidence or {}).get("manual_signature")
+                                 != _catalog_snapshot_signature(question)))):
                     continue
                 old_evidence = old_match.evidence or {}
                 near_rows.append(("nearby", {
@@ -139,13 +152,18 @@ def run_catalog_review(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
             old_match = (prior_matches.get(old.id, {}).get(question_id) if old else None)
             preserve = (old is not None and old.candidate_signature == signature
                         and old_match is not None and old_match.kind == kind
-                        and catalog_signature is not None
-                        and old_match.catalog_signature == catalog_signature)
+                        and ((catalog_signature is not None
+                              and old_match.catalog_signature == catalog_signature)
+                             or (catalog_signature is None and old_match.catalog_signature is None
+                                 and (old_match.evidence or {}).get("manual_signature")
+                                 == _catalog_snapshot_signature(question))))
             decision = old_match.decision if preserve else "pending"
             preserved_skip |= decision == "skip_existing"
             evidence = {"differences": row.get("differences") or [],
                         "image_relation": row.get("image_relation"),
                         "answer_text_differs": row.get("answer_text_differs")}
+            if catalog_signature is None:
+                evidence["manual_signature"] = _catalog_snapshot_signature(question)
             db.add(QuestionImportCatalogMatch(
                 check_id=check.id, question_id=question_id,
                 original_qid=question.original_qid,
@@ -194,7 +212,10 @@ def read_catalog_review(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
             question = questions.get(match.question_id)
             stale = (question is None or question.archived_at is not None
                      or (match.catalog_signature is None
-                         and question.review_revision != match.catalog_review_revision)
+                         and (question.review_revision != match.catalog_review_revision
+                              or _catalog_signature(question) is not None
+                              or (match.evidence or {}).get("manual_signature")
+                              != _catalog_snapshot_signature(question)))
                      or (match.catalog_signature is not None
                          and _catalog_signature(question) != match.catalog_signature))
             catalog_stale |= stale
@@ -263,18 +284,19 @@ def decide_catalog_match(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         raise ImportProblem("NOT_FOUND", "查重记录不存在或已被新结果替换", 404)
     question = db.get(Question, match.question_id)
     if (question is None or question.archived_at is not None
-            or match.catalog_signature is None
-            or _catalog_signature(question) != match.catalog_signature):
+            or (match.catalog_signature is not None
+                and _catalog_signature(question) != match.catalog_signature)
+            or (match.catalog_signature is None
+                and (match.kind != "nearby" or _catalog_signature(question) is not None
+                     or (match.evidence or {}).get("manual_signature")
+                     != _catalog_snapshot_signature(question)))):
         raise ImportProblem("CATALOG_CHANGED", "正式题已变化，请重新检查", 409)
     if decision not in {"pending", "skip_existing", "keep_variant", "unrelated"}:
         raise ImportProblem("INVALID_CANDIDATE", "查重决定无效")
     if match.kind == "exact" and decision in {"keep_variant", "unrelated"}:
         raise ImportProblem("EXACT_DUPLICATE", "精确重复题只能跳过或保持待决定", 409)
     reason = reason.strip() if isinstance(reason, str) else None
-    if decision == "keep_variant" and not reason:
-        raise ImportProblem("DUPLICATE_DECISION_REQUIRED", "确认独立变式须填写理由")
-    if decision == "skip_existing" and match.kind == "nearby" and not reason:
-        raise ImportProblem("DUPLICATE_DECISION_REQUIRED", "跳过相近题须填写理由")
+    reason = reason or None
     if reason and len(reason) > 500:
         raise ImportProblem("INVALID_CANDIDATE", "理由不能超过 500 字")
     match.decision = decision

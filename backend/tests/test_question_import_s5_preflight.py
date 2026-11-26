@@ -19,11 +19,12 @@ from app.schemas.question_import_s5 import (
 )
 from app.services.question_import import ImportProblem, update_candidate
 from app.services.question_import_s3_review import list_review_issues
+from app.services.question_import_figure_review import figure_text_confirmed
 from app.services.knowledge_catalog import CATALOG_PATH
 from app.services.question_fingerprint_v2 import VERSION as EXACT_VERSION
 from app.services.question_import_s3_labels import _allowed_kps
 from app.services.question_import_s4_near import VERSION as NEAR_VERSION
-from app.services.question_import_s4_review import _candidate_signature, _catalog_signature
+from app.services.question_import_s4_review import _candidate_signature, _catalog_signature, _catalog_snapshot_signature
 from app.services.question_import_s5_preflight import import_review_summary, preflight_import
 from app.services.question_import_s5_review import (
     claim_source_answer, confirm_answer_source, decide_issue, decide_item, decide_items_bulk, read_item_reviews,
@@ -125,6 +126,9 @@ def test_direct_pool_reuses_answer_review_rules_without_confirming(db):
     db.flush()
     missing = preflight_import(db, batch.id, _request(item, route="direct_pool"))
     assert "ANSWER_UNITS_REQUIRED" in _codes(missing)
+    summary = import_review_summary(db, batch.id)["counts"]
+    assert summary["needs_answer_review_for_pool"] == 1
+    assert summary["ready_for_pool_confirmation"] == 0
     valid_items = [{"item_id": "answer-1", "answer": "A", "answer_match_type": "choice"}]
     ready = preflight_import(db, batch.id, _request(item, route="direct_pool",
                                                   answer_review_items=valid_items))
@@ -135,6 +139,80 @@ def test_direct_pool_reuses_answer_review_rules_without_confirming(db):
                                                     answer_review_items=[{"item_id": "answer-1", "answer": "Z",
                                                                           "answer_match_type": "choice"}]))
     assert "ANSWER_REVIEW_INVALID" in _codes(invalid)
+    missing_option = preflight_import(db, batch.id, _request(item, route="direct_pool",
+                                                           answer_review_items=[{"item_id": "answer-1", "answer": "C",
+                                                                                 "answer_match_type": "choice"}]))
+    assert "ANSWER_REVIEW_INVALID" in _codes(missing_option)
+    assert "实际存在的选项字母" in missing_option["items"][0]["blockers"][0]["message"]
+
+
+def test_single_choice_rejects_unneeded_answer_coordinates(db):
+    batch, item, _ = _case(db)
+    item.payload = {**item.payload, "selected_answer_id": "a1", "answer_match_status": "matched",
+                    "answers": [{"answer_id": "a1", "text": "A", "teacher_confirmed": False}]}
+    db.flush()
+    result = preflight_import(db, batch.id, _request(item, route="direct_pool", answer_review_items=[
+        {"item_id": "answer-1", "subquestion_no": 7, "blank_no": 3,
+         "answer": "A", "answer_match_type": "choice"},
+    ]))
+    assert "ANSWER_REVIEW_INVALID" in _codes(result)
+    assert "小题号和空号请留空" in result["items"][0]["blockers"][0]["message"]
+
+
+def test_multiple_answer_items_need_explicit_correct_coordinates_for_direct_pool(db):
+    batch, item, check = _case(db)
+    item.payload = {**item.payload,
+                    "content": {**item.payload["content"],
+                                "question_text": "（1）选 A 或 B；（2）选 A 或 B。"},
+                    "selected_answer_id": "a1", "answer_match_status": "matched",
+                    "answers": [{"answer_id": "a1", "text": "（1）A；（2）B", "teacher_confirmed": False}]}
+    db.flush()
+    check.candidate_signature = _candidate_signature(db, batch.id, item)
+    db.flush()
+    no_numbers = [
+        {"item_id": "a", "answer": "A", "answer_match_type": "choice"},
+        {"item_id": "b", "answer": "B", "answer_match_type": "choice"},
+    ]
+    assert "ANSWER_REVIEW_INVALID" in _codes(preflight_import(
+        db, batch.id, _request(item, route="direct_pool", answer_review_items=no_numbers)))
+    one_answer = [{"item_id": "a", "answer": "A", "answer_match_type": "choice"}]
+    assert "ANSWER_REVIEW_INVALID" in _codes(preflight_import(
+        db, batch.id, _request(item, route="direct_pool", answer_review_items=one_answer)))
+    assert preflight_import(db, batch.id, _request(item))["items"][0]["batch_eligible"] is True
+    with pytest.raises(ImportProblem) as caught:
+        decide_item(db, batch.id, item.id, S5ItemDecisionRequest(
+            expected_revision=item.revision, decision="approved", route="direct_pool",
+            answer_review_items=no_numbers))
+    assert caught.value.code == "S5_PREFLIGHT_BLOCKED"
+    assert item.revision == 1
+    wrong_numbers = [
+        {**no_numbers[0], "subquestion_no": 1, "blank_no": 1},
+        {**no_numbers[1], "subquestion_no": 1, "blank_no": 2},
+    ]
+    assert "ANSWER_REVIEW_INVALID" in _codes(preflight_import(
+        db, batch.id, _request(item, route="direct_pool", answer_review_items=wrong_numbers)))
+    correct_numbers = [
+        {**no_numbers[0], "subquestion_no": 1, "blank_no": 1},
+        {**no_numbers[1], "subquestion_no": 2, "blank_no": 1},
+    ]
+    assert preflight_import(db, batch.id, _request(
+        item, route="direct_pool", answer_review_items=correct_numbers))["items"][0]["batch_eligible"] is True
+
+
+def test_detected_multiple_blanks_cannot_use_single_answer_item_for_direct_pool(db):
+    batch, item, check = _case(db)
+    item.payload = {**item.payload,
+                    "content": {**item.payload["content"], "question_text": "填空：___，___。"},
+                    "tags": {**item.payload["tags"], "question_type": "fill_blank"},
+                    "selected_answer_id": "a1", "answer_match_status": "matched",
+                    "answers": [{"answer_id": "a1", "text": "1，2", "teacher_confirmed": False}]}
+    db.flush()
+    check.candidate_signature = _candidate_signature(db, batch.id, item)
+    db.flush()
+    one_answer = [{"item_id": "a", "answer": "1，2", "answer_match_type": "exact"}]
+    assert "ANSWER_REVIEW_INVALID" in _codes(preflight_import(
+        db, batch.id, _request(item, route="direct_pool", answer_review_items=one_answer)))
+    assert preflight_import(db, batch.id, _request(item))["items"][0]["batch_eligible"] is True
 
 
 def test_version_stale_check_and_invalid_tags_are_independent_blockers(db):
@@ -171,6 +249,64 @@ def test_missing_key_figure_and_pending_near_match_block_confirmation(db):
     assert {"ASSET_UNASSIGNED", "DUPLICATE_DECISION_REQUIRED"} <= _codes(result)
     assert result["items"][0]["batch_eligible"] is False
 
+
+def test_teacher_can_confirm_transcribed_table_and_content_edit_invalidates_it(db):
+    batch, item, check = _case(db)
+    item.payload = {**item.payload, "extraction": {
+        "figure_status": "no_figure", "diagram_clues": ["表格：第一袋+2，第二袋0"]}}
+    db.flush()
+    assert "ASSET_UNASSIGNED" in _codes(preflight_import(db, batch.id, _request(item)))
+
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        response = TestClient(app).post(
+            f"/api/v1/question-imports/{batch.id}/s5/items/{item.id}/figure-text-confirmation",
+            json={"expected_revision": item.revision, "confirmed": True})
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+    assert response.status_code == 200
+    db.refresh(item)
+    checks = list(db.scalars(select(QuestionImportCatalogCheck).where(
+        QuestionImportCatalogCheck.batch_id == batch.id,
+        QuestionImportCatalogCheck.item_id == item.id)))
+    assert max(row.check_no for row in checks) == 2  # The confirmation also reruns S4.
+    assert figure_text_confirmed(item.payload)
+    assert "ASSET_UNASSIGNED" not in _codes(preflight_import(db, batch.id, _request(item)))
+    assert item.payload["figure_text_confirmation"]["confirmed_at"]
+    assert not figure_text_confirmed({**item.payload, "content": {
+        **item.payload["content"], "question_text": "外部改动后的题干"}})
+
+    update_candidate(db, batch.id, item.id, expected_revision=item.revision,
+                     changes={"content": {**item.payload["content"],
+                                          "question_text": "修改后的题干"}})
+    assert not figure_text_confirmed(item.payload)
+    assert "ASSET_UNASSIGNED" in _codes(preflight_import(db, batch.id, _request(item)))
+
+
+def test_decision_without_reason_clears_unverifiable_near_match_blocker(db):
+    batch, item, check = _case(db)
+    formal = db.scalar(select(Question).where(Question.has_image.is_(False),
+                                              Question.archived_at.is_(None)))
+    assert formal is not None
+    formal.has_image = True
+    formal.assets = []
+    db.add(QuestionImportCatalogMatch(
+        check_id=check.id, question_id=formal.id, original_qid=formal.original_qid,
+        catalog_review_revision=formal.review_revision, catalog_signature=None,
+        kind="nearby", similarity=0.5,
+        evidence={"manual_signature": _catalog_snapshot_signature(formal)},
+        decision="pending",
+    ))
+    db.flush()
+    assert {"DUPLICATE_UNVERIFIABLE", "DUPLICATE_DECISION_REQUIRED"} <= _codes(
+        preflight_import(db, batch.id, _request(item)))
+    match = db.scalar(select(QuestionImportCatalogMatch).where(
+        QuestionImportCatalogMatch.check_id == check.id))
+    match.decision = "unrelated"
+    match.reason = None
+    db.flush()
+    assert not {"DUPLICATE_UNVERIFIABLE", "DUPLICATE_DECISION_REQUIRED"} & _codes(
+        preflight_import(db, batch.id, _request(item)))
 
 def test_duplicate_answer_coordinates_fail_same_pool_review_rules(db):
     batch, item, _ = _case(db)

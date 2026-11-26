@@ -13,6 +13,7 @@ from app.models import Question, QuestionImportItem
 from app.services.question_fingerprint_v2 import VERSION, catalog_content_key, content_key, fingerprint, normalized_text
 from app.services.question_import import ImportProblem, active_candidate, get_batch
 from app.services.question_import_s3_images import image_bytes
+from app.services.question_import_figure_review import figure_text_confirmed
 
 
 def _candidate_key(db: Session, batch_id: uuid.UUID, item: QuestionImportItem) -> dict[str, Any] | None:
@@ -22,9 +23,9 @@ def _candidate_key(db: Session, batch_id: uuid.UUID, item: QuestionImportItem) -
     if not isinstance(asset_ids, list):
         return None
     extraction = payload.get("extraction") or {}
-    if (extraction.get("figure_status") == "uncertain"
+    if (not figure_text_confirmed(payload) and (extraction.get("figure_status") == "uncertain"
             or (not asset_ids and (extraction.get("diagram_clues")
-                                   or extraction.get("figure_status") == "complete"))):
+                                   or extraction.get("figure_status") == "complete")))):
         return None
     hashes: list[str] = []
     for raw_id in asset_ids:
