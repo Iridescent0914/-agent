@@ -133,7 +133,7 @@ async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse
 @app.exception_handler(ImportProblem)
 async def import_problem_handler(_: Request, exc: ImportProblem) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content={
-        "code": exc.code, "message": str(exc), "details": None,
+        "code": exc.code, "message": str(exc), "details": exc.details,
     })
 
 

@@ -283,7 +283,7 @@ def test_combined_answers_link_only_unique_unedited_question(db, tmp_path, monke
     linked = items[2].payload
     assert linked["answers"][0]["answer_source"] == "source_extracted"
     assert linked["answers"][0]["teacher_confirmed"] is False
-    assert linked["selected_answer_id"] is None
+    assert linked["selected_answer_id"] == linked["answers"][0]["answer_id"]
     assert linked["teacher_decision"] == "pending"
     assert reconcile_source_answers(db, batch.id) == result
     assert items[2].revision == 2
@@ -299,10 +299,22 @@ def test_combined_answers_link_only_unique_unedited_question(db, tmp_path, monke
     assert items[2].revision == 4
     assert items[2].payload["answers"] == linked["answers"]
 
+    # Older batches linked the only source answer without selecting it.
+    items[2].revision = 5
+    items[2].payload = {**items[2].payload, "selected_answer_id": None, "revision": 5}
+    db.flush()
+    repaired = reconcile_source_answers(db, batch.id, force=True)
+    assert repaired["linked_answer_count"] == 1
+    assert items[2].revision == 6
+    assert items[2].payload["selected_answer_id"] == linked["answers"][0]["answer_id"]
+    assert items[2].payload["answers"] == linked["answers"]
+    assert reconcile_source_answers(db, batch.id, force=True)["linked_answer_count"] == 1
+    assert items[2].revision == 6
+
     # A changed answer is still protected from being overwritten by rematching.
     edited_answers = [{**items[2].payload["answers"][0], "text": "教师修改的答案"}]
     items[2].payload = {**items[2].payload, "answers": edited_answers}
-    items[2].revision = 5
+    items[2].revision = 7
     db.flush()
     protected = reconcile_source_answers(db, batch.id, force=True)
     assert protected["linked_answer_count"] == 0

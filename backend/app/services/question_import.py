@@ -59,10 +59,11 @@ def require_s2_operator_token(provided: str | None) -> None:
 
 
 class ImportProblem(ValueError):
-    def __init__(self, code: str, message: str, status_code: int = 422):
+    def __init__(self, code: str, message: str, status_code: int = 422, details=None):
         super().__init__(message)
         self.code = code
         self.status_code = status_code
+        self.details = details
 
 
 # Bump when DOCX rendering changes so an identical upload does not reuse an old batch.

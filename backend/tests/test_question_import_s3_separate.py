@@ -147,7 +147,7 @@ def test_separate_answer_worker_links_only_unique_number_to_answer_file(db, tmp_
     answer = first.payload["answers"][0]
     assert answer["teacher_confirmed"] is False
     assert answer["evidence"][0]["file_id"] == batch.files[1]["file_id"]
-    assert first.payload["selected_answer_id"] is None
+    assert first.payload["selected_answer_id"] == answer["answer_id"]
     first.revision = 4
     first.payload = {**first.payload, "revision": 4}
     db.flush()

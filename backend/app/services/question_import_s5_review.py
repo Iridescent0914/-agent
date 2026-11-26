@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.models import QuestionImportAuditEvent, QuestionImportBatch, QuestionImportItem
 from app.schemas.question_import_s5 import (
-    S5AnswerClaimRequest, S5AnswerSourceRequest, S5IssueDecisionRequest, S5ItemDecisionRequest,
+    S5AnswerClaimRequest, S5AnswerSourceRequest, S5BulkDecisionRequest, S5IssueDecisionRequest, S5ItemDecisionRequest,
     S5PreflightSelection,
 )
 from app.services.question_import import ImportProblem, OWNER_SCOPE, active_candidate
@@ -74,7 +74,7 @@ def _event(db: Session, *, batch_id: uuid.UUID, item_id: uuid.UUID | None,
 
 
 def decide_item(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
-                request: S5ItemDecisionRequest) -> dict[str, Any]:
+                request: S5ItemDecisionRequest, batch_action_id: str | None = None) -> dict[str, Any]:
     item = _locked_batch_item(db, batch_id, item_id, request.expected_revision)
     ctx = _context(db, batch_id)
     if (item.payload or {}).get("teacher_decision") == "skipped_duplicate":
@@ -97,6 +97,8 @@ def decide_item(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
     action_id = str(uuid.uuid4())
     detail: dict[str, Any] = {"action_id": action_id, "route": request.route,
                               "s4_check_id": (ctx["review_by_id"].get(str(item_id)) or {}).get("check_id")}
+    if batch_action_id:
+        detail["batch_action_id"] = batch_action_id
     question = _event(db, batch_id=batch_id, item_id=item_id, kind="question",
                       decision=request.decision, revision=item.revision, signature=signature,
                       reason=(request.reason or "").strip() or None, detail=detail)
@@ -104,13 +106,61 @@ def decide_item(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         answer, rules = prepare_pool_review(payload["tags"]["question_type"], request.answer_review_items)
         _event(db, batch_id=batch_id, item_id=item_id, kind="answer", decision="approved",
                revision=item.revision, signature=signature,
-               detail={"action_id": action_id, "selected_answer_id": payload["selected_answer_id"],
+               detail={"action_id": action_id, "batch_action_id": batch_action_id,
+                       "selected_answer_id": payload["selected_answer_id"],
                        "review_items": [row.model_dump(mode="json") for row in request.answer_review_items],
                        "canonical_answer": answer, "normalization_rules": rules})
     db.flush()
     return {"item_id": str(item_id), "revision": item.revision,
             "decision": request.decision, "route": request.route,
             "question_event_id": str(question.id), "answer_confirmed": request.route == "direct_pool"}
+
+
+def decide_items_bulk(db: Session, batch_id: uuid.UUID,
+                      request: S5BulkDecisionRequest) -> dict[str, Any]:
+    """Validate every selected item under locks, then write one atomic review action."""
+    batch = db.scalar(select(QuestionImportBatch).where(
+        QuestionImportBatch.id == batch_id, QuestionImportBatch.owner_scope == OWNER_SCOPE,
+    ).with_for_update())
+    if batch is None:
+        raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
+    if batch.status != "review_pending" or batch.stage != "s2_completed":
+        raise ImportProblem("COMMIT_CONFLICT", "当前批次不可审核", 409)
+    selected_ids = {row.item_id for row in request.items}
+    locked = {item.id: item for item in db.scalars(select(QuestionImportItem).where(
+        QuestionImportItem.batch_id == batch_id, QuestionImportItem.id.in_(selected_ids),
+    ).order_by(QuestionImportItem.id).with_for_update())}
+    ctx = _context(db, batch_id)
+    results: list[dict[str, Any]] = []
+    for row in request.items:
+        item = locked.get(row.item_id)
+        blockers: list[dict[str, str]] = []
+        if item is None or not active_candidate(item) or item.is_fake:
+            blockers.append({"code": "CANDIDATE_UNAVAILABLE", "message": "候选题不可用"})
+        elif item.revision != row.expected_revision:
+            blockers.append({"code": "REVISION_CONFLICT", "message": "候选题版本已变化，请刷新"})
+        elif (item.payload or {}).get("teacher_decision") in {"approved", "rejected", "skipped_duplicate"}:
+            blockers.append({"code": "ALREADY_DECIDED", "message": "此题已有审核决定，请单独处理"})
+        if request.decision == "approved" and not blockers:
+            check = _evaluate(ctx, S5PreflightSelection(
+                item_id=row.item_id, expected_revision=row.expected_revision,
+                route=request.route, answer_review_items=row.answer_review_items))
+            blockers.extend(check["blockers"])
+        results.append({"item_id": str(row.item_id), "ordinal": item.ordinal if item else None,
+                        "blockers": blockers})
+    if any(row["blockers"] for row in results):
+        raise ImportProblem("S5_BULK_BLOCKED", "所选题目有阻断项，本次批量审核未保存", 409,
+                            details=results)
+    batch_action_id = str(uuid.uuid4())
+    with db.begin_nested():
+        saved = [decide_item(db, batch_id, row.item_id, S5ItemDecisionRequest(
+            expected_revision=row.expected_revision, decision=request.decision,
+            route=request.route, reason=request.reason,
+            answer_review_items=row.answer_review_items), batch_action_id=batch_action_id)
+                 for row in request.items]
+    return {"batch_id": str(batch_id), "batch_action_id": batch_action_id,
+            "decision": request.decision, "route": request.route,
+            "count": len(saved), "items": saved}
 
 
 def read_item_reviews(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:

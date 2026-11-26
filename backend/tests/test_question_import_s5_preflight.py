@@ -14,7 +14,7 @@ from app.main import app
 from app.models import Question, QuestionImportBatch, QuestionImportCatalogCheck, QuestionImportCatalogMatch, QuestionImportItem
 from app.models import QuestionImportAuditEvent
 from app.schemas.question_import_s5 import (
-    S5AnswerClaimRequest, S5AnswerSourceRequest, S5IssueDecisionRequest, S5ItemDecisionRequest,
+    S5AnswerClaimRequest, S5AnswerSourceRequest, S5BulkDecisionRequest, S5IssueDecisionRequest, S5ItemDecisionRequest,
     S5PreflightRequest, S5PreflightSelection,
 )
 from app.services.question_import import ImportProblem, update_candidate
@@ -26,7 +26,7 @@ from app.services.question_import_s4_near import VERSION as NEAR_VERSION
 from app.services.question_import_s4_review import _candidate_signature, _catalog_signature
 from app.services.question_import_s5_preflight import import_review_summary, preflight_import
 from app.services.question_import_s5_review import (
-    claim_source_answer, confirm_answer_source, decide_issue, decide_item, read_item_reviews,
+    claim_source_answer, confirm_answer_source, decide_issue, decide_item, decide_items_bulk, read_item_reviews,
 )
 
 
@@ -82,6 +82,20 @@ def _request(item: QuestionImportItem, *, route: str = "library_only",
         item_id=item.id, expected_revision=expected_revision or item.revision,
         route=route, answer_review_items=answer_review_items,
     )])
+
+
+def _second_item(db: Session, batch: QuestionImportBatch, first: QuestionImportItem):
+    second = QuestionImportItem(id=uuid.uuid4(), batch_id=batch.id, ordinal=2,
+                                revision=1, is_fake=False, payload={**first.payload,
+                                "content": {**first.payload["content"], "question_text": "另一道待审核数学题"}})
+    db.add(second)
+    db.flush()
+    db.add(QuestionImportCatalogCheck(
+        batch_id=batch.id, item_id=second.id, check_no=1, candidate_revision=1,
+        candidate_signature=_candidate_signature(db, batch.id, second),
+        exact_version=EXACT_VERSION, near_version=NEAR_VERSION))
+    db.flush()
+    return second
 
 
 def _codes(result):
@@ -357,3 +371,134 @@ def test_uncertain_answer_source_requires_separate_confirmation(db):
     assert preflight_import(db, batch.id, _request(item, route="direct_pool",
                                                answer_review_items=review_items))["items"][0]["batch_eligible"] is True
     assert read_item_reviews(db, batch.id)["items"][0]["decision"] == "pending"
+
+
+def test_bulk_library_approval_is_one_group_and_all_items_valid(db):
+    batch, first, _ = _case(db)
+    second = _second_item(db, batch, first)
+    result = decide_items_bulk(db, batch.id, S5BulkDecisionRequest(
+        decision="approved", route="library_only", items=[
+            {"item_id": first.id, "expected_revision": 1},
+            {"item_id": second.id, "expected_revision": 1},
+        ]))
+    assert result["count"] == 2
+    assert first.revision == second.revision == 2
+    assert all(row["valid"] and row["route"] == "library_only"
+               for row in read_item_reviews(db, batch.id)["items"])
+    events = list(db.scalars(select(QuestionImportAuditEvent).where(
+        QuestionImportAuditEvent.batch_id == batch.id)))
+    assert len(events) == 2
+    assert {row.detail["batch_action_id"] for row in events} == {result["batch_action_id"]}
+
+
+def test_bulk_blocker_or_revision_conflict_writes_nothing(db):
+    batch, first, _ = _case(db)
+    second = _second_item(db, batch, first)
+    for revision, code in [(2, "REVISION_CONFLICT"), (1, "DUPLICATE_CHECK_STALE")]:
+        if code == "DUPLICATE_CHECK_STALE":
+            check = db.scalar(select(QuestionImportCatalogCheck).where(
+                QuestionImportCatalogCheck.item_id == second.id))
+            check.near_version = "obsolete"
+            db.flush()
+        with pytest.raises(ImportProblem) as caught:
+            decide_items_bulk(db, batch.id, S5BulkDecisionRequest(
+                decision="approved", route="library_only", items=[
+                    {"item_id": first.id, "expected_revision": 1},
+                    {"item_id": second.id, "expected_revision": revision},
+                ]))
+        assert caught.value.code == "S5_BULK_BLOCKED"
+        assert code in {blocker["code"] for row in caught.value.details
+                        for blocker in row["blockers"]}
+        assert first.revision == second.revision == 1
+        assert not list(db.scalars(select(QuestionImportAuditEvent).where(
+            QuestionImportAuditEvent.batch_id == batch.id)))
+
+
+def test_bulk_direct_pool_records_separate_answers_and_rejection_reason(db):
+    batch, first, _ = _case(db)
+    second = _second_item(db, batch, first)
+    for item in (first, second):
+        item.payload = {**item.payload, "selected_answer_id": "a1", "answer_match_status": "matched",
+                        "answers": [{"answer_id": "a1", "answer_source": "source_extracted",
+                                     "text": "A", "teacher_confirmed": False}]}
+        check = db.scalar(select(QuestionImportCatalogCheck).where(
+            QuestionImportCatalogCheck.item_id == item.id))
+        check.candidate_signature = _candidate_signature(db, batch.id, item)
+    db.flush()
+    result = decide_items_bulk(db, batch.id, S5BulkDecisionRequest(
+        decision="approved", route="direct_pool", items=[
+            {"item_id": item.id, "expected_revision": 1,
+             "answer_review_items": [{"item_id": "answer-1", "answer": "A",
+                                      "answer_match_type": "choice"}]}
+            for item in (first, second)]))
+    assert result["count"] == 2
+    reviews = read_item_reviews(db, batch.id)["items"]
+    assert all(row["valid"] and row["answer_confirmed"] for row in reviews)
+    events = list(db.scalars(select(QuestionImportAuditEvent).where(
+        QuestionImportAuditEvent.batch_id == batch.id)))
+    assert len(events) == 4
+    assert {event.detail.get("batch_action_id") for event in events} == {result["batch_action_id"]}
+
+    other, candidate, _ = _case(db)
+    peer = _second_item(db, other, candidate)
+    rejected = decide_items_bulk(db, other.id, S5BulkDecisionRequest(
+        decision="rejected", reason="题干与原卷不符", items=[
+            {"item_id": candidate.id, "expected_revision": 1},
+            {"item_id": peer.id, "expected_revision": 1}]))
+    assert rejected["count"] == 2
+    assert all(row["decision"] == "rejected" and row["reason"] == "题干与原卷不符"
+               for row in read_item_reviews(db, other.id)["items"])
+
+
+@pytest.mark.parametrize("source_mode", ["questions_only", "combined", "separate"])
+def test_bulk_library_approval_supports_each_source_mode(db, source_mode):
+    batch, item, _ = _case(db)
+    batch.source_mode = source_mode
+    if source_mode == "separate":
+        batch.checkpoint = {**batch.checkpoint, "s3": {**batch.checkpoint["s3"],
+                            "separate_answers": {"status": "completed"}}}
+    db.flush()
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        client = TestClient(app)
+        path = f"/api/v1/question-imports/{batch.id}/s5"
+        selection = {"item_id": str(item.id), "expected_revision": 1}
+        preflight = client.post(f"{path}/preflight", json={"items": [
+            {**selection, "route": "library_only"}]})
+        assert preflight.status_code == 200, preflight.text
+        assert preflight.json()["summary"]["eligible"] == 1
+        result = client.post(f"{path}/items/bulk-decision", json={
+            "decision": "approved", "route": "library_only", "items": [selection]})
+        assert result.status_code == 200, result.text
+        assert result.json()["count"] == 1
+        reviews = client.get(f"{path}/reviews")
+        assert reviews.status_code == 200
+        assert reviews.json()["items"][0]["valid"] is True
+        summary = client.get(f"{path}/summary")
+        assert summary.status_code == 200
+        assert summary.json()["counts"]["approved"] == 1
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
+
+def test_bulk_api_reports_per_item_blockers_and_preserves_atomicity(db):
+    batch, first, _ = _case(db)
+    second = _second_item(db, batch, first)
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        response = TestClient(app).post(
+            f"/api/v1/question-imports/{batch.id}/s5/items/bulk-decision",
+            json={"decision": "approved", "route": "library_only", "items": [
+                {"item_id": str(first.id), "expected_revision": 1},
+                {"item_id": str(second.id), "expected_revision": 2},
+            ]})
+        assert response.status_code == 409, response.text
+        body = response.json()
+        assert body["code"] == "S5_BULK_BLOCKED"
+        assert len(body["details"]) == 2
+        assert body["details"][1]["blockers"][0]["code"] == "REVISION_CONFLICT"
+        assert first.revision == second.revision == 1
+        assert not list(db.scalars(select(QuestionImportAuditEvent).where(
+            QuestionImportAuditEvent.batch_id == batch.id)))
+    finally:
+        app.dependency_overrides.pop(get_db, None)

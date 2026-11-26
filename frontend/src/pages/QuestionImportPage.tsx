@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Empty, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag, Typography, message } from 'antd'
+import { Alert, Button, Card, Checkbox, Empty, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag, Typography, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { apiDelete, apiPost, apiPostForm, apiGet, apiPatch, apiUrl } from '../api/client'
 import { RichQuestionText } from '../components/RichQuestionText'
@@ -135,11 +135,15 @@ type AnswerUnitDraft = { item_id: string; subquestion_no: number | null; blank_n
   answer: string; accepted_answers: string; answer_match_type: 'choice' | 'numeric' | 'exact' | 'latex_exact' }
 type S5ReviewDraft = { itemId: string; revision: number; route: 'library_only' | 'direct_pool';
   reason: string; units: AnswerUnitDraft[]; preflight: S5PreflightRow | null }
+type S5BulkDraft = { selectedIds: string[]; route: 'library_only' | 'direct_pool'; reason: string;
+  units: Record<string, AnswerUnitDraft[]>; preflight: S5Preflight | null; screening: S5Preflight | null }
 type S5IssueDraft = { issue: ReviewIssue; decision: 'acknowledged' | 'deferred' | 'ignored' | 'pending'; reason: string }
 
 function defaultAnswerUnit(item: Candidate): AnswerUnitDraft {
   const questionType = item.payload.tags?.question_type
-  const selected = item.payload.answers?.find((answer) => answer.answer_id === item.payload.selected_answer_id)
+  const answers = item.payload.answers || []
+  const selected = answers.find((answer) => answer.answer_id === item.payload.selected_answer_id)
+    || (answers.length === 1 ? answers[0] : undefined)
   return { item_id: 'answer-1', subquestion_no: null, blank_no: null,
     answer: selected?.text || '', accepted_answers: '',
     answer_match_type: questionType === 'choice' ? 'choice' : questionType === 'true_false' ? 'exact' : 'exact' }
@@ -285,6 +289,8 @@ export function QuestionImportPage() {
   const [candidateQuery, setCandidateQuery] = useState('')
   const [reviewDraft, setReviewDraft] = useState<S5ReviewDraft | null>(null)
   const [reviewBusy, setReviewBusy] = useState(false)
+  const [bulkDraft, setBulkDraft] = useState<S5BulkDraft | null>(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
   const [issueDraft, setIssueDraft] = useState<S5IssueDraft | null>(null)
   const [issueBusy, setIssueBusy] = useState(false)
   const [answerClaimTargets, setAnswerClaimTargets] = useState<Record<string, string>>({})
@@ -558,6 +564,25 @@ export function QuestionImportPage() {
       reason: '', units: [defaultAnswerUnit(item)], preflight: null })
   }
 
+  async function selectS5Answer(item: Candidate, answerId: string) {
+    if (!selectedBatchId || !canEditCandidates) return
+    setReviewBusy(true)
+    try {
+      const updated = await apiPatch<Candidate>(`/question-imports/${selectedBatchId}/items/${item.id}`, {
+        expected_revision: item.revision, changes: { selected_answer_id: answerId },
+      })
+      await viewCandidates(selectedBatchId)
+      setReviewDraft((current) => current?.itemId === item.id ? { ...current,
+        revision: updated.revision, units: [defaultAnswerUnit(updated)], preflight: null } : current)
+      setBulkDraft((current) => current ? { ...current, preflight: null, screening: null } : current)
+      message.success('已选定此答案；答案内容仍需教师审核')
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '选定答案失败')
+      await viewCandidates(selectedBatchId)
+      setReviewDraft(null)
+    } finally { setReviewBusy(false) }
+  }
+
   async function previewS5Review() {
     if (!selectedBatchId || !reviewDraft) return
     const item = candidates.find((row) => row.id === reviewDraft.itemId)
@@ -595,6 +620,72 @@ export function QuestionImportPage() {
       await viewCandidates(selectedBatchId)
       setReviewDraft(null)
     } finally { setReviewBusy(false) }
+  }
+
+  function bulkPendingItems() {
+    return candidates.filter((item) => !item.is_fake
+      && !['approved', 'rejected', 'skipped_duplicate'].includes(item.payload.teacher_decision || '')
+      && !s5Reviews?.items.some((review) => review.item_id === item.id && review.valid && review.decision !== 'pending'))
+  }
+
+  function openBulkReview() {
+    setBulkDraft({ selectedIds: [], route: 'library_only', reason: '', units: {}, preflight: null, screening: null })
+  }
+
+  function bulkSelections(draft: S5BulkDraft, ids: string[]) {
+    return ids.map((id) => {
+      const item = candidates.find((row) => row.id === id)!
+      return { item_id: id, expected_revision: item.revision, route: draft.route,
+        ...(draft.route === 'direct_pool' ? {
+          answer_review_items: answerUnitsPayload(draft.units[id] || [defaultAnswerUnit(item)]),
+        } : {}) }
+    })
+  }
+
+  async function previewBulkReview(selectEligible = false) {
+    if (!selectedBatchId || !bulkDraft) return
+    const ids = selectEligible ? bulkPendingItems().slice(0, 200).map((item) => item.id) : bulkDraft.selectedIds
+    if (!ids.length) { message.warning('请先选择题目'); return }
+    setBulkBusy(true)
+    try {
+      const result = await apiPost<S5Preflight>(`/question-imports/${selectedBatchId}/s5/preflight`, {
+        items: bulkSelections(bulkDraft, ids),
+      })
+      setBulkDraft((current) => current ? { ...current,
+        selectedIds: selectEligible ? result.items.filter((row) => row.batch_eligible).map((row) => row.item_id) : ids,
+        preflight: selectEligible ? null : result, screening: selectEligible ? result : current.screening } : current)
+      if (selectEligible) message.info(`预检通过 ${result.summary.eligible} 题，已选中；请查看并再次预检所选题目`)
+    } catch (error) { message.error(error instanceof Error ? error.message : '批量预检失败') }
+    finally { setBulkBusy(false) }
+  }
+
+  async function saveBulkReview(decision: 'approved' | 'rejected') {
+    if (!selectedBatchId || !bulkDraft || !bulkDraft.selectedIds.length) return
+    if (decision === 'approved' && (bulkDraft.preflight?.summary.selected !== bulkDraft.selectedIds.length
+        || bulkDraft.preflight.summary.blocked > 0)) { message.warning('请先通过所选题目的整批预检'); return }
+    if (decision === 'rejected' && !bulkDraft.reason.trim()) { message.warning('请填写批量拒绝理由'); return }
+    setBulkBusy(true)
+    try {
+      await apiPost(`/question-imports/${selectedBatchId}/s5/items/bulk-decision`, {
+        decision, ...(decision === 'approved' ? { route: bulkDraft.route } : {}),
+        reason: bulkDraft.reason.trim() || null,
+        items: bulkDraft.selectedIds.map((id) => {
+          const item = candidates.find((row) => row.id === id)!
+          return { item_id: id, expected_revision: item.revision,
+            ...(decision === 'approved' && bulkDraft.route === 'direct_pool' ? {
+              answer_review_items: answerUnitsPayload(bulkDraft.units[id] || [defaultAnswerUnit(item)]),
+            } : {}) }
+        }),
+      })
+      const count = bulkDraft.selectedIds.length
+      setBulkDraft(null)
+      await viewCandidates(selectedBatchId)
+      message.success(`已整批${decision === 'approved' ? '确认' : '拒绝'} ${count} 题`)
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '批量审核失败')
+      if (decision === 'approved') await previewBulkReview()
+      await viewCandidates(selectedBatchId)
+    } finally { setBulkBusy(false) }
   }
 
   async function saveS5IssueDecision() {
@@ -1059,6 +1150,8 @@ export function QuestionImportPage() {
       {item.payload.answers?.map((answer) => <div key={answer.answer_id} className={`question-import-answer${answer.answer_source === 'model_generated' && answer.answer_id === item.payload.selected_answer_id && !answer.teacher_confirmed ? ' question-import-answer--model-pending' : ''}`}>
         <Typography.Text>{answer.answer_source === 'teacher_entered' ? '教师答案' : answer.answer_source === 'source_extracted' ? '资料答案' : answer.answer_source === 'model_generated' ? '模型生成答案' : '答案'}{answer.answer_id === item.payload.selected_answer_id ? answer.teacher_confirmed ? '（归属已核对，内容仍须审核）' : '（当前选择，待教师确认）' : ''}：</Typography.Text>
         {answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}
+        {canEditCandidates && !item.is_fake && answer.answer_id !== item.payload.selected_answer_id && !!answer.text?.trim() &&
+          <Button size="small" disabled={reviewBusy} onClick={() => void selectS5Answer(item, answer.answer_id)}>选为本题答案</Button>}
         {canEditCandidates && !item.is_fake && answer.answer_id === item.payload.selected_answer_id && !answer.teacher_confirmed &&
           <Button size="small" loading={answerSourceBusy === item.id} onClick={() => setAnswerSourceDraft({ itemId: item.id, revision: item.revision, answerId: answer.answer_id, reason: '' })}>确认答案归属</Button>}
       </div>)}
@@ -1152,6 +1245,93 @@ export function QuestionImportPage() {
           onChange={(event) => setCatalogDecisionReason(event.target.value)} />}
       </>}
     </Modal>
+    <Modal title="S5 批量审核" open={!!bulkDraft} width={1100}
+      onCancel={() => { if (!bulkBusy) setBulkDraft(null) }}
+      footer={<Space wrap>
+        <Button disabled={bulkBusy} onClick={() => setBulkDraft(null)}>关闭</Button>
+        <Button loading={bulkBusy} onClick={() => void previewBulkReview()}>预检所选题目</Button>
+        <Button type="primary" loading={bulkBusy}
+          disabled={!bulkDraft?.selectedIds.length || bulkDraft.preflight?.summary.selected !== bulkDraft.selectedIds.length || !!bulkDraft.preflight?.summary.blocked}
+          onClick={() => void saveBulkReview('approved')}>整批确认审核意向</Button>
+        <Button danger loading={bulkBusy} disabled={!bulkDraft?.selectedIds.length || !bulkDraft?.reason.trim()}
+          onClick={() => void saveBulkReview('rejected')}>整批拒绝所选题目</Button>
+      </Space>}>
+      {bulkDraft && <Space direction="vertical" size="middle" style={{ width: '100%', maxHeight: '68vh', overflowY: 'auto' }}>
+        <Alert showIcon type="info" message="这里保存教师审核意向；正式入库将在 S6 执行。任一所选题被阻断，本次整批操作都不会保存。" />
+        <Space wrap>
+          <Typography.Text strong>拟入库路径</Typography.Text>
+          <Select aria-label="批量拟入库路径" style={{ width: 280 }} value={bulkDraft.route}
+            options={[{ value: 'library_only', label: '仅题目入库' }, { value: 'direct_pool', label: '题目与答案直接入池' }]}
+            onChange={(route: S5BulkDraft['route']) => setBulkDraft((current) => current ? { ...current, route, preflight: null, screening: null } : current)} />
+          <Button onClick={() => setBulkDraft((current) => current ? { ...current,
+            selectedIds: bulkPendingItems().slice(0, 200).map((item) => item.id), preflight: null, screening: null } : current)}>选择全部待审题</Button>
+          <Button loading={bulkBusy} onClick={() => void previewBulkReview(true)}>只选当前预检通过的题</Button>
+          <Typography.Text type="secondary">每次最多选择 200 题</Typography.Text>
+        </Space>
+        <div style={{ maxHeight: 190, overflowY: 'auto', border: '1px solid #eee', padding: 8 }}>
+          {bulkPendingItems().map((item) => <div key={item.id} style={{ marginBottom: 5 }}>
+            <Checkbox checked={bulkDraft.selectedIds.includes(item.id)} disabled={bulkBusy || (!bulkDraft.selectedIds.includes(item.id) && bulkDraft.selectedIds.length >= 200)}
+              onChange={(event) => setBulkDraft((current) => current ? { ...current,
+                selectedIds: event.target.checked ? [...current.selectedIds, item.id] : current.selectedIds.filter((id) => id !== item.id),
+                preflight: null } : current)}>
+              第 {item.ordinal} 题 · {item.payload.content.question_text.slice(0, 100)}
+            </Checkbox>
+            {bulkDraft.screening?.items.find((row) => row.item_id === item.id && !row.batch_eligible)?.blockers.map((problem, index) =>
+              <Tag key={`${item.id}-${index}`} color="orange">待处理：{problem.message}</Tag>)}
+          </div>)}
+          {!bulkPendingItems().length && <Empty description="没有可批量审核的待审题" />}
+        </div>
+        <Typography.Text strong>所选 {bulkDraft.selectedIds.length} 题的审核预览；未选 {Math.max(0, bulkPendingItems().length - bulkDraft.selectedIds.length)} 题{bulkDraft.screening ? `（其中预检阻断 ${bulkDraft.screening.summary.blocked} 题）` : ''}</Typography.Text>
+        {bulkDraft.selectedIds.map((id) => {
+          const item = candidates.find((row) => row.id === id)
+          if (!item) return null
+          const selectedAnswer = item.payload.answers?.find((answer) => answer.answer_id === item.payload.selected_answer_id)
+          const linkedAnswer = item.payload.answers?.length === 1 ? item.payload.answers[0] : null
+          const catalog = catalogReviewResult?.items.find((row) => row.item_id === id)
+          const check = bulkDraft.preflight?.items.find((row) => row.item_id === id)
+          const units = bulkDraft.units[id] || [defaultAnswerUnit(item)]
+          return <Card key={id} size="small" title={`第 ${item.ordinal} 题 · 版本 ${item.revision}`}
+            extra={check && <Tag color={check.batch_eligible ? 'green' : 'red'}>{check.batch_eligible ? '预检通过' : '有阻断项'}</Tag>}>
+            <Typography.Paragraph type="secondary">原题号 {item.payload.source.original_number || '未识别'} · 第 {item.payload.source.page_start ?? '?'} 页 · 题型 {questionTypeLabels[item.payload.tags?.question_type || 'unknown']} · 难度 {item.payload.tags?.difficulty ?? '待确认'} · 知识点 {labelCatalog.find((point) => point.code === item.payload.tags?.main_kp_code)?.name || '待确认'}</Typography.Paragraph>
+            <RichQuestionText text={item.payload.content.question_text} assets={[]} />
+            {item.payload.content.options.map((option) => <RichQuestionText key={option.key} text={`${option.key}. ${option.text}`} assets={[]} />)}
+            {item.payload.content.asset_ids?.map((assetId) => selectedBatch && images?.files_available && <img key={assetId} alt={`第 ${item.ordinal} 题题图`} src={apiUrl(`/question-imports/${selectedBatch.id}/s3/images/${assetId}/content`)} className="question-import-review-image" />)}
+            <Typography.Paragraph>{selectedAnswer ? '当前答案' : linkedAnswer ? '已关联但未选定的答案' : '来源答案'}：{selectedAnswer?.text || linkedAnswer?.text || '无'}</Typography.Paragraph>
+            <Typography.Paragraph type="secondary">查重：{!catalog ? '尚未检查' : catalog.candidate_stale || catalog.catalog_stale ? '检查已过期' : catalog.matches.length ? catalog.matches.map((match) => `${match.kind === 'exact' ? '相同' : '相似'} ${match.original_qid}（${match.decision === 'pending' ? '待决定' : match.decision}）`).join('；') : '未发现需人工决定的匹配'}</Typography.Paragraph>
+            {bulkDraft.route === 'direct_pool' && <Card size="small" title="逐题答案审核草稿">
+              {units.map((unit, index) => <Space key={unit.item_id} wrap style={{ marginBottom: 8 }}>
+                <InputNumber aria-label={`第 ${item.ordinal} 题答案项 ${index + 1} 小题号`} min={1} max={99} placeholder="小题号" value={unit.subquestion_no}
+                  onChange={(value) => setBulkDraft((current) => current ? { ...current, preflight: null, screening: null, units: { ...current.units,
+                    [id]: units.map((row) => row.item_id === unit.item_id ? { ...row, subquestion_no: value } : row) } } : current)} />
+                <InputNumber aria-label={`第 ${item.ordinal} 题答案项 ${index + 1} 空号`} min={1} max={99} placeholder="空号" value={unit.blank_no}
+                  onChange={(value) => setBulkDraft((current) => current ? { ...current, preflight: null, screening: null, units: { ...current.units,
+                    [id]: units.map((row) => row.item_id === unit.item_id ? { ...row, blank_no: value } : row) } } : current)} />
+                <Input aria-label={`第 ${item.ordinal} 题答案项 ${index + 1}`} style={{ width: 220 }} placeholder="标准答案" value={unit.answer}
+                  onChange={(event) => setBulkDraft((current) => current ? { ...current, preflight: null, screening: null, units: { ...current.units,
+                    [id]: units.map((row) => row.item_id === unit.item_id ? { ...row, answer: event.target.value } : row) } } : current)} />
+                <Select aria-label={`第 ${item.ordinal} 题判分方式`} style={{ width: 140 }} value={unit.answer_match_type}
+                  options={[{ value: 'choice', label: '选项' }, { value: 'exact', label: '精确文字' }, { value: 'numeric', label: '数值' }, { value: 'latex_exact', label: '公式' }]}
+                  onChange={(value: AnswerUnitDraft['answer_match_type']) => setBulkDraft((current) => current ? { ...current, preflight: null, screening: null, units: { ...current.units,
+                    [id]: units.map((row) => row.item_id === unit.item_id ? { ...row, answer_match_type: value } : row) } } : current)} />
+                <Input aria-label={`第 ${item.ordinal} 题可接受答案`} style={{ width: 220 }} placeholder="其他可接受答案，以换行或分号分隔" value={unit.accepted_answers}
+                  onChange={(event) => setBulkDraft((current) => current ? { ...current, preflight: null, screening: null, units: { ...current.units,
+                    [id]: units.map((row) => row.item_id === unit.item_id ? { ...row, accepted_answers: event.target.value } : row) } } : current)} />
+                <Button size="small" danger disabled={units.length === 1} onClick={() => setBulkDraft((current) => current ? { ...current, preflight: null, screening: null,
+                  units: { ...current.units, [id]: units.filter((row) => row.item_id !== unit.item_id) } } : current)}>删除答案项</Button>
+              </Space>)}
+              <Button size="small" disabled={units.length >= 50} onClick={() => setBulkDraft((current) => current ? { ...current, preflight: null, screening: null,
+                units: { ...current.units, [id]: [...units, { ...defaultAnswerUnit(item), item_id: `answer-${crypto.randomUUID().slice(0, 8)}`, answer: '' }] } } : current)}>添加答案项</Button>
+            </Card>}
+            {check?.blockers.map((problem, index) => <Typography.Paragraph key={`b-${index}`} type="danger">阻断：{problem.message}</Typography.Paragraph>)}
+            {check?.warnings.map((problem, index) => <Typography.Paragraph key={`w-${index}`} type="warning">提醒：{problem.message}</Typography.Paragraph>)}
+          </Card>
+        })}
+        {bulkDraft.preflight && <Alert showIcon type={bulkDraft.preflight.summary.blocked ? 'warning' : 'success'}
+          message={`预检 ${bulkDraft.preflight.summary.selected} 题：通过 ${bulkDraft.preflight.summary.eligible}，阻断 ${bulkDraft.preflight.summary.blocked}`} />}
+        <label>批量拒绝理由（拒绝时必填）<Input.TextArea rows={2} maxLength={500} value={bulkDraft.reason}
+          onChange={(event) => setBulkDraft((current) => current ? { ...current, reason: event.target.value } : current)} /></label>
+      </Space>}
+    </Modal>
     <Modal title="逐题审核与预检" open={!!reviewDraft} width={1050}
       onCancel={() => { if (!reviewBusy) setReviewDraft(null) }}
       footer={<Space wrap>
@@ -1173,8 +1353,14 @@ export function QuestionImportPage() {
             {activeReviewItem.payload.content.options.map((option) => <RichQuestionText key={option.key} text={`${option.key}. ${option.text}`} assets={[]} />)}
             {activeReviewItem.payload.content.asset_ids?.map((assetId) => selectedBatch && images?.files_available && <img key={assetId} alt="候选题图" src={apiUrl(`/question-imports/${selectedBatch.id}/s3/images/${assetId}/content`)} className="question-import-review-image" />)}
             <Typography.Paragraph type="secondary">题型：{questionTypeLabels[activeReviewItem.payload.tags?.question_type || 'unknown']}；难度：{activeReviewItem.payload.tags?.difficulty ?? '待填'}；主属知识点：{labelCatalog.find((point) => point.code === activeReviewItem.payload.tags?.main_kp_code)?.name || '待填'}</Typography.Paragraph>
-            <Typography.Text strong>选定答案：</Typography.Text>
-            <RichQuestionText text={activeSelectedAnswer?.text || '未选择答案'} assets={[]} />
+            <Typography.Text strong>{activeSelectedAnswer ? '当前答案：' : activeReviewItem.payload.answers?.length ? '已关联答案（尚未选定）：' : '当前答案：'}</Typography.Text>
+            {activeSelectedAnswer && <RichQuestionText text={activeSelectedAnswer.text || '答案内容为空'} assets={[]} />}
+            {!activeSelectedAnswer && !activeReviewItem.payload.answers?.length && <Typography.Text type="secondary">暂无答案</Typography.Text>}
+            {!activeSelectedAnswer && activeReviewItem.payload.answers?.map((answer) => <Card key={answer.answer_id} size="small" style={{ marginTop: 8 }}>
+              <RichQuestionText text={answer.text || '答案内容为空'} assets={[]} />
+              {answer.evidence?.map((evidence, index) => <Typography.Paragraph key={`${evidence.file_id}-${evidence.page}-${index}`} type="secondary">来源第 {evidence.page} 页：{evidence.quote}</Typography.Paragraph>)}
+              {!!answer.text?.trim() && <Button size="small" loading={reviewBusy} disabled={!canEditCandidates} onClick={() => void selectS5Answer(activeReviewItem, answer.answer_id)}>选为本题答案</Button>}
+            </Card>)}
             {activeSelectedAnswer?.evidence?.map((evidence, index) => <Typography.Paragraph key={`${evidence.file_id}-${evidence.page}-${index}`} type="secondary">
               答案来源第 {evidence.page} 页摘录：{evidence.quote}
             </Typography.Paragraph>)}
@@ -1299,6 +1485,8 @@ export function QuestionImportPage() {
         <Typography.Text type="secondary">新增题目请人工核对重复情况；可在打标签前或后修改。</Typography.Text>
       </Space>}
       {s5Summary && <Card size="small" title="S5 教师审核概况" style={{ marginBottom: 16 }}>
+        <Button style={{ marginBottom: 10 }} type="primary" disabled={!canEditCandidates || s5Summary.counts.pending === 0}
+          onClick={openBulkReview}>批量预检与审核</Button>
         <Space wrap>
           <Tag color="blue">真实候选 {s5Summary.counts.active_real}</Tag>
           <Tag>待审 {s5Summary.counts.pending}</Tag>

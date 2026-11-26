@@ -36,6 +36,35 @@ class S5PreflightRequest(BaseModel):
         return self
 
 
+class S5BulkItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: UUID
+    expected_revision: int = Field(ge=1, strict=True)
+    answer_review_items: list[QuestionAnswerItemInput] | None = Field(default=None, max_length=50)
+
+
+class S5BulkDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["approved", "rejected"]
+    route: Literal["library_only", "direct_pool"] | None = None
+    reason: str | None = Field(default=None, max_length=500)
+    items: list[S5BulkItem] = Field(min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def validate_bulk(self):
+        if len({item.item_id for item in self.items}) != len(self.items):
+            raise ValueError("同一候选题不能重复选择")
+        if self.decision == "approved" and self.route is None:
+            raise ValueError("批量确认必须选择入库路径")
+        if self.decision == "rejected" and (self.route is not None or not (self.reason or "").strip()):
+            raise ValueError("批量拒绝必须填写理由，且不能指定入库路径")
+        if self.route != "direct_pool" and any(item.answer_review_items is not None for item in self.items):
+            raise ValueError("当前操作不能提交答案审核草稿")
+        return self
+
+
 class S5ItemDecisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -115,11 +115,34 @@ def _source_sections(batch: QuestionImportBatch, role: str) -> dict[int, str]:
 def _replaceable_source_answer(item: QuestionImportItem) -> bool:
     payload = item.payload
     answers = payload.get("answers") or []
-    return ((item.revision <= 2 or payload.get("answer_match_auto_revision") == item.revision)
+    auto_revision = payload.get("answer_match_auto_revision") == item.revision
+    selected = payload.get("selected_answer_id")
+    auto_selected = (auto_revision and len(answers) == 1
+                     and selected == answers[0].get("answer_id")
+                     and answers[0].get("answer_source") == "source_extracted")
+    return ((item.revision <= 2 or auto_revision)
             and payload.get("teacher_decision") == "pending"
-            and not payload.get("selected_answer_id")
+            and (not selected or auto_selected)
             and all(answer.get("answer_source") == "source_extracted"
                     and not answer.get("teacher_confirmed") for answer in answers))
+
+
+def _select_sole_linked_source_answer(item: QuestionImportItem) -> bool:
+    """Backfill a uniquely linked source answer without overriding teacher edits."""
+    payload = item.payload or {}
+    answers = payload.get("answers") or []
+    if (payload.get("selected_answer_id") or payload.get("teacher_decision") != "pending"
+            or payload.get("answer_match_status") != "matched" or len(answers) != 1
+            or answers[0].get("answer_source") != "source_extracted"
+            or not str(answers[0].get("text") or "").strip()):
+        return False
+    updated = dict(payload)
+    item.revision += 1
+    updated["selected_answer_id"] = answers[0]["answer_id"]
+    updated["revision"] = item.revision
+    updated["answer_match_auto_revision"] = item.revision
+    item.payload = updated
+    return True
 
 
 def _already_linked_source_answer(item: QuestionImportItem, version: dict[str, Any]) -> bool:
@@ -274,6 +297,7 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
             seen_source_answers.add(source_signature)
             linked_item = linked_source_answer_item(answer, items)
             if linked_item is not None:
+                _select_sole_linked_source_answer(linked_item)
                 if model_assignments and _replaceable_source_answer(linked_item):
                     matched[linked_item.id].append(answer)
                 else:
@@ -364,6 +388,7 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
         if len(ordered) == 1:
             version["source_identity"] = source_answer_identity(ordered[0])
         if _already_linked_source_answer(item, version):
+            _select_sole_linked_source_answer(item)
             linked_count += len(ordered)
             continue
         if not _replaceable_source_answer(item):
@@ -373,13 +398,16 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
             continue
         payload = dict(item.payload)
         payload["answers"] = [version]
+        payload["selected_answer_id"] = version["answer_id"]
         payload["answer_match_status"] = (
             "uncertain" if any(answer.get("uncertain_fragments") for answer in ordered) else "matched"
         )
         payload["warnings"] = [warning for warning in (payload.get("warnings") or [])
                                if warning != "资料答案已关联，须对照原页由教师确认"]
         payload["warnings"].append("资料答案已关联，须对照原页由教师确认")
-        if item.payload.get("answers") != [version] or item.payload.get("answer_match_status") != payload["answer_match_status"]:
+        if (item.payload.get("answers") != [version]
+                or item.payload.get("answer_match_status") != payload["answer_match_status"]
+                or item.payload.get("selected_answer_id") != version["answer_id"]):
             item.revision += 1
             payload["revision"] = item.revision
             payload["answer_match_auto_revision"] = item.revision
