@@ -7,7 +7,7 @@ import time
 import uuid
 from typing import Any
 
-from sqlalchemy import literal_column, select
+from sqlalchemy import Integer, String, column, func, literal_column, select, values
 from sqlalchemy.orm import Session
 
 from app.models import Question, QuestionImportItem
@@ -18,11 +18,12 @@ from app.services.question_import import active_candidate
 from app.services.question_import_s4_exact import _candidate_key, exact_catalog_matches
 
 
-VERSION = "s4-near-v3"
+VERSION = "s4-near-v4"
 RECALL_LIMIT = 32
 DISPLAY_LIMIT = 6
 NEAR_REVIEW_MIN_SIMILARITY = 0.30
 _NUMBER = re.compile(r"(?<![\w])[-+]?\d+(?:\.\d+)?(?:\^[-+]?\d+)?")
+_OPTION_START = re.compile(r"(?:^|\s)(?:\(\s*A\s*\)|A[.．、:：])(?=\s*\S)", re.IGNORECASE)
 _SEARCH_EXPRESSION = literal_column("(questions.question_text || ' ' || coalesce(questions.options::text, ''))")
 
 
@@ -30,6 +31,15 @@ def _search_text(question_text: str, options: Any) -> str:
     stem = normalized_text(question_text, strip_question_number=True)
     choices = normalized_options(options) or []
     return " ".join([stem, *(" ".join(choice) for choice in choices)]).strip()
+
+
+def _stem_text(question_text: str, options: Any) -> str:
+    stem = normalized_text(question_text, strip_question_number=True)
+    if normalized_options(options):
+        embedded_options = _OPTION_START.search(stem)
+        if embedded_options:
+            stem = stem[:embedded_options.start()].strip()
+    return stem
 
 
 def _differences(candidate: dict[str, Any], question: Question,
@@ -81,6 +91,7 @@ def catalog_near_matches(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
         payload = item.payload or {}
         content = payload.get("content") or {}
         query_text = _search_text(content.get("question_text") or "", content.get("options"))
+        query_stem = _stem_text(content.get("question_text") or "", content.get("options"))
         candidate_key = _candidate_key(db, batch_id, item)
         if not query_text:
             results.append({"item_id": item_id, "revision": item.revision,
@@ -92,15 +103,24 @@ def catalog_near_matches(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
         neighbors = db.execute(select(Question, distance).where(
             Question.archived_at.is_(None)
         ).order_by(distance).limit(RECALL_LIMIT)).all()
+        stems = values(column("position", Integer), column("stem", String), name="formal_stems").data([
+            (position, _stem_text(question.question_text, question.options))
+            for position, (question, _) in enumerate(neighbors)
+        ])
+        stem_scores = dict(db.execute(select(
+            stems.c.position, func.similarity(query_stem, stems.c.stem)
+        )).all()) if neighbors and query_stem else {}
         query_ms = round((time.perf_counter() - query_started) * 1000, 2)
         matches: list[dict[str, Any]] = []
-        for question, trigram_distance in neighbors:
+        for position, (question, trigram_distance) in enumerate(neighbors):
             if str(question.id) in exact_ids:
                 continue
             raw_similarity = max(0.0, 1.0 - float(trigram_distance))
-            if raw_similarity < NEAR_REVIEW_MIN_SIMILARITY:
+            stem_similarity = float(stem_scores.get(position, 0.0))
+            if (raw_similarity < NEAR_REVIEW_MIN_SIMILARITY
+                    or stem_similarity < NEAR_REVIEW_MIN_SIMILARITY):
                 continue
-            trigram_similarity = round(raw_similarity, 3)
+            trigram_similarity = round(stem_similarity, 3)
             if question.id not in formal_keys:
                 formal_keys[question.id] = catalog_content_key(
                     question.question_text, question.options, question.assets, has_image=question.has_image

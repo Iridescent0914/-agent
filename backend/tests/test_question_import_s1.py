@@ -62,6 +62,8 @@ def test_upload_is_idempotent_and_files_stay_private(db, private_dir):
         assert second.status_code == 200, second.text
         assert second.json()["id"] == first.json()["id"]
         batch = first.json()
+        retention = datetime.fromisoformat(batch["expires_at"]) - datetime.fromisoformat(batch["created_at"])
+        assert abs(retention.total_seconds() - get_settings().question_import_retention_hours * 3600) < 5
         assert batch["files"][0]["page_count"] == 1
         assert batch["stage"] == "files_saved"
         assert len(list(private_dir.rglob("*"))) == 2  # one directory, one file

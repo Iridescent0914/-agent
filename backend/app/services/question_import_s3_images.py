@@ -69,7 +69,7 @@ def _image_state(batch: QuestionImportBatch) -> dict[str, Any]:
 
 
 def _asset_path(batch_id: uuid.UUID, asset_id: uuid.UUID) -> Path:
-    # Flat files are removed by the existing 72-hour import purge.
+    # Flat files are removed by the configured import retention purge.
     return get_settings().question_import_dir / str(batch_id) / f"s3-image-{asset_id.hex}.png"
 
 

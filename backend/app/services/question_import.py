@@ -168,7 +168,7 @@ def create_batch(db: Session, *, source_mode: str,
            for (media_type, _), _, role, _ in validated):
         fingerprint_data["docx_conversion_version"] = DOCX_CONVERSION_VERSION
     request_hash = hashlib.sha256(json.dumps(fingerprint_data, sort_keys=True).encode()).hexdigest()
-    # The transaction lock makes idempotency and the seven-batch limit atomic across workers.
+    # The transaction lock makes idempotency and the configured batch limit atomic across workers.
     lock_key = 0x51494D504F5254  # One owner scope in the internal S1 deployment.
     db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
     existing = db.scalar(select(QuestionImportBatch).where(

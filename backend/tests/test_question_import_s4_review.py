@@ -15,6 +15,7 @@ from app.services.question_import import CATALOG_PATH, ImportProblem, update_can
 from app.services.question_import_s4_review import (
     decide_catalog_match, read_catalog_review, run_catalog_review,
 )
+from app.services.question_import_s4_near import catalog_near_matches
 
 
 @pytest.fixture
@@ -59,6 +60,47 @@ def _scenario(db: Session, *, candidate_text: str, catalog_text: str):
     db.add(item)
     db.flush()
     return batch_id, item, question
+
+
+@pytest.mark.parametrize("candidate_text, options", [
+    ("（2026•重庆）3的倒数是（ ）", ["-3", "-1/3", "1/3", "3"]),
+    ("（2026•陕西）计算：|-6|=（ ）", ["-6", "6", "1/6", "-1/6"]),
+    ("（2026•天津）计算5+（-2）的结果等于（ ）", ["-7", "7", "-3", "3"]),
+    ("（2026•南充）计算2+（-2）结果是（ ）", ["-4", "-1", "0", "4"]),
+])
+def test_shared_choice_values_do_not_make_unrelated_stems_near(db, candidate_text, options):
+    formal_text = "3、计算−16÷(−2)^(3)−2^(2)×(−(1)/(2))，结果应是（ ）\n（A）0； （B）-4； （C）-3； （D）4."
+    batch_id, item, formal = _scenario(db, candidate_text=candidate_text, catalog_text=formal_text)
+    formal.options = {"A": "0", "B": "-4", "C": "-3", "D": "4."}
+    formal.exact_fingerprint_v2 = fingerprint(catalog_content_key(formal.question_text, formal.options, []))
+    item.payload = {**item.payload, "content": {
+        "question_text": candidate_text,
+        "options": [{"key": chr(65 + index), "text": option} for index, option in enumerate(options)],
+        "asset_ids": [],
+    }}
+    db.flush()
+
+    result = catalog_near_matches(db, batch_id)
+    assert all(match["question_id"] != str(formal.id)
+               for match in result["results"][0]["near_matches"])
+
+
+def test_numeric_variant_remains_near_when_old_stem_embeds_choices(db):
+    batch_id, item, formal = _scenario(
+        db, candidate_text="计算 1+3 米，结果是多少？",
+        catalog_text="计算 1+2 米，结果是多少？\n（A）3；（B）4")
+    formal.options = {"A": "3", "B": "4"}
+    formal.exact_fingerprint_v2 = fingerprint(catalog_content_key(formal.question_text, formal.options, []))
+    item.payload = {**item.payload, "content": {
+        "question_text": "计算 1+3 米，结果是多少？",
+        "options": [{"key": "A", "text": "4"}, {"key": "B", "text": "5"}],
+        "asset_ids": [],
+    }}
+    db.flush()
+
+    result = catalog_near_matches(db, batch_id)
+    assert any(match["question_id"] == str(formal.id)
+               for match in result["results"][0]["near_matches"])
 
 
 def test_exact_decision_is_saved_and_content_change_invalidates_it(db):

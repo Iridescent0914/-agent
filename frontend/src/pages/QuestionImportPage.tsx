@@ -1179,7 +1179,7 @@ export function QuestionImportPage() {
             {!!match.reference_answer_raw && <div><Typography.Text type="secondary">题库答案：{match.reference_answer_raw.slice(0, 120)}</Typography.Text></div>}
             {!!match.evidence.answer_text_differs && <Typography.Text type="warning">候选答案与题库答案文本不同，请核对。</Typography.Text>}
             {!!match.evidence.differences?.length && <div><Typography.Text type="warning">差异：{match.evidence.differences.join('；')}</Typography.Text></div>}
-            {match.kind === 'nearby' && <div><Typography.Text type="secondary">题图：{match.evidence.image_relation || '未比较'}；文字相近度 {Math.round((match.similarity || 0) * 100)}%（用于筛选和排序，不是重复概率）</Typography.Text></div>}
+            {match.kind === 'nearby' && <div><Typography.Text type="secondary">题图：{match.evidence.image_relation || '未比较'}；题干文字相近度 {Math.round((match.similarity || 0) * 100)}%（仅作筛选和排序参考，不是重复概率）</Typography.Text></div>}
             {match.reason && <div><Typography.Text type="secondary">判断理由：{match.reason}</Typography.Text></div>}
             {canEditCandidates && !catalogStale && <Space wrap style={{ marginTop: 8 }}>
               {match.decision !== 'skip_existing' && <Button size="small" onClick={() => openCatalogDecision(item, match, 'skip_existing')}>题库已有此题，不再入库</Button>}
@@ -1528,7 +1528,7 @@ export function QuestionImportPage() {
           options={Object.entries(modeLabels).map(([value, label]) => ({ value, label }))} style={{ width: 260 }} />
         <label>题目文件（PDF/DOCX） <input type="file" accept=".pdf,.docx" onChange={(event) => setQuestionFile(event.target.files?.[0] || null)} /></label>
         {mode === 'separate' && <label>答案文件（PDF/DOCX） <input type="file" accept=".pdf,.docx" onChange={(event) => setAnswerFile(event.target.files?.[0] || null)} /></label>}
-        <Typography.Text type="secondary">单文件不超过 30 MB；PDF 不超过 50 页；临时文件最多保留 72 小时、最近 30 批。</Typography.Text>
+        <Typography.Text type="secondary">单文件不超过 30 MB；PDF 不超过 50 页；临时文件最多保留 7 天、最近 100 批。</Typography.Text>
         <Space><Button type="primary" onClick={upload} loading={uploading}>上传并建立批次</Button><Button onClick={() => void reload()}>刷新</Button></Space>
         <Space wrap><Typography.Text>S2 操作口令</Typography.Text><Input.Password aria-label="S2 操作口令" value={operatorToken} onChange={(event) => setOperatorToken(event.target.value)} autoComplete="off" style={{ width: 220 }} /><Typography.Text>单批调用预算阈值（元）</Typography.Text><InputNumber min={0.01} max={s2Config?.max_budget_cny || 20} step={0.5} value={budget} onChange={setBudget} />
           <Typography.Text type="secondary">{s2Config?.ready ? `已配置 ${s2Config.model}；每段主体 ${s2Config.pages_per_unit} 页，向后重叠 ${s2Config.overlap_pages} 页；单次回答上限 ${s2Config.max_output_tokens} Token` : '百炼尚未在服务端启用；仍可上传与校验'}</Typography.Text></Space>
