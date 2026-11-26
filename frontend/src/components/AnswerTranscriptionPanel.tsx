@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiUrl } from '../api/client'
 import type { AnswerPageCollection } from '../types/answerPages'
 import { AnswerView } from './AnswerView'
+import { PaperRecognitionReviewPanel } from './PaperRecognitionReviewPanel'
 
 type Status = 'readable' | 'blank' | 'missing' | 'illegible' | 'ambiguous'
 interface Unit {
@@ -133,6 +134,7 @@ export function AnswerTranscriptionPanel({ scope, collection, paperId, reviewer,
               setSubmitted(true); setConfirmed(false); message.success('整卷答案已录入批改')
             })}>确认录入并判分</Button>
         </>}
+        <PaperRecognitionReviewPanel scope={scope} refreshKey={`${data.revision_no}:${collection.revision_no}:${collection.effective_input_sha256}`} />
         <details><summary>查看核对记录（{data.history.length}）</summary>{data.history.map(h => <Typography.Paragraph key={h.revision_no}>
           v{h.revision_no} · {({ merge: '合并', save: '保存修正', submit: '确认录入' } as Record<string, string>)[h.action] ?? h.action} · {h.reviewer} · {h.reason}
         </Typography.Paragraph>)}</details>

@@ -73,6 +73,7 @@ async function mock(page: Page, mode: 'real' | 'fake' | 'uncertain' | 'stale' | 
     const method = route.request().method()
     const json = (value: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(value) })
     if (path === `/paper-instances/${paper}/submission`) return json(submission())
+    if (path === `/paper-instances/${paper}/accuracy-comparison` && method === 'GET') return json({ message: 'comparison unavailable in grading fixture' }, 503)
     if (path === '/internal/stage6/status') return json({ enabled: true, provider: mode === 'fake' ? 'fake' : 'bailian',
       model: 'offline-text-model', real_provider_available: mode !== 'fake',
       budget: { calls: started ? 2 : 0, max_calls: 20, estimated_cost_cny: 0, max_budget_cny: 1, unknown_calls: 0 } })

@@ -10,6 +10,7 @@ import { RichQuestionText } from '../components/RichQuestionText'
 import { EquivalenceReview } from '../components/EquivalenceReview'
 import { PaperEquivalenceReview } from '../components/PaperEquivalenceReview'
 import { AdoptedEquivalenceReview } from '../components/AdoptedEquivalenceReview'
+import { PaperAccuracyComparison } from '../components/PaperAccuracyComparison'
 import type { AnswerDraft, AttemptResult, AttemptRevision, SubmissionDetail, SubmissionPaperItem } from '../types/submission'
 import { answerMatchTypeLabel } from '../utils/gradingLabels'
 
@@ -245,6 +246,7 @@ export function PaperGradingPage() {
       </Space></Card>}
       {data.source === 'image' && !data.recognition_image_url && !data.answer_transcription && <Alert type="info" showIcon message="答题原图已清理" description="识别结果、教师修订和评分证据仍保留；原图已按保留策略删除。" />}
       {data.submission_id && <Card><Space size="large" wrap><Statistic title="题目" value={data.summary.total_count} /><Statistic title="正确" value={data.summary.correct_count} valueStyle={{ color: '#389e0d' }} /><Statistic title="错误" value={data.summary.incorrect_count} valueStyle={{ color: '#cf1322' }} /><Statistic title="待复核" value={data.summary.needs_review_count} valueStyle={{ color: '#d46b08' }} />{data.recognition_run_id && data.summary.needs_review_count > 0 && <Button type="primary" loading={loading} onClick={confirmAllRecognition}>批量确认清晰抄读项</Button>}<Button><Link to={`/students/${data.student_id}`}>查看最新画像</Link></Button></Space></Card>}
+      <PaperAccuracyComparison data={data} />
       {data.items.map((item) => <Card key={item.id} title={`第 ${item.order_no} 题 · ${item.question_snapshot.original_qid ?? ''}`} extra={item.attempt && gradeTag(item.attempt)}>
         <Space wrap><Tag>{item.question_snapshot.question_type === 'choice' ? '选择题' : item.question_snapshot.question_type === 'true_false' ? '判断题' : '填空题'}</Tag><Tag>{item.knowledge_point_snapshot.name}</Tag><Tag>规则：{answerMatchTypeLabel(item.grading_answer_rule_snapshot.answer_match_type)}</Tag>{item.answer_key_update_available && <Tag color="orange">标准答案待更新</Tag>}</Space>
         <RichQuestionText text={item.question_snapshot.question_text ?? ''} assets={item.assets} />
