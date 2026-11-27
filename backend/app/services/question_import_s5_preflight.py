@@ -157,7 +157,7 @@ def _answer_issues(selection: S5PreflightSelection, item: QuestionImportItem,
           and not answer.get("teacher_confirmed")):
         blockers.append(_problem("ANSWER_SOURCE_UNCERTAIN", "答案与题目的关联尚未确认"))
     if answer is not None and not answer.get("teacher_confirmed"):
-        warnings.append(_problem("ANSWER_CONFIRMATION_REQUIRED", "答案草稿通过预检后仍须由教师明确确认"))
+        warnings.append(_problem("ANSWER_CONFIRMATION_REQUIRED", "请核对答案草稿；保存直接入池审核时会记录教师对答案内容的确认"))
     if not selection.answer_review_items:
         blockers.append(_problem("ANSWER_UNITS_REQUIRED", "直接入池需要逐小题或空的结构化答案审核草稿"))
     elif question_type in PROFILE_QUESTION_TYPES:

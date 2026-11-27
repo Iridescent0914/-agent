@@ -1215,6 +1215,8 @@ export function QuestionImportPage() {
     const clues = item.payload.extraction?.diagram_clues || []
     const figureMissing = !assetIds.length && (clues.length > 0 || ['complete', 'uncertain'].includes(item.payload.extraction?.figure_status || ''))
     const figureTextConfirmed = figureMissing && !!item.payload.figure_text_confirmation
+    const answerSourceNeedsConfirmation = ['uncertain', 'unmatched', 'conflict'].includes(item.payload.answer_match_status || '')
+    const answerContentReviewed = !!s5Reviews?.items.some((review) => review.item_id === item.id && review.valid && review.answer_confirmed)
     const removedCandidateImages = unmatchedImages.filter((asset) => asset.removed_candidate_for_item_ids?.includes(item.id))
     return <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}>
       <RichQuestionText text={item.payload.content.question_text} assets={[]} mathFragments={item.payload.extraction?.math_fragments ?? []} />
@@ -1230,13 +1232,13 @@ export function QuestionImportPage() {
       {removedCandidateImages.length > 0 && <Typography.Text type="warning">去重题目有 {removedCandidateImages.length} 张未自动转移的图片，请在上方“无法匹配到题目的图片”中核对是否缺图。</Typography.Text>}
       {canEditCandidates && <label>添加图片：<input type="file" accept="image/jpeg,image/png,image/webp" disabled={imageBusy || !images?.files_available} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file && selectedBatch) void uploadCandidateImage(selectedBatch, item, file) }} /></label>}
       {item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}
-      {item.payload.answers?.map((answer) => <div key={answer.answer_id} className={`question-import-answer${answer.answer_source === 'model_generated' && answer.answer_id === item.payload.selected_answer_id && !answer.teacher_confirmed ? ' question-import-answer--model-pending' : ''}`}>
-        <Typography.Text>{answer.answer_source === 'teacher_entered' ? '教师答案' : answer.answer_source === 'source_extracted' ? '资料答案' : answer.answer_source === 'model_generated' ? '模型生成答案' : '答案'}{answer.answer_id === item.payload.selected_answer_id ? answer.teacher_confirmed ? '（归属已核对，内容仍须审核）' : '（当前选择，待教师确认）' : ''}：</Typography.Text>
+      {item.payload.answers?.map((answer) => <div key={answer.answer_id} className={`question-import-answer${answer.answer_source === 'model_generated' && answer.answer_id === item.payload.selected_answer_id && !answerContentReviewed ? ' question-import-answer--model-pending' : ''}`}>
+        <Typography.Text>{answer.answer_source === 'teacher_entered' ? '教师答案' : answer.answer_source === 'source_extracted' ? '资料答案' : answer.answer_source === 'model_generated' ? '模型生成答案' : '答案'}{answer.answer_id === item.payload.selected_answer_id ? answerContentReviewed ? '（答案内容已审核）' : answer.teacher_confirmed ? '（归属已核对，内容仍须审核）' : answerSourceNeedsConfirmation ? '（关联待确认，内容待审核）' : '（当前选用，内容待审核）' : ''}：</Typography.Text>
         {answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}
         {canEditCandidates && !item.is_fake && answer.answer_id !== item.payload.selected_answer_id && !!answer.text?.trim() &&
           <Button size="small" disabled={reviewBusy} onClick={() => void selectS5Answer(item, answer.answer_id)}>选为本题答案</Button>}
-        {canEditCandidates && !item.is_fake && answer.answer_id === item.payload.selected_answer_id && !answer.teacher_confirmed &&
-          <Button size="small" loading={answerSourceBusy === item.id} onClick={() => setAnswerSourceDraft({ itemId: item.id, revision: item.revision, answerId: answer.answer_id, reason: '' })}>确认答案归属</Button>}
+        {canEditCandidates && !item.is_fake && answer.answer_id === item.payload.selected_answer_id && !answer.teacher_confirmed && answerSourceNeedsConfirmation &&
+          <Button size="small" loading={answerSourceBusy === item.id} onClick={() => setAnswerSourceDraft({ itemId: item.id, revision: item.revision, answerId: answer.answer_id, reason: '' })}>确认此答案属于本题</Button>}
       </div>)}
       {item.payload.warnings?.includes('题目已修改，请重新核对答案是否仍适用') && <Typography.Text type="warning">题目已修改，请重新核对答案是否仍适用。</Typography.Text>}
       {canEditCandidates && candidateEditor?.itemId !== item.id && <Space>
@@ -1513,12 +1515,12 @@ export function QuestionImportPage() {
           onChange={(event) => setIssueDraft((current) => current ? { ...current, reason: event.target.value } : current)} />
       </Space>}
     </Modal>
-    <Modal title="确认答案归属" open={!!answerSourceDraft} okText="确认答案归属"
+    <Modal title="确认答案与本题的关联" open={!!answerSourceDraft} okText="确认关联"
       okButtonProps={{ loading: !!answerSourceBusy }} onCancel={() => { if (!answerSourceBusy) setAnswerSourceDraft(null) }}
       onOk={() => void confirmS5AnswerSource()}>
-      <Typography.Paragraph>请对照题目与来源答案核对关联。此操作不确认答案内容正确。</Typography.Paragraph>
+      <Typography.Paragraph>仅在答案关联存疑时需要此操作。请对照题目与所选答案核对；答案内容仍需在审核时确认。</Typography.Paragraph>
       <Input.TextArea aria-label="答案关联理由" rows={3} maxLength={500} value={answerSourceDraft?.reason || ''}
-        placeholder="若来源配对冲突或未匹配，请填写人工关联依据"
+        placeholder="配对冲突或未匹配时须填写判断依据；其他情况选填"
         onChange={(event) => setAnswerSourceDraft((current) => current ? { ...current, reason: event.target.value } : current)} />
     </Modal>
     <Card title="批量题目导入 · 内部识别与候选核对">
