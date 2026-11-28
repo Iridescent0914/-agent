@@ -32,6 +32,43 @@ logger = logging.getLogger(__name__)
 FIGURE_VERSION = "s2-figure-coverage-v1"
 
 
+def reconcile_completed_unit_costs(s2: dict) -> dict:
+    """Repair a paused batch only when every paid response is a completed page unit.
+
+    The provider sometimes omits PDF tool usage despite returning token usage.
+    The submitted page count is a conservative fallback for budget gating.
+    """
+    if not s2.get("cost_unknown") or s2.get("failed_unit") or s2.get("accounted_response_keys"):
+        return s2
+    units = s2.get("units") or []
+    paid_units = [unit for unit in units if unit.get("status") == "completed"
+                  and not unit.get("skipped_by_teacher")]
+    if int(s2.get("calls") or 0) != len(paid_units):
+        return s2
+    if len({unit.get("response_id") for unit in paid_units}) != len(paid_units):
+        return s2
+    total = 0.0
+    repairs = []
+    for unit in paid_units:
+        if not unit.get("response_id") or not unit.get("usage"):
+            return s2
+        pages = int(unit["last_page"]) - int(unit["first_page"]) + 1
+        cost = estimate_cost(unit["usage"], pdf_pages=pages)
+        if cost is None:
+            return s2
+        if unit.get("estimated_cny") is None:
+            repairs.append((unit, cost))
+        total += float(unit["estimated_cny"] if unit.get("estimated_cny") is not None else cost)
+    if not repairs:
+        return s2
+    for unit, cost in repairs:
+        unit["estimated_cny"] = cost
+        unit["cost_estimate_basis"] = "submitted_pdf_pages"
+    s2["estimated_cny"] = round(total, 6)
+    s2["cost_unknown"] = False
+    return s2
+
+
 def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_token: str | None = None) -> QuestionImportBatch:
     settings = get_settings()
     if settings.question_import_s2_model != FLASH_MODEL:
@@ -53,7 +90,7 @@ def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_to
     if not any(item["role"] == "questions" for item in batch.files):
         raise ImportProblem("INVALID_FILE", "批次缺少题目文件")
     checkpoint = dict(batch.checkpoint or {})
-    s2 = dict(checkpoint.get("s2") or {})
+    s2 = reconcile_completed_unit_costs(copy.deepcopy(checkpoint.get("s2") or {}))
     if not s2:
         s2["figure_version"] = FIGURE_VERSION
     question_file = next(item for item in batch.files if item["role"] == "questions")
@@ -367,7 +404,7 @@ def process_s2_one() -> bool:
                                          }, include_answers=include_answers,
                                          document_page_roles=document_page_roles,
                                          embedded_images=unit_images)
-            cost = estimate_cost(meta.get("usage") or {})
+            cost = estimate_cost(meta.get("usage") or {}, pdf_pages=unit.page_count)
             with SessionLocal() as db:
                 row = _locked_batch(db, batch_id, token)
                 if row is None:
@@ -463,6 +500,7 @@ def process_s2_one() -> bool:
                                                   "source_answer_signals": source_answer_signals,
                                                   "usage": meta.get("usage") or {},
                                                   "estimated_cny": cost,
+                                                  "cost_estimate_basis": "submitted_pdf_pages" if not ((meta.get("usage") or {}).get("x_tools") or {}).get("pdf_page_parser") else "provider_pdf_pages",
                                                   "elapsed_seconds": meta["elapsed_seconds"],
                                                   "response_id": meta.get("response_id")}
                 already_accounted = bool(meta.get("response_id") and meta["response_id"] in
@@ -515,7 +553,7 @@ def process_s2_one() -> bool:
                         raw_response = saved.get("raw_response")
                         if isinstance(raw_response, dict):
                             usage = raw_response.get("usage") or {}
-                            cost = estimate_cost(usage)
+                            cost = estimate_cost(usage, pdf_pages=unit.page_count)
                             response_key = str(raw_response.get("id") or hashlib.sha256(
                                 json.dumps(saved, ensure_ascii=False, sort_keys=True).encode("utf-8")
                             ).hexdigest())

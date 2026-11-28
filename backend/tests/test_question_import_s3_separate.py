@@ -85,7 +85,13 @@ def test_answer_only_provider_keeps_source_evidence_and_rejects_bad_pages(monkey
     prompt = captured["messages"][0]["content"][1]["text"]
     assert "不要把解题步骤" in prompt
     assert "只输出主体页开始" in prompt
+    assert "此类已记录的图形答案不算页段未完成" in prompt
+    assert "后续上下文页新开始的题目不影响 complete" in prompt
     assert "questions" not in captured["response_format"]["json_schema"]["schema"]["properties"]
+    graphic_answer = validate_answer_output({"complete": True, "source_answers": [],
+        "unresolved_fragments": [{"page": 1, "text": "第 2 题（1）图形答案",
+                                  "reason": "原页只有图形，无法可靠转录"}]}, 1)
+    assert graphic_answer.unresolved_fragments[0].page == 1
     with pytest.raises(ImportProblem) as bad_page:
         validate_answer_output({"complete": True, "source_answers": [
             {"answer_text": "2", "page_start": 2, "page_end": 2}]}, 1)
@@ -129,7 +135,8 @@ def test_separate_answer_worker_links_only_unique_number_to_answer_file(db, tmp_
             return validate_answer_output({"complete": True, "source_answers": [
                 {"original_number": "1", "answer_text": "2", "page_start": 1, "page_end": 1},
                 {"original_number": "2", "answer_text": "4", "page_start": 1, "page_end": 1}],
-                "unresolved_fragments": []}, 1), {
+                "unresolved_fragments": [{"page": 1, "text": "第 3 题图形答案",
+                                          "reason": "原页只有图形，无法可靠转录"}]}, 1), {
                 "usage": {"prompt_tokens": 100, "completion_tokens": 30,
                           "x_tools": {"pdf_page_parser": {"count": 1}}},
                 "response_id": "separate-1", "elapsed_seconds": 1.0}
@@ -141,6 +148,7 @@ def test_separate_answer_worker_links_only_unique_number_to_answer_file(db, tmp_
     state = batch.checkpoint["s3"]["separate_answers"]
     result = batch.checkpoint["s3"]["source_answer_reconciliation"]
     assert state["status"] == "completed" and state["calls"] == 1
+    assert state["units"][0]["unresolved_fragments"][0]["text"] == "第 3 题图形答案"
     assert result["source_answer_count"] == 2
     assert result["linked_question_count"] == 1
     assert result["unassigned_answers"][0]["reason"] == "repeated_question_number"

@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import engine
 from app.models import QuestionImportItem
-from app.services.question_import import add_candidate, create_batch
+from app.services.question_import import ImportProblem, add_candidate, create_batch
 from app.services.question_import_s3_global import _apply_overlap_advice, dedupe_batch
+from app.services.question_import_s3_separate import start_separate_answers
 from app.services.question_import_s3_images import list_images
 import app.services.question_import_s3_global as global_service
 
@@ -83,6 +84,90 @@ def test_global_model_removes_distant_answer_restatement_then_links_answer(db, t
     assert len(batch.checkpoint["s3"]["source_answer_reconciliation"]["unassigned_answers"]) == 1
     assert dedupe_batch(db, batch.id, budget_cny=1, operator_token="operator-test") == result
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize("candidate_count,review_fails", [(1, False), (2, False), (2, True)])
+def test_separate_answers_auto_queue_only_after_dedupe(db, tmp_path, monkeypatch,
+                                                        candidate_count, review_fails):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "question_import_dir", tmp_path / "imports")
+    monkeypatch.setattr(settings, "question_import_s2_enabled", True)
+    monkeypatch.setattr(settings, "question_import_s2_api_key", "test-only")
+    monkeypatch.setattr(settings, "question_import_s2_operator_token", "operator-test")
+    monkeypatch.setattr(settings, "question_import_s2_base_url", "https://example.invalid/v1")
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    pdf = BytesIO()
+    writer.write(pdf)
+    batch = create_batch(db, source_mode="separate", files=[
+        ("questions", "questions.pdf", pdf.getvalue()),
+        ("answers", "answers.pdf", pdf.getvalue()),
+    ])
+    for number in range(candidate_count):
+        add_candidate(db, batch, {
+            "source": {"file_id": batch.files[0]["file_id"], "page_start": 1,
+                       "page_end": 1, "original_number": str(number + 1)},
+            "content": {"question_text": f"计算 {number}+1", "options": []},
+        })
+    batch.status = "review_pending"
+    batch.stage = "s2_completed"
+    batch.checkpoint = {"s2": {"auto_global_dedupe": True, "budget_cny": 2,
+                               "estimated_cny": 0.4}}
+    db.flush()
+
+    class FakeProvider:
+        def review(self, _context):
+            assert "separate_answers" not in (batch.checkpoint.get("s3") or {})
+            if review_fails:
+                raise ImportProblem("S3_GLOBAL_FAILED", "模型去重失败")
+            return [], {"estimated_cny": 0.1}
+
+    monkeypatch.setattr(global_service, "QwenGlobalDedupProvider", FakeProvider)
+    result = dedupe_batch(db, batch.id, budget_cny=1.6, automatic=True)
+    db.refresh(batch)
+    if review_fails:
+        assert result["status"] == "failed"
+        assert "separate_answers" not in batch.checkpoint["s3"]
+        return
+    assert result["status"] == "completed"
+    answers = batch.checkpoint["s3"]["separate_answers"]
+    assert answers["status"] == "queued"
+    assert answers["budget_cny"] == pytest.approx(1.5 if candidate_count == 2 else 1.6)
+    assert answers["source_file_id"] == batch.files[1]["file_id"]
+    assert dedupe_batch(db, batch.id, budget_cny=1.6, automatic=True) == result
+    assert batch.checkpoint["s3"]["separate_answers"]["status"] == "queued"
+
+
+def test_separate_answers_pause_without_remaining_budget(db, tmp_path, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "question_import_dir", tmp_path / "imports")
+    monkeypatch.setattr(settings, "question_import_s2_enabled", True)
+    monkeypatch.setattr(settings, "question_import_s2_api_key", "test-only")
+    monkeypatch.setattr(settings, "question_import_s2_operator_token", "operator-test")
+    monkeypatch.setattr(settings, "question_import_s2_base_url", "https://example.invalid/v1")
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    pdf = BytesIO()
+    writer.write(pdf)
+    batch = create_batch(db, source_mode="separate", files=[
+        ("questions", "questions.pdf", pdf.getvalue()),
+        ("answers", "answers.pdf", pdf.getvalue()),
+    ])
+    batch.status = "review_pending"
+    batch.stage = "s2_completed"
+    batch.checkpoint = {"s2": {"auto_global_dedupe": True, "budget_cny": 2,
+                               "estimated_cny": 2.0}}
+    db.flush()
+
+    assert dedupe_batch(db, batch.id, budget_cny=1, automatic=True)["status"] == "completed"
+    db.refresh(batch)
+    state = batch.checkpoint["s3"]["separate_answers"]
+    assert state["status"] == "paused"
+    assert state["calls"] == 0
+    assert state["error_code"] == "S3_ANSWER_BUDGET"
+    start_separate_answers(db, batch.id, budget_cny=2, operator_token="operator-test")
+    db.commit()
+    assert batch.checkpoint["s3"]["separate_answers"]["status"] == "queued"
 
 
 @pytest.mark.parametrize("same_hash", [True, False])

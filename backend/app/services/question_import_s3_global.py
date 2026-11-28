@@ -33,6 +33,45 @@ def _batch_review_spent(s3: dict[str, Any]) -> float:
         global_review.get("estimated_cny") or global_review.get("reserved_cny") or 0)
 
 
+def _queue_separate_answers_after_dedupe(db: Session, batch: QuestionImportBatch) -> None:
+    """Carry the unused question-recognition budget into separate-answer extraction."""
+    if batch.source_mode != "separate":
+        return
+    checkpoint = dict(batch.checkpoint or {})
+    s2 = checkpoint.get("s2") or {}
+    s3 = dict(checkpoint.get("s3") or {})
+    if s3.get("separate_answers") or not s2.get("auto_global_dedupe"):
+        return
+    remaining = (float(s2.get("budget_cny") or 0)
+                 - float(s2.get("estimated_cny") or 0)
+                 - _batch_review_spent(s3))
+    if s2.get("cost_unknown") or remaining <= 0:
+        s3["separate_answers"] = {
+            "status": "paused", "calls": 0, "estimated_cny": 0.0,
+            "error_code": "S3_ANSWER_BUDGET",
+            "error_message": ("题目识别用量未知，请核对账单后再识别答案"
+                              if s2.get("cost_unknown") else
+                              "题目识别和去重已用完估算预算，请增加预算后继续识别答案"),
+        }
+        checkpoint["s3"] = s3
+        batch.checkpoint = checkpoint
+        return
+    from app.services.question_import_s3_separate import start_separate_answers
+
+    # The teacher authorized paid model work when starting question recognition.
+    try:
+        start_separate_answers(db, batch.id, budget_cny=remaining, automatic=True)
+    except ImportProblem as exc:
+        checkpoint = dict(batch.checkpoint or {})
+        s3 = dict(checkpoint.get("s3") or {})
+        s3["separate_answers"] = {
+            "status": "failed", "calls": 0, "estimated_cny": 0.0,
+            "error_code": exc.code, "error_message": str(exc),
+        }
+        checkpoint["s3"] = s3
+        batch.checkpoint = checkpoint
+
+
 def _apply_overlap_advice(db: Session, batch: QuestionImportBatch, issue: dict[str, Any],
                           advice: dict[str, Any], *, keep_item_id: str | None = None) -> bool:
     """Remove a confirmed duplicate and retain its full record in the batch audit."""
@@ -210,6 +249,7 @@ def dedupe_batch(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
         s3["global_dedupe"] = result
         checkpoint["s3"] = s3
         batch.checkpoint = checkpoint
+        _queue_separate_answers_after_dedupe(db, batch)
         db.commit()
         return result
     if len(json.dumps(context, ensure_ascii=False)) > 150_000:
@@ -267,6 +307,8 @@ def dedupe_batch(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
     s3["global_dedupe"] = result
     checkpoint["s3"] = s3
     batch.checkpoint = checkpoint
+    if result["status"] == "completed":
+        _queue_separate_answers_after_dedupe(db, batch)
     db.commit()
     return result
 

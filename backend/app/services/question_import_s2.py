@@ -332,7 +332,7 @@ def parse_model_output(value: object, unit: PageUnit, *, include_answers: bool =
             else:
                 location.append(("." if location else "") + part)
         detail = f"（位置：{''.join(location)}）" if location else ""
-        raise ImportProblem("INVALID_MODEL_OUTPUT", f"题目识别模型返回格式不符合要求{detail}") from exc
+        raise ImportProblem("INVALID_MODEL_OUTPUT", f"题目识别模型返回字段不符合要求{detail}") from exc
     if not output.complete:
         reason = next((fragment.reason for fragment in output.unresolved_fragments if fragment.reason), None)
         detail = f"：{reason[:100]}" if reason else ""
@@ -499,15 +499,19 @@ def resolved_overlap_option(fragment: dict, *, boundary_page: int, previous: lis
     return False
 
 
-def estimate_cost(usage: dict, *, settings: Settings | None = None) -> float | None:
+def estimate_cost(usage: dict, *, settings: Settings | None = None,
+                  pdf_pages: int | None = None) -> float | None:
     settings = settings or get_settings()
     try:
         input_tokens = int(usage["prompt_tokens"])
         output_tokens = int(usage["completion_tokens"])
-        pages = int(usage["x_tools"]["pdf_page_parser"]["count"])
+        parser_usage = (usage.get("x_tools") or {}).get("pdf_page_parser") or {}
+        if "count" not in parser_usage and (pdf_pages is None or pdf_pages <= 0):
+            return None
+        pages = int(parser_usage["count"] if "count" in parser_usage else pdf_pages)
         if min(input_tokens, output_tokens, pages) < 0:
             return None
-    except (KeyError, TypeError, ValueError):
+    except (AttributeError, KeyError, TypeError, ValueError):
         return None
     return round(pages * settings.question_import_s2_pdf_page_price_cny
                  + input_tokens * settings.question_import_s2_input_million_price_cny / 1_000_000

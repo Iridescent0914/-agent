@@ -25,7 +25,7 @@ from app.services.question_import_s2 import (
     overlap_candidate_is_duplicate, resolved_overlap_option,
     decode_qwen_response, parse_model_output, plan_units, prepare_pdf,
 )
-from app.services.question_import_s2_worker import claim_s2, skip_incomplete_s2_page, start_s2
+from app.services.question_import_s2_worker import claim_s2, reconcile_completed_unit_costs, skip_incomplete_s2_page, start_s2
 from app.services.question_import_s3_review import list_review_issues
 from app.services.question_import_s3_images import list_images
 import app.services.question_import_s2_worker as s2_worker
@@ -391,6 +391,40 @@ def test_qwen_private_file_payload_and_cost():
     assert captured["include_tool_usage"] is True
     assert estimate_cost(meta["usage"], settings=settings) == 0.0361
     assert estimate_cost({"prompt_tokens": 10, "completion_tokens": 2}, settings=settings) is None
+
+
+def test_missing_pdf_tool_usage_uses_submitted_page_count_for_budget():
+    usage = {"prompt_tokens": 18533, "completion_tokens": 15422}
+    settings = Settings(question_import_s2_pdf_page_price_cny=0.02,
+                        question_import_s2_input_million_price_cny=0.8,
+                        question_import_s2_output_million_price_cny=2.7)
+    assert estimate_cost(usage, settings=settings) is None
+    assert estimate_cost(usage, settings=settings, pdf_pages=5) == 0.156466
+    assert estimate_cost({"prompt_tokens": 18533}, settings=settings, pdf_pages=5) is None
+
+
+def test_paused_batch_cost_is_repaired_only_when_all_calls_are_accounted_for():
+    usage = {"prompt_tokens": 18533, "completion_tokens": 15422}
+    batch_cost = {"cost_unknown": True, "calls": 3, "estimated_cny": 0.299266,
+                  "units": [
+                      {"status": "completed", "first_page": 1, "last_page": 5,
+                       "response_id": "first", "usage": {**usage, "x_tools": {"pdf_page_parser": {"count": 5}}},
+                       "estimated_cny": 0.148017},
+                      {"status": "completed", "first_page": 5, "last_page": 9,
+                       "response_id": "second", "usage": {**usage, "x_tools": {"pdf_page_parser": {"count": 5}}},
+                       "estimated_cny": 0.151249},
+                      {"status": "completed", "first_page": 9, "last_page": 13,
+                       "response_id": "third", "usage": usage, "estimated_cny": None},
+                      {"status": "pending", "first_page": 13, "last_page": 17},
+                  ]}
+    repaired = reconcile_completed_unit_costs(batch_cost)
+    assert repaired["cost_unknown"] is False
+    assert repaired["estimated_cny"] == 0.455732
+    assert repaired["units"][2]["cost_estimate_basis"] == "submitted_pdf_pages"
+    unknown_call = {**batch_cost, "cost_unknown": True, "calls": 4}
+    assert reconcile_completed_unit_costs(unknown_call)["cost_unknown"] is True
+    prior_failure = {**batch_cost, "cost_unknown": True, "accounted_response_keys": ["failed-response"]}
+    assert reconcile_completed_unit_costs(prior_failure)["cost_unknown"] is True
 
 
 def test_qwen_one_page_call_returns_question_answer_and_figure_location():

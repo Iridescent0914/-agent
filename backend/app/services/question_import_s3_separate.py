@@ -28,7 +28,7 @@ from app.services.question_import_s2 import (
 from app.services.question_import_s3 import reconcile_source_answers
 
 logger = logging.getLogger(__name__)
-SEPARATE_ANSWER_VERSION = "s3-separate-answers-v1"
+SEPARATE_ANSWER_VERSION = "s3-separate-answers-v2"
 
 
 class UnresolvedAnswer(BaseModel):
@@ -89,8 +89,13 @@ class QwenSeparateAnswerProvider:
             "如果标准答案与解析相邻，只摘录明确的最终答案。无法判断答案边界、题号或结果时，"
             "保留可辨内容并在 uncertain_fragments 或 unresolved_fragments 说明，不要猜测。"
             "同一题的小题分别输出；同一结果重复出现只输出一次。"
-            "页码使用本 PDF 内从 1 开始的页码。complete 表示主体页开始的标准答案均已转录；"
-            "若答案延续到本 PDF 之外则为 false。输出 complete、source_answers、unresolved_fragments。"
+            "若标准答案只有图形、无法可靠转成文字，不要编造文字答案；"
+            "在 unresolved_fragments 记录该题题号、页码和无法转录的原因，留给教师核对。"
+            "此类已记录的图形答案不算页段未完成。"
+            "页码使用本 PDF 内从 1 开始的页码。complete=true 表示主体页开始的每个标准答案"
+            "都已转录到 source_answers，或因确实无法辨认而明确记录在 unresolved_fragments；"
+            "仅当主体页开始的答案延续到本 PDF 之外，或仍有未处理的主体页答案时才设为 false。"
+            "后续上下文页新开始的题目不影响 complete。输出 complete、source_answers、unresolved_fragments。"
         )
         payload = {"model": self.settings.question_import_s2_model,
                    "messages": [{"role": "user", "content": [
@@ -172,9 +177,11 @@ def _adapt_incomplete_answer_unit(state: dict, batch_id: uuid.UUID, file_id: str
 
 
 def start_separate_answers(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
-                           operator_token: str | None = None) -> QuestionImportBatch:
+                           operator_token: str | None = None,
+                           automatic: bool = False) -> QuestionImportBatch:
     settings = get_settings()
-    require_s2_operator_token(operator_token)
+    if not automatic:
+        require_s2_operator_token(operator_token)
     if (not settings.question_import_s2_enabled or not settings.question_import_s2_api_key
             or not settings.question_import_s2_base_url.startswith("https://")
             or settings.question_import_s2_model != FLASH_MODEL):
