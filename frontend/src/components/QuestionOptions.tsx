@@ -19,6 +19,12 @@ function contentText(value: unknown): string {
 function optionRows(options: unknown): OptionRow[] {
   if (Array.isArray(options)) {
     return options.map((option, index) => {
+      if (option && typeof option === 'object' && !Array.isArray(option)) {
+        const record = option as Record<string, unknown>
+        if (typeof record.key === 'string' && typeof record.text === 'string') {
+          return { label: record.key.toUpperCase(), content: record.text }
+        }
+      }
       const text = contentText(option).trim()
       const parsed = text.match(/^([A-H])\s*[.．、:：]\s*(.*)$/i)
       return parsed

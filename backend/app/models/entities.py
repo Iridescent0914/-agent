@@ -167,6 +167,21 @@ class QuestionImportItem(TimestampMixin, Base):
     )
 
 
+class QuestionImportCommit(TimestampMixin, Base):
+    __tablename__ = "question_import_commits"
+    __table_args__ = (
+        UniqueConstraint("batch_id", "operation_id", name="uq_question_import_commit_operation"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    batch_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("question_import_batches.id", ondelete="CASCADE"), nullable=False
+    )
+    operation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    request_signature: Mapped[str] = mapped_column(String(64), nullable=False)
+    result: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
+
 class SchoolClass(TimestampMixin, Base):
     __tablename__ = "school_classes"
 

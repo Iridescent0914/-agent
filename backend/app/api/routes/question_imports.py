@@ -15,6 +15,7 @@ from app.schemas.question_import_s5 import (
     S5AnswerClaimRequest, S5AnswerSourceRequest, S5IssueDecisionRequest,
     S5BulkDecisionRequest, S5BulkRevokeRequest, S5ItemDecisionRequest, S5PreflightRequest,
 )
+from app.schemas.question_import_s6 import S6CommitRequest, S6PreflightRequest
 from app.services.question_import import (
     OWNER_SCOPE, ImportProblem, active_candidate, cancel_batch, create_batch,
     create_teacher_candidate, delete_cancelled_batch, delete_teacher_candidate, get_batch, retry_batch, update_candidate,
@@ -41,6 +42,8 @@ from app.services.question_import_s5_review import (
     claim_source_answer, confirm_answer_source, decide_issue, decide_item, decide_items_bulk,
     read_item_reviews, revoke_bulk_decision,
 )
+from app.services.question_import_s6_preflight import preflight_commit
+from app.services.question_import_s6_commit import commit_import
 
 
 router = APIRouter(prefix="/question-imports", tags=["question-imports"])
@@ -240,6 +243,18 @@ def read_saved_catalog_matches(batch_id: UUID, db: Session = Depends(get_db)):
 def read_s5_preflight(batch_id: UUID, request: S5PreflightRequest,
                       db: Session = Depends(get_db)):
     return preflight_import(db, batch_id, request)
+
+
+@router.post("/{batch_id}/s6/preflight")
+def read_s6_preflight(batch_id: UUID, request: S6PreflightRequest,
+                     db: Session = Depends(get_db)):
+    return preflight_commit(db, batch_id, request)
+
+
+@router.post("/{batch_id}/s6/commit")
+def commit_s6_import(batch_id: UUID, request: S6CommitRequest,
+                     db: Session = Depends(get_db)):
+    return commit_import(db, batch_id, request)
 
 
 @router.get("/{batch_id}/s5/summary")

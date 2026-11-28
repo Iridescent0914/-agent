@@ -31,7 +31,8 @@ MODES = {"questions_only", "combined", "separate"}
 
 
 def active_candidate(item: QuestionImportItem) -> bool:
-    return not (item.payload or {}).get("teacher_deleted_at")
+    payload = item.payload or {}
+    return not payload.get("teacher_deleted_at") and not payload.get("imported_question_id")
 
 
 def _editable_after_dedupe(batch: QuestionImportBatch) -> None:
