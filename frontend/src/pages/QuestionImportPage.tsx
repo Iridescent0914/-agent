@@ -79,6 +79,7 @@ type CandidateEditor = {
   originalOptions: Array<{ key: string; text: string }>
   originalAnswerText: string
 }
+type AnswerSourceDraft = { itemId: string; revision: number; answerId: string; reason: string }
 type NewCandidateDraft = {
   questionText: string
   options: Array<{ key: string; text: string }>
@@ -96,6 +97,12 @@ function hasImportLabels(item: Candidate): boolean {
     && Number.isInteger(tags.difficulty) && (tags.difficulty ?? 0) >= 1 && (tags.difficulty ?? 0) <= 5
     && !!tags.main_kp_code && !!tags.grade && !!tags.chapter_code && !!tags.section
     && !!tags.core_literacies?.length
+}
+
+function hasPendingAnswerConfirmation(item: Candidate): boolean {
+  const selectedId = item.payload.selected_answer_id
+  return !!selectedId && ['uncertain', 'unmatched', 'conflict'].includes(item.payload.answer_match_status || '')
+    && !!item.payload.answers?.some((answer) => answer.answer_id === selectedId && !answer.teacher_confirmed)
 }
 const questionTypeLabels: Record<string, string> = { choice: '选择题', fill_blank: '填空题', calculation: '计算题', solution: '解答题', true_false: '判断题', unknown: '待确认' }
 
@@ -343,7 +350,7 @@ export function QuestionImportPage() {
   const [issueBusy, setIssueBusy] = useState(false)
   const [answerClaimTargets, setAnswerClaimTargets] = useState<Record<string, string>>({})
   const [answerSourceBusy, setAnswerSourceBusy] = useState<string | null>(null)
-  const [answerSourceDraft, setAnswerSourceDraft] = useState<{ itemId: string; revision: number; answerId: string; reason: string } | null>(null)
+  const [answerSourceDraft, setAnswerSourceDraft] = useState<AnswerSourceDraft | null>(null)
 
   function closeCandidateModal() {
     setCandidateEditor(null)
@@ -868,13 +875,13 @@ export function QuestionImportPage() {
     finally { setAnswerSourceBusy(null) }
   }
 
-  async function confirmS5AnswerSource() {
-    if (!selectedBatchId || !answerSourceDraft) return
-    setAnswerSourceBusy(answerSourceDraft.itemId)
+  async function confirmS5AnswerSource(draft: AnswerSourceDraft | null) {
+    if (!selectedBatchId || !draft) return
+    setAnswerSourceBusy(draft.itemId)
     try {
-      await apiPost(`/question-imports/${selectedBatchId}/s5/items/${answerSourceDraft.itemId}/confirm-answer-source`, {
-        expected_revision: answerSourceDraft.revision, selected_answer_id: answerSourceDraft.answerId,
-        reason: answerSourceDraft.reason.trim() || null,
+      await apiPost(`/question-imports/${selectedBatchId}/s5/items/${draft.itemId}/confirm-answer-source`, {
+        expected_revision: draft.revision, selected_answer_id: draft.answerId,
+        reason: draft.reason.trim() || null,
       })
       setAnswerSourceDraft(null)
       await viewCandidates(selectedBatchId)
@@ -1166,6 +1173,7 @@ export function QuestionImportPage() {
       || (candidateFilter === 'stale' && !!catalog && (catalog.candidate_stale || catalog.catalog_stale))
       || (candidateFilter === 'missing_tag' && !hasImportLabels(item))
       || (candidateFilter === 'missing_answer' && !item.payload.answers?.length)
+      || (candidateFilter === 'answer_confirmation' && !item.is_fake && hasPendingAnswerConfirmation(item))
       || (candidateFilter === 'figure' && hasFigureIssue)
       || (candidateFilter === 'issue' && reviewIssues.some((issue) => issue.candidate_item_ids.includes(item.id)
         && !(issue.handling?.valid && ['acknowledged', 'ignored'].includes(issue.handling.decision))))
@@ -1294,7 +1302,7 @@ export function QuestionImportPage() {
     const clues = item.payload.extraction?.diagram_clues || []
     const figureMissing = !assetIds.length && (clues.length > 0 || ['complete', 'uncertain'].includes(item.payload.extraction?.figure_status || ''))
     const figureTextConfirmed = figureMissing && !!item.payload.figure_text_confirmation
-    const answerSourceNeedsConfirmation = ['uncertain', 'unmatched', 'conflict'].includes(item.payload.answer_match_status || '')
+    const answerSourceNeedsConfirmation = hasPendingAnswerConfirmation(item)
     const answerContentReviewed = !!s5Reviews?.items.some((review) => review.item_id === item.id && review.valid && review.answer_confirmed)
     const removedCandidateImages = unmatchedImages.filter((asset) => asset.removed_candidate_for_item_ids?.includes(item.id))
     return <Space className="question-import-candidate" direction="vertical" style={{ width: '100%' }}>
@@ -1313,11 +1321,17 @@ export function QuestionImportPage() {
       {item.payload.extraction?.uncertain_fragments?.map((fragment, index) => <Typography.Text type="warning" key={`uncertain-${index}`}>模型不确定：{fragment}</Typography.Text>)}
       {item.payload.answers?.map((answer) => <div key={answer.answer_id} className={`question-import-answer${answer.answer_source === 'model_generated' && answer.answer_id === item.payload.selected_answer_id && !answerContentReviewed ? ' question-import-answer--model-pending' : ''}`}>
         <Typography.Text>{answer.answer_source === 'teacher_entered' ? '教师答案' : answer.answer_source === 'source_extracted' ? '资料答案' : answer.answer_source === 'model_generated' ? '模型生成答案' : '答案'}{answer.answer_id === item.payload.selected_answer_id ? answerContentReviewed ? '（答案内容已审核）' : answer.teacher_confirmed ? '（归属已核对，内容仍须审核）' : answerSourceNeedsConfirmation ? '（关联待确认，内容待审核）' : '（当前选用，内容待审核）' : ''}：</Typography.Text>
+        {canEditCandidates && !item.is_fake && answer.answer_id === item.payload.selected_answer_id && !answer.teacher_confirmed && answerSourceNeedsConfirmation &&
+          <Typography.Paragraph type="warning">答案待人工核对：请对照原页检查答案内容和所属题目，再确认此答案属于本题。</Typography.Paragraph>}
         {answer.text ? <RichQuestionText text={answer.text} assets={[]} /> : <Typography.Text type="secondary">未提供</Typography.Text>}
         {canEditCandidates && !item.is_fake && answer.answer_id !== item.payload.selected_answer_id && !!answer.text?.trim() &&
           <Button size="small" disabled={reviewBusy} onClick={() => void selectS5Answer(item, answer.answer_id)}>选为本题答案</Button>}
         {canEditCandidates && !item.is_fake && answer.answer_id === item.payload.selected_answer_id && !answer.teacher_confirmed && answerSourceNeedsConfirmation &&
-          <Button size="small" loading={answerSourceBusy === item.id} onClick={() => setAnswerSourceDraft({ itemId: item.id, revision: item.revision, answerId: answer.answer_id, reason: '' })}>确认此答案属于本题</Button>}
+          <Button size="small" loading={answerSourceBusy === item.id} onClick={() => {
+            const draft = { itemId: item.id, revision: item.revision, answerId: answer.answer_id, reason: '' }
+            if (item.payload.answer_match_status === 'uncertain') void confirmS5AnswerSource(draft)
+            else setAnswerSourceDraft(draft)
+          }}>确认此答案属于本题</Button>}
       </div>)}
       {item.payload.warnings?.includes('题目已修改，请重新核对答案是否仍适用') && <Typography.Text type="warning">题目已修改，请重新核对答案是否仍适用。</Typography.Text>}
       {canEditCandidates && candidateEditor?.itemId !== item.id && <Space>
@@ -1595,11 +1609,11 @@ export function QuestionImportPage() {
       </Space>}
     </Modal>
     <Modal title="确认答案与本题的关联" open={!!answerSourceDraft} okText="确认关联"
-      okButtonProps={{ loading: !!answerSourceBusy }} onCancel={() => { if (!answerSourceBusy) setAnswerSourceDraft(null) }}
-      onOk={() => void confirmS5AnswerSource()}>
-      <Typography.Paragraph>仅在答案关联存疑时需要此操作。请对照题目与所选答案核对；答案内容仍需在审核时确认。</Typography.Paragraph>
+      okButtonProps={{ loading: !!answerSourceBusy, disabled: !answerSourceDraft?.reason.trim() }} onCancel={() => { if (!answerSourceBusy) setAnswerSourceDraft(null) }}
+      onOk={() => void confirmS5AnswerSource(answerSourceDraft)}>
+      <Typography.Paragraph>此答案的配对存在冲突或尚未匹配。请对照原页填写关联依据；答案内容仍需单独审核。</Typography.Paragraph>
       <Input.TextArea aria-label="答案关联理由" rows={3} maxLength={500} value={answerSourceDraft?.reason || ''}
-        placeholder="配对冲突或未匹配时须填写判断依据；其他情况选填"
+        placeholder="请填写关联依据（必填）"
         onChange={(event) => setAnswerSourceDraft((current) => current ? { ...current, reason: event.target.value } : current)} />
     </Modal>
     <Card title="批量题目导入 · 内部识别与候选核对">
@@ -1823,7 +1837,8 @@ export function QuestionImportPage() {
             { value: 'approved', label: '已确认' }, { value: 'rejected', label: '已拒绝' },
             { value: 'skipped_duplicate', label: '题库已有，不再入库' }, { value: 'exact', label: '命中相同题' },
             { value: 'nearby', label: '命中相似题' }, { value: 'stale', label: '查重已过期' },
-            { value: 'missing_tag', label: '标签不完整' }, { value: 'missing_answer', label: '缺少答案' },
+            { value: 'missing_tag', label: '无标签或标签不完整' }, { value: 'missing_answer', label: '缺少答案' },
+            { value: 'answer_confirmation', label: '答案关联待确认' },
             { value: 'figure', label: '题图待核对' }, { value: 'issue', label: '问题待处理' }]} />
         <Input.Search aria-label="搜索候选题" allowClear value={candidateQuery} placeholder="题号或题干关键词" style={{ width: 260 }}
           onChange={(event) => setCandidateQuery(event.target.value)} />

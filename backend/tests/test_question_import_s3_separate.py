@@ -5,6 +5,7 @@ import uuid
 from io import BytesIO
 
 import httpx
+import pymupdf as fitz
 import pytest
 from pypdf import PdfWriter
 from sqlalchemy import select
@@ -16,10 +17,12 @@ from app.models import QuestionImportItem
 from app.services.question_import import ImportProblem, add_candidate, create_batch
 from app.services.question_import_s2 import PageUnit, candidate_from_question, ModelQuestion
 from app.services.question_import_s3_separate import (
-    QwenSeparateAnswerProvider, _adapt_incomplete_answer_unit, decode_answer_response,
+    QwenSeparateAnswerProvider, _adapt_incomplete_answer_unit, _recover_answer_prefix,
+    decode_answer_response,
     process_separate_answers_one,
     start_separate_answers, validate_answer_output,
 )
+from app.services.question_import_s3_local import _plain_answers, _starts_section, plan_answer_units
 from app.services.question_import_s3 import reconcile_source_answers
 import app.services.question_import_s3 as reconciliation_service
 import app.services.question_import_s3_separate as separate_service
@@ -45,6 +48,88 @@ def _pdf(page_count: int = 1) -> bytes:
     output = BytesIO()
     writer.write(output)
     return output.getvalue()
+
+
+def _text_pdf(*pages: tuple[str, bool]) -> bytes:
+    document = fitz.open()
+    for content, drawing in pages:
+        page = document.new_page()
+        page.insert_text((72, 72), content)
+        if drawing:
+            page.draw_line((72, 100), (180, 100))
+    data = document.tobytes()
+    document.close()
+    return data
+
+
+def test_local_answer_plan_uses_only_unambiguous_text(tmp_path):
+    pdf = tmp_path / "answers.pdf"
+    pdf.write_bytes(_text_pdf(("1. x=2\n2. 4", False),
+                              ("3. answer with figure", True),
+                              ("4. B", False),
+                              ("long answer without a number", False)))
+    units = plan_answer_units(pdf, pages_per_unit=4, overlap=1)
+    assert [(unit["first_page"], unit["core_last_page"], unit.get("method"))
+            for unit in units] == [(1, 1, "local_text"), (2, 2, None),
+                                  (3, 3, "local_text"), (4, 4, None)]
+    assert [answer["answer_text"] for answer in units[0]["local_answers"]] == ["x=2", "4"]
+    assert units[1]["last_page"] == 3
+
+
+def test_explicit_answer_marker_can_be_read_without_solution(tmp_path):
+    class TextPage:
+        def get_text(self, mode, sort=True):
+            return {"blocks": [{"type": 0}]} if mode == "dict" else (
+                "L7 拓展篇第三讲—方程\n参考答案与试题解析\n"
+                "8．求 a+b 的值．\n【答案】−1.\n【分析】代入计算．\n10\n")
+
+        def get_drawings(self):
+            return []
+
+    page = TextPage()
+    assert _starts_section(page)
+    assert _plain_answers(page) == [{"original_number": "8", "answer_text": "−1."}]
+
+
+def test_answer_context_omitted_at_clear_boundary(tmp_path):
+    pdf = tmp_path / "answers.pdf"
+    pdf.write_bytes(_text_pdf(("1. First answer.", True), ("2. B", False)))
+    units = plan_answer_units(pdf, pages_per_unit=4, overlap=1)
+    assert units[0]["last_page"] == 1
+
+    pdf.write_bytes(_text_pdf(("1. First answer", True), ("2. B", False)))
+    units = plan_answer_units(pdf, pages_per_unit=4, overlap=1)
+    assert units[0]["last_page"] == 2
+
+
+def test_clear_text_answer_needs_no_model_call(db, tmp_path, monkeypatch):
+    _configure(monkeypatch, tmp_path)
+    batch = create_batch(db, source_mode="separate", files=[
+        ("questions", "questions.pdf", _pdf()),
+        ("answers", "answers.pdf", _text_pdf(("1. 2", False)))])
+    item = _candidate(batch, db, "1", "计算一加一")
+    batch.status = "review_pending"
+    batch.stage = "s2_completed"
+    batch.checkpoint = {"s2": {}, "s3": {}}
+    start_separate_answers(db, batch.id, budget_cny=2, operator_token="operator-test")
+    db.commit()
+    connection = db.get_bind()
+    monkeypatch.setattr(separate_service, "SessionLocal", lambda: Session(
+        bind=connection, expire_on_commit=False, join_transaction_mode="create_savepoint"))
+
+    class UnexpectedProvider:
+        def extract(self, *args, **kwargs):
+            pytest.fail("local answer should not call Bailian")
+
+    monkeypatch.setattr(separate_service, "QwenSeparateAnswerProvider", UnexpectedProvider)
+    assert process_separate_answers_one() is True
+    db.refresh(batch)
+    db.refresh(item)
+    state = batch.checkpoint["s3"]["separate_answers"]
+    assert state["status"] == "completed" and state["calls"] == 0
+    assert state["units"][0]["method"] == "local_text"
+    assert item.payload["answers"][0]["text"] == "2"
+    assert item.payload["answers"][0]["teacher_confirmed"] is False
 
 
 def _candidate(batch, db, number: str, text: str):
@@ -309,6 +394,79 @@ def test_incomplete_answer_retry_splits_failed_core_and_keeps_completed_unit(
     assert Provider.calls == [(5, 4), (2, 2), (2, 1), (1, 1)]
     assert state["status"] == "completed" and state["calls"] == 4
     assert batch.checkpoint["s3"]["source_answer_reconciliation"]["source_answer_count"] == 0
+
+
+def test_incomplete_answer_retry_reuses_explicitly_complete_prefix(db, tmp_path, monkeypatch):
+    _configure(monkeypatch, tmp_path)
+    batch = create_batch(db, source_mode="separate", files=[
+        ("questions", "questions.pdf", _pdf()), ("answers", "answers.pdf", _pdf(4))])
+    batch.status = "review_pending"
+    batch.stage = "s2_completed"
+    batch.checkpoint = {"s2": {}, "s3": {}}
+    start_separate_answers(db, batch.id, budget_cny=2, operator_token="operator-test")
+    db.commit()
+    connection = db.get_bind()
+    monkeypatch.setattr(separate_service, "SessionLocal", lambda: Session(
+        bind=connection, expire_on_commit=False, join_transaction_mode="create_savepoint"))
+
+    class Provider:
+        calls = []
+
+        def extract(self, _pdf_data, *, page_count, core_page_count, capture_response=None):
+            self.calls.append((page_count, core_page_count))
+            if len(self.calls) == 1:
+                body = {"id": "partial-1", "choices": [{"finish_reason": "stop", "message": {
+                    "content": json.dumps({"complete": False, "incomplete_from_page": 3,
+                        "source_answers": [{"original_number": "1", "answer_text": "A",
+                                            "page_start": 1, "page_end": 1}],
+                        "unresolved_fragments": []})}}],
+                    "usage": {"prompt_tokens": 100, "completion_tokens": 30,
+                              "x_tools": {"pdf_page_parser": {"count": page_count}}}}
+                capture_response(body, 1.0)
+                raise ImportProblem("INCOMPLETE_MODEL_OUTPUT", "后半段未完整转录")
+            return validate_answer_output({"complete": True, "source_answers": [
+                {"original_number": "2", "answer_text": "B", "page_start": 1, "page_end": 1}],
+                "unresolved_fragments": []}, page_count), {
+                    "usage": {"prompt_tokens": 100, "completion_tokens": 30,
+                              "x_tools": {"pdf_page_parser": {"count": page_count}}},
+                    "response_id": "suffix-1", "elapsed_seconds": 1.0}
+
+    monkeypatch.setattr(separate_service, "QwenSeparateAnswerProvider", Provider)
+    assert process_separate_answers_one() is True
+    db.refresh(batch)
+    assert batch.checkpoint["s3"]["separate_answers"]["status"] == "failed"
+    start_separate_answers(db, batch.id, budget_cny=2, operator_token="operator-test")
+    db.commit()
+    db.refresh(batch)
+    state = batch.checkpoint["s3"]["separate_answers"]
+    assert state["recovery_history"][-1]["action"] == "resume_from_page"
+    assert [(unit["core_first_page"], unit["core_last_page"])
+            for unit in state["units"]] == [(1, 2), (3, 4)]
+    assert process_separate_answers_one() is True
+    db.refresh(batch)
+    state = batch.checkpoint["s3"]["separate_answers"]
+    assert Provider.calls == [(4, 4), (2, 2)]
+    assert state["calls"] == 2 and state["status"] == "completed"
+    assert [answer["page_start"] for unit in state["units"]
+            for answer in unit["source_answers"]] == [1, 3]
+
+
+def test_partial_retry_keeps_cross_page_answer_in_suffix(tmp_path):
+    artifact = tmp_path / "partial.json"
+    artifact.write_text(json.dumps({"raw_response": {"id": "partial", "choices": [{
+        "finish_reason": "stop", "message": {"content": json.dumps({
+            "complete": False, "incomplete_from_page": 3,
+            "source_answers": [
+                {"original_number": "1", "answer_text": "A", "page_start": 1, "page_end": 1},
+                {"original_number": "2", "answer_text": "partial", "page_start": 2, "page_end": 3}],
+            "unresolved_fragments": []})}}]}}), encoding="utf-8")
+    unit = {**PageUnit(0, 1, 4, 1, 4).__dict__, "status": "pending"}
+    state = {"error_code": "INCOMPLETE_MODEL_OUTPUT", "source_file_id": str(uuid.uuid4()),
+             "units": [unit]}
+    assert _recover_answer_prefix(state, unit, artifact) is True
+    assert [(row["core_first_page"], row["core_last_page"])
+            for row in state["units"]] == [(1, 1), (2, 4)]
+    assert [row["text"] for row in state["units"][0]["source_answers"]] == ["A"]
 
 
 def test_single_page_answer_retry_extends_context_or_requires_review(tmp_path, monkeypatch):

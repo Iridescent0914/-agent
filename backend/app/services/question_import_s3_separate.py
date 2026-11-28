@@ -26,9 +26,10 @@ from app.services.question_import_s2 import (
     FLASH_MODEL, ModelSourceAnswer, estimate_cost, pdf_unit_bytes, plan_units, prepare_pdf,
 )
 from app.services.question_import_s3 import reconcile_source_answers
+from app.services.question_import_s3_local import plan_answer_units
 
 logger = logging.getLogger(__name__)
-SEPARATE_ANSWER_VERSION = "s3-separate-answers-v2"
+SEPARATE_ANSWER_VERSION = "s3-separate-answers-v3"
 
 
 class UnresolvedAnswer(BaseModel):
@@ -43,6 +44,7 @@ class AnswerPageOutput(BaseModel):
     complete: bool
     source_answers: list[ModelSourceAnswer]
     unresolved_fragments: list[UnresolvedAnswer] = Field(default_factory=list)
+    incomplete_from_page: int | None = Field(default=None, ge=1)
 
 
 def validate_answer_output(value: object, page_count: int) -> AnswerPageOutput:
@@ -95,6 +97,9 @@ class QwenSeparateAnswerProvider:
             "页码使用本 PDF 内从 1 开始的页码。complete=true 表示主体页开始的每个标准答案"
             "都已转录到 source_answers，或因确实无法辨认而明确记录在 unresolved_fragments；"
             "仅当主体页开始的答案延续到本 PDF 之外，或仍有未处理的主体页答案时才设为 false。"
+            "若 complete=false，填写 incomplete_from_page：从该页开始尚未完整转录；"
+            "其之前所有主体页开始的答案必须已完整列出。无法确定起点时填 null。"
+            "若 complete=true，incomplete_from_page 填 null。"
             "后续上下文页新开始的题目不影响 complete。输出 complete、source_answers、unresolved_fragments。"
         )
         payload = {"model": self.settings.question_import_s2_model,
@@ -133,6 +138,70 @@ def _artifact_path(batch_id: uuid.UUID, file_id: str, index: int) -> Path:
     return source.with_name(source.name + f".s3-answer-unit{index}.json")
 
 
+def _answer_records(output: AnswerPageOutput, source_file_id: str, first_page: int,
+                    core_page_count: int) -> tuple[list[dict], list[dict]]:
+    answers = [{"source_file_id": source_file_id,
+                "original_number": answer.original_number,
+                "subquestion_number": answer.subquestion_number,
+                "text": answer.answer_text,
+                "page_start": first_page + answer.page_start - 1,
+                "page_end": first_page + answer.page_end - 1,
+                "uncertain_fragments": answer.uncertain_fragments,
+                "question_excerpt": answer.question_excerpt,
+                "answer_form": answer.answer_form}
+               for answer in output.source_answers if answer.page_start <= core_page_count]
+    unresolved = [{"page": first_page + row.page - 1, "text": row.text,
+                   "reason": row.reason}
+                  for row in output.unresolved_fragments if row.page <= core_page_count]
+    return answers, unresolved
+
+
+def _recover_answer_prefix(state: dict, unit: dict, artifact: Path) -> bool:
+    """Keep an explicitly complete prefix and retry only the reported suffix."""
+    if state.get("error_code") != "INCOMPLETE_MODEL_OUTPUT" or not artifact.is_file():
+        return False
+    try:
+        body = json.loads(artifact.read_text(encoding="utf-8"))["raw_response"]
+        choice = body["choices"][0]
+        if choice["finish_reason"] != "stop":
+            return False
+        output = AnswerPageOutput.model_validate(json.loads(choice["message"]["content"]))
+    except (OSError, KeyError, IndexError, TypeError, ValueError, ValidationError):
+        return False
+    core_count = unit["core_last_page"] - unit["first_page"] + 1
+    frontier = output.incomplete_from_page
+    if output.complete or frontier is None or not 1 < frontier <= core_count:
+        return False
+    if (any(answer.page_start > answer.page_end or answer.page_end > unit["last_page"] - unit["first_page"] + 1
+            for answer in output.source_answers)
+            or any(row.page > unit["last_page"] - unit["first_page"] + 1
+                   for row in output.unresolved_fragments)):
+        return False
+    frontier = min([frontier] + [answer.page_start for answer in output.source_answers
+                                 if answer.page_start < frontier <= answer.page_end])
+    if frontier <= 1:
+        return False
+    prefix_end = unit["first_page"] + frontier - 2
+    prefix_output = AnswerPageOutput(complete=True,
+        source_answers=[answer for answer in output.source_answers if answer.page_end < frontier],
+        unresolved_fragments=[row for row in output.unresolved_fragments if row.page < frontier])
+    answers, unresolved = _answer_records(prefix_output, state["source_file_id"],
+                                           unit["first_page"], frontier - 1)
+    index = unit["index"]
+    prefix = {**unit, "last_page": prefix_end, "core_last_page": prefix_end,
+              "status": "completed", "source_answers": answers,
+              "unresolved_fragments": unresolved, "recovered_from_response_id": body.get("id")}
+    suffix = {**unit, "index": index + 1, "first_page": prefix_end + 1,
+              "core_first_page": prefix_end + 1, "status": "pending"}
+    state["units"][index:index + 1] = [prefix, suffix]
+    for position in range(index + 2, len(state["units"])):
+        state["units"][position]["index"] = position
+    state.setdefault("recovery_history", []).append({
+        "failed_index": index, "first_page": suffix["first_page"],
+        "core_last_page": suffix["core_last_page"], "action": "resume_from_page"})
+    return True
+
+
 def _adapt_incomplete_answer_unit(state: dict, batch_id: uuid.UUID, file_id: str) -> None:
     if state.get("error_code") not in {"INCOMPLETE_MODEL_OUTPUT", "MODEL_OUTPUT_TRUNCATED"}:
         return
@@ -147,6 +216,8 @@ def _adapt_incomplete_answer_unit(state: dict, batch_id: uuid.UUID, file_id: str
                    for row in units[index + 1:])):
         raise ImportProblem("S3_CONFIG_CHANGED", "答案页段状态不一致，请联系管理员核对")
 
+    if _recover_answer_prefix(state, unit, _artifact_path(batch_id, file_id, index)):
+        return
     page_count = int(state["page_count"])
     core_count = unit["core_last_page"] - unit["core_first_page"] + 1
     if core_count > 1:
@@ -326,9 +397,15 @@ def process_separate_answers_one() -> bool:
         if not state["units"]:
             state["page_count"] = pages
             state["conversion_warnings"] = warnings
-            state["units"] = [{**unit.__dict__, "status": "pending"} for unit in plan_units(
-                pages, pages_per_unit=settings.question_import_s2_pages_per_unit,
-                overlap=settings.question_import_s2_overlap_pages)]
+            try:
+                state["units"] = plan_answer_units(
+                    pdf, pages_per_unit=settings.question_import_s2_pages_per_unit,
+                    overlap=settings.question_import_s2_overlap_pages)
+            except (OSError, RuntimeError, ValueError):
+                logger.exception("Local answer page planning failed for batch %s; using PDF units", batch_id)
+                state["units"] = [{**unit.__dict__, "status": "pending"} for unit in plan_units(
+                    pages, pages_per_unit=settings.question_import_s2_pages_per_unit,
+                    overlap=settings.question_import_s2_overlap_pages)]
             with SessionLocal() as db:
                 if not _update(db, batch_id, token, state):
                     return True
@@ -344,14 +421,18 @@ def process_separate_answers_one() -> bool:
                     db.commit()
             return True
         current_index = unit_data["index"]
-        if state.get("cost_unknown") or float(state["estimated_cny"]) >= float(state["budget_cny"]):
+        is_local = unit_data.get("method") == "local_text"
+        if not is_local and (state.get("cost_unknown") or float(state["estimated_cny"]) >= float(state["budget_cny"])):
             raise ImportProblem("S3_ANSWER_BUDGET", "答案识别预算已达到或用量未知，请核对账单并提高预算")
-        if int(state["calls"]) >= settings.question_import_s2_max_calls:
+        if not is_local and int(state["calls"]) >= settings.question_import_s2_max_calls:
             raise ImportProblem("S3_ANSWER_CALL_LIMIT", "答案识别已达到单批调用次数上限")
         from app.services.question_import_s2 import PageUnit
         unit = PageUnit(**{field: unit_data[field] for field in PageUnit.__dataclass_fields__})
         artifact = _artifact_path(batch_id, source["file_id"], unit.index)
-        if artifact.is_file():
+        if is_local:
+            output = AnswerPageOutput(complete=True, source_answers=unit_data["local_answers"])
+            meta = {"usage": {}, "response_id": None, "elapsed_seconds": 0.0}
+        elif artifact.is_file():
             saved = json.loads(artifact.read_text(encoding="utf-8"))
             if "output" in saved:
                 output = validate_answer_output(saved["output"], unit.page_count)
@@ -368,27 +449,15 @@ def process_separate_answers_one() -> bool:
                     artifact, {"raw_response": body, "elapsed_seconds": elapsed}),
             )
             _save_artifact(artifact, {"output": output.model_dump(mode="json"), "meta": meta})
-        cost = estimate_cost(meta.get("usage") or {})
-        answers = [{"source_file_id": source["file_id"],
-                    "original_number": answer.original_number,
-                    "subquestion_number": answer.subquestion_number,
-                    "text": answer.answer_text,
-                    "page_start": unit.first_page + answer.page_start - 1,
-                    "page_end": unit.first_page + answer.page_end - 1,
-                    "uncertain_fragments": answer.uncertain_fragments,
-                    "question_excerpt": answer.question_excerpt,
-                    "answer_form": answer.answer_form}
-                   for answer in output.source_answers
-                   if answer.page_start <= unit.core_last_page - unit.first_page + 1]
-        unresolved = [{"page": unit.first_page + row.page - 1,
-                       "text": row.text, "reason": row.reason}
-                      for row in output.unresolved_fragments
-                      if row.page <= unit.core_last_page - unit.first_page + 1]
+        cost = 0.0 if is_local else estimate_cost(meta.get("usage") or {})
+        answers, unresolved = _answer_records(output, source["file_id"], unit.first_page,
+                                              unit.core_last_page - unit.first_page + 1)
         unit_data.update({"status": "completed", "source_answers": answers,
                           "unresolved_fragments": unresolved, "usage": meta.get("usage") or {},
                           "response_id": meta.get("response_id"), "estimated_cny": cost,
                           "elapsed_seconds": meta.get("elapsed_seconds")})
-        state["calls"] = int(state["calls"]) + 1
+        if not is_local:
+            state["calls"] = int(state["calls"]) + 1
         if cost is None:
             state["cost_unknown"] = True
         else:
