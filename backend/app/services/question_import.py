@@ -55,7 +55,7 @@ def _editable_after_dedupe(batch: QuestionImportBatch) -> None:
 def require_s2_operator_token(provided: str | None) -> None:
     expected = get_settings().question_import_s2_operator_token
     if not expected or not provided or not secrets.compare_digest(expected, provided):
-        raise ImportProblem("S2_OPERATOR_REQUIRED", "S2 操作口令缺失或不正确", 403)
+        raise ImportProblem("S2_OPERATOR_REQUIRED", "模型任务操作口令缺失或不正确", 403)
 
 
 class ImportProblem(ValueError):
@@ -301,7 +301,7 @@ def retry_batch(db: Session, batch_id: uuid.UUID, *, operator_token: str | None 
         require_s2_operator_token(operator_token)
         settings = get_settings()
         if not settings.question_import_s2_enabled or not settings.question_import_s2_api_key or not settings.question_import_s2_base_url.startswith("https://"):
-            raise ImportProblem("S2_NOT_CONFIGURED", "S2 百炼调用尚未在服务端配置", 409)
+            raise ImportProblem("S2_NOT_CONFIGURED", "题目识别模型尚未在服务端配置", 409)
     batch.status = "uploaded"
     batch.stage = "s2_queued" if batch.stage == "s2_failed" else "files_saved"
     batch.error_code = batch.error_message = None
@@ -454,7 +454,7 @@ def update_candidate(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
         raise ImportProblem("CATALOG_CHANGED", "正式标签目录已变化，请重新上传批次", 409)
     allowed = {"content", "tags", "selected_answer_id", "teacher_answer_text"}
     if not changes or set(changes) - allowed:
-        raise ImportProblem("INVALID_CANDIDATE", "审核决定与入库路径只能通过 S5 审核动作修改")
+        raise ImportProblem("INVALID_CANDIDATE", "审核决定与入库路径只能通过入库审核操作修改")
     payload = dict(item.payload)
     if payload.get("teacher_decision") == "skipped_duplicate":
         raise ImportProblem("DUPLICATE_DECISION_REQUIRED", "请在查重记录中修改跳过决定", 409)

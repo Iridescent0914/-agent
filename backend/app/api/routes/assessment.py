@@ -33,7 +33,7 @@ from app.schemas.submissions import SubmissionDetailOut
 def internal_only():
     # Until trusted teacher identities/ownership are available, fail closed in production.
     if get_settings().app_env not in {"development", "test"}:
-        raise service.AssessmentProblem("MODEL_DISABLED", "S1入口仅供内部开发使用", 403)
+        raise service.AssessmentProblem("MODEL_DISABLED", "此功能仅供内部开发使用", 403)
 
 
 router = APIRouter(prefix="/internal/stage6", tags=["stage6-internal"], dependencies=[Depends(internal_only)])

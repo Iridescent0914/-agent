@@ -187,7 +187,7 @@ def start_separate_answers(db: Session, batch_id: uuid.UUID, *, budget_cny: floa
     if batch is None:
         raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
     if batch.source_mode != "separate" or batch.status != "review_pending" or batch.stage != "s2_completed":
-        raise ImportProblem("S3_SOURCE_MODE", "仅已完成 S2 的分文件批次可以识别答案", 409)
+        raise ImportProblem("S3_SOURCE_MODE", "仅已完成题目识别的分文件批次可以识别答案", 409)
     if (((batch.checkpoint or {}).get("s2") or {}).get("auto_global_dedupe")
             and (((batch.checkpoint or {}).get("s3") or {}).get("global_dedupe") or {}).get("status") != "completed"):
         raise ImportProblem("S3_DEDUPE_PENDING", "请先完成整批候选题去重，再识别答案文件", 409)

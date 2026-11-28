@@ -42,7 +42,7 @@ def exact_catalog_matches(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
     s3 = (batch.checkpoint or {}).get("s3") or {}
     if (batch.status != "review_pending" or batch.stage != "s2_completed"
             or (s3.get("global_dedupe") or {}).get("status") != "completed"):
-        raise ImportProblem("COMMIT_CONFLICT", "请先完成 S3 整批去重", 409)
+        raise ImportProblem("COMMIT_CONFLICT", "请先完成整批题目去重", 409)
 
     items = [item for item in db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch_id

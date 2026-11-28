@@ -14,7 +14,8 @@ from app.main import app
 from app.models import Question, QuestionImportBatch, QuestionImportCatalogCheck, QuestionImportCatalogMatch, QuestionImportItem
 from app.models import QuestionImportAuditEvent
 from app.schemas.question_import_s5 import (
-    S5AnswerClaimRequest, S5AnswerSourceRequest, S5BulkDecisionRequest, S5IssueDecisionRequest, S5ItemDecisionRequest,
+    S5AnswerClaimRequest, S5AnswerSourceRequest, S5BulkDecisionRequest, S5BulkRevokeRequest,
+    S5IssueDecisionRequest, S5ItemDecisionRequest,
     S5PreflightRequest, S5PreflightSelection,
 )
 from app.services.question_import import ImportProblem, update_candidate
@@ -24,10 +25,13 @@ from app.services.knowledge_catalog import CATALOG_PATH
 from app.services.question_fingerprint_v2 import VERSION as EXACT_VERSION
 from app.services.question_import_s3_labels import _allowed_kps
 from app.services.question_import_s4_near import VERSION as NEAR_VERSION
-from app.services.question_import_s4_review import _candidate_signature, _catalog_signature, _catalog_snapshot_signature
+from app.services.question_import_s4_review import (
+    _candidate_signature, _catalog_signature, _catalog_snapshot_signature, read_catalog_review,
+)
 from app.services.question_import_s5_preflight import import_review_summary, preflight_import
 from app.services.question_import_s5_review import (
-    claim_source_answer, confirm_answer_source, decide_issue, decide_item, decide_items_bulk, read_item_reviews,
+    _signature, claim_source_answer, confirm_answer_source, decide_issue, decide_item, decide_items_bulk,
+    read_item_reviews, revoke_bulk_decision,
 )
 
 
@@ -363,6 +367,51 @@ def test_review_approval_is_version_bound_and_patch_cannot_bypass(db):
     assert review["recorded_decision"] == "approved" and review["valid"] is False
 
 
+@pytest.mark.parametrize("legacy", [False, True])
+def test_rechecking_unchanged_catalog_keeps_approved_items_visible(db, legacy):
+    batch, item, check = _case(db)
+    decide_item(db, batch.id, item.id, S5ItemDecisionRequest(
+        expected_revision=1, decision="approved", route="library_only"))
+    event = db.scalar(select(QuestionImportAuditEvent).where(
+        QuestionImportAuditEvent.item_id == item.id,
+        QuestionImportAuditEvent.kind == "question"))
+    if legacy:
+        event.signature = _signature(item, read_catalog_review(db, batch.id)["items"][0], legacy=True)
+        event.detail = {key: value for key, value in event.detail.items() if key != "signature_version"}
+        db.flush()
+    original_signature = event.signature
+    recheck = QuestionImportCatalogCheck(
+        batch_id=batch.id, item_id=item.id, check_no=check.check_no + 1,
+        candidate_revision=item.revision, candidate_signature=check.candidate_signature,
+        exact_version=check.exact_version, near_version=check.near_version,
+    )
+    db.add(recheck)
+    db.flush()
+
+    review = read_item_reviews(db, batch.id)["items"][0]
+    assert review["valid"] is True
+    assert review["decision"] == "approved"
+    assert import_review_summary(db, batch.id)["counts"]["approved"] == 1
+    assert event.signature == original_signature
+
+    formal = db.scalar(select(Question).where(Question.has_image.is_(False),
+                                              Question.archived_at.is_(None)))
+    db.add(QuestionImportCatalogMatch(
+        check_id=recheck.id, question_id=formal.id, original_qid=formal.original_qid,
+        catalog_review_revision=formal.review_revision, catalog_signature=_catalog_signature(formal),
+        kind="nearby", similarity=0.5, evidence={}, decision="pending"))
+    db.flush()
+    changed = read_item_reviews(db, batch.id)["items"][0]
+    assert changed["valid"] is False
+    assert changed["recorded_decision"] == "approved"
+    match = db.scalar(select(QuestionImportCatalogMatch).where(
+        QuestionImportCatalogMatch.check_id == recheck.id))
+    match.decision = "unrelated"
+    db.flush()
+    assert preflight_import(db, batch.id, _request(item))["items"][0]["batch_eligible"] is True
+    assert read_item_reviews(db, batch.id)["items"][0]["valid"] is False
+
+
 def test_direct_pool_has_separate_answer_event_and_rejection_keeps_reason(db):
     batch, item, _ = _case(db)
     item.payload = {**item.payload, "selected_answer_id": "a1", "answer_match_status": "matched",
@@ -525,6 +574,116 @@ def test_bulk_library_approval_is_one_group_and_all_items_valid(db):
         QuestionImportAuditEvent.batch_id == batch.id)))
     assert len(events) == 2
     assert {row.detail["batch_action_id"] for row in events} == {result["batch_action_id"]}
+
+
+def test_bulk_revoke_withdraws_all_approvals_including_later_individual_review(db):
+    batch, first, _ = _case(db)
+    second = _second_item(db, batch, first)
+    approved = decide_items_bulk(db, batch.id, S5BulkDecisionRequest(
+        decision="approved", route="library_only", items=[
+            {"item_id": first.id, "expected_revision": 1},
+            {"item_id": second.id, "expected_revision": 1},
+        ]))
+    assert {row["batch_action_id"] for row in read_item_reviews(db, batch.id)["items"]} == {
+        approved["batch_action_id"]}
+    decide_item(db, batch.id, second.id, S5ItemDecisionRequest(
+        expected_revision=2, decision="approved", route="library_only"))
+    before = {row["item_id"]: row for row in read_item_reviews(db, batch.id)["items"]}
+    assert before[str(second.id)]["batch_action_id"] is None
+
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        response = TestClient(app).post(
+            f"/api/v1/question-imports/{batch.id}/s5/items/bulk-revoke",
+            json={"items": [
+                {"item_id": str(first.id), "expected_revision": 2},
+                {"item_id": str(second.id), "expected_revision": 3},
+            ]})
+        assert response.status_code == 200, response.text
+        assert response.json()["count"] == 2
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
+    assert first.revision == 3 and second.revision == 4
+    assert first.payload["commit_intent"] is second.payload["commit_intent"] is None
+    assert all(row["valid"] and row["decision"] == "pending"
+               for row in read_item_reviews(db, batch.id)["items"])
+    assert import_review_summary(db, batch.id)["counts"]["pending"] == 2
+    events = list(db.scalars(select(QuestionImportAuditEvent).where(
+        QuestionImportAuditEvent.batch_id == batch.id,
+        QuestionImportAuditEvent.kind == "question")))
+    assert len(events) == 5
+    assert sum(row.detail.get("reverts_batch_action_id") == approved["batch_action_id"]
+               for row in events) == 1
+    assert {row.detail.get("reverts_question_event_id") for row in events
+            if row.detail.get("reverts_question_event_id")} == {
+        before[str(first.id)]["question_event_id"], before[str(second.id)]["question_event_id"]}
+
+
+def test_bulk_revoke_rejects_partial_or_stale_list_without_writing(db):
+    batch, first, _ = _case(db)
+    second = _second_item(db, batch, first)
+    decide_items_bulk(db, batch.id, S5BulkDecisionRequest(
+        decision="approved", route="library_only", items=[
+            {"item_id": first.id, "expected_revision": 1},
+            {"item_id": second.id, "expected_revision": 1},
+        ]))
+    for items in ([{"item_id": first.id, "expected_revision": 2}], [
+        {"item_id": first.id, "expected_revision": 2},
+        {"item_id": second.id, "expected_revision": 1},
+    ]):
+        with pytest.raises(ImportProblem) as caught:
+            revoke_bulk_decision(db, batch.id, S5BulkRevokeRequest(items=items))
+        assert caught.value.code == "S5_BULK_REVOKE_CONFLICT"
+    assert first.revision == second.revision == 2
+    assert import_review_summary(db, batch.id)["counts"]["approved"] == 2
+    assert len(list(db.scalars(select(QuestionImportAuditEvent).where(
+        QuestionImportAuditEvent.batch_id == batch.id,
+        QuestionImportAuditEvent.kind == "question")))) == 2
+
+
+def test_bulk_reapproval_only_changes_the_item_with_new_duplicate_evidence(db):
+    batch, first, check = _case(db)
+    second = _second_item(db, batch, first)
+    decide_items_bulk(db, batch.id, S5BulkDecisionRequest(
+        decision="approved", route="library_only", items=[
+            {"item_id": first.id, "expected_revision": 1},
+            {"item_id": second.id, "expected_revision": 1},
+        ]))
+    original = {row["item_id"]: row for row in read_item_reviews(db, batch.id)["items"]}
+
+    recheck = QuestionImportCatalogCheck(
+        batch_id=batch.id, item_id=first.id, check_no=check.check_no + 1,
+        candidate_revision=first.revision, candidate_signature=check.candidate_signature,
+        exact_version=check.exact_version, near_version=check.near_version,
+    )
+    db.add(recheck)
+    db.flush()
+    formal = db.scalar(select(Question).where(Question.has_image.is_(False),
+                                              Question.archived_at.is_(None)))
+    db.add(QuestionImportCatalogMatch(
+        check_id=recheck.id, question_id=formal.id, original_qid=formal.original_qid,
+        catalog_review_revision=formal.review_revision, catalog_signature=_catalog_signature(formal),
+        kind="nearby", similarity=0.5, evidence={}, decision="unrelated"))
+    db.flush()
+
+    changed = {row["item_id"]: row for row in read_item_reviews(db, batch.id)["items"]}
+    assert changed[str(first.id)]["valid"] is False
+    assert changed[str(second.id)]["valid"] is True
+    assert import_review_summary(db, batch.id)["counts"]["approved"] == 1
+    assert preflight_import(db, batch.id, _request(first))["items"][0]["batch_eligible"] is True
+
+    result = decide_items_bulk(db, batch.id, S5BulkDecisionRequest(
+        decision="approved", route="library_only", items=[
+            {"item_id": first.id, "expected_revision": first.revision},
+        ]))
+    assert result["count"] == 1
+    latest = {row["item_id"]: row for row in read_item_reviews(db, batch.id)["items"]}
+    assert latest[str(first.id)]["valid"] is True
+    assert latest[str(second.id)]["valid"] is True
+    assert latest[str(second.id)]["question_event_id"] == original[str(second.id)]["question_event_id"]
+    assert first.revision == 3 and second.revision == 2
+    assert import_review_summary(db, batch.id)["counts"]["approved"] == 2
 
 
 def test_bulk_blocker_or_revision_conflict_writes_nothing(db):

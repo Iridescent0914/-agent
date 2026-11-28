@@ -43,7 +43,7 @@ def _live_batch(db: Session, batch_id: uuid.UUID, *, lock: bool = False,
             QuestionImportBatch.stage == "s2_processing",
         ).with_for_update())
         if batch is None:
-            raise ImportProblem("COMMIT_CONFLICT", "S2 题图处理任务已失效", 409)
+            raise ImportProblem("COMMIT_CONFLICT", "题图处理任务已失效", 409)
     elif lock:
         batch = db.scalar(select(QuestionImportBatch).where(
             QuestionImportBatch.id == batch_id,

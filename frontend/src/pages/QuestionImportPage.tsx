@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Checkbox, Empty, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag, Typography, message } from 'antd'
+import { Alert, Button, Card, Checkbox, Empty, Input, InputNumber, List, Modal, Progress, Select, Space, Table, Tag, Typography, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { apiDelete, apiPost, apiPostForm, apiGet, apiPatch, apiUrl } from '../api/client'
 import { RichQuestionText } from '../components/RichQuestionText'
@@ -127,7 +127,8 @@ type S5Summary = { counts: {
 } }
 type S5ReviewRow = { item_id: string; decision: string; recorded_decision?: string; valid: boolean;
   reason: string | null; route: 'library_only' | 'direct_pool' | null;
-  question_event_id: string | null; answer_confirmed: boolean; candidate_revision?: number; created_at?: string }
+  question_event_id: string | null; batch_action_id?: string | null;
+  answer_confirmed: boolean; candidate_revision?: number; created_at?: string }
 type S5Reviews = { batch_id: string; items: S5ReviewRow[] }
 type S5PreflightRow = { item_id: string; current_revision: number | null; route: 'library_only' | 'direct_pool';
   batch_eligible: boolean; blockers: S5Problem[]; warnings: S5Problem[]; confirmation_pending: boolean }
@@ -193,8 +194,40 @@ const modeLabels: Record<string, string> = {
   questions_only: '只有题目', combined: '题目与答案同文件', separate: '题目与答案分文件',
 }
 
+const stageNames: Record<string, string> = {
+  S1: '模拟批改', S2: '题目识别', S3: '题目与答案整理',
+  S4: '题库查重', S5: '入库审核', S6: '正式入库',
+}
+
+function teacherFacingStageMessage(value: string | null | undefined) {
+  return value?.replace(/\bS[1-6]\b/g, (code) => stageNames[code] || code)
+}
+
+function teacherFacingBatch(batch: Batch): Batch {
+  const s2 = batch.checkpoint?.s2
+  const s3 = batch.checkpoint?.s3
+  return {
+    ...batch,
+    error_message: teacherFacingStageMessage(batch.error_message) ?? null,
+    checkpoint: {
+      ...batch.checkpoint,
+      s2: s2 ? { ...s2, units: s2.units?.map((unit) => ({
+        ...unit, skip_error_message: teacherFacingStageMessage(unit.skip_error_message),
+      })) } : undefined,
+      s3: s3 ? {
+        ...s3,
+        global_dedupe: s3.global_dedupe ? { ...s3.global_dedupe, error_message: teacherFacingStageMessage(s3.global_dedupe.error_message) } : undefined,
+        separate_answers: s3.separate_answers ? { ...s3.separate_answers, error_message: teacherFacingStageMessage(s3.separate_answers.error_message) } : undefined,
+        answer_model_matching: s3.answer_model_matching ? { ...s3.answer_model_matching, error_message: teacherFacingStageMessage(s3.answer_model_matching.error_message) } : undefined,
+        answer_generation: s3.answer_generation ? { ...s3.answer_generation, error_message: teacherFacingStageMessage(s3.answer_generation.error_message) } : undefined,
+        labels: s3.labels ? { ...s3.labels, error_message: teacherFacingStageMessage(s3.labels.error_message) } : undefined,
+      } : undefined,
+    },
+  }
+}
+
 function stageLabel(batch: Batch): string {
-  if (batch.stage === 'awaiting_s2') return '文件已校验，等待 S2 解析'
+  if (batch.stage === 'awaiting_s2') return '文件已校验，等待题目识别'
   if (batch.stage === 's2_queued') return '等待识别题目文件'
   if (batch.stage === 's2_processing') return '正在识别题目文件页段'
   if (batch.stage === 's2_completed') {
@@ -234,16 +267,16 @@ function stageLabel(batch: Batch): string {
       return matchingLabel || (batch.checkpoint?.s2?.auto_answer_matching && !matching
         ? '等待模型辅助配对答案' : '整批整理完成，待生成标签建议')
     }
-    return dedupe === 'completed' ? '整批整理完成，待生成标签建议' : 'S2 已完成，待人工核对'
+    return dedupe === 'completed' ? '整批整理完成，待生成标签建议' : '题目识别完成，待人工核对'
   }
-  if (batch.stage === 's2_budget_paused') return 'S2 已暂停，需核对预算'
-  if (batch.stage === 's2_failed') return 'S2 处理失败'
+  if (batch.stage === 's2_budget_paused') return '题目识别已暂停，需核对预算'
+  if (batch.stage === 's2_failed') return '题目识别失败'
   if (batch.stage === 'files_saved') return '文件已保存，等待校验'
   if (batch.stage === 'validating_files') return '正在校验文件'
   if (batch.stage === 'expired') return '临时文件已过期'
   if (batch.status === 'cancelled') return '已取消'
   if (batch.status === 'failed') return '处理失败'
-  return batch.stage
+  return '状态待更新'
 }
 
 function skippableS2Page(batch: Batch): number | null {
@@ -302,6 +335,7 @@ export function QuestionImportPage() {
   const [reviewBusy, setReviewBusy] = useState(false)
   const [bulkDraft, setBulkDraft] = useState<S5BulkDraft | null>(null)
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkRevokeBusy, setBulkRevokeBusy] = useState(false)
   const [figureTextBusy, setFigureTextBusy] = useState<string | null>(null)
   const [issueDraft, setIssueDraft] = useState<S5IssueDraft | null>(null)
   const [issueBusy, setIssueBusy] = useState(false)
@@ -336,7 +370,7 @@ export function QuestionImportPage() {
 
   async function reload(focusBatchId?: string) {
     try {
-      const rows = await apiGet<Batch[]>('/question-imports')
+      const rows = (await apiGet<Batch[]>('/question-imports')).map(teacherFacingBatch)
       setBatches(rows)
       if (focusBatchId) {
         const index = rows.findIndex((batch) => batch.id === focusBatchId)
@@ -408,7 +442,7 @@ export function QuestionImportPage() {
     try {
       const batch = batches.find((item) => item.id === id)
       if (action === 'retry' && batch?.stage === 's2_failed' && !operatorToken) {
-        message.warning('请输入 S2 操作口令')
+        message.warning('请输入模型任务操作口令')
         return
       }
       await apiPost(`/question-imports/${id}/${action}`, {}, undefined,
@@ -462,10 +496,10 @@ export function QuestionImportPage() {
   }
 
   function confirmSkipS2Page(batch: Batch, page: number) {
-    if (!operatorToken) { message.warning('请输入 S2 操作口令'); return }
+    if (!operatorToken) { message.warning('请输入模型任务操作口令'); return }
     Modal.confirm({
       title: `跳过第 ${page} 页并继续识别？`,
-      content: `请先核对原文件第 ${page} 页和前一页段的候选题。确认跳过后，该页不会再自动提取题目或答案，后续页段会继续识别并可能产生模型费用。系统会保留跳过记录和待教师核对的问题；若该页有尚未提取的新题，请在 S2 完成后人工新增。`,
+      content: `请先核对原文件第 ${page} 页和前一页段的候选题。确认跳过后，该页不会再自动提取题目或答案，后续页段会继续识别并可能产生模型费用。系统会保留跳过记录和待教师核对的问题；若该页有尚未提取的新题，请在题目识别完成后人工新增。`,
       okText: '确认跳过本页', okType: 'danger', cancelText: '继续核对',
       onOk: async () => {
         setLoading(true)
@@ -483,7 +517,7 @@ export function QuestionImportPage() {
 
   function confirmStart(batch: Batch) {
     if (!budget) { message.warning('请设置本批调用预算阈值'); return }
-    if (!operatorToken) { message.warning('请输入 S2 操作口令'); return }
+    if (!operatorToken) { message.warning('请输入模型任务操作口令'); return }
     Modal.confirm({
       title: '确认发送题目文件到百炼？',
       content: `将题目文件按页段发送给百炼 ${s2Config?.model || ''}，页段识别完成后自动把整批候选题发送给模型去重${batch.source_mode === 'combined' ? '，再自动关联并用已提取文字辅助核对同文件答案' : ''}。请确认文件不含学生个人信息。本批调用预算阈值为 ¥${budget}；这是基于已返回用量的停机阈值，单次调用可能使实际费用略高。`,
@@ -492,7 +526,7 @@ export function QuestionImportPage() {
         try {
           await apiPost(`/question-imports/${batch.id}/start-s2`, { budget_cny: budget }, undefined,
             { 'X-Import-S2-Token': operatorToken })
-          message.success('S2 任务已排队')
+          message.success('题目识别任务已排队')
           await reload()
         } catch (error) { message.error(error instanceof Error ? error.message : '启动失败') }
       },
@@ -696,9 +730,12 @@ export function QuestionImportPage() {
   }
 
   function bulkPendingItems() {
-    return candidates.filter((item) => !item.is_fake
-      && !['approved', 'rejected', 'skipped_duplicate'].includes(item.payload.teacher_decision || '')
-      && !s5Reviews?.items.some((review) => review.item_id === item.id && review.valid && review.decision !== 'pending'))
+    return candidates.filter((item) => {
+      if (item.is_fake || item.payload.teacher_decision === 'skipped_duplicate') return false
+      const review = s5Reviews?.items.find((row) => row.item_id === item.id)
+      if (review?.valid && review.decision !== 'pending') return false
+      return !!review?.question_event_id || !['approved', 'rejected'].includes(item.payload.teacher_decision || '')
+    })
   }
 
   function openBulkReview() {
@@ -766,6 +803,31 @@ export function QuestionImportPage() {
       if (decision === 'approved') await previewBulkReview()
       await viewCandidates(selectedBatchId)
     } finally { setBulkBusy(false) }
+  }
+
+  function confirmBulkRevoke() {
+    if (!selectedBatchId || !canEditCandidates || bulkRevokeBusy || !approvedReviewRows.length) return
+    const batchId = selectedBatchId
+    const rows = approvedReviewRows
+    Modal.confirm({
+      title: `撤回全部 ${rows.length} 道拟入库题的审核确认？`,
+      content: '当前拟入库清单中的题都会回到待审状态，包括后来逐题审核过的题。原审核记录会保留。',
+      okText: '撤回全部', okType: 'danger', cancelText: '取消',
+      onOk: async () => {
+        setBulkRevokeBusy(true)
+        try {
+          await apiPost(`/question-imports/${batchId}/s5/items/bulk-revoke`, {
+            items: rows.map((row) => ({ item_id: row.item_id,
+              expected_revision: candidates.find((item) => item.id === row.item_id)!.revision })),
+          })
+          await viewCandidates(batchId)
+          message.success(`已撤回全部 ${rows.length} 道拟入库题`)
+        } catch (error) {
+          message.error(error instanceof Error ? error.message : '全部撤回失败，请刷新后重试')
+          await viewCandidates(batchId)
+        } finally { setBulkRevokeBusy(false) }
+      },
+    })
   }
 
   async function saveS5IssueDecision() {
@@ -878,7 +940,7 @@ export function QuestionImportPage() {
   }
 
   function confirmBatchDedup(batch: Batch) {
-    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
+    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和模型任务操作口令'); return }
     Modal.confirm({
       title: '让模型整批去重题目？',
       content: `将整批候选题文字、题号和来源页码${batch.source_mode === 'combined' ? '，以及来源答案摘录作为判重上下文' : ''}发送给百炼 ${s2Config?.model || ''}，跨页段判断重复题。${batch.source_mode === 'combined' ? '去重后由程序按规则关联同文件答案；未能关联的答案留给教师核对。' : ''}预算阈值 ¥${budget}；模型可能产生费用。`,
@@ -901,7 +963,7 @@ export function QuestionImportPage() {
   }
 
   function confirmSeparateAnswers(batch: Batch) {
-    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
+    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和模型任务操作口令'); return }
     Modal.confirm({
       title: '确认发送答案文件到百炼？',
       content: `将独立答案文件按页段发送给百炼 ${s2Config?.model || ''}，只提取原文标准答案；完成后先按规则关联，再用已提取文字自动辅助核对有歧义的对应。答案不会被标记为教师已确认。请确认文件不含学生个人信息。预算阈值 ¥${budget}；单次调用可能使实际费用超过阈值。`,
@@ -918,7 +980,7 @@ export function QuestionImportPage() {
   }
 
   function confirmAnswerMatching(batch: Batch) {
-    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
+    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和模型任务操作口令'); return }
     Modal.confirm({
       title: '启动模型辅助配对答案？',
       content: `将已提取的题目、答案文字、题号和来源位置分组发送给百炼 ${s2Config?.model || ''}。不会重新发送原页；模型无法确定的继续留给教师核对。此次配对任务的预算阈值为 ¥${budget}，此前已产生的配对费用计入该阈值；单次调用可能使实际费用略高。`,
@@ -936,7 +998,7 @@ export function QuestionImportPage() {
   }
 
   function confirmAnswerGeneration(batch: Batch, count: number, itemIds?: string[]) {
-    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
+    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和模型任务操作口令'); return }
     Modal.confirm({
       title: `为 ${count} 道无答案题生成参考答案？`,
       content: `仅处理${itemIds ? '所选' : '本批'}尚无答案的候选题；已有教师答案不会被覆盖。将题干、选项和已关联题图分组发送给百炼 ${s2Config?.model || ''}。模型无法确定时保留无答案，所有生成结果均须教师核对，不会再次调用模型预审，也不会自动入库或入池。预算阈值 ¥${budget}，此前答案生成费用计入该阈值；单次调用可能超过阈值。`,
@@ -953,7 +1015,7 @@ export function QuestionImportPage() {
   }
 
   function confirmLabels(batch: Batch, rerun = false) {
-    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和 S2 操作口令'); return }
+    if (!budget || !operatorToken) { message.warning('请先填写预算阈值和模型任务操作口令'); return }
     const replan = batch.checkpoint?.s3?.labels?.error_code === 'S3_LABEL_REPLAN_REQUIRED'
     Modal.confirm({
       title: rerun ? '全部重新打标签？' : replan ? '按新规则重新处理整批标签？' : '生成本批候选题的标签建议？',
@@ -1139,6 +1201,7 @@ export function QuestionImportPage() {
     && !['queued', 'processing'].includes(labelTaskStatus || '')
     && !['queued', 'processing'].includes(answerModelTask?.status || '')
     && !['queued', 'processing'].includes(generationTask?.status || '')
+  const approvedReviewRows = s5Reviews?.items.filter((row) => row.valid && row.decision === 'approved') || []
   const unansweredCandidates = candidates.filter((item) => !item.is_fake && !item.payload.answers?.length
     && (!item.payload.teacher_decision || item.payload.teacher_decision === 'pending'))
   const answerMatchingComplete = !!reconciliation && selectedBatch?.stage === 's2_completed'
@@ -1191,6 +1254,20 @@ export function QuestionImportPage() {
         </details>}
       </div>
     </div>
+  }
+
+  function renderS5ReviewContent(item: Candidate) {
+    const review = s5Reviews?.items.find((row) => row.item_id === item.id)
+    const skipped = item.payload.teacher_decision === 'skipped_duplicate'
+    return <Space direction="vertical" size={4}>
+      {item.is_fake ? <Tag>测试题，不参与审核</Tag> : skipped ? <Tag color="orange">题库已有，不再入库</Tag>
+        : review?.valid && review.decision === 'approved' ? <Tag color="green">{review.route === 'direct_pool' ? '已确认拟直接入池' : '已确认仅题目入库'}</Tag>
+          : review?.valid && review.decision === 'rejected' ? <Tag color="red">已拒绝</Tag>
+            : <Tag color="default">待审核</Tag>}
+      {review?.question_event_id && !review.valid && <Typography.Text type="warning">旧审核已失效</Typography.Text>}
+      {review?.reason && review.valid && <Typography.Text type="secondary">理由：{review.reason}</Typography.Text>}
+      {!item.is_fake && !skipped && <Button size="small" disabled={!canEditCandidates} onClick={() => openS5Review(item)}>预检与审核</Button>}
+    </Space>
   }
 
   function renderCandidateContent(item: Candidate) {
@@ -1330,7 +1407,7 @@ export function QuestionImportPage() {
           onChange={(event) => setCatalogDecisionReason(event.target.value)} />}
       </>}
     </Modal>
-    <Modal title="S5 批量审核" open={!!bulkDraft} width={1100}
+    <Modal title="批量审核" open={!!bulkDraft} width={1100}
       onCancel={() => { if (!bulkBusy) setBulkDraft(null) }}
       footer={<Space wrap>
         <Button disabled={bulkBusy} onClick={() => setBulkDraft(null)}>关闭</Button>
@@ -1342,7 +1419,7 @@ export function QuestionImportPage() {
           onClick={() => void saveBulkReview('rejected')}>整批拒绝所选题目</Button>
       </Space>}>
       {bulkDraft && <Space direction="vertical" size="middle" style={{ width: '100%', maxHeight: '68vh', overflowY: 'auto' }}>
-        <Alert showIcon type="info" message="这里保存教师审核意向；正式入库将在 S6 执行。任一所选题被阻断，本次整批操作都不会保存。" />
+        <Alert showIcon type="info" message="这里保存教师审核意向；正式入库将在后续步骤执行。任一所选题被阻断，本次整批操作都不会保存。" />
         <Space wrap>
           <Typography.Text strong>拟入库路径</Typography.Text>
           <Select aria-label="批量拟入库路径" style={{ width: 280 }} value={bulkDraft.route}
@@ -1524,7 +1601,7 @@ export function QuestionImportPage() {
         onChange={(event) => setAnswerSourceDraft((current) => current ? { ...current, reason: event.target.value } : current)} />
     </Modal>
     <Card title="批量题目导入 · 内部识别与候选核对">
-      <Typography.Paragraph>上传后先校验文件；S2 按页段提取题目并自动整批去重。同文件场景同时提取答案；分文件场景先读取题目文件，整批去重完成后识别答案文件。来源答案先按规则关联，再对有歧义的对应进行模型辅助判断，仍无法确定的留给教师核对。“只有题目”批次可选择为无答案题生成参考答案，或由教师手填；之后可单独启动标签建议。</Typography.Paragraph>
+      <Typography.Paragraph>上传后先校验文件，再按页段识别题目并自动整批去重。同文件场景同时提取答案；分文件场景先读取题目文件，整批去重完成后识别答案文件。来源答案先按规则关联，再对有歧义的对应进行模型辅助判断，仍无法确定的留给教师核对。“只有题目”批次可选择为无答案题生成参考答案，或由教师手填；之后可单独启动标签建议。</Typography.Paragraph>
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         <Select aria-label="文件场景" value={mode} onChange={(value) => { setMode(value); setAnswerFile(null) }}
           options={Object.entries(modeLabels).map(([value, label]) => ({ value, label }))} style={{ width: 260 }} />
@@ -1532,7 +1609,7 @@ export function QuestionImportPage() {
         {mode === 'separate' && <label>答案文件（PDF/DOCX） <input type="file" accept=".pdf,.docx" onChange={(event) => setAnswerFile(event.target.files?.[0] || null)} /></label>}
         <Typography.Text type="secondary">单文件不超过 30 MB；PDF 不超过 50 页；临时文件最多保留 7 天、最近 100 批。</Typography.Text>
         <Space><Button type="primary" onClick={upload} loading={uploading}>上传并建立批次</Button><Button onClick={() => void reload()}>刷新</Button></Space>
-        <Space wrap><Typography.Text>S2 操作口令</Typography.Text><Input.Password aria-label="S2 操作口令" value={operatorToken} onChange={(event) => setOperatorToken(event.target.value)} autoComplete="off" style={{ width: 220 }} /><Typography.Text>单批调用预算阈值（元）</Typography.Text><InputNumber min={0.01} max={s2Config?.max_budget_cny || 20} step={0.5} value={budget} onChange={setBudget} />
+        <Space wrap><Typography.Text>模型任务操作口令</Typography.Text><Input.Password aria-label="模型任务操作口令" value={operatorToken} onChange={(event) => setOperatorToken(event.target.value)} autoComplete="off" style={{ width: 220 }} /><Typography.Text>单批调用预算阈值（元）</Typography.Text><InputNumber min={0.01} max={s2Config?.max_budget_cny || 20} step={0.5} value={budget} onChange={setBudget} />
           <Typography.Text type="secondary">{s2Config?.ready ? `已配置 ${s2Config.model}；每段主体 ${s2Config.pages_per_unit} 页，向后重叠 ${s2Config.overlap_pages} 页；单次回答上限 ${s2Config.max_output_tokens} Token` : '百炼尚未在服务端启用；仍可上传与校验'}</Typography.Text></Space>
         {uploading && <Progress percent={progress} />}
       </Space>
@@ -1546,7 +1623,7 @@ export function QuestionImportPage() {
           { title: '文件', dataIndex: 'files', render: (files: Batch['files'], batch: Batch) => <Space wrap>{batch.id === focusedBatchId && <Tag color="blue">当前批次</Tag>}{files.map((file) => file.original_name).join('、')}</Space> },
           { title: '状态', render: (_, batch: Batch) => <Space direction="vertical" size={0}><Tag color={batch.status === 'failed' ? 'red' : batch.status === 'cancelled' ? 'default' : batch.status === 'review_pending' ? 'green' : 'blue'}>{stageLabel(batch)}</Tag>{batch.checkpoint?.s2 && <Typography.Text type="secondary">题目识别调用 {batch.checkpoint.s2.calls || 0} 次</Typography.Text>}{batch.checkpoint?.s3?.separate_answers && <Typography.Text type={['failed', 'paused'].includes(batch.checkpoint.s3.separate_answers.status) ? 'warning' : 'secondary'}>答案识别：{batch.checkpoint.s3.separate_answers.status}，调用 {batch.checkpoint.s3.separate_answers.calls || 0} 次{batch.checkpoint.s3.separate_answers.error_message ? `；${batch.checkpoint.s3.separate_answers.error_message}` : ''}</Typography.Text>}{batch.checkpoint?.s3?.answer_model_matching && <Typography.Text type={['failed', 'pending_budget'].includes(batch.checkpoint.s3.answer_model_matching.status) ? 'warning' : 'secondary'}>模型辅助配对：{batch.checkpoint.s3.answer_model_matching.status}，调用 {batch.checkpoint.s3.answer_model_matching.calls || 0} 次{batch.checkpoint.s3.answer_model_matching.error_message ? `；${batch.checkpoint.s3.answer_model_matching.error_message}` : ''}</Typography.Text>}{batch.checkpoint?.s3?.answer_generation && <Typography.Text type={['failed', 'paused'].includes(batch.checkpoint.s3.answer_generation.status) ? 'warning' : 'secondary'}>答案生成：{batch.checkpoint.s3.answer_generation.status}，调用 {batch.checkpoint.s3.answer_generation.calls || 0} 次{batch.checkpoint.s3.answer_generation.error_message ? `；${batch.checkpoint.s3.answer_generation.error_message}` : ''}</Typography.Text>}{batch.checkpoint?.s3?.labels && <Typography.Text type={['failed', 'paused'].includes(batch.checkpoint.s3.labels.status) ? 'warning' : 'secondary'}>标签建议：{batch.checkpoint.s3.labels.status}，调用 {batch.checkpoint.s3.labels.calls || 0} 次{batch.checkpoint.s3.labels.error_message ? `；${batch.checkpoint.s3.labels.error_message}` : ''}</Typography.Text>}{batch.error_message && <Typography.Text type="danger">{batch.error_message}</Typography.Text>}{batch.error_code === 'S2_REVIEW_REQUIRED' && <Typography.Text type="warning">{skippableS2Page(batch) !== null ? '请核对失败页和前一页段的候选题；确认没有新题遗漏后，可人工跳过本页并继续。' : '请检查原文件对应页面并重新上传清晰版，或将批次号发给管理员；已完成的候选题仍可查看。'}批次号：<Typography.Text copyable={{ text: batch.id }}>{batch.id}</Typography.Text></Typography.Text>}{batch.error_code === 'CALL_LIMIT_REACHED' && <Typography.Text type="warning">已达到单批调用次数上限，请将批次号发给管理员：<Typography.Text copyable={{ text: batch.id }}>{batch.id}</Typography.Text></Typography.Text>}</Space> },
            { title: '操作', render: (_, batch: Batch) => <Space wrap>
-             {['awaiting_s2', 's2_budget_paused'].includes(batch.stage) && batch.error_code !== 'CALL_LIMIT_REACHED' && <Button disabled={!s2Config?.ready} onClick={() => confirmStart(batch)}>{batch.stage === 's2_budget_paused' ? '调整预算并继续识别' : '开始 S2 识别'}</Button>}
+             {['awaiting_s2', 's2_budget_paused'].includes(batch.stage) && batch.error_code !== 'CALL_LIMIT_REACHED' && <Button disabled={!s2Config?.ready} onClick={() => confirmStart(batch)}>{batch.stage === 's2_budget_paused' ? '调整预算并继续识别' : '开始题目识别'}</Button>}
              {batch.checkpoint?.s2 && <Button onClick={() => void viewCandidates(batch.id)}>查看候选与页段</Button>}
              {batch.stage === 's2_completed' && batch.checkpoint?.s3?.global_dedupe?.status !== 'completed' && !['auto_claimed', 'running'].includes(batch.checkpoint?.s3?.global_dedupe?.status || '') && !(batch.checkpoint?.s2?.auto_global_dedupe && !batch.checkpoint?.s3?.global_dedupe?.status) && <Button type="primary" loading={reviewingKey === `batch:${batch.id}`} disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmBatchDedup(batch)}>{batch.checkpoint?.s3?.global_dedupe?.status === 'pending_budget' ? '增加预算并整理整批' : batch.source_mode === 'separate' ? '模型整理整批题目' : '模型整理整批题答'}</Button>}
              {batch.stage === 's2_completed' && batch.source_mode === 'separate' && batch.checkpoint?.s3?.global_dedupe?.status === 'completed' && !['queued', 'processing', 'completed'].includes(batch.checkpoint?.s3?.separate_answers?.status || '') && <Button type="primary" disabled={!s2Config?.ready || !!batch.files_purged_at} onClick={() => confirmSeparateAnswers(batch)}>{batch.checkpoint?.s3?.separate_answers?.status === 'paused' ? '增加预算并继续识别答案' : batch.checkpoint?.s3?.separate_answers?.status === 'failed' ? '重试答案识别' : '识别答案文件'}</Button>}
@@ -1573,7 +1650,7 @@ export function QuestionImportPage() {
         <Button type="primary" onClick={() => { setNewCandidateDraft(emptyCandidateDraft()); setNewCandidateOpen(true) }}>新增题目</Button>
         <Typography.Text type="secondary">新增题目请人工核对重复情况；可在打标签前或后修改。</Typography.Text>
       </Space>}
-      {s5Summary && <Card size="small" title="S5 教师审核概况" style={{ marginBottom: 16 }}>
+      {s5Summary && <Card size="small" title="教师审核概况" style={{ marginBottom: 16 }}>
         <Button style={{ marginBottom: 10 }} type="primary" disabled={!canEditCandidates || s5Summary.counts.pending === 0}
           onClick={openBulkReview}>批量预检与审核</Button>
         <Space wrap>
@@ -1589,11 +1666,13 @@ export function QuestionImportPage() {
         <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 4 }}>
           查重未检查 {s5Summary.counts.missing_catalog_check} 题，已过期 {s5Summary.counts.stale_catalog_check} 题；相同题 {s5Summary.counts.exact_match_items} 题，可能相似 {s5Summary.counts.near_match_items} 题；待认领答案 {s5Summary.counts.unassigned_answer_issues} 条，待认领题图 {s5Summary.counts.unassigned_images} 张。
         </Typography.Paragraph>
-        <Typography.Text type="secondary">选择“批量预检与审核”中的“题目与答案直接入池”，系统会预填当前答案；教师核对后可批量确认拟入池意向。正式入库和入池将在 S6 完成。</Typography.Text>
-        {s5Reviews && s5Reviews.items.some((row) => row.valid && row.decision === 'approved') && <details style={{ marginTop: 8 }}>
+        <Typography.Text type="secondary">选择“批量预检与审核”中的“题目与答案直接入池”，系统会预填当前答案；教师核对后可批量确认拟入池意向。正式入库和入池将在后续步骤完成。</Typography.Text>
+        {!!approvedReviewRows.length && <details style={{ marginTop: 8 }}>
           <summary>查看拟入库清单</summary>
-          <Space direction="vertical" size={2} style={{ marginTop: 8 }}>
-            {s5Reviews.items.filter((row) => row.valid && row.decision === 'approved').map((row) => {
+          <Space direction="vertical" size="small" style={{ marginTop: 8, width: '100%' }}>
+            <Button danger loading={bulkRevokeBusy} disabled={!canEditCandidates}
+              onClick={confirmBulkRevoke}>一键撤销全部拟入库（{approvedReviewRows.length} 题）</Button>
+            {approvedReviewRows.map((row) => {
               const item = candidates.find((candidate) => candidate.id === row.item_id)
               return <Typography.Text key={row.item_id}>第 {item?.ordinal ?? '?'} 题 · {row.route === 'direct_pool' ? '题目与答案拟直接入池' : '拟仅题目入库'} · {item?.payload.content.question_text.slice(0, 70)}</Typography.Text>
             })}
@@ -1650,7 +1729,7 @@ export function QuestionImportPage() {
       </Typography.Paragraph>}
       {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'completed' && <Typography.Paragraph>去重后保留 {candidates.length} 道题。</Typography.Paragraph>}
       {['auto_claimed', 'running'].includes(selectedBatch?.checkpoint?.s3?.global_dedupe?.status || '') && <Typography.Paragraph>正在自动整批去重；请稍后刷新。</Typography.Paragraph>}
-      {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'pending_budget' && <Typography.Paragraph type="warning">S2 预算不足以进行整批判重；请在上方提高预算阈值后点击“增加预算并整理整批”。</Typography.Paragraph>}
+      {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'pending_budget' && <Typography.Paragraph type="warning">当前预算不足以进行整批判重；请在上方提高预算阈值后点击“增加预算并整理整批”。</Typography.Paragraph>}
       {selectedBatch?.checkpoint?.s3?.global_dedupe?.status === 'failed' && <Typography.Paragraph type="warning">整批模型判重失败：{selectedBatch.checkpoint.s3.global_dedupe.error_message}</Typography.Paragraph>}
       {answerModelExpected && !answerModelTask && reconciliation && <Typography.Paragraph type="secondary">规则关联已完成，等待后台模型辅助配对。</Typography.Paragraph>}
       {answerModelTask && <Typography.Paragraph type={['failed', 'pending_budget'].includes(answerModelTask.status) ? 'warning' : 'secondary'}>模型辅助配对：{answerModelTask.status}；已调用 {answerModelTask.calls || 0} 次，估算费用 ¥{answerModelTask.estimated_cny || 0}。{answerModelTask.error_message || ''}</Typography.Paragraph>}
@@ -1658,7 +1737,7 @@ export function QuestionImportPage() {
         <summary>题目识别页段记录（{s2.units.length} 段）</summary>
         <Typography.Paragraph type="secondary">每页只归一个主体页段；后续页作为跨页上下文重复传入模型。模型报告不完整后，新拆分的页段最多带一页上下文；单页主体仍失败时可核对原页后人工跳过。</Typography.Paragraph>
         {s2.units.map((unit) => <div key={unit.index}>
-          <Typography.Paragraph>页段 {unit.index + 1}：主体为原文件第 {unit.core_first_page}–{unit.core_last_page} 页{unit.last_page > unit.core_last_page ? `，第 ${unit.core_last_page + 1}–${unit.last_page} 页仅作跨页上下文` : ''}；{unit.skipped_by_teacher ? '已人工跳过，需核对本页是否漏题' : unit.status === 'completed' ? `S2 当时提取 ${unit.candidate_count || 0} 题（下方展示当前候选）` : '待处理'}</Typography.Paragraph>
+          <Typography.Paragraph>页段 {unit.index + 1}：主体为原文件第 {unit.core_first_page}–{unit.core_last_page} 页{unit.last_page > unit.core_last_page ? `，第 ${unit.core_last_page + 1}–${unit.last_page} 页仅作跨页上下文` : ''}；{unit.skipped_by_teacher ? '已人工跳过，需核对本页是否漏题' : unit.status === 'completed' ? `识别时提取 ${unit.candidate_count || 0} 题（下方展示当前候选）` : '待处理'}</Typography.Paragraph>
           {unit.skipped_by_teacher && unit.skip_error_message && <Typography.Paragraph type="warning">跳过前的模型报错：{unit.skip_error_message}</Typography.Paragraph>}
           {selectedBatch?.source_mode !== 'combined' && unit.source_answer_signals?.map((signal, index) => <Typography.Paragraph key={`answer-signal-${index}`} type="warning">第 {signal.page} 页可能含资料答案，请核对上传场景：{signal.evidence}</Typography.Paragraph>)}
         </div>)}
@@ -1747,27 +1826,34 @@ export function QuestionImportPage() {
           onChange={(event) => setCandidateQuery(event.target.value)} />
         <Typography.Text type="secondary">显示 {visibleCandidates.length} / {candidateSource.length} 道题</Typography.Text>
       </Space>
-      <Table className="question-import-candidates-table" rowKey="id" dataSource={visibleCandidates}
-        size="small" tableLayout="fixed" scroll={{ x: 1400 }} pagination={{ pageSize: 10 }} columns={[
-        { title: '序号', dataIndex: 'ordinal', width: 70 },
-        { title: '原题号', render: (_, item: Candidate) => item.payload.source.original_number || '未识别', width: 90 },
-        { title: '原页', render: (_, item: Candidate) => `${item.payload.source.page_start ?? '?'}–${item.payload.source.page_end ?? '?'}`, width: 90 },
-        { title: '题目、题图与答案', render: (_, item: Candidate) => renderCandidateContent(item) },
-        { title: '题库查重结果', render: (_, item: Candidate) => renderCatalogReviewContent(item), width: 380 },
-        { title: 'S5 审核', width: 200, render: (_, item: Candidate) => {
-          const review = s5Reviews?.items.find((row) => row.item_id === item.id)
-          const skipped = item.payload.teacher_decision === 'skipped_duplicate'
-          return <Space direction="vertical" size={4}>
-            {item.is_fake ? <Tag>测试题，不参与审核</Tag> : skipped ? <Tag color="orange">题库已有，不再入库</Tag>
-              : review?.valid && review.decision === 'approved' ? <Tag color="green">{review.route === 'direct_pool' ? '已确认拟直接入池' : '已确认仅题目入库'}</Tag>
-                : review?.valid && review.decision === 'rejected' ? <Tag color="red">已拒绝</Tag>
-                  : <Tag color="default">待审核</Tag>}
-            {review?.question_event_id && !review.valid && <Typography.Text type="warning">旧审核已失效</Typography.Text>}
-            {review?.reason && review.valid && <Typography.Text type="secondary">理由：{review.reason}</Typography.Text>}
-            {!item.is_fake && !skipped && <Button size="small" disabled={!canEditCandidates} onClick={() => openS5Review(item)}>预检与审核</Button>}
-          </Space>
-        } },
-      ]} />
+      <List key={`${selectedBatchId}:${candidateFilter}:${candidateQuery}:${showDuplicateCandidates}`}
+        className="question-import-candidates-list" dataSource={visibleCandidates}
+        pagination={{ pageSize: 10, size: 'small', showSizeChanger: false }}
+        renderItem={(item) => <List.Item key={item.id}>
+          <Card size="small" className="question-import-candidate-card"
+            title={<Space wrap size="middle">
+              <Typography.Text strong>第 {item.ordinal} 题</Typography.Text>
+              <Typography.Text type="secondary">原题号：{item.payload.source.original_number || '未识别'}</Typography.Text>
+              <Typography.Text type="secondary">原页：{item.payload.source.page_start ?? '?'}–{item.payload.source.page_end ?? '?'}</Typography.Text>
+            </Space>}>
+            <div className="question-import-candidate-grid">
+              <section className="question-import-candidate-main">
+                <Typography.Title level={5}>题目、题图与答案</Typography.Title>
+                {renderCandidateContent(item)}
+              </section>
+              <div className="question-import-candidate-side">
+                <section className="question-import-candidate-panel">
+                  <Typography.Title level={5}>题库查重结果</Typography.Title>
+                  {renderCatalogReviewContent(item)}
+                </section>
+                <section className="question-import-candidate-panel">
+                  <Typography.Title level={5}>入库审核</Typography.Title>
+                  {renderS5ReviewContent(item)}
+                </section>
+              </div>
+            </div>
+          </Card>
+        </List.Item>} />
     </Modal>
     <Modal title="新增候选题" open={newCandidateOpen} width={760}
       onCancel={() => setNewCandidateOpen(false)}

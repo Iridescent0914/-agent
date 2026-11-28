@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.models import QuestionImportBatch, QuestionImportItem
 from app.schemas.question_import_s5 import (
     S5AnswerClaimRequest, S5AnswerSourceRequest, S5IssueDecisionRequest,
-    S5BulkDecisionRequest, S5ItemDecisionRequest, S5PreflightRequest,
+    S5BulkDecisionRequest, S5BulkRevokeRequest, S5ItemDecisionRequest, S5PreflightRequest,
 )
 from app.services.question_import import (
     OWNER_SCOPE, ImportProblem, active_candidate, cancel_batch, create_batch,
@@ -38,7 +38,8 @@ from app.services.question_import_s4_review import (
 from app.services.question_import_figure_review import set_figure_text_confirmation
 from app.services.question_import_s5_preflight import import_review_summary, preflight_import
 from app.services.question_import_s5_review import (
-    claim_source_answer, confirm_answer_source, decide_issue, decide_item, decide_items_bulk, read_item_reviews,
+    claim_source_answer, confirm_answer_source, decide_issue, decide_item, decide_items_bulk,
+    read_item_reviews, revoke_bulk_decision,
 )
 
 
@@ -261,6 +262,12 @@ def save_s5_item_decision(batch_id: UUID, item_id: UUID, request: S5ItemDecision
 def save_s5_bulk_decision(batch_id: UUID, request: S5BulkDecisionRequest,
                           db: Session = Depends(get_db)):
     return decide_items_bulk(db, batch_id, request)
+
+
+@router.post("/{batch_id}/s5/items/bulk-revoke")
+def revoke_s5_bulk_decision(batch_id: UUID, request: S5BulkRevokeRequest,
+                            db: Session = Depends(get_db)):
+    return revoke_bulk_decision(db, batch_id, request)
 
 
 @router.post("/{batch_id}/s5/issues/decision")

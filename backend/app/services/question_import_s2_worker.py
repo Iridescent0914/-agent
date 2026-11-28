@@ -35,9 +35,9 @@ FIGURE_VERSION = "s2-figure-coverage-v1"
 def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_token: str | None = None) -> QuestionImportBatch:
     settings = get_settings()
     if settings.question_import_s2_model != FLASH_MODEL:
-        raise ImportProblem("S2_MODEL_NOT_SUPPORTED", "S2 当前仅支持 Flash 模型", 409)
+        raise ImportProblem("S2_MODEL_NOT_SUPPORTED", "题目识别当前仅支持 Flash 模型", 409)
     if not settings.question_import_s2_enabled or not settings.question_import_s2_api_key or not settings.question_import_s2_base_url.startswith("https://"):
-        raise ImportProblem("S2_NOT_CONFIGURED", "S2 百炼调用尚未在服务端配置", 409)
+        raise ImportProblem("S2_NOT_CONFIGURED", "题目识别模型尚未在服务端配置", 409)
     require_s2_operator_token(operator_token)
     if not 0 < budget_cny <= settings.question_import_s2_max_budget_cny:
         raise ImportProblem("INVALID_S2_BUDGET", "本批预算超出服务端允许范围")
@@ -49,7 +49,7 @@ def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_to
     if batch.files_purged_at is not None or batch.expires_at <= datetime.now(timezone.utc):
         raise ImportProblem("FILE_EXPIRED", "临时文件已过期，请重新上传", 409)
     if batch.stage not in {"awaiting_s2", "s2_budget_paused"} or batch.status not in {"uploaded", "paused"}:
-        raise ImportProblem("COMMIT_CONFLICT", "批次当前不能启动 S2", 409)
+        raise ImportProblem("COMMIT_CONFLICT", "当前批次不能启动题目识别", 409)
     if not any(item["role"] == "questions" for item in batch.files):
         raise ImportProblem("INVALID_FILE", "批次缺少题目文件")
     checkpoint = dict(batch.checkpoint or {})
@@ -59,7 +59,7 @@ def start_s2(db: Session, batch_id: uuid.UUID, *, budget_cny: float, operator_to
     question_file = next(item for item in batch.files if item["role"] == "questions")
     if (question_file["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             and s2.get("units") and s2.get("conversion_version") != DOCX_CONVERSION_VERSION):
-        raise ImportProblem("S2_CONFIG_CHANGED", "DOCX 转换器已修复公式处理，请重新上传以完整重跑 S2", 409)
+        raise ImportProblem("S2_CONFIG_CHANGED", "DOCX 转换器已修复公式处理，请重新上传并重新识别题目", 409)
     if budget_cny <= float(s2.get("estimated_cny") or 0):
         raise ImportProblem("INVALID_S2_BUDGET", "新预算必须高于已估算费用")
     s2["budget_cny"] = budget_cny
@@ -112,7 +112,7 @@ def claim_s2(db: Session, *, now: datetime | None = None) -> tuple[uuid.UUID, uu
         row.status = "failed"
         row.stage = "s2_failed"
         row.error_code = "WORKER_TIMEOUT"
-        row.error_message = "S2 任务多次超时；已完成页段已保留，可重试"
+        row.error_message = "题目识别任务多次超时；已完成页段已保留，可重试"
         row.worker_token = None
         row.lease_until = None
         return None
@@ -305,7 +305,7 @@ def process_s2_one() -> bool:
             s2 = dict((batch.checkpoint or {}).get("s2") or {})
         if (source["media_type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 and s2.get("units") and s2.get("conversion_version") != DOCX_CONVERSION_VERSION):
-            raise ImportProblem("S2_CONFIG_CHANGED", "DOCX 转换器已修复公式处理，请重新上传以完整重跑 S2")
+            raise ImportProblem("S2_CONFIG_CHANGED", "DOCX 转换器已修复公式处理，请重新上传并重新识别题目")
         pdf, pages, warnings = prepare_pdf(batch_id, source)
         with SessionLocal() as db:
             embedded_inventory = extract_images(db, batch_id, s2_worker_token=token)
@@ -350,7 +350,7 @@ def process_s2_one() -> bool:
                 _pause(batch_id, token, s2, "BUDGET_REACHED", "预算已达到或部分用量缺失，请核对账单后调整预算")
                 return True
             if int(s2.get("calls") or 0) >= get_settings().question_import_s2_max_calls:
-                _pause(batch_id, token, s2, "CALL_LIMIT_REACHED", "S2 单批调用次数达到上限")
+                _pause(batch_id, token, s2, "CALL_LIMIT_REACHED", "题目识别的单批调用次数达到上限")
                 return True
             failed_unit = s2.get("failed_unit") or {}
             unit_images = [{"asset_id": asset["asset_id"],
@@ -538,7 +538,7 @@ def process_s2_one() -> bool:
                 row.status = "failed"
                 row.stage = "s2_failed"
                 row.error_code = exc.code if isinstance(exc, ImportProblem) else "S2_INTERNAL_ERROR"
-                message = str(exc) if isinstance(exc, ImportProblem) else "S2 处理失败；请检查服务日志"
+                message = str(exc) if isinstance(exc, ImportProblem) else "题目识别失败；请检查服务日志"
                 suffix = "" if row.error_code == "S2_REVIEW_REQUIRED" else "。失败调用可能已产生费用，请核对百炼账单"
                 row.error_message = (f"第 {unit.first_page}–{unit.last_page} 页：" if unit is not None else "") + message[:180] + suffix
                 row.worker_token = None

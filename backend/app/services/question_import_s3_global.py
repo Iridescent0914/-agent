@@ -191,7 +191,7 @@ def dedupe_batch(db: Session, batch_id: uuid.UUID, *, budget_cny: float,
     if batch is None:
         raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
     if batch.status != "review_pending" or batch.stage != "s2_completed":
-        raise ImportProblem("S3_REVIEW_UNAVAILABLE", "请先完成 S2 切题", 409)
+        raise ImportProblem("S3_REVIEW_UNAVAILABLE", "请先完成题目识别", 409)
     items = list(db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch_id).order_by(QuestionImportItem.ordinal).with_for_update()))
     checkpoint = dict(batch.checkpoint or {})
@@ -310,7 +310,7 @@ def process_global_dedupe_one() -> bool:
         db.commit()
     try:
         if remaining <= 0:
-            raise ImportProblem("S3_REVIEW_BUDGET", "S2 预算已用完，请增加预算后手动整理整批", 409)
+            raise ImportProblem("S3_REVIEW_BUDGET", "当前预算已用完，请增加预算后手动整理整批", 409)
         with SessionLocal() as db:
             dedupe_batch(db, batch_id, budget_cny=remaining, automatic=True)
     except ImportProblem as exc:

@@ -332,7 +332,7 @@ def parse_model_output(value: object, unit: PageUnit, *, include_answers: bool =
             else:
                 location.append(("." if location else "") + part)
         detail = f"（位置：{''.join(location)}）" if location else ""
-        raise ImportProblem("INVALID_MODEL_OUTPUT", f"模型返回字段不符合 S2 契约{detail}") from exc
+        raise ImportProblem("INVALID_MODEL_OUTPUT", f"题目识别模型返回格式不符合要求{detail}") from exc
     if not output.complete:
         reason = next((fragment.reason for fragment in output.unresolved_fragments if fragment.reason), None)
         detail = f"：{reason[:100]}" if reason else ""
@@ -518,7 +518,7 @@ class QwenPdfProvider:
     def __init__(self, *, settings: Settings | None = None, transport: httpx.BaseTransport | None = None):
         self.settings = settings or get_settings()
         if self.settings.question_import_s2_model != FLASH_MODEL:
-            raise ImportProblem("S2_MODEL_NOT_SUPPORTED", "S2 当前仅支持 Flash 模型", 409)
+            raise ImportProblem("S2_MODEL_NOT_SUPPORTED", "题目识别当前仅支持 Flash 模型", 409)
         if not self.settings.question_import_s2_api_key or not self.settings.question_import_s2_base_url.startswith("https://"):
             raise ImportProblem("S2_NOT_CONFIGURED", "百炼密钥或 HTTPS 工作空间地址未配置", 409)
         self.transport = transport

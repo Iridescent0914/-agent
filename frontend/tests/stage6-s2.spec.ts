@@ -65,7 +65,7 @@ async function installMock(page: Page, enabled = true, real = false) {
     }
     if (path === `/internal/stage6/equivalence-tasks/${taskId}`) {
       task = { ...task, status: 'succeeded', attempt_count: 1,
-        result: { verdict: real ? 'equivalent' : 'uncertain', explanation: real ? '两段表达式恒等。' : 'S1 fake仅验证调用链路，未执行数学等价判断。' } }
+        result: { verdict: real ? 'equivalent' : 'uncertain', explanation: real ? '两段表达式恒等。' : '模拟批改仅验证调用链路，未执行数学等价判断。' } }
       return json(task)
     }
     if (path.includes('/quality-feedback/equivalence/')) {

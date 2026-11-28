@@ -65,6 +65,25 @@ class S5BulkDecisionRequest(BaseModel):
         return self
 
 
+class S5BulkRevokeItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: UUID
+    expected_revision: int = Field(ge=1, strict=True)
+
+
+class S5BulkRevokeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[S5BulkRevokeItem] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_items(self):
+        if len({item.item_id for item in self.items}) != len(self.items):
+            raise ValueError("同一候选题不能重复选择")
+        return self
+
+
 class S5ItemDecisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

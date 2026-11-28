@@ -233,7 +233,7 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
     if batch is None:
         raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
     if batch.status != "review_pending" or batch.stage != "s2_completed":
-        raise ImportProblem("COMMIT_CONFLICT", "请先完成 S2 切题", 409)
+        raise ImportProblem("COMMIT_CONFLICT", "请先完成题目识别", 409)
     if batch.source_mode not in {"combined", "separate"}:
         raise ImportProblem("S3_SOURCE_MODE", "此批次没有待关联的资料答案", 409)
     s2 = (batch.checkpoint or {}).get("s2") or {}
@@ -256,7 +256,7 @@ def reconcile_source_answers(db: Session, batch_id: uuid.UUID, *, force: bool = 
     if (source["media_type"] != "application/pdf"
             and source_units.get("conversion_version") != DOCX_CONVERSION_VERSION):
         raise ImportProblem("S3_CONFIG_CHANGED",
-                            "DOCX 转换器已更新，请重新上传并完整重跑 S2，避免新旧 PDF 页码混用", 409)
+                            "DOCX 转换器已更新，请重新上传并重新识别题目，避免新旧 PDF 页码混用", 409)
 
     items = [item for item in db.scalars(select(QuestionImportItem).where(
         QuestionImportItem.batch_id == batch.id,

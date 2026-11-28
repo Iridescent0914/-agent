@@ -24,7 +24,7 @@ def fake_candidate(batch_id: uuid.UUID, ordinal: int = 1) -> dict:
         "source": {"file_id": str(uuid.uuid5(batch_id, "fake-file")),
                    "original_number": str(ordinal), "page_start": 1,
                    "page_end": 1, "evidence": []},
-        "content": {"question_text": f"[FAKE] S1 候选题 {ordinal}", "options": [], "solution": None, "asset_ids": []},
+        "content": {"question_text": f"[FAKE] 模拟候选题 {ordinal}", "options": [], "solution": None, "asset_ids": []},
         "tags": {"question_type": "unknown", "difficulty": None, "grade": None,
                  "chapter_code": None, "section": None, "main_kp_code": None,
                  "core_literacies": [], "is_required": False},

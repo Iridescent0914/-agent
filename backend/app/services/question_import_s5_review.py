@@ -11,9 +11,13 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import QuestionImportAuditEvent, QuestionImportBatch, QuestionImportItem
+from app.models import (
+    QuestionImportAuditEvent, QuestionImportBatch, QuestionImportCatalogCheck,
+    QuestionImportCatalogMatch, QuestionImportItem,
+)
 from app.schemas.question_import_s5 import (
-    S5AnswerClaimRequest, S5AnswerSourceRequest, S5BulkDecisionRequest, S5IssueDecisionRequest, S5ItemDecisionRequest,
+    S5AnswerClaimRequest, S5AnswerSourceRequest, S5BulkDecisionRequest, S5BulkRevokeRequest,
+    S5IssueDecisionRequest, S5ItemDecisionRequest,
     S5PreflightSelection,
 )
 from app.services.question_import import ImportProblem, OWNER_SCOPE, active_candidate
@@ -23,21 +27,57 @@ from app.services.question_import_s5_preflight import _context, _evaluate
 from app.services.question_review import prepare_pool_review
 
 
-def _signature(item: QuestionImportItem, review: dict[str, Any] | None) -> str:
+def _signature(item: QuestionImportItem, review: dict[str, Any] | None, *, legacy: bool = False) -> str:
     payload = item.payload or {}
     selected = next((answer for answer in payload.get("answers") or []
                      if isinstance(answer, dict) and answer.get("answer_id") == payload.get("selected_answer_id")), None)
+    if legacy:
+        # S5 events created before this fix included IDs that change on every S4 recheck.
+        s4 = ({"check_id": review.get("check_id"), "candidate_stale": review.get("candidate_stale"),
+               "catalog_stale": review.get("catalog_stale"),
+               "matches": [(row["id"], row["decision"], row["reason"], row["catalog_stale"])
+                           for row in review["matches"]]} if review else None)
+    else:
+        s4 = ({"candidate_signature": review.get("candidate_signature"),
+               "exact_version": review.get("exact_version"), "near_version": review.get("near_version"),
+               "candidate_stale": review.get("candidate_stale"), "catalog_stale": review.get("catalog_stale"),
+               "matches": sorted(({
+                   "question_id": row["question_id"], "kind": row["kind"],
+                   "catalog_review_revision": row["catalog_review_revision"],
+                   "catalog_signature": row["catalog_signature"],
+                   "catalog_unverifiable": row["catalog_unverifiable"],
+                   "decision": row["decision"], "reason": row["reason"],
+                   "catalog_stale": row["catalog_stale"], "evidence": row["evidence"],
+               } for row in review["matches"]), key=lambda row: (row["kind"], row["question_id"] or ""))}
+              if review else None)
     raw = {
         "content": payload.get("content"), "tags": payload.get("tags"),
         "selected_answer_id": payload.get("selected_answer_id"),
         "selected_answer": selected, "answer_match_status": payload.get("answer_match_status"),
-        "s4": ({"check_id": review.get("check_id"), "candidate_stale": review.get("candidate_stale"),
-                "catalog_stale": review.get("catalog_stale"),
-                "matches": [(row["id"], row["decision"], row["reason"], row["catalog_stale"])
-                            for row in review["matches"]]} if review else None),
+        "s4": s4,
     }
     return hashlib.sha256(json.dumps(raw, sort_keys=True, ensure_ascii=False,
                                      default=str).encode("utf-8")).hexdigest()
+
+
+def _stored_s4_state(check: QuestionImportCatalogCheck,
+                     matches: list[QuestionImportCatalogMatch]) -> tuple[Any, ...]:
+    """Compare durable S4 evidence without the IDs of individual check runs."""
+    return (check.candidate_signature, check.exact_version, check.near_version,
+            tuple(sorted((str(match.question_id), match.original_qid, match.kind,
+                          match.catalog_review_revision, match.catalog_signature,
+                          match.decision, match.reason,
+                          json.dumps(match.evidence or {}, sort_keys=True, ensure_ascii=False))
+                         for match in matches)))
+
+
+def _legacy_review(check: QuestionImportCatalogCheck,
+                   matches: list[QuestionImportCatalogMatch]) -> dict[str, Any]:
+    # An approved review could only have been saved while this check was fresh.
+    ordered = sorted(matches, key=lambda match: (match.kind, match.original_qid))
+    return {"check_id": str(check.id), "candidate_stale": False, "catalog_stale": False,
+            "matches": [{"id": str(match.id), "decision": match.decision,
+                         "reason": match.reason, "catalog_stale": False} for match in ordered]}
 
 
 def _locked_batch_item(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
@@ -74,11 +114,13 @@ def _event(db: Session, *, batch_id: uuid.UUID, item_id: uuid.UUID | None,
 
 
 def decide_item(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
-                request: S5ItemDecisionRequest, batch_action_id: str | None = None) -> dict[str, Any]:
+                request: S5ItemDecisionRequest, batch_action_id: str | None = None,
+                reverts_batch_action_id: str | None = None,
+                reverts_question_event_id: str | None = None) -> dict[str, Any]:
     item = _locked_batch_item(db, batch_id, item_id, request.expected_revision)
     ctx = _context(db, batch_id)
     if (item.payload or {}).get("teacher_decision") == "skipped_duplicate":
-        raise ImportProblem("DUPLICATE_DECISION_REQUIRED", "请先在 S4 撤销跳过旧题的决定", 409)
+        raise ImportProblem("DUPLICATE_DECISION_REQUIRED", "请先在题库查重结果中撤销跳过旧题的决定", 409)
     if request.decision == "approved":
         selection = S5PreflightSelection(item_id=item_id, expected_revision=item.revision,
                                          route=request.route, answer_review_items=request.answer_review_items)
@@ -96,9 +138,14 @@ def decide_item(db: Session, batch_id: uuid.UUID, item_id: uuid.UUID,
     signature = _signature(item, ctx["review_by_id"].get(str(item_id)))
     action_id = str(uuid.uuid4())
     detail: dict[str, Any] = {"action_id": action_id, "route": request.route,
+                              "signature_version": 2,
                               "s4_check_id": (ctx["review_by_id"].get(str(item_id)) or {}).get("check_id")}
     if batch_action_id:
         detail["batch_action_id"] = batch_action_id
+    if reverts_batch_action_id:
+        detail["reverts_batch_action_id"] = reverts_batch_action_id
+    if reverts_question_event_id:
+        detail["reverts_question_event_id"] = reverts_question_event_id
     question = _event(db, batch_id=batch_id, item_id=item_id, kind="question",
                       decision=request.decision, revision=item.revision, signature=signature,
                       reason=(request.reason or "").strip() or None, detail=detail)
@@ -131,6 +178,8 @@ def decide_items_bulk(db: Session, batch_id: uuid.UUID,
         QuestionImportItem.batch_id == batch_id, QuestionImportItem.id.in_(selected_ids),
     ).order_by(QuestionImportItem.id).with_for_update())}
     ctx = _context(db, batch_id)
+    effective_reviews = {uuid.UUID(row["item_id"]): row
+                         for row in read_item_reviews(db, batch_id)["items"]}
     results: list[dict[str, Any]] = []
     for row in request.items:
         item = locked.get(row.item_id)
@@ -139,7 +188,13 @@ def decide_items_bulk(db: Session, batch_id: uuid.UUID,
             blockers.append({"code": "CANDIDATE_UNAVAILABLE", "message": "候选题不可用"})
         elif item.revision != row.expected_revision:
             blockers.append({"code": "REVISION_CONFLICT", "message": "候选题版本已变化，请刷新"})
-        elif (item.payload or {}).get("teacher_decision") in {"approved", "rejected", "skipped_duplicate"}:
+        elif (item.payload or {}).get("teacher_decision") == "skipped_duplicate":
+            blockers.append({"code": "ALREADY_DECIDED", "message": "此题已决定跳过旧题，请先撤销查重决定"})
+        elif ((item.payload or {}).get("teacher_decision") in {"approved", "rejected"}
+              and not (effective_reviews.get(item.id) or {}).get("question_event_id")):
+            blockers.append({"code": "ALREADY_DECIDED", "message": "此题缺少可核对的审核记录，请单独处理"})
+        elif ((effective_reviews.get(item.id) or {}).get("valid")
+              and effective_reviews[item.id]["decision"] in {"approved", "rejected"}):
             blockers.append({"code": "ALREADY_DECIDED", "message": "此题已有审核决定，请单独处理"})
         if request.decision == "approved" and not blockers:
             check = _evaluate(ctx, S5PreflightSelection(
@@ -163,6 +218,41 @@ def decide_items_bulk(db: Session, batch_id: uuid.UUID,
             "count": len(saved), "items": saved}
 
 
+def revoke_bulk_decision(db: Session, batch_id: uuid.UUID,
+                         request: S5BulkRevokeRequest) -> dict[str, Any]:
+    """Atomically withdraw every currently effective proposed import in this batch."""
+    batch = db.scalar(select(QuestionImportBatch).where(
+        QuestionImportBatch.id == batch_id, QuestionImportBatch.owner_scope == OWNER_SCOPE,
+    ).with_for_update())
+    if batch is None:
+        raise ImportProblem("NOT_FOUND", "导入批次不存在", 404)
+    if batch.status != "review_pending" or batch.stage != "s2_completed":
+        raise ImportProblem("COMMIT_CONFLICT", "当前批次不可撤回审核", 409)
+    selected_ids = {row.item_id for row in request.items}
+    locked = {item.id: item for item in db.scalars(select(QuestionImportItem).where(
+        QuestionImportItem.batch_id == batch_id, QuestionImportItem.id.in_(selected_ids),
+    ).order_by(QuestionImportItem.id).with_for_update())}
+    approved = {uuid.UUID(row["item_id"]): row for row in read_item_reviews(db, batch_id)["items"]
+                if row["valid"] and row["decision"] == "approved"}
+    if not approved or set(approved) != selected_ids or any(
+        (item := locked.get(row.item_id)) is None or item.revision != row.expected_revision
+        or not active_candidate(item) or item.is_fake
+        for row in request.items
+    ):
+        raise ImportProblem("S5_BULK_REVOKE_CONFLICT",
+                            "拟入库清单或题目版本已变化，请刷新后重试", 409)
+    undo_action_id = str(uuid.uuid4())
+    with db.begin_nested():
+        saved = [decide_item(db, batch_id, row.item_id, S5ItemDecisionRequest(
+            expected_revision=row.expected_revision, decision="pending"),
+            batch_action_id=undo_action_id,
+            reverts_batch_action_id=approved[row.item_id].get("batch_action_id"),
+            reverts_question_event_id=approved[row.item_id]["question_event_id"])
+                 for row in request.items]
+    return {"batch_id": str(batch_id), "batch_action_id": undo_action_id,
+            "count": len(saved), "items": saved}
+
+
 def read_item_reviews(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
     ctx = _context(db, batch_id)
     events = list(db.scalars(select(QuestionImportAuditEvent).where(
@@ -176,6 +266,22 @@ def read_item_reviews(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
             latest_question.setdefault(event.item_id, event)
         elif event.kind == "answer":
             answers[event.detail.get("action_id")] = event
+    legacy_ids = {uuid.UUID(check_id) for event in latest_question.values()
+                  if event.detail.get("signature_version") != 2
+                  if (check_id := event.detail.get("s4_check_id"))}
+    if legacy_ids:
+        legacy_ids.update(uuid.UUID(row["check_id"]) for row in ctx["review_by_id"].values()
+                          if row.get("check_id"))
+    checks = {check.id: check for check in db.scalars(select(QuestionImportCatalogCheck).where(
+        QuestionImportCatalogCheck.batch_id == batch_id,
+        QuestionImportCatalogCheck.id.in_(legacy_ids),
+    ))} if legacy_ids else {}
+    matches_by_check: dict[uuid.UUID, list[QuestionImportCatalogMatch]] = {}
+    if checks:
+        for match in db.scalars(select(QuestionImportCatalogMatch).where(
+            QuestionImportCatalogMatch.check_id.in_(checks)
+        ).order_by(QuestionImportCatalogMatch.kind, QuestionImportCatalogMatch.original_qid)):
+            matches_by_check.setdefault(match.check_id, []).append(match)
     rows = []
     for item in ctx["items"]:
         if not active_candidate(item) or item.is_fake:
@@ -184,12 +290,27 @@ def read_item_reviews(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
         if event is None:
             rows.append({"item_id": str(item.id), "decision": "pending", "valid": False,
                          "reason": None, "route": None, "question_event_id": None,
+                         "batch_action_id": None,
                          "answer_confirmed": False})
             continue
         route = event.detail.get("route")
+        current_review = ctx["review_by_id"].get(str(item.id))
+        legacy = event.detail.get("signature_version") != 2
         signature_valid = (event.candidate_revision == item.revision
-                           and event.signature == _signature(item, ctx["review_by_id"].get(str(item.id)))
+                           and event.signature == _signature(item, current_review, legacy=legacy)
                            and (item.payload or {}).get("teacher_decision") == event.decision)
+        if not signature_valid and legacy and event.candidate_revision == item.revision \
+                and (item.payload or {}).get("teacher_decision") == event.decision:
+            old_check_id = event.detail.get("s4_check_id")
+            old_check = checks.get(uuid.UUID(old_check_id)) if old_check_id else None
+            current_check = checks.get(uuid.UUID(current_review["check_id"])) if current_review else None
+            old_review = (_legacy_review(old_check, matches_by_check.get(old_check.id, []))
+                          if old_check else None)
+            original_signature_valid = event.signature == _signature(item, old_review, legacy=True)
+            s4_unchanged = (event.decision != "approved" or bool(old_check and current_check
+                            and _stored_s4_state(old_check, matches_by_check.get(old_check.id, []))
+                            == _stored_s4_state(current_check, matches_by_check.get(current_check.id, []))))
+            signature_valid = original_signature_valid and s4_unchanged
         answer_event = answers.get(event.detail.get("action_id"))
         answer_valid = (route != "direct_pool" or bool(answer_event
                         and answer_event.candidate_revision == item.revision
@@ -206,6 +327,7 @@ def read_item_reviews(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
         rows.append({"item_id": str(item.id), "decision": event.decision if valid else "pending",
                      "recorded_decision": event.decision, "valid": valid,
                      "reason": event.reason, "route": route if valid else None,
+                     "batch_action_id": event.detail.get("batch_action_id"),
                      "question_event_id": str(event.id), "candidate_revision": event.candidate_revision,
                      "answer_confirmed": bool(valid and route == "direct_pool" and answer_event),
                      "created_at": event.created_at.isoformat()})

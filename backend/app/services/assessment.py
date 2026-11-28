@@ -95,7 +95,7 @@ def create_task(db: Session, request: CreateAssessmentTask, *, rerun_of=None, re
         raise AssessmentProblem("REFERENCE_NOT_REVIEWED", "仅允许使用已审核且可机判的正式题目")
     question_type = item.question_snapshot.get("question_type")
     if question_type not in {"choice", "fill_blank", "true_false"}:
-        raise AssessmentProblem("UNSUPPORTED_QUESTION", "S1仅覆盖日常短答案题型", 422)
+        raise AssessmentProblem("UNSUPPORTED_QUESTION", "当前仅支持日常短答案题型", 422)
     current_input = db.scalar(select(AssessmentInput).where(
         AssessmentInput.paper_instance_item_id == item.id, AssessmentInput.item_id == request.item_id,
     ).execution_options(populate_existing=True))
@@ -382,7 +382,7 @@ def _feedback_target(db, target_kind, target_id, item_id):
             original = {"recognition_status": row.recognition_status, "answer": _leaf(row.recognized_answer, item_id)}
         original = RecognitionGold.model_validate(original).model_dump()
     except (ValueError, AssessmentProblem) as exc:
-        raise AssessmentProblem("SLOT_SET_MISMATCH", "旧识别结果缺少该空的可靠证据，须由S3适配后核对") from exc
+        raise AssessmentProblem("SLOT_SET_MISMATCH", "旧识别结果缺少该空的可靠证据，请更新识别结果后核对") from exc
     evidence = {"kind": "recognition", "run_id": str(run.id), "image_sha256": run.image_sha256,
                 "result": original, "provider": run.provider, "model": run.model, "prompt_version": run.prompt_version,
                 "provider_payload": row.provider_payload, "synthetic": run.provider == "fake", "legacy_run_status": run.status,

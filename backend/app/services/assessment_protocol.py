@@ -60,7 +60,7 @@ class FakeEquivalenceAdapter:
             "schema_version": "stage6-equivalence-response-v2" if isinstance(payload, ContextualEquivalenceRequest) else "stage6-equivalence-response-v1",
             "request_id": payload.request_id,
             "verdict": "uncertain", "reason_code": "unsupported_answer",
-            "explanation": "S1 fake仅验证调用链路，未执行数学等价判断。",
+            "explanation": "模拟批改仅验证调用链路，未执行数学等价判断。",
         })
 
 

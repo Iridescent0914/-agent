@@ -237,6 +237,7 @@ def read_catalog_review(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
                 "decision": match.decision, "reason": match.reason,
                 "decided_at": match.decided_at.isoformat() if match.decided_at else None,
                 "catalog_review_revision": match.catalog_review_revision,
+                "catalog_signature": match.catalog_signature,
                 "catalog_stale": stale,
                 "catalog_unverifiable": match.catalog_signature is None,
                 "question_text": question.question_text if question else None,
@@ -245,6 +246,7 @@ def read_catalog_review(db: Session, batch_id: uuid.UUID) -> dict[str, Any]:
             })
         output.append({"item_id": str(item_id), "check_id": str(check.id),
                        "check_no": check.check_no, "candidate_revision": check.candidate_revision,
+                      "candidate_signature": check.candidate_signature,
                        "current_revision": item.revision,
                        "candidate_stale": candidate_stale, "catalog_stale": catalog_stale,
                        "exact_version": check.exact_version, "near_version": check.near_version,
