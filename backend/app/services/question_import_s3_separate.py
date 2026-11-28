@@ -26,7 +26,7 @@ from app.services.question_import_s2 import (
     FLASH_MODEL, ModelSourceAnswer, estimate_cost, pdf_unit_bytes, plan_units, prepare_pdf,
 )
 from app.services.question_import_s3 import reconcile_source_answers
-from app.services.question_import_s3_local import plan_answer_units
+from app.services.question_import_s3_pages import plan_answer_units
 
 logger = logging.getLogger(__name__)
 SEPARATE_ANSWER_VERSION = "s3-separate-answers-v3"
@@ -181,6 +181,11 @@ def _recover_answer_prefix(state: dict, unit: dict, artifact: Path) -> bool:
                                  if answer.page_start < frontier <= answer.page_end])
     if frontier <= 1:
         return False
+    covered_pages = {page for answer in output.source_answers
+                     for page in range(answer.page_start, min(answer.page_end, frontier - 1) + 1)}
+    covered_pages.update(row.page for row in output.unresolved_fragments if row.page < frontier)
+    if any(page not in covered_pages for page in range(1, frontier)):
+        return False  # The model's claim alone cannot prove that an empty page had no answer.
     prefix_end = unit["first_page"] + frontier - 2
     prefix_output = AnswerPageOutput(complete=True,
         source_answers=[answer for answer in output.source_answers if answer.page_end < frontier],
@@ -401,7 +406,9 @@ def process_separate_answers_one() -> bool:
                 state["units"] = plan_answer_units(
                     pdf, pages_per_unit=settings.question_import_s2_pages_per_unit,
                     overlap=settings.question_import_s2_overlap_pages)
-            except (OSError, RuntimeError, ValueError):
+            except Exception:
+                # Local page planning is optional; a parser or layout anomaly
+                # must not prevent the original model-only path from running.
                 logger.exception("Local answer page planning failed for batch %s; using PDF units", batch_id)
                 state["units"] = [{**unit.__dict__, "status": "pending"} for unit in plan_units(
                     pages, pages_per_unit=settings.question_import_s2_pages_per_unit,
@@ -421,18 +428,14 @@ def process_separate_answers_one() -> bool:
                     db.commit()
             return True
         current_index = unit_data["index"]
-        is_local = unit_data.get("method") == "local_text"
-        if not is_local and (state.get("cost_unknown") or float(state["estimated_cny"]) >= float(state["budget_cny"])):
+        if state.get("cost_unknown") or float(state["estimated_cny"]) >= float(state["budget_cny"]):
             raise ImportProblem("S3_ANSWER_BUDGET", "答案识别预算已达到或用量未知，请核对账单并提高预算")
-        if not is_local and int(state["calls"]) >= settings.question_import_s2_max_calls:
+        if int(state["calls"]) >= settings.question_import_s2_max_calls:
             raise ImportProblem("S3_ANSWER_CALL_LIMIT", "答案识别已达到单批调用次数上限")
         from app.services.question_import_s2 import PageUnit
         unit = PageUnit(**{field: unit_data[field] for field in PageUnit.__dataclass_fields__})
         artifact = _artifact_path(batch_id, source["file_id"], unit.index)
-        if is_local:
-            output = AnswerPageOutput(complete=True, source_answers=unit_data["local_answers"])
-            meta = {"usage": {}, "response_id": None, "elapsed_seconds": 0.0}
-        elif artifact.is_file():
+        if artifact.is_file():
             saved = json.loads(artifact.read_text(encoding="utf-8"))
             if "output" in saved:
                 output = validate_answer_output(saved["output"], unit.page_count)
@@ -449,15 +452,18 @@ def process_separate_answers_one() -> bool:
                     artifact, {"raw_response": body, "elapsed_seconds": elapsed}),
             )
             _save_artifact(artifact, {"output": output.model_dump(mode="json"), "meta": meta})
-        cost = 0.0 if is_local else estimate_cost(meta.get("usage") or {})
+        usage = meta.get("usage") or {}
+        cost = estimate_cost(usage, pdf_pages=unit.page_count)
+        parser_usage = (usage.get("x_tools") or {}).get("pdf_page_parser") or {}
+        cost_basis = "provider_pdf_pages" if "count" in parser_usage else "submitted_pdf_pages"
         answers, unresolved = _answer_records(output, source["file_id"], unit.first_page,
                                               unit.core_last_page - unit.first_page + 1)
         unit_data.update({"status": "completed", "source_answers": answers,
-                          "unresolved_fragments": unresolved, "usage": meta.get("usage") or {},
+                          "unresolved_fragments": unresolved, "usage": usage,
                           "response_id": meta.get("response_id"), "estimated_cny": cost,
+                          "cost_estimate_basis": cost_basis,
                           "elapsed_seconds": meta.get("elapsed_seconds")})
-        if not is_local:
-            state["calls"] = int(state["calls"]) + 1
+        state["calls"] = int(state["calls"]) + 1
         if cost is None:
             state["cost_unknown"] = True
         else:
@@ -488,7 +494,9 @@ def process_separate_answers_one() -> bool:
                             saved = json.loads(artifact.read_text(encoding="utf-8"))
                             if "raw_response" in saved:
                                 usage = saved["raw_response"].get("usage") or {}
-                                cost = estimate_cost(usage)
+                                failed_unit = state["units"][current_index]
+                                submitted_pages = failed_unit["last_page"] - failed_unit["first_page"] + 1
+                                cost = estimate_cost(usage, pdf_pages=submitted_pages)
                                 state["calls"] = int(state.get("calls") or 0) + 1
                                 if cost is None:
                                     state["cost_unknown"] = True

@@ -29,6 +29,21 @@ from app.services.question_import_s2_worker import claim_s2, reconcile_completed
 from app.services.question_import_s3_review import list_review_issues
 from app.services.question_import_s3_images import list_images
 import app.services.question_import_s2_worker as s2_worker
+import app.services.question_import_s2 as s2_service
+
+
+def test_combined_page_roles_tolerates_unreadable_text_layer(monkeypatch):
+    class BrokenPage:
+        def extract_text(self):
+            raise ValueError("bad font map")
+
+    class TextPage:
+        def extract_text(self):
+            return "参考答案\n1. B"
+
+    monkeypatch.setattr(s2_service, "PdfReader", lambda *_args, **_kwargs:
+                        SimpleNamespace(pages=[BrokenPage(), TextPage()]))
+    assert s2_service.pdf_page_roles(b"pdf") == ["mixed", "answer"]
 
 
 def test_source_answer_signal_is_advisory_and_page_checked():

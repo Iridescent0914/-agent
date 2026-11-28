@@ -133,7 +133,15 @@ def pdf_page_roles(pdf: Path | bytes) -> list[str]:
     role = "question"
     roles: list[str] = []
     for page in reader.pages:
-        lines = [re.sub(r"\s+", "", line) for line in (page.extract_text() or "").splitlines()]
+        try:
+            page_text = page.extract_text() or ""
+        except Exception:
+            # Chapter labels only guide the model. A broken PDF text layer
+            # must not stop extraction from the original PDF page.
+            roles.append("mixed")
+            role = "mixed"
+            continue
+        lines = [re.sub(r"\s+", "", line) for line in page_text.splitlines()]
         lines = [line for line in lines if line]
         transitions = []
         for index, line in enumerate(lines):
